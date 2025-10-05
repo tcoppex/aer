@@ -33,7 +33,7 @@ void RenderTargetFx::execute(CommandEncoder& cmd) const {
   }
 
   // -----------------------------
-  auto pass = cmd.begin_rendering(render_target_);
+  auto pass = cmd.begin_rendering(*render_target_);
   {
     prepareDrawState(pass);
     pushConstant(pass); //

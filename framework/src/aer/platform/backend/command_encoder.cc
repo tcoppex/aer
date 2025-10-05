@@ -306,18 +306,20 @@ RenderPassEncoder CommandEncoder::begin_rendering(backend::RTInterface const& re
 
   auto const& colors = render_target.color_attachments();
 
-  /* Dynamic rendering required color images to be in color_attachment layout. */
+  /* Dynamic rendering required color images to be in the COLOR_ATTACHMENT layout. */
   transition_images_layout(
     colors,
     VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
   );
 
+  auto depthStencilImageView = render_target.depth_stencil_attachment().view;
+
   auto desc = RenderPassDescriptor{
     .colorAttachments = {},
     .depthAttachment = {
       .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-      .imageView   = render_target.depth_stencil_attachment().view,
+      .imageView   = depthStencilImageView,
       .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
       .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
       .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
@@ -325,7 +327,7 @@ RenderPassEncoder CommandEncoder::begin_rendering(backend::RTInterface const& re
     },
     .stencilAttachment = {
       .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-      .imageView   = render_target.depth_stencil_attachment().view,
+      .imageView   = depthStencilImageView,
       .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
       .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
       .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
@@ -353,12 +355,6 @@ RenderPassEncoder CommandEncoder::begin_rendering(backend::RTInterface const& re
   current_render_target_ptr_ = &render_target;
 
   return begin_rendering(desc);
-}
-
-// ----------------------------------------------------------------------------
-
-RenderPassEncoder CommandEncoder::begin_rendering(std::shared_ptr<backend::RTInterface> render_target) {
-  return begin_rendering(*render_target);
 }
 
 // ----------------------------------------------------------------------------

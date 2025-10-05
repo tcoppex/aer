@@ -89,7 +89,6 @@ void Renderer::deinit() {
 
   skybox_.release(*this); //
   deinit_view_resources();
-  // *this = {};
 }
 
 // ----------------------------------------------------------------------------

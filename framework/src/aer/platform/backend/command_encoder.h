@@ -296,9 +296,6 @@ class CommandEncoder : public GenericCommandEncoder {
   RenderPassEncoder begin_rendering(backend::RTInterface const& render_target);
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering(std::shared_ptr<backend::RTInterface> render_target); //
-
-  [[nodiscard]]
   RenderPassEncoder begin_rendering();
 
   void end_rendering();

@@ -79,10 +79,12 @@ VkSampleCountFlagBits Context::max_sample_count() const noexcept {
   };
 
   auto const& limits = properties_.gpu2.properties.limits;
-  auto counts = limits.framebufferColorSampleCounts
-              & limits.framebufferDepthSampleCounts
-              ;
+  auto const counts = limits.framebufferColorSampleCounts
+                    & limits.framebufferDepthSampleCounts
+                    ;
 
+  // [we could return 'counts' as the bitmask of all accepted values, but we
+  // return the max value instead]
   for (auto flagbit : kSampleCountBits) {
     if (counts & flagbit) {
       return flagbit;
