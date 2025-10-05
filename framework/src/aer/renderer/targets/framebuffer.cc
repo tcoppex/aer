@@ -47,7 +47,8 @@ void Framebuffer::resize(VkExtent2D const dimension) {
         dimension.width,
         dimension.height,
         desc_.depth_stencil_format,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+          VK_IMAGE_USAGE_SAMPLED_BIT
+        | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
       );
     }
   }

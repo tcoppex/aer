@@ -79,7 +79,8 @@ bool RayTracingFx::resize(VkExtent2D const dimension) {
     context_ptr_->create_image_2d(
       dimension_.width, dimension_.height,
       VK_FORMAT_R16G16B16A16_SFLOAT, // (for accumulation)
-        VK_IMAGE_USAGE_STORAGE_BIT
+        VK_IMAGE_USAGE_SAMPLED_BIT
+      | VK_IMAGE_USAGE_STORAGE_BIT
       | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // (for blitting)
       ,
       "RayTracingFx::AccumulationImage"

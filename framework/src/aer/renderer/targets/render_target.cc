@@ -67,7 +67,14 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
 
   /* Create an optional depth-stencil buffer. */
   if (depth_stencil_.format != VK_FORMAT_UNDEFINED) {
-    depth_stencil_ = context_ptr_->create_image_2d(extent_.width, extent_.height, depth_stencil_.format);
+    depth_stencil_ = context_ptr_->create_image_2d(
+      extent_.width,
+      extent_.height,
+      depth_stencil_.format,
+        VK_IMAGE_USAGE_SAMPLED_BIT
+      | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+      "RenderTarget::DepthStencil"
+    );
   }
 
   return true;

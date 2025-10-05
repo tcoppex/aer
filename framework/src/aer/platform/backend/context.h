@@ -53,7 +53,7 @@ class Context {
   }
 
   [[nodiscard]]
-  backend::GPUProperties const& gpu_properties() const noexcept {
+  backend::GPUProperties const& properties() const noexcept {
     return properties_;
   }
 
@@ -90,13 +90,17 @@ class Context {
   // --- Image ---
 
   [[nodiscard]]
+  VkSampleCountFlagBits max_sample_count() const noexcept;
+
+  [[nodiscard]]
   backend::Image create_image_2d(
     uint32_t width,
     uint32_t height,
     uint32_t array_layers,
     uint32_t levels,
     VkFormat format,
-    VkImageUsageFlags extra_usage,
+    VkSampleCountFlagBits sample_count,
+    VkImageUsageFlags usage,
     std::string_view debugName
   ) const;
 
@@ -105,12 +109,13 @@ class Context {
     uint32_t width,
     uint32_t height,
     VkFormat format,
-    VkImageUsageFlags extra_usage = {},
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT,
     std::string_view debugName = ""
   ) const {
-    return create_image_2d(width, height, 1u, 1u, format, extra_usage, debugName);
+    return create_image_2d(
+      width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debugName
+    );
   }
-
 
   // --- Shader Module ---
 
@@ -318,8 +323,6 @@ class Context {
 
   } feature_;
 
-  std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
-
   VkInstance instance_{};
   VkPhysicalDevice gpu_{};
   VkDevice device_{};
@@ -329,7 +332,11 @@ class Context {
   EnumArray<backend::Queue, TargetQueue> queues_{};
   EnumArray<VkCommandPool, TargetQueue> transient_command_pools_{};
 
+  // --------------------------
+
   std::unique_ptr<ResourceAllocator> resource_allocator_{}; //
+
+  std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

@@ -68,25 +68,45 @@ void Context::deinit() {
 
 // ----------------------------------------------------------------------------
 
+VkSampleCountFlagBits Context::max_sample_count() const noexcept {
+  std::array<VkSampleCountFlagBits, 6> constexpr kSampleCountBits{
+    VK_SAMPLE_COUNT_64_BIT,
+    VK_SAMPLE_COUNT_32_BIT,
+    VK_SAMPLE_COUNT_16_BIT,
+    VK_SAMPLE_COUNT_8_BIT,
+    VK_SAMPLE_COUNT_4_BIT,
+    VK_SAMPLE_COUNT_2_BIT,
+  };
+
+  auto const& limits = properties_.gpu2.properties.limits;
+  auto counts = limits.framebufferColorSampleCounts
+              & limits.framebufferDepthSampleCounts
+              ;
+
+  for (auto flagbit : kSampleCountBits) {
+    if (counts & flagbit) {
+      return flagbit;
+    }
+  }
+  return VK_SAMPLE_COUNT_1_BIT;
+}
+
+// ----------------------------------------------------------------------------
+
 backend::Image Context::create_image_2d(
   uint32_t width,
   uint32_t height,
   uint32_t array_layers,
   uint32_t levels,
   VkFormat format,
-  VkImageUsageFlags extra_usage,
+  VkSampleCountFlagBits sample_count,
+  VkImageUsageFlags usage,
   std::string_view debugName
 ) const {
   LOG_CHECK( width > 0 && height > 0 );
   LOG_CHECK( array_layers > 0 );
-
-  // [todo]
-  LOG_CHECK(levels == 1u);
-
-  VkImageUsageFlags usage{
-      VK_IMAGE_USAGE_SAMPLED_BIT
-    | extra_usage
-  };
+  LOG_CHECK( levels == 1u ); // [todo]
+  LOG_CHECK( (sample_count > 0b0) && (sample_count <= max_sample_count()) );
 
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
 
@@ -109,7 +129,7 @@ backend::Image Context::create_image_2d(
     },
     .mipLevels = levels,
     .arrayLayers = array_layers,
-    .samples = VK_SAMPLE_COUNT_1_BIT, //
+    .samples = sample_count,
     .tiling = VK_IMAGE_TILING_OPTIMAL,
     .usage = usage,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

@@ -205,7 +205,9 @@ void Skybox::compute_specular_brdf_lut(Renderer const& renderer) {
           push_constant_.mapResolution,
           push_constant_.mapResolution,
           VK_FORMAT_R16G16_SFLOAT,
-          VK_IMAGE_USAGE_STORAGE_BIT
+            VK_IMAGE_USAGE_SAMPLED_BIT
+          | VK_IMAGE_USAGE_STORAGE_BIT,
+          "Skybox::SpecularBRDF_lut"
         )
       };
 
