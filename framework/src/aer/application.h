@@ -41,6 +41,8 @@ class Application : public EventCallbacks
     return frame_time_ - last_frame_time_;
   }
 
+  void draw_ui(CommandEncoder const& cmd);
+
  protected:
   virtual bool setup() {
     return true;

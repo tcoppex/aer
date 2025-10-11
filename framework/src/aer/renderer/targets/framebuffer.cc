@@ -1,7 +1,7 @@
 #include "aer/renderer/targets/framebuffer.h"
 
 #include "aer/platform/backend/context.h"
-#include "aer/renderer/targets/render_target.h" // (for kDefaultImageUsageFlags)
+#include "aer/renderer/targets/render_target.h" // (for kDefaultColorImageUsageFlags)
 #include "aer/platform/swapchain_interface.h"
 
 /* -------------------------------------------------------------------------- */
@@ -31,7 +31,8 @@ void Framebuffer::resize(VkExtent2D const dimension) {
       dimension.width,
       dimension.height,
       desc_.color_desc.format,
-      RenderTarget::kDefaultImageUsageFlags //
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | RenderTarget::kDefaultColorImageUsageFlags //
     );
   }
   context_ptr_->transition_images_layout(

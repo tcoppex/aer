@@ -27,11 +27,8 @@
  * -> 'create_render_target' can be used to create custom dynamic render target,
  *    'create_framebuffer' to create legacy rendering target.
  *
- *  Note: As a RTInterface, Renderer always returns 1 color_attachment in the
- *        form of the current swapchain image.
- *
  **/
-class Renderer : public backend::RTInterface {
+class Renderer {
  public:
   static constexpr VkClearValue kDefaultColorClearValue{{
     .float32 = {1.0f, 0.25f, 0.75f, 1.0f}
@@ -49,12 +46,12 @@ class Renderer : public backend::RTInterface {
   void deinit();
 
   [[nodiscard]]
-  CommandEncoder begin_frame();
+  CommandEncoder& begin_frame();
 
   void end_frame();
 
   [[nodiscard]]
-  RenderContext const& context() const noexcept { return *ctx_ptr_; }
+  RenderContext const& context() const noexcept { return *context_ptr_; }
 
   [[nodiscard]]
   Skybox const& skybox() const noexcept { return skybox_; }
@@ -127,132 +124,96 @@ class Renderer : public backend::RTInterface {
   }
 
  public:
-  /* ----- RTInterface Overrides ----- */
-
+  // ------------------------------
   [[nodiscard]]
-  VkExtent2D surface_size() const final {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->surfaceSize();
-  }
-
-  [[nodiscard]]
-  uint32_t color_attachment_count() const final {
-    return 1u;
+  VkSampleCountFlagBits sample_count() const noexcept {
+    // (some demos used internal fx / images that are setup from this
+    // sample count, henceforth we need a way to customize it)
+    return VK_SAMPLE_COUNT_4_BIT; //
   }
 
   [[nodiscard]]
-  std::vector<backend::Image> color_attachments() const final {
-    return { color_attachment() };
+  VkFormat color_format() const noexcept {
+    return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
   }
 
   [[nodiscard]]
-  backend::Image color_attachment(uint32_t index = 0u) const final {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->currentImage();
+  VkFormat depth_stencil_format() const noexcept {
+    return VK_FORMAT_D24_UNORM_S8_UINT;
   }
-
-  // VkFormat color_attachment_format(uint32_t index = 0u) const {
-  //   return color_attachment(index).format;
-  // }
-
-  [[nodiscard]]
-  backend::Image depth_stencil_attachment() const final {
-    return depth_stencil_;
-  }
-
-  [[nodiscard]]
-  VkClearValue color_clear_value(uint32_t index = 0u) const final {
-    return color_clear_value_;
-  }
-
-  [[nodiscard]]
-  VkClearValue depth_stencil_clear_value() const final {
-    return depth_stencil_clear_value_;
-  }
-
-  [[nodiscard]]
-  VkAttachmentLoadOp color_load_op(uint32_t index = 0u) const final {
-    return color_load_op_;
-  }
-
-  [[nodiscard]]
-  uint32_t view_mask() const noexcept final {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->viewMask();
-  }
-
-  void set_color_clear_value(VkClearColorValue clear_color, uint32_t index = 0u) final {
-    color_clear_value_.color = clear_color;
-  }
-
-  void set_depth_stencil_clear_value(VkClearDepthStencilValue clear_depth_stencil) final {
-    depth_stencil_clear_value_.depthStencil = clear_depth_stencil;
-  }
-
-  void set_color_load_op(VkAttachmentLoadOp load_op, uint32_t index = 0u) final {
-    color_load_op_ = load_op;
-  }
-
-  bool resize(uint32_t w, uint32_t h) final;
-
-  // -----------
-
-  void set_color_clear_value(vec4 clear_color, uint32_t index = 0u) {
-    set_color_clear_value(
-      {.float32 = { clear_color.x, clear_color.y, clear_color.z, clear_color.w }},
-      index
-    );
-  }
+  // ------------------------------
 
   [[nodiscard]]
   uint32_t swap_image_count() const noexcept {
     LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->imageCount();
+    return swapchain_ptr_->imageCount(); //
   }
 
- private:
-  void init_view_resources();
-  void deinit_view_resources();
-
-  // ------------------------------------------
   [[nodiscard]]
-  VkFormat valid_depth_format() const noexcept {
-    return VK_FORMAT_D24_UNORM_S8_UINT //
-           ;
+  backend::RTInterface const& main_render_target() const noexcept {
+    return *frame_resource().main_rt;
   }
-  // ------------------------------------------
+
+  [[nodiscard]]
+  VkExtent2D surface_size() const noexcept {
+    return main_render_target().surface_size(); //
+  }
+
+  void set_clear_color(vec4 const& color, uint32_t index = 0u) {
+    for (auto & frame : frames_) {
+      frame.main_rt->set_color_clear_value(
+        {.float32 = { color.x, color.y, color.z, color.w }},
+        index
+      );
+    }
+  }
+
+  bool resize(uint32_t w, uint32_t h);
+
+  /* Blit an image to the final color image, before the swapchain. */
+  void blit(
+    CommandEncoder const& cmd,
+    backend::Image const& src_image
+  ) const noexcept;
+
 
  private:
   struct FrameResources {
     VkCommandPool command_pool{};
     VkCommandBuffer command_buffer{};
+    CommandEncoder cmd{};
+    std::unique_ptr<RenderTarget> main_rt{};
+    // std::unique_ptr<RenderTarget> rt_ui{};
   };
 
-  /* References for quick access */
-  RenderContext* ctx_ptr_{};
+  void init_view_resources();
+
+  void deinit_view_resources();
+
+  FrameResources& frame_resource() noexcept {
+    return frames_[frame_index_];
+  }
+
+  FrameResources const& frame_resource() const noexcept {
+    return frames_[frame_index_];
+  }
+
+  void apply_postprocess();
+
+ private:
+  /* Non owning References. */
+  RenderContext* context_ptr_{};
   ResourceAllocator* allocator_ptr_{};
   VkDevice device_{};
-
   SwapchainInterface* swapchain_ptr_{};
-
-  /* Default depth-stencil buffer. */
-  backend::Image depth_stencil_{}; // xxx
 
   /* Timeline frame resources */
   std::vector<FrameResources> frames_{};
   uint32_t frame_index_{};
 
-  /* Miscs resources */
-  VkClearValue color_clear_value_{kDefaultColorClearValue};
-  VkClearValue depth_stencil_clear_value_{{{1.0f, 0u}}};
-  VkAttachmentLoadOp color_load_op_{VK_ATTACHMENT_LOAD_OP_CLEAR};
-
-  /* Reference to the current CommandEncoder returned by 'begin_frame' */
-  CommandEncoder cmd_{}; //
-
   // ----------
 
-  Skybox skybox_{}; //
+  Skybox skybox_{};
 };
 
 /* -------------------------------------------------------------------------- */

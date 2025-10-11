@@ -18,6 +18,8 @@ class SwapchainInterface {
 
   virtual bool finishFrame(VkQueue queue) = 0;
 
+  // -----------------------------
+
   virtual VkExtent2D surfaceSize() const noexcept = 0;
 
   virtual uint32_t imageCount() const noexcept = 0;
@@ -25,6 +27,10 @@ class SwapchainInterface {
   virtual VkFormat format() const noexcept = 0;
 
   virtual uint32_t viewMask() const noexcept = 0;
+
+  virtual uint32_t imageArraySize() const noexcept {
+    return (viewMask() > 0) ? 2u : 1u;
+  }
 
   virtual backend::Image currentImage() const noexcept = 0;
 };

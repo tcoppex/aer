@@ -28,17 +28,15 @@ void RenderTargetFx::release() {
 // ----------------------------------------------------------------------------
 
 void RenderTargetFx::execute(CommandEncoder& cmd) const {
-  if (!enabled()) {
-    return;
-  }
+  if (!enabled()) { return; } //
 
   // -----------------------------
   auto pass = cmd.begin_rendering(*render_target_);
-  {
-    prepareDrawState(pass);
-    pushConstant(pass); //
-    draw(pass);
-  }
+  prepareDrawState(pass);
+  pushConstant(pass); //
+
+  draw(pass); //
+
   cmd.end_rendering();
   // -----------------------------
 }
@@ -74,6 +72,9 @@ GraphicsPipelineDescriptor_t RenderTargetFx::getGraphicsPipelineDescriptor(
       .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
       .cullMode = VK_CULL_MODE_BACK_BIT,
     },
+    .multisample = {
+      .sampleCount = render_target_->sample_count(),
+    }
   };
 }
 
@@ -92,12 +93,14 @@ void RenderTargetFx::createRenderTarget(VkExtent2D const dimension) {
   render_target_ = renderer_ptr_->create_default_render_target();
 #else
   render_target_ = context_ptr_->create_render_target({
-    .color_formats = {
-      VK_FORMAT_R32G32B32A32_SFLOAT,
+    .colors = {
+      { .format = VK_FORMAT_R32G32B32A32_SFLOAT },
     },
-    .depth_stencil_format = VK_FORMAT_D24_UNORM_S8_UINT, //
+    .depth_stencil = {
+      .format = VK_FORMAT_D24_UNORM_S8_UINT, //
+    },
     .size = dimension,
-    .sampler = context_ptr_->default_sampler(),
+    // .sample_count = VK_SAMPLE_COUNT_1_BIT,
   });
 #endif
 

@@ -17,7 +17,6 @@ class RenderTargetFx : public FragmentFx
 
   void execute(CommandEncoder& cmd) const override; //
 
- public:
   bool resize(VkExtent2D const dimension) override;
 
   backend::Image getImageOutput(uint32_t index = 0u) const override;
@@ -25,11 +24,11 @@ class RenderTargetFx : public FragmentFx
   virtual std::vector<backend::Image> getImageOutputs() const override;
 
   backend::Buffer getBufferOutput(uint32_t index = 0u) const override {
-    return unused_buffers_[index];
+    return {};
   }
 
   std::vector<backend::Buffer> getBufferOutputs() const override {
-    return unused_buffers_;
+    return {};
   }
 
  protected:
@@ -51,7 +50,6 @@ class RenderTargetFx : public FragmentFx
 
  protected:
   std::shared_ptr<RenderTarget> render_target_{}; //
-  std::vector<backend::Buffer> unused_buffers_{};
 };
 
 /* -------------------------------------------------------------------------- */

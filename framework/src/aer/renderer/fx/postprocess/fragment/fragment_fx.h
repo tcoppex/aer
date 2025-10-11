@@ -49,14 +49,20 @@ class FragmentFx : public virtual GenericFx {
 
   virtual void prepareDrawState(RenderPassEncoder const& pass) const {
     pass.bind_pipeline(pipeline_);
-    pass.bind_descriptor_set(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    pass.bind_descriptor_set(
+      descriptor_set_,
+      pipeline_layout_,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+    );
     pass.set_viewport_scissor(getRenderSurfaceSize()); //
   }
 
  protected:
   virtual std::string getVertexShaderName() const = 0;
 
-  virtual GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(std::vector<backend::ShaderModule> const& shaders) const = 0;
+  virtual GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(
+    std::vector<backend::ShaderModule> const& shaders
+  ) const = 0;
 
   virtual void draw(RenderPassEncoder const& pass) const = 0; //
 };

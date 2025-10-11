@@ -134,7 +134,7 @@ GraphicsPipelineDescriptor_t MaterialFx::getGraphicsPipelineDescriptor(
       },
       .targets = {
         {
-          .format = renderer_ptr_->color_attachment(0).format,
+          .format = renderer_ptr_->color_format(), //
         },
       },
     },

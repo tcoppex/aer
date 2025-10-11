@@ -23,23 +23,23 @@ namespace vkutils {
 VkResult CheckVKResult(
   VkResult result,
   char const* file,
-  int const line,
-  bool const bExitOnFail
+  int line,
+  bool bExitOnFail
 );
 
 bool IsValidStencilFormat(
-  VkFormat const format
+  VkFormat format
 );
 
 VkShaderModule CreateShaderModule(
-  VkDevice const device,
+  VkDevice device,
   char const* shader_directory,
   char const* shader_name
 );
 
 // (from nvpro_sample/minimal_latest)
 std::tuple<VkPipelineStageFlags2, VkAccessFlags2> MakePipelineStageAccessTuple(
-  VkImageLayout const state
+  VkImageLayout state
 );
 
 void TransformDescriptorSetWriteEntries(

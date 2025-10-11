@@ -2,7 +2,7 @@
 //
 //    11 - raytracing
 //
-//
+//  Where we illuminates the scene one ray at a time.
 //
 /* -------------------------------------------------------------------------- */
 
@@ -102,7 +102,9 @@ class BasicRayTracingFx : public RayTracingFx {
     };
   }
 
-  RayTracingPipelineDescriptor_t pipelineDescriptor(backend::ShadersMap const& shaders_map) final {
+  RayTracingPipelineDescriptor_t pipelineDescriptor(
+    backend::ShadersMap const& shaders_map
+  ) final {
     auto shader_index{[&](std::string_view shader_name) -> uint32_t {
       uint32_t index = 0;
       for (auto const& [stage, shaders] : shaders_map) {
@@ -192,7 +194,6 @@ class BasicRayTracingFx : public RayTracingFx {
         .metallic_factor      = proxy.pbr_mr.metallic_factor,
         .roughness_factor     = proxy.pbr_mr.roughness_factor,
         .alpha_cutoff         = proxy.alpha_cutoff,
-        // .double_sided = proxy.double_sided,
       });
     }
   }
@@ -227,7 +228,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("11 - shining through");
 
-    renderer_.set_color_clear_value({{ 0.52f, 0.28f, 0.80f, 0.0f }});
+    renderer_.set_clear_color({ 0.52f, 0.28f, 0.80f, 0.0f });
 
     /* Setup the ArcBall camera. */
     {
@@ -294,7 +295,7 @@ class SampleApp final : public Application {
     {
       // RAY TRACER
       ray_tracing_fx_.execute(cmd);
-      cmd.blit(ray_tracing_fx_, renderer_);
+      renderer_.blit(cmd, ray_tracing_fx_.getImageOutput());
     }
     else
     {
@@ -304,8 +305,7 @@ class SampleApp final : public Application {
       cmd.end_rendering();
     }
 
-    /* Draw UI on top. */
-    cmd.render_ui(renderer_);
+    draw_ui(cmd);
 
     renderer_.end_frame();
   }
@@ -333,8 +333,6 @@ class SampleApp final : public Application {
   std::future<GLTFScene> future_scene_{};
   GLTFScene scene_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 

@@ -55,7 +55,10 @@ void FragmentFx::createPipeline() {
     getVertexShaderName(),
     getShaderName()
   })};
-  pipeline_ = renderer_ptr_->create_graphics_pipeline(pipeline_layout_, getGraphicsPipelineDescriptor(shaders));
+  pipeline_ = renderer_ptr_->create_graphics_pipeline(
+    pipeline_layout_,
+    getGraphicsPipelineDescriptor(shaders)
+  );
   context_ptr_->release_shader_modules(shaders);
 }
 

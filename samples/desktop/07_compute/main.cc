@@ -47,7 +47,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("07 - Nouvelles Vagues");
 
-    renderer_.set_color_clear_value({{ 0.95f, 0.85f, 0.83f, 1.0f }});
+    renderer_.set_clear_color({ 0.95f, 0.85f, 0.83f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
@@ -227,7 +227,7 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -250,7 +250,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format, //
+          .format = renderer_.depth_stencil_format(), //
         },
         .primitive = {
           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,

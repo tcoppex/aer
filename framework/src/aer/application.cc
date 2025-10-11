@@ -222,6 +222,16 @@ void Application::update_ui() noexcept {
 
 // ----------------------------------------------------------------------------
 
+void Application::draw_ui(CommandEncoder const& cmd) {
+  ui_->draw(
+    cmd,
+    renderer_.main_render_target().resolve_attachment().view,
+    renderer_.surface_size()
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 void Application::mainloop(AppData_t app_data) {
   using frame_fn = std::function<bool()>;
 

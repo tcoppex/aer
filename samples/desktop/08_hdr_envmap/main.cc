@@ -29,7 +29,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("08 - Es werde Licht");
 
-    renderer_.set_color_clear_value({{ 0.55f, 0.65f, 0.75f, 1.0f }});
+    renderer_.set_clear_color({ 0.55f, 0.65f, 0.75f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {

@@ -19,11 +19,10 @@ void Renderer::init(
 ) {
   LOGD("-- Renderer --");
 
-  ctx_ptr_ = &context;
+  context_ptr_ = &context;
   device_ = context.device();
   allocator_ptr_ = &context.allocator();
   swapchain_ptr_ = swapchain_ptr; //
-
   init_view_resources();
 
   // Renderer internal effects.
@@ -38,22 +37,17 @@ void Renderer::init(
 void Renderer::init_view_resources() {
   LOG_CHECK(swapchain_ptr_);
 
-  /* Create a default depth stencil buffer. */
-  auto const dimension = swapchain_ptr_->surfaceSize();
-  resize(dimension.width, dimension.height);
-
-  /* Initialize resources for the semaphore timeline. */
-  LOGD(" > Frames Resources");
   auto const frame_count = swapchain_ptr_->imageCount();
-  LOG_CHECK(frame_count > 0u);
+  LOG_CHECK( frame_count > 0u );
+
+  LOGD(" > Frames Resources");
+  frames_.resize(frame_count);
 
   // Initialize per-frame command buffers.
   VkCommandPoolCreateInfo const command_pool_create_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .queueFamilyIndex = ctx_ptr_->queue(Context::TargetQueue::Main).family_index,
+    .queueFamilyIndex = context_ptr_->queue(Context::TargetQueue::Main).family_index,
   };
-
-  frames_.resize(frame_count);
   for (auto& frame : frames_) {
     CHECK_VK(vkCreateCommandPool(
       device_, &command_pool_create_info, nullptr, &frame.command_pool
@@ -68,6 +62,10 @@ void Renderer::init_view_resources() {
       device_, &cb_alloc_info, &frame.command_buffer
     ));
   }
+
+  /* Setup per-frame image buffers. */
+  auto const dimension = swapchain_ptr_->surfaceSize();
+  resize(dimension.width, dimension.height);
 }
 
 // ----------------------------------------------------------------------------
@@ -78,8 +76,9 @@ void Renderer::deinit_view_resources() {
   for (auto & frame : frames_) {
     vkFreeCommandBuffers(device_, frame.command_pool, 1u, &frame.command_buffer);
     vkDestroyCommandPool(device_, frame.command_pool, nullptr);
+    frame.main_rt->release();
+    // frame.rt_ui->release();
   }
-  allocator_ptr_->destroy_image(&depth_stencil_);
 }
 
 // ----------------------------------------------------------------------------
@@ -94,74 +93,128 @@ void Renderer::deinit() {
 // ----------------------------------------------------------------------------
 
 bool Renderer::resize(uint32_t w, uint32_t h) {
-  LOG_CHECK(ctx_ptr_ != nullptr);
+  LOG_CHECK(context_ptr_ != nullptr);
   LOG_CHECK( w > 0 && h > 0 );
+  LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
-  /* Create a default depth stencil buffer. */
-  LOGD(" > Resize Renderer Depth-Stencil Buffer ({}, {})", w, h);
-  if (depth_stencil_.valid()) {
-    allocator_ptr_->destroy_image(&depth_stencil_);
+  // -----------------------------
+  auto const layers = swapchain_ptr_->imageArraySize();
+  auto const samples = sample_count();
+  LOGI("max sample count : {}", (int)samples);
+
+  if (frames_[0].main_rt == nullptr) [[unlikely]] {
+    for (size_t i = 0; i < frames_.size(); ++i) {
+      auto &frame = frames_[i];
+      frame.main_rt = context_ptr_->create_render_target({
+        .colors = {{
+          .format = color_format(),
+          .clear_value = kDefaultColorClearValue
+        }},
+        .depth_stencil = {
+          .format = depth_stencil_format(),
+        },
+        .size = { w, h },
+        .array_size = layers,
+        .sample_count = samples,
+        .debug_prefix = std::string("Renderer::MainRT_" + std::to_string(i)),
+      });
+
+      // frame.rt_ui = context_ptr_->create_render_target({
+      //   .colors = {{
+      //     .format = swapchain_ptr_->currentImage().format,
+      //   }},
+      //   .size = { w, h },
+      //   // .array_size = layers,
+      //   // .sample_count = samples,
+      // });
+    }
+  } else {
+    for (auto &frame : frames_) {
+      frame.main_rt->resize(w, h);
+      // frame.rt_ui->resize(w, h);
+    }
   }
-
-  depth_stencil_ = ctx_ptr_->create_image_2d(
-    w, h, (view_mask() > 0) ? 2u : 1u,
-    1u,
-    valid_depth_format(),
-    {},
-    "Renderer::DepthStencilImage"
-  );
+  // -----------------------------
 
   return true;
 }
 
 // ----------------------------------------------------------------------------
 
-CommandEncoder Renderer::begin_frame() {
+CommandEncoder& Renderer::begin_frame() {
   LOG_CHECK(device_ != VK_NULL_HANDLE);
 
   // -----------------------------------
-  LOG_CHECK(swapchain_ptr_);
   // Acquire next availables image in the swapchain.
+  LOG_CHECK(swapchain_ptr_);
   if (!swapchain_ptr_->acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
   // -----------------------------------
 
   // Reset the frame command pool to record new command for this frame.
-  auto &frame = frames_[frame_index_];
+  auto &frame = frame_resource();
   CHECK_VK( vkResetCommandPool(device_, frame.command_pool, 0u) );
 
-  // Create a new command buffer wrapper.
-  cmd_ = CommandEncoder(
+  // Reset the command buffer wrapper.
+  frame.cmd = CommandEncoder(
     frame.command_buffer,
     static_cast<uint32_t>(Context::TargetQueue::Main),
     device_,
-    allocator_ptr_
+    allocator_ptr_,
+    frame.main_rt.get() //
   );
-  cmd_.default_render_target_ptr_ = this;
-  cmd_.begin();
+  frame.cmd.begin();
 
-  return cmd_;
+  return frame.cmd;
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::apply_postprocess() {
+  auto const& frame = frame_resource();
+  auto const& dst_img = swapchain_ptr_->currentImage();
+
+  // Blit Color to Swapchain.
+  {
+    auto const& src_rt = *frame.main_rt;
+    auto const& src_img = src_rt.resolve_attachment();
+
+    frame.cmd.transition_images_layout(
+      { src_img },
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    frame.cmd.blit_image_2d(
+      src_img, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      dst_img, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      surface_size()
+    );
+  }
 }
 
 // ----------------------------------------------------------------------------
 
 void Renderer::end_frame() {
-  cmd_.end();
-
-  // -----------------------------------
   LOG_CHECK(swapchain_ptr_);
-  auto const& queue = ctx_ptr_->queue(Context::TargetQueue::Main).queue;
-  if (!swapchain_ptr_->submitFrame(queue, cmd_.handle())) {
+
+  // Transition the final image then blit to the swapchain frame.
+  apply_postprocess();
+
+  auto const& frame = frame_resource();
+  frame.cmd.end();
+
+  // Submit the CommandBuffer to the main queue.
+  auto const& queue = context_ptr_->queue(Context::TargetQueue::Main).queue;
+  if (!swapchain_ptr_->submitFrame(queue, frame.cmd.handle())) {
     LOGV("{}: Invalid swapchain, skip that frame.", __FUNCTION__);
     return; 
   }
-  // -----------------------------------
 
-  // -----------------------------------
+  // Present the swapchain frame's image.
   swapchain_ptr_->finishFrame(queue);
   frame_index_ = (frame_index_ + 1u) % swapchain_ptr_->imageCount();
-  // -----------------------------------
 }
 
 // ----------------------------------------------------------------------------
@@ -169,14 +222,17 @@ void Renderer::end_frame() {
 std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
   uint32_t num_color_outputs
 ) const {
-  RenderTarget::Descriptor_t desc{
-    .color_formats = {},
-    .depth_stencil_format = valid_depth_format(),
+  auto desc = RenderTarget::Descriptor{
+    .depth_stencil = { .format = depth_stencil_format() },
     .size = surface_size(),
-    .sampler = context().default_sampler(),
+    .array_size = swapchain_ptr_->imageArraySize(), //
+    // .sample_count = VK_SAMPLE_COUNT_1_BIT, //sample_count(), //
   };
-  desc.color_formats.resize(num_color_outputs, color_attachment().format);
-  return ctx_ptr_->create_render_target(desc);
+  desc.colors.resize(num_color_outputs, {
+    .format = color_format(),
+    .clear_value = kDefaultColorClearValue,
+  });
+  return context_ptr_->create_render_target(desc);
 }
 
 // ----------------------------------------------------------------------------
@@ -220,33 +276,33 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
   if (useDynamicRendering)
   {
     data.color_attachments.resize(desc.fragment.targets.size());
-
-    /* (~) If no depth format is setup, use the renderer's one. */
-    VkFormat const depth_format{
-      (desc.depthStencil.format != VK_FORMAT_UNDEFINED) ? desc.depthStencil.format
-                                                        : depth_stencil_attachment().format
-    };
-
-    VkFormat const stencil_format{
-      vkutils::IsValidStencilFormat(depth_format) ? depth_format : VK_FORMAT_UNDEFINED
-    };
-
     data.color_blend_attachments.resize(
       data.color_attachments.size(),
       data.color_blend_attachments[0u]
     );
 
+    // ------------------------------------------
+    /* (~) If no depth format is setup, use the renderer's one. */
+    VkFormat const depthFormat{
+      (desc.depthStencil.format != VK_FORMAT_UNDEFINED) ? desc.depthStencil.format
+                                                        : depth_stencil_format()
+    };
+    VkFormat const stencilFormat{
+      vkutils::IsValidStencilFormat(depthFormat) ? depthFormat
+                                                 : VK_FORMAT_UNDEFINED
+    };
+    // ------------------------------------------
+
     for (size_t i = 0; i < data.color_attachments.size(); ++i) {
-      auto &target = desc.fragment.targets[i];
+      auto const& target = desc.fragment.targets[i];
 
       /* (~) If no color format is setup, use the renderer's one. */
-      VkFormat const color_format{
+      VkFormat const colorFormat{
         (target.format != VK_FORMAT_UNDEFINED) ? target.format
-                                               : color_attachment(i).format
+                                               : color_format() //
       };
 
-      data.color_attachments[i] = color_format;
-
+      data.color_attachments[i] = colorFormat;
       data.color_blend_attachments[i] = {
         .blendEnable         = target.blend.enable,
         .srcColorBlendFactor = target.blend.color.srcFactor,
@@ -262,13 +318,12 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
     data.dynamic_rendering_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
       .pNext = nullptr,
-      .viewMask = view_mask(), ///
+      .viewMask = swapchain_ptr_->viewMask(), ///
       .colorAttachmentCount = static_cast<uint32_t>(data.color_attachments.size()),
       .pColorAttachmentFormats = data.color_attachments.data(),
-      .depthAttachmentFormat = depth_format,
-      .stencilAttachmentFormat = stencil_format,
+      .depthAttachmentFormat = depthFormat,
+      .stencilAttachmentFormat = stencilFormat,
     };
-    LOGI("data.dynamic_rendering_create_info {}", data.dynamic_rendering_create_info.viewMask);
   }
 
   /* Shaders stages */
@@ -297,10 +352,12 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
 
   /* Shader specializations */
   data.specializations.resize(data.shader_stages.size());
-  data.shader_stages[0].pSpecializationInfo =
-    data.specializations[0].info(desc.vertex.specializationConstants);
-  data.shader_stages[1].pSpecializationInfo =
-    data.specializations[1].info(desc.fragment.specializationConstants);
+  data.shader_stages[0].pSpecializationInfo = data.specializations[0].info(
+    desc.vertex.specializationConstants
+  );
+  data.shader_stages[1].pSpecializationInfo = data.specializations[1].info(
+    desc.fragment.specializationConstants
+  );
 
   /* Vertex Input */
   {
@@ -360,10 +417,15 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
   };
 
   /* Multisampling */
+  auto const sampleCount = (desc.multisample.sampleCount != 0) ? desc.multisample.sampleCount
+                                                               : sample_count()
+                                                               ;
   data.multisample = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-    .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    .rasterizationSamples = sampleCount, //
     .sampleShadingEnable = VK_FALSE,
+    .minSampleShading = 0.0f,
+    .pSampleMask = nullptr,
     .alphaToCoverageEnable = VK_FALSE,
     .alphaToOneEnable = VK_FALSE,
   };
@@ -397,9 +459,9 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
 
-      // // VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-      // // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-      // // VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+      // VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+      // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+      // VK_DYNAMIC_STATE_STENCIL_REFERENCE,
 
       // VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
       // VK_DYNAMIC_STATE_STENCIL_OP_EXT,
@@ -409,6 +471,8 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
 
       // VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
       // VK_DYNAMIC_STATE_CULL_MODE_EXT,
+
+      // VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT,
     };
 
     // User defined states.
@@ -472,7 +536,7 @@ void Renderer::create_graphics_pipelines(
   for (size_t i = 0; i < descs.size(); ++i) {
     create_infos[i] = create_graphics_pipeline_create_info(datas[i], pipeline_layout, descs[i]);
   }
-  ctx_ptr_->create_graphics_pipelines(pipeline_layout, create_infos, out_pipelines);
+  context_ptr_->create_graphics_pipelines(pipeline_layout, create_infos, out_pipelines);
 }
 
 // ----------------------------------------------------------------------------
@@ -487,7 +551,7 @@ Pipeline Renderer::create_graphics_pipeline(
   VkGraphicsPipelineCreateInfo const create_info{
     create_graphics_pipeline_create_info(data, pipeline_layout, desc)
   };
-  return ctx_ptr_->create_graphics_pipeline(pipeline_layout, create_info);
+  return context_ptr_->create_graphics_pipeline(pipeline_layout, create_info);
 }
 
 // ----------------------------------------------------------------------------
@@ -496,12 +560,12 @@ Pipeline Renderer::create_graphics_pipeline(
   PipelineLayoutDescriptor_t const& layout_desc,
   GraphicsPipelineDescriptor_t const& desc
 ) const {
-  auto pipeline_layout = ctx_ptr_->create_pipeline_layout(layout_desc);
+  auto pipeline_layout = context_ptr_->create_pipeline_layout(layout_desc);
   GraphicsPipelineCreateInfoData_t data{};
   VkGraphicsPipelineCreateInfo const create_info{
     create_graphics_pipeline_create_info(data, pipeline_layout, desc)
   };
-  Pipeline pipeline = ctx_ptr_->create_graphics_pipeline(
+  Pipeline pipeline = context_ptr_->create_graphics_pipeline(
     pipeline_layout,
     create_info
   );
@@ -539,6 +603,21 @@ GLTFScene Renderer::load_gltf(
 
 GLTFScene Renderer::load_gltf(std::string_view gltf_filename) {
   return load_gltf(gltf_filename, VertexInternal_t::GetDefaultAttributeLocationMap());
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::blit(
+  CommandEncoder const& cmd,
+  backend::Image const& src_image
+) const noexcept {
+  cmd.blit_image_2d(
+    src_image,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    main_render_target().resolve_attachment(),
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED,
+    surface_size()
+  );
 }
 
 /* -------------------------------------------------------------------------- */

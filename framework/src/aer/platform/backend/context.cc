@@ -238,7 +238,8 @@ CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue co
     cmd,
     static_cast<uint32_t>(target_queue),
     device_,
-    resource_allocator_.get()
+    resource_allocator_.get(),
+    nullptr
   );
   encoder.begin();
 

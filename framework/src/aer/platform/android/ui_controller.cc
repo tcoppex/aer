@@ -14,6 +14,7 @@
 #include "aer/platform/ui_controller.h" //
 
 #include <backends/imgui_impl_android.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <imgui_internal.h>
 
 #ifdef __clang__
@@ -126,6 +127,16 @@ void UIController::endFrame() {
   //   ImGui::RenderPlatformWindowsDefault();
   // }
   // ImGui::EndFrame();
+}
+
+// ----------------------------------------------------------------------------
+
+void UIController::draw(
+  CommandEncoder const& cmd,
+  VkImageView image_view,
+  VkExtent2D surface_size
+) {
+  // TODO
 }
 
 // ----------------------------------------------------------------------------

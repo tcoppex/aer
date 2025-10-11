@@ -36,7 +36,7 @@ class SampleApp final : public Application {
   SampleApp() = default;
 
   bool setup() final {
-    renderer_.set_color_clear_value(vec4(0.125f, 0.125f, 0.125f, 1.0f));
+    renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 1.0f));
 
     vertex_buffer_ = context_.create_buffer_and_upload(
       kVertices,
@@ -112,7 +112,7 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -122,7 +122,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,

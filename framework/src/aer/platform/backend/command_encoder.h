@@ -280,10 +280,16 @@ class CommandEncoder : public GenericCommandEncoder {
     VkExtent2D const& extent
   ) const;
 
-  void blit(
-    PostFxInterface const& fx_src,
-    backend::RTInterface const& rt_dst
-  ) const;
+  // void blit(
+  //   PostFxInterface const& fx_src,
+  //   backend::RTInterface const& rt_dst
+  // ) const;
+
+  // void blit(
+  //   backend::RTInterface const& rt_src,
+  //   backend::RTInterface const& rt_dst,
+  //   VkImageLayout dst_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+  // ) const;
 
   // --- Rendering ---
 
@@ -298,7 +304,7 @@ class CommandEncoder : public GenericCommandEncoder {
   [[nodiscard]]
   RenderPassEncoder begin_rendering();
 
-  void end_rendering();
+  void end_rendering() const;
 
   /* Legacy rendering. */
 
@@ -306,10 +312,6 @@ class CommandEncoder : public GenericCommandEncoder {
   RenderPassEncoder begin_render_pass(backend::RPInterface const& render_pass) const;
 
   void end_render_pass() const;
-
-  // --- UI ----
-
-  void render_ui(backend::RTInterface &render_target);
 
  protected:
   CommandEncoder() = default;
@@ -319,10 +321,12 @@ class CommandEncoder : public GenericCommandEncoder {
     VkCommandBuffer const command_buffer,
     uint32_t const target_queue_index,
     VkDevice const device,
-    ResourceAllocator *allocator_ptr
+    ResourceAllocator *allocator_ptr,
+    backend::RTInterface const* default_rt
   ) : GenericCommandEncoder(command_buffer, target_queue_index)
     , device_{device}
     , allocator_ptr_{allocator_ptr}
+    , default_render_target_ptr_(default_rt)
   {}
 
   void begin() const {
@@ -339,14 +343,13 @@ class CommandEncoder : public GenericCommandEncoder {
 
  protected:
   VkDevice device_{};
-  // ResourceAllocator const* allocator_ptr_{};
   ResourceAllocator* allocator_ptr_{};
 
   /* Link the default backend::RTInterface when one is available. */
   backend::RTInterface const* default_render_target_ptr_{};
 
   /* Link the bound backend::RTInterface for auto layout transition. */
-  backend::RTInterface const* current_render_target_ptr_{};
+  mutable backend::RTInterface const* current_render_target_ptr_{};
 
  public:
   friend class Context;

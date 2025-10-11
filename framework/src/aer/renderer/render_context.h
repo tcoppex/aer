@@ -44,7 +44,7 @@ class RenderContext : public Context {
 
   [[nodiscard]]
   std::unique_ptr<RenderTarget> create_render_target(
-    RenderTarget::Descriptor_t const& desc
+    RenderTarget::Descriptor const& desc
   ) const;
 
   // --- Framebuffer (Legacy Rendering) ---

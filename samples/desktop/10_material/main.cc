@@ -17,7 +17,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("10 - kavalkada materia");
 
-    renderer_.set_color_clear_value({{ 0.72f, 0.28f, 0.30f, 0.0f }});
+    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 0.0f });
     renderer_.skybox().setup(ASSETS_DIR "textures/"
       "rogland_clear_night_2k.hdr"
     );
@@ -53,12 +53,12 @@ class SampleApp final : public Application {
   }
 
   void build_ui() final {
-    // ImGui::Begin("Settings");
-    // {
-    //   ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-    //   ImGui::Separator();
-    // }
-    // ImGui::End();
+    ImGui::Begin("Settings");
+    {
+      ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+      ImGui::Separator();
+    }
+    ImGui::End();
   }
 
   void release() final {
@@ -95,7 +95,7 @@ class SampleApp final : public Application {
       cmd.end_rendering();
 
       // UI.
-      cmd.render_ui(renderer_);
+      draw_ui(cmd);
     }
     renderer_.end_frame();
   }
@@ -107,8 +107,6 @@ class SampleApp final : public Application {
   std::future<GLTFScene> future_scene_{};
   GLTFScene scene_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 

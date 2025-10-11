@@ -78,7 +78,7 @@ std::unique_ptr<RenderTarget> RenderContext::create_render_target() const {
 // ----------------------------------------------------------------------------
 
 std::unique_ptr<RenderTarget> RenderContext::create_render_target(
-  RenderTarget::Descriptor_t const& desc
+  RenderTarget::Descriptor const& desc
 ) const {
   if (auto rt = create_render_target(); rt) {
     rt->setup(desc);

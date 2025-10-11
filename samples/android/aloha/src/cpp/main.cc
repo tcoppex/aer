@@ -45,7 +45,7 @@ private:
 
  private:
   bool setup() final {
-    renderer_.set_color_clear_value(vec4(0.75f, 0.15f, 0.30f, 1.0f));
+    renderer_.set_clear_color(vec4(0.75f, 0.15f, 0.30f, 1.0f));
 
     vertex_buffer_ = context_.create_buffer_and_upload(
       kVertices, VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
@@ -81,7 +81,7 @@ private:
         .module = shaders[1u].module,
         .targets = {
           {
-            .format = renderer_.color_attachment().format,
+            .format = renderer_.color_format(),
             .writeMask = VK_COLOR_COMPONENT_R_BIT
                        | VK_COLOR_COMPONENT_G_BIT
                        | VK_COLOR_COMPONENT_B_BIT
@@ -91,7 +91,7 @@ private:
         },
       },
       .depthStencil = {
-        .format = renderer_.depth_stencil_attachment().format,
+        .format = renderer_.depth_stencil_format(),
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
         .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -128,7 +128,7 @@ private:
 
   void onPointerUp(int x, int y, KeyCode_t button) final {
     clear_color_index_ = (clear_color_index_ + 1u)  % kColors.size();
-    renderer_.set_color_clear_value(kColors[clear_color_index_]);
+    renderer_.set_clear_color(kColors[clear_color_index_]);
   }
 
  private:

@@ -14,6 +14,8 @@
 #include "aer/platform/ui_controller.h" //
 
 #include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
+
 #include <imgui_internal.h>
 
 #ifdef __clang__
@@ -26,6 +28,7 @@
 
 #include "aer/renderer/renderer.h"
 #include "aer/platform/backend/context.h"
+#include "aer/platform/backend/command_encoder.h"
 
 #include "aer/platform/desktop/window.h" // for glfwGetWindowContentScale
 
@@ -45,7 +48,7 @@ bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
 
   auto const& context = renderer.context();
 
-  VkDescriptorPoolSize const pool_sizes[]{
+  std::array<VkDescriptorPoolSize, 1u> const pool_sizes{
     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 512u },
   };
   VkDescriptorPoolCreateInfo const desc_pool_info{
@@ -54,40 +57,44 @@ bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
            | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
            ,
     .maxSets = 1024u, //
-    .poolSizeCount = 1u,
-    .pPoolSizes = pool_sizes,
+    .poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
+    .pPoolSizes = pool_sizes.data(),
   };
-  CHECK_VK(vkCreateDescriptorPool(context.device(), &desc_pool_info, nullptr, &imgui_descriptor_pool_));
+  CHECK_VK(vkCreateDescriptorPool(
+    context.device(), &desc_pool_info, nullptr, &imgui_descriptor_pool_
+  ));
 
-  VkFormat const formats[]{
-    renderer.color_attachment().format
+  std::array<VkFormat, 1u> const color_formats{
+    renderer.main_render_target().resolve_attachment().format //
   };
   VkFormat const depth_stencil_format{
-    renderer.depth_stencil_attachment().format
+    VK_FORMAT_UNDEFINED
   };
-  auto const main_queue{ context.queue() };
-  ImGui_ImplVulkan_InitInfo info{
+
+  auto const& main_queue = context.queue();
+
+  auto info = ImGui_ImplVulkan_InitInfo{
     .Instance = context.instance(),
     .PhysicalDevice = context.physical_device(),
     .Device = context.device(),
     .QueueFamily = main_queue.family_index,
     .Queue = main_queue.queue,
     .DescriptorPool = imgui_descriptor_pool_,
-    .MinImageCount = 2,
-    .ImageCount = renderer.swap_image_count(),
-    .UseDynamicRendering = true,
+    .MinImageCount = 2, //
+    .ImageCount = renderer.swap_image_count(), //
+    .UseDynamicRendering = true, //
     .PipelineRenderingCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-      .colorAttachmentCount = 1u,
-      .pColorAttachmentFormats = formats,
+      .colorAttachmentCount = static_cast<uint32_t>(color_formats.size()),
+      .pColorAttachmentFormats = color_formats.data(),
       .depthAttachmentFormat = depth_stencil_format,
       .stencilAttachmentFormat = depth_stencil_format,
     },
   };
+
   if (!ImGui_ImplVulkan_Init(&info)) {
     return false;
   }
-
   ImGui::GetIO().ConfigFlags = ImGuiConfigFlags_DockingEnable;
 
   return true;
@@ -128,6 +135,29 @@ void UIController::endFrame() {
     ImGui::RenderPlatformWindowsDefault();
   }
   ImGui::EndFrame();
+}
+
+// ----------------------------------------------------------------------------
+
+void UIController::draw(
+  CommandEncoder const& cmd,
+  VkImageView image_view,
+  VkExtent2D surface_size
+) {
+  auto pass = cmd.begin_rendering({
+    .colorAttachments = {
+      {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView   = image_view,
+        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+      }
+    },
+    .renderArea = {{0, 0}, surface_size},
+  });
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), pass.handle());
+  cmd.end_rendering();
 }
 
 // ----------------------------------------------------------------------------

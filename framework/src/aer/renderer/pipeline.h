@@ -164,6 +164,10 @@ struct GraphicsPipelineDescriptor_t {
     VkFrontFace frontFace{};
   } primitive{};
 
+  struct Multisample {
+    VkSampleCountFlagBits sampleCount{};
+  } multisample;
+
   VkRenderPass renderPass{};
 };
 
