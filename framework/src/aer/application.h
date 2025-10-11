@@ -6,14 +6,16 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
+#include "aer/settings.h"
 #include "aer/core/common.h"
+#include "aer/core/event_callbacks.h"
 
 #include "aer/platform/common.h"
-#include "aer/core/event_callbacks.h"
 #include "aer/platform/wm_interface.h"
 #include "aer/platform/ui_controller.h"
 #include "aer/platform/xr_interface.h"
 #include "aer/platform/backend/swapchain.h"
+
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/renderer.h"
 
@@ -26,6 +28,28 @@ class Application : public EventCallbacks
   virtual ~Application() = default;
 
   int run(bool use_xr, AppData_t app_data = {});
+
+ protected:
+  virtual AppSettings settings() const noexcept {
+    return {};
+  }
+
+  virtual bool setup() {
+    return true;
+  }
+
+  virtual void release() {}
+
+  [[nodiscard]]
+  virtual std::vector<char const*> xrExtensions() const noexcept {
+    return {};
+  }
+
+  virtual void build_ui() {}
+
+  virtual void update(float const dt) {}
+
+  virtual void draw() {}
 
  protected:
   [[nodiscard]]
@@ -43,32 +67,9 @@ class Application : public EventCallbacks
 
   void draw_ui(CommandEncoder const& cmd);
 
- protected:
-  virtual bool setup() {
-    return true;
-  }
-
-  virtual void release() {}
-
-  [[nodiscard]]
-  virtual std::vector<char const*> xrExtensions() const noexcept {
-    return {};
-  }
-
-  [[nodiscard]]
-  virtual std::vector<char const*> vulkanDeviceExtensions() const noexcept {
-    return {};
-  }
-
-  virtual void build_ui() {}
-
-  virtual void update(float const dt) {}
-
-  virtual void draw() {}
-
  private:
   [[nodiscard]]
-  bool presetup(bool use_xr, AppData_t app_data);
+  bool presetup(AppData_t app_data);
 
   [[nodiscard]]
   bool next_frame(AppData_t app_data);
@@ -94,6 +95,9 @@ class Application : public EventCallbacks
   VkExtent2D viewport_size_{}; // (to remove)
 
  private:
+  bool use_xr_{};
+  AppSettings settings_{};
+
   // |Android only]
   UserData user_data_{};
 

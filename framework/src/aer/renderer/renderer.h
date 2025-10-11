@@ -6,7 +6,6 @@
 #include "aer/core/common.h"
 
 #include "aer/platform/backend/swapchain.h"
-// #include "aer/platform/openxr/xr_vulkan_interface.h" //
 #include "aer/platform/openxr/openxr_context.h" //
 
 #include "aer/renderer/render_context.h"
@@ -34,13 +33,20 @@ class Renderer {
     .float32 = {1.0f, 0.25f, 0.75f, 1.0f}
   }};
 
+  struct Settings {
+    VkFormat color_format{VK_FORMAT_UNDEFINED};
+    VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
+    VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+  };
+
  public:
   Renderer() = default;
   ~Renderer() = default;
 
   void init(
     RenderContext& context,
-    SwapchainInterface* swapchain_ptr
+    SwapchainInterface* swapchain_ptr,
+    Settings const& settings
   );
 
   void deinit();
@@ -51,13 +57,19 @@ class Renderer {
   void end_frame();
 
   [[nodiscard]]
-  RenderContext const& context() const noexcept { return *context_ptr_; }
+  RenderContext const& context() const noexcept {
+    return *context_ptr_;
+  }
 
   [[nodiscard]]
-  Skybox const& skybox() const noexcept { return skybox_; }
+  Skybox const& skybox() const noexcept {
+    return skybox_;
+  }
 
   [[nodiscard]]
-  Skybox& skybox() noexcept { return skybox_; }
+  Skybox& skybox() noexcept {
+    return skybox_;
+  }
 
   // --- Render Target (Dynamic Rendering) ---
 
@@ -126,20 +138,18 @@ class Renderer {
  public:
   // ------------------------------
   [[nodiscard]]
-  VkSampleCountFlagBits sample_count() const noexcept {
-    // (some demos used internal fx / images that are setup from this
-    // sample count, henceforth we need a way to customize it)
-    return VK_SAMPLE_COUNT_4_BIT; //
-  }
-
-  [[nodiscard]]
   VkFormat color_format() const noexcept {
-    return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    return settings_.color_format;
   }
 
   [[nodiscard]]
   VkFormat depth_stencil_format() const noexcept {
-    return VK_FORMAT_D24_UNORM_S8_UINT;
+    return settings_.depth_stencil_format;
+  }
+
+  [[nodiscard]]
+  VkSampleCountFlagBits sample_count() const noexcept {
+    return settings_.sample_count;
   }
   // ------------------------------
 
@@ -206,6 +216,8 @@ class Renderer {
   ResourceAllocator* allocator_ptr_{};
   VkDevice device_{};
   SwapchainInterface* swapchain_ptr_{};
+
+  Settings settings_{};
 
   /* Timeline frame resources */
   std::vector<FrameResources> frames_{};

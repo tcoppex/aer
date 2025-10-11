@@ -20,10 +20,9 @@ char const* kDefaulShaderEntryPoint{
 bool RenderContext::init(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
-  std::vector<char const*> const& device_extensions,
   std::shared_ptr<XRVulkanInterface> vulkan_xr
 ) {
-  if (!Context::init(app_name, instance_extensions, device_extensions, vulkan_xr)) {
+  if (!Context::init(app_name, instance_extensions, vulkan_xr)) {
     return false;
   }
 

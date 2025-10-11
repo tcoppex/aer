@@ -15,7 +15,8 @@ char const* kDefaulShaderEntryPoint{ "main" }; //
 
 void Renderer::init(
   RenderContext& context,
-  SwapchainInterface* swapchain_ptr
+  SwapchainInterface* swapchain_ptr,
+  Settings const& settings
 ) {
   LOGD("-- Renderer --");
 
@@ -23,6 +24,12 @@ void Renderer::init(
   device_ = context.device();
   allocator_ptr_ = &context.allocator();
   swapchain_ptr_ = swapchain_ptr; //
+
+  settings_ = settings;
+  settings_.sample_count = static_cast<VkSampleCountFlagBits>(
+    static_cast<VkSampleCountFlags>(settings_.sample_count) & context_ptr_->sample_counts()
+  );
+
   init_view_resources();
 
   // Renderer internal effects.
@@ -97,44 +104,30 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOG_CHECK( w > 0 && h > 0 );
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
-  // -----------------------------
   auto const layers = swapchain_ptr_->imageArraySize();
-  auto const samples = sample_count();
-  LOGI("max sample count : {}", (int)samples);
 
-  if (frames_[0].main_rt == nullptr) [[unlikely]] {
+  if (frames_[0].main_rt != nullptr) [[likely]] {
+    for (auto &frame : frames_) {
+      frame.main_rt->resize(w, h);
+    }
+  } else {
     for (size_t i = 0; i < frames_.size(); ++i) {
       auto &frame = frames_[i];
       frame.main_rt = context_ptr_->create_render_target({
         .colors = {{
-          .format = color_format(),
+          .format = settings_.color_format,
           .clear_value = kDefaultColorClearValue
         }},
         .depth_stencil = {
-          .format = depth_stencil_format(),
+          .format = settings_.depth_stencil_format,
         },
         .size = { w, h },
         .array_size = layers,
-        .sample_count = samples,
+        .sample_count = settings_.sample_count,
         .debug_prefix = std::string("Renderer::MainRT_" + std::to_string(i)),
       });
-
-      // frame.rt_ui = context_ptr_->create_render_target({
-      //   .colors = {{
-      //     .format = swapchain_ptr_->currentImage().format,
-      //   }},
-      //   .size = { w, h },
-      //   // .array_size = layers,
-      //   // .sample_count = samples,
-      // });
-    }
-  } else {
-    for (auto &frame : frames_) {
-      frame.main_rt->resize(w, h);
-      // frame.rt_ui->resize(w, h);
     }
   }
-  // -----------------------------
 
   return true;
 }

@@ -4,9 +4,9 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/types.h"
 
-#include "volk.h" // load core vulkan + extensions.
+#include "aer/platform/backend/vulkan_wrapper.h"
+#include "aer/platform/backend/types.h"
 
 /* -------------------------------------------------------------------------- */
 

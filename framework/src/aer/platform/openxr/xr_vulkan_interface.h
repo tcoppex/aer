@@ -5,11 +5,11 @@
 #include <jni.h> //
 #endif
 
+#include "aer/platform/backend/vulkan_wrapper.h"
+#include <openxr/openxr_platform.h>
+
 #include "aer/platform/backend/types.h" // (for backend::Image)
 #include "aer/platform/openxr/xr_utils.h"
-
-#include "volk.h"
-#include "openxr/openxr_platform.h"
 
 // ----------------------------------------------------------------------------
 

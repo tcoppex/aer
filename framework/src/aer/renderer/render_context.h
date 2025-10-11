@@ -31,7 +31,6 @@ class RenderContext : public Context {
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
-    std::vector<char const*> const& device_extensions,
     std::shared_ptr<XRVulkanInterface> vulkan_xr
   );
 

@@ -16,7 +16,7 @@ class Window : public WMInterface {
   virtual ~Window() = default;
 
   [[nodiscard]]
-  bool init(AppData_t app_data) final;
+  bool init(Settings const& settings, AppData_t app_data) final;
 
   void shutdown() final;
 

@@ -102,10 +102,13 @@ void InitializeEventsCallbacks(GLFWwindow *handle) noexcept {
 
 /* -------------------------------------------------------------------------- */
 
-bool Window::init(AppData_t app_data) {
+bool Window::init(Settings const& settings, AppData_t app_data) {
 #if defined(_WIN32)
   // Switch Windows console to UTF-8
   SetConsoleOutputCP(CP_UTF8);
+
+  // Enable per-monitor DPI awareness
+  // SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
   // Force stderr to flush automatically on Windows.
   std::setbuf(stderr, nullptr);
@@ -130,11 +133,21 @@ bool Window::init(AppData_t app_data) {
     dpi_scale_ = xscale;
 
     GLFWvidmode const* mode = glfwGetVideoMode(monitor);
-    surface_w_ = static_cast<uint32_t>(WINDOW_SIZE_FACTOR * dpi_scale_ * mode->width);
-    surface_h_ = static_cast<uint32_t>(WINDOW_SIZE_FACTOR * dpi_scale_ * mode->height);
+
+    if (settings.width > 0u) {
+      surface_w_ = settings.width;
+    } else {
+      surface_w_ = static_cast<uint32_t>(WINDOW_SIZE_FACTOR * dpi_scale_ * mode->width);
+    }
+    if (settings.height > 0u) {
+      surface_h_ = settings.height;
+    } else {
+      surface_h_ = static_cast<uint32_t>(WINDOW_SIZE_FACTOR * dpi_scale_ * mode->height);
+    }
   }
 
   window_ = glfwCreateWindow(surface_w_, surface_h_, "", nullptr, nullptr);
+
   if (!window_) {
     LOGE("GLFW couldn't create the window.\n");
     glfwTerminate();
@@ -150,7 +163,6 @@ bool Window::init(AppData_t app_data) {
   // Other ratios.
   // glfwSetWindowAspectRatio(window_, 707, 500); // ~1.414
   // glfwSetWindowAspectRatio(window_, 866, 500); // ~1.732
-
 
   InitializeEventsCallbacks(window_);
 

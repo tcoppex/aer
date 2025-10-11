@@ -1,12 +1,13 @@
-#pragma once
+#ifndef AER_PLATEFORM_SWAPCHAIN_INTERFACE_H_
+#define AER_PLATEFORM_SWAPCHAIN_INTERFACE_H_
 
 #include <vector>
-#include "volk.h"
-
+#include "aer/platform/backend/vulkan_wrapper.h"
 #include "aer/platform/backend/types.h" // (for backend::Image)
 
 /* -------------------------------------------------------------------------- */
 
+// (could probably inherit RTInterface too..)
 class SwapchainInterface {
  public:
   virtual ~SwapchainInterface() = default;
@@ -36,3 +37,5 @@ class SwapchainInterface {
 };
 
 /* -------------------------------------------------------------------------- */
+
+#endif // AER_PLATEFORM_SWAPCHAIN_INTERFACE_H_

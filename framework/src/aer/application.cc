@@ -22,8 +22,11 @@ struct DefaultAppEventCallbacks final : public EventCallbacks {
 /* -------------------------------------------------------------------------- */
 
 int Application::run(bool use_xr, AppData_t app_data) {
+  use_xr_ = use_xr;
+  settings_ = settings();
+
   /* Framework initialization. */
-  if (!presetup(use_xr, app_data)) {
+  if (!presetup(app_data)) {
     return EXIT_FAILURE;
   }
 
@@ -63,7 +66,17 @@ float Application::elapsed_time() const noexcept {
 
 // ----------------------------------------------------------------------------
 
-bool Application::presetup(bool use_xr, AppData_t app_data) {
+void Application::draw_ui(CommandEncoder const& cmd) {
+  ui_->draw(
+    cmd,
+    renderer_.main_render_target().resolve_attachment().view,
+    renderer_.surface_size()
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+bool Application::presetup(AppData_t app_data) {
   auto const app_name = "VkFramework::DefaultAppName"; //
 
   /* Singletons. */
@@ -79,14 +92,15 @@ bool Application::presetup(bool use_xr, AppData_t app_data) {
 #endif
 
   /* Window manager. */
-  if (wm_ = std::make_unique<Window>(); !wm_ || !wm_->init(app_data)) {
+  wm_ = std::make_unique<Window>();
+  if (!wm_ || !wm_->init(settings_.surface, app_data)) {
     LOGE("Window creation fails");
     shutdown();
     return false;
   }
 
   /* OpenXR */
-  if (use_xr) {
+  if (use_xr_) {
     if (xr_ = std::make_unique<OpenXRContext>(); xr_) {
       user_data_.xr = xr_.get(); //
       if (!xr_->init(wm_->xrPlatformInterface(), app_name, xrExtensions())) {
@@ -96,12 +110,11 @@ bool Application::presetup(bool use_xr, AppData_t app_data) {
       }
     }
   }
-  LOGD("OpenXR is {}.", use_xr ? "enabled" : "disabled");
+  LOGD("OpenXR is {}.", xr_ ? "enabled" : "disabled");
 
   /* Vulkan context. */
   if (!context_.init(app_name,
                      wm_->vulkanInstanceExtensions(),
-                     vulkanDeviceExtensions(), // [unused]
                      xr_ ? xr_->graphicsInterface() : nullptr))
   {
     LOGE("Vulkan context initialization fails");
@@ -136,12 +149,12 @@ bool Application::presetup(bool use_xr, AppData_t app_data) {
     }
   }
 
-  /* Internal Renderer. */
+  /* Default Renderer. */
   {
     auto *swapchain_interface = xr_ ? xr_->swapchain_ptr()
                                     : &swapchain_
                                     ;
-    renderer_.init(context_, swapchain_interface);
+    renderer_.init(context_, swapchain_interface, settings_.renderer);
   }
 
   /* User Interface. */
@@ -218,16 +231,6 @@ void Application::update_ui() noexcept {
   ui_->beginFrame();
   build_ui();
   ui_->endFrame();
-}
-
-// ----------------------------------------------------------------------------
-
-void Application::draw_ui(CommandEncoder const& cmd) {
-  ui_->draw(
-    cmd,
-    renderer_.main_render_target().resolve_attachment().view,
-    renderer_.surface_size()
-  );
 }
 
 // ----------------------------------------------------------------------------

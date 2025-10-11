@@ -31,6 +31,12 @@ class SampleApp final : public Application {
   ~SampleApp() {}
 
  private:
+  AppSettings settings() const noexcept final {
+    AppSettings S{};
+    S.renderer.color_format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    return S;
+  }
+
   bool setup() final {
     wm_->setTitle("06 - Poussières d'Étoiles");
 

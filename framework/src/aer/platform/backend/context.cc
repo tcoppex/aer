@@ -8,7 +8,6 @@
 bool Context::init(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
-  std::vector<char const*> const& device_extensions,
   std::shared_ptr<XRVulkanInterface> vulkan_xr
 ) {
   CHECK_VK(volkInitialize());
@@ -68,6 +67,17 @@ void Context::deinit() {
 
 // ----------------------------------------------------------------------------
 
+VkSampleCountFlags Context::sample_counts() const noexcept {
+  auto const& limits = properties_.gpu2.properties.limits;
+  return limits.framebufferColorSampleCounts
+       & limits.framebufferDepthSampleCounts
+       // & limits.framebufferStencilSampleCounts
+       // & limits.framebufferNoAttachmentsSampleCounts
+       ;
+}
+
+// ----------------------------------------------------------------------------
+
 VkSampleCountFlagBits Context::max_sample_count() const noexcept {
   std::array<VkSampleCountFlagBits, 6> constexpr kSampleCountBits{
     VK_SAMPLE_COUNT_64_BIT,
@@ -78,10 +88,7 @@ VkSampleCountFlagBits Context::max_sample_count() const noexcept {
     VK_SAMPLE_COUNT_2_BIT,
   };
 
-  auto const& limits = properties_.gpu2.properties.limits;
-  auto const counts = limits.framebufferColorSampleCounts
-                    & limits.framebufferDepthSampleCounts
-                    ;
+  auto const counts = sample_counts();
 
   // [we could return 'counts' as the bitmask of all accepted values, but we
   // return the max value instead]

@@ -26,7 +26,6 @@ class Context {
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
-    std::vector<char const*> const& device_extensions,
     std::shared_ptr<XRVulkanInterface> vulkan_xr
   );
 
@@ -88,6 +87,9 @@ class Context {
   }
 
   // --- Image ---
+
+  [[nodiscard]]
+  VkSampleCountFlags sample_counts() const noexcept;
 
   [[nodiscard]]
   VkSampleCountFlagBits max_sample_count() const noexcept;

@@ -1,5 +1,5 @@
-#ifndef AER_PLATEFORM_WM_INTERFACE_H
-#define AER_PLATEFORM_WM_INTERFACE_H
+#ifndef AER_PLATEFORM_WM_INTERFACE_H_
+#define AER_PLATEFORM_WM_INTERFACE_H_
 
 #include "aer/core/common.h"
 #include "aer/platform/common.h"
@@ -7,15 +7,22 @@
 
 #include "aer/platform/backend/vk_utils.h"
 
-/* -------------------------------------------------------------------------- */
+// ----------------------------------------------------------------------------
 
 struct WMInterface {
+ public:
+  struct Settings {
+    uint32_t width{};
+    uint32_t height{};
+  };
+
+ public:
   WMInterface() = default;
 
   virtual ~WMInterface() = default;
 
   [[nodiscard]]
-  virtual bool init(AppData_t app_data) = 0;
+  virtual bool init(Settings const& settings, AppData_t app_data) = 0;
 
   virtual void shutdown() = 0;
 
@@ -55,4 +62,4 @@ struct WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_PLATEFORM_WM_INTERFACE_H
+#endif  // AER_PLATEFORM_WM_INTERFACE_H_
