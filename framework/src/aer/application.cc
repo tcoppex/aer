@@ -342,7 +342,6 @@ void Application::shutdown() {
     ui_.reset();
   }
 
-
   LOGD("> Renderer");
   renderer_.deinit();
 

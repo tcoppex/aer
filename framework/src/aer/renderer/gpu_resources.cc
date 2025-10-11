@@ -418,15 +418,17 @@ void GPUResources::upload_buffers(Context const& context) {
     // We assume most meshes would be static, so with unfrequent updates.
     transforms_ssbo_ = allocator_ptr_->create_buffer(
       transforms_buffer_size,
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      ,
       VMA_MEMORY_USAGE_GPU_ONLY
     );
   }
 
   /* Copy host mesh data to the staging buffer. */
-  backend::Buffer staging_buffer{
-    allocator_ptr_->create_staging_buffer(vertex_buffer_size + index_buffer_size + transforms_buffer_size)
-  };
+  auto staging_buffer = allocator_ptr_->create_staging_buffer(
+    vertex_buffer_size + index_buffer_size + transforms_buffer_size
+  );
   {
     size_t vertex_offset{0lu};
     size_t index_offset{vertex_buffer_size};

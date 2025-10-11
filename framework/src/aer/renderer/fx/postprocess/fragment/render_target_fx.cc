@@ -30,15 +30,13 @@ void RenderTargetFx::release() {
 void RenderTargetFx::execute(CommandEncoder& cmd) const {
   if (!enabled()) { return; } //
 
-  // -----------------------------
   auto pass = cmd.begin_rendering(*render_target_);
+  // -----------------------------
   prepareDrawState(pass);
   pushConstant(pass); //
-
   draw(pass); //
-
-  cmd.end_rendering();
   // -----------------------------
+  cmd.end_rendering();
 }
 
 // ----------------------------------------------------------------------------

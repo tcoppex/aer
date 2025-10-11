@@ -15,7 +15,7 @@ void Skybox::init(Renderer& renderer) {
   renderer_ptr_ = &renderer;
   auto const& context = renderer.context();
 
-  LOGD(" - Init Skybox -");
+  LOGD("- Initialize Skybox.");
   envmap_.init(context);
 
   /* Precalculate the BRDF LUT. */
