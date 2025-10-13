@@ -21,9 +21,8 @@ struct DefaultAppEventCallbacks final : public EventCallbacks {
 
 /* -------------------------------------------------------------------------- */
 
-int Application::run(bool use_xr, AppData_t app_data) {
-  use_xr_ = use_xr;
-  settings_ = settings();
+int Application::run(AppSettings const& app_settings, AppData_t app_data) {
+  settings_ = app_settings;
 
   /* Framework initialization. */
   if (!presetup(app_data)) {
@@ -100,7 +99,7 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* OpenXR */
-  if (use_xr_) {
+  if (settings_.use_xr) {
     if (xr_ = std::make_unique<OpenXRContext>(); xr_) {
       user_data_.xr = xr_.get(); //
       if (!xr_->init(wm_->xrPlatformInterface(), app_name, xrExtensions())) {

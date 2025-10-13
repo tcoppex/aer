@@ -22,7 +22,6 @@ void Renderer::init(
 
   context_ptr_ = &context;
   device_ = context.device();
-  allocator_ptr_ = &context.allocator();
   swapchain_ptr_ = swapchain_ptr; //
 
   settings_ = settings;
@@ -31,8 +30,6 @@ void Renderer::init(
   );
 
   init_view_resources();
-
-  // -------------
 
   // Renderer internal effects.
   {
@@ -44,7 +41,7 @@ void Renderer::init(
 // ----------------------------------------------------------------------------
 
 void Renderer::init_view_resources() {
-  LOG_CHECK(swapchain_ptr_);
+  LOG_CHECK( swapchain_ptr_ != nullptr );
 
   auto const frame_count = swapchain_ptr_->imageCount();
   LOG_CHECK( frame_count > 0u );
@@ -80,7 +77,9 @@ void Renderer::init_view_resources() {
 // ----------------------------------------------------------------------------
 
 void Renderer::deinit_view_resources() {
-  LOG_CHECK(device_ != VK_NULL_HANDLE);
+  if (device_ == VK_NULL_HANDLE) {
+    return;
+  }
 
   for (auto & frame : frames_) {
     vkFreeCommandBuffers(device_, frame.command_pool, 1u, &frame.command_buffer);
@@ -92,8 +91,6 @@ void Renderer::deinit_view_resources() {
 // ----------------------------------------------------------------------------
 
 void Renderer::deinit() {
-  LOG_CHECK(device_ != VK_NULL_HANDLE);
-
   skybox_.release(*this); //
   deinit_view_resources();
 }
@@ -101,7 +98,7 @@ void Renderer::deinit() {
 // ----------------------------------------------------------------------------
 
 bool Renderer::resize(uint32_t w, uint32_t h) {
-  LOG_CHECK(context_ptr_ != nullptr);
+  LOG_CHECK( context_ptr_ != nullptr );
   LOG_CHECK( w > 0 && h > 0 );
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
@@ -136,15 +133,13 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 // ----------------------------------------------------------------------------
 
 CommandEncoder& Renderer::begin_frame() {
-  LOG_CHECK(device_ != VK_NULL_HANDLE);
+  LOG_CHECK( device_ != VK_NULL_HANDLE );
 
-  // -----------------------------------
   // Acquire next availables image in the swapchain.
   LOG_CHECK(swapchain_ptr_);
   if (!swapchain_ptr_->acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
-  // -----------------------------------
 
   // Reset the frame command pool to record new command for this frame.
   auto &frame = frame_resource();
@@ -155,7 +150,7 @@ CommandEncoder& Renderer::begin_frame() {
     frame.command_buffer,
     static_cast<uint32_t>(Context::TargetQueue::Main),
     device_,
-    allocator_ptr_,
+    context_ptr_->allocator_ptr(),
     frame.main_rt.get() //
   );
   frame.cmd.begin();
@@ -205,7 +200,7 @@ void Renderer::apply_postprocess() {
 // ----------------------------------------------------------------------------
 
 void Renderer::end_frame() {
-  LOG_CHECK(swapchain_ptr_);
+  LOG_CHECK( swapchain_ptr_ != nullptr );
 
   // Transition the final image then blit to the swapchain frame.
   if (enable_postprocess_) {
@@ -236,7 +231,7 @@ std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
     .depth_stencil = { .format = depth_stencil_format() },
     .size = surface_size(),
     .array_size = swapchain_ptr_->imageArraySize(), //
-    .sample_count = VK_SAMPLE_COUNT_1_BIT, //sample_count(), //
+    .sample_count = VK_SAMPLE_COUNT_1_BIT, //
   };
   desc.colors.resize(num_color_outputs, {
     .format = color_format(),
@@ -628,7 +623,7 @@ GLTFScene Renderer::load_gltf(std::string_view gltf_filename) {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::blit(
+void Renderer::blit_color(
   CommandEncoder const& cmd,
   backend::Image const& src_image
 ) const noexcept {

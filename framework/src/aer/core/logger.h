@@ -1,5 +1,5 @@
-#ifndef AER_CORE_LOGGER_H
-#define AER_CORE_LOGGER_H
+#ifndef AER_CORE_LOGGER_H_
+#define AER_CORE_LOGGER_H_
 
 /* -------------------------------------------------------------------------- */
 

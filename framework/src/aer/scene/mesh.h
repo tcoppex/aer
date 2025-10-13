@@ -1,5 +1,5 @@
-#ifndef AER_SCENE_MESH_H
-#define AER_SCENE_MESH_H
+#ifndef AER_SCENE_MESH_H_
+#define AER_SCENE_MESH_H_
 
 #include "aer/core/common.h"
 
@@ -78,4 +78,4 @@ struct Mesh : Geometry {
 
 }  // namespace scene
 
-#endif // AER_SCENE_MESH_H
+#endif // AER_SCENE_MESH_H_

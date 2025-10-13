@@ -1,5 +1,5 @@
-#ifndef AER_SCENE_GEOMETRY_H
-#define AER_SCENE_GEOMETRY_H
+#ifndef AER_SCENE_GEOMETRY_H_
+#define AER_SCENE_GEOMETRY_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -234,4 +234,4 @@ class Geometry {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_SCENE_GEOMETRY_H
+#endif // AER_SCENE_GEOMETRY_H_

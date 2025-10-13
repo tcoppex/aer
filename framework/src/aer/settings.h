@@ -7,10 +7,10 @@
 /* -------------------------------------------------------------------------- */
 
 /*
- * struct Settings
+ * AppSettings
  *
- * Define default values to be used by the the application.
- * Thoses can be changed by overriding Application::settings()
+ * Define default values to be used by the application.
+ * Thoses can be changed per app by overriding Application::settings()
  *
  **/
 struct AppSettings {
@@ -24,6 +24,8 @@ struct AppSettings {
     .depth_stencil_format = VK_FORMAT_D24_UNORM_S8_UINT,
     .sample_count = VK_SAMPLE_COUNT_1_BIT,
   };
+
+  bool use_xr{};         //< will be override by the application.
 };
 
 /* -------------------------------------------------------------------------- */

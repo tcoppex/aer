@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_VKUTILS_H
-#define AER_PLATFORM_BACKEND_VKUTILS_H
+#ifndef AER_PLATFORM_BACKEND_VKUTILS_H_
+#define AER_PLATFORM_BACKEND_VKUTILS_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -147,4 +147,4 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_VKUTILS_H
+#endif // AER_PLATFORM_BACKEND_VKUTILS_H_

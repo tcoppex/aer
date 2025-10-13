@@ -1,5 +1,5 @@
-#ifndef AER_CORE_EVENTS_H
-#define AER_CORE_EVENTS_H
+#ifndef AER_CORE_EVENTS_H_
+#define AER_CORE_EVENTS_H_
 
 #include <functional>
 #include <set>
@@ -138,4 +138,4 @@ class Events final : public Singleton<Events>
 
 // ----------------------------------------------------------------------------
 
-#endif // AER_CORE_EVENTS_H
+#endif // AER_CORE_EVENTS_H_

@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_TYPES_H
-#define AER_PLATFORM_BACKEND_TYPES_H
+#ifndef AER_PLATFORM_BACKEND_TYPES_H_
+#define AER_PLATFORM_BACKEND_TYPES_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -51,14 +51,13 @@
 namespace backend {
 
 /* -------------------------------------------------------------------------- */
-
 // Resource Allocator
 
-struct VulkanResource {
+struct Resource {
   bool valid() const noexcept { return false; }
 };
 
-struct Image : VulkanResource {
+struct Image : Resource {
   VkImage image{};
   VkImageView view{};
   VkFormat format{};
@@ -69,7 +68,7 @@ struct Image : VulkanResource {
   }
 };
 
-struct Buffer : VulkanResource {
+struct Buffer : Resource {
   VkBuffer buffer{};
   VmaAllocation allocation{};
   VkDeviceAddress address{};
@@ -81,7 +80,6 @@ struct Buffer : VulkanResource {
 
 
 // ----------------------------------------------------------------------------
-
 // Context
 
 struct GPUProperties {
@@ -93,10 +91,14 @@ struct GPUProperties {
   };
   std::vector<VkQueueFamilyProperties2> queue_families2{};
 
-  uint32_t get_memory_type_index(uint32_t type_bits, VkMemoryPropertyFlags const requirements_mask) const {
+  uint32_t get_memory_type_index(
+    uint32_t type_bits,
+    VkMemoryPropertyFlags requirements_mask
+  ) const {
     for (uint32_t i = 0u; i < 32u; ++i) {
       if (type_bits & 1u) {
-        if (requirements_mask == (memory2.memoryProperties.memoryTypes[i].propertyFlags & requirements_mask)) {
+        auto const props = memory2.memoryProperties.memoryTypes[i].propertyFlags;
+        if (requirements_mask == (props & requirements_mask)) {
           return i;
         }
       }
@@ -113,7 +115,6 @@ struct Queue {
 };
 
 // ----------------------------------------------------------------------------
-
 // Shader
 
 struct ShaderModule {
@@ -125,14 +126,12 @@ enum class ShaderStage {
   Vertex        ,
   Fragment      ,
   Compute       ,
-  // ---------------------------------------
   Raygen        ,
   AnyHit        ,
   ClosestHit    ,
   Miss          ,
   Intersection  ,
   Callable      ,
-  // ---------------------------------------
   kCount,
 };
 
@@ -140,15 +139,17 @@ using ShaderMap = std::map<ShaderStage, ShaderModule>;
 using ShadersMap = std::map<ShaderStage, std::vector<ShaderModule>>;
 
 // ----------------------------------------------------------------------------
-
 // Pipeline
 
 class PipelineInterface {
  public:
   PipelineInterface() = default;
 
-  PipelineInterface(VkPipelineLayout layout, VkPipeline pipeline, VkPipelineBindPoint bind_point)
-    : pipeline_layout_(layout)
+  PipelineInterface(
+    VkPipelineLayout layout,
+    VkPipeline pipeline,
+    VkPipelineBindPoint bind_point
+  ) : pipeline_layout_(layout)
     , pipeline_(pipeline)
     , bind_point_(bind_point)
   {}
@@ -174,7 +175,6 @@ class PipelineInterface {
 };
 
 // ----------------------------------------------------------------------------
-
 // RayTracing
 
 struct RayTracingAddressRegion {
@@ -259,7 +259,7 @@ struct RPInterface {
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-// [to be moved elsewhere (probably Renderer)]
+// [might be moved elsewhere, probably Renderer]
 
 struct RenderPassDescriptor {
   std::vector<VkRenderingAttachmentInfo> colorAttachments{};
@@ -285,14 +285,11 @@ struct DescriptorSetWriteEntry {
   std::vector<VkDescriptorImageInfo> images{};
   std::vector<VkDescriptorBufferInfo> buffers{};
   std::vector<VkBufferView> bufferViews{};
-
-  // ---------------------------------------
   std::vector<VkAccelerationStructureKHR> accelerationStructures{};
 
   struct Extensions {
     VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureInfo{};
   };
-  // ---------------------------------------
 
   struct Result {
     Extensions ext{};

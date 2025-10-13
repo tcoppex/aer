@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_CONTEXT_H
-#define AER_PLATFORM_BACKEND_CONTEXT_H
+#ifndef AER_PLATFORM_BACKEND_CONTEXT_H_
+#define AER_PLATFORM_BACKEND_CONTEXT_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -278,12 +278,9 @@ class Context {
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-
-    // -------------------------------
     VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
     VK_KHR_SPIRV_1_4_EXTENSION_NAME,
     VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
-    // -------------------------------
   };
   // -----------------------------------------------
 

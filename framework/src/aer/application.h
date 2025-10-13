@@ -1,5 +1,5 @@
-#ifndef AER_APPLICATION_H
-#define AER_APPLICATION_H
+#ifndef AER_APPLICATION_H_
+#define AER_APPLICATION_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -25,15 +25,16 @@ class Application : public EventCallbacks
                   , public AppCmdCallbacks {
  public:
   Application() = default;
+
   virtual ~Application() = default;
 
-  int run(bool use_xr, AppData_t app_data = {});
-
- protected:
   virtual AppSettings settings() const noexcept {
     return {};
   }
 
+  int run(AppSettings const& app_settings, AppData_t app_data = {});
+
+ protected:
   virtual bool setup() {
     return true;
   }
@@ -86,18 +87,23 @@ class Application : public EventCallbacks
 
  protected:
   std::unique_ptr<WMInterface> wm_{};
-  std::unique_ptr<OpenXRContext> xr_{}; //
+  std::unique_ptr<OpenXRContext> xr_{};
   std::unique_ptr<UIController> ui_{};
 
   RenderContext context_{};
   Renderer renderer_{};
 
-  VkExtent2D viewport_size_{}; // (to remove)
+  VkExtent2D viewport_size_{}; // (to be removed)
 
  private:
-  bool use_xr_{};
   AppSettings settings_{};
 
+  std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
+  float frame_time_{};
+  float last_frame_time_{};
+  uint32_t rand_seed_{};
+
+  // -------------------------------
   // |Android only]
   UserData user_data_{};
 
@@ -107,11 +113,7 @@ class Application : public EventCallbacks
   // [non-XR only]
   VkSurfaceKHR surface_{};
   Swapchain swapchain_{};
-
-  std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
-  float frame_time_{};
-  float last_frame_time_{};
-  uint32_t rand_seed_{};
+  // -------------------------------
 };
 
 /* -------------------------------------------------------------------------- */

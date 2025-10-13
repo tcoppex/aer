@@ -1,5 +1,5 @@
-#ifndef AER_CORE_ARCBALL_CONTROLLER_H
-#define AER_CORE_ARCBALL_CONTROLLER_H
+#ifndef AER_CORE_ARCBALL_CONTROLLER_H_
+#define AER_CORE_ARCBALL_CONTROLLER_H_
 
 #include "aer/core/camera.h"
 
@@ -176,4 +176,4 @@ class ArcBallController : public Camera::ViewController {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_CORE_ARCBALL_CONTROLLER_H
+#endif // AER_CORE_ARCBALL_CONTROLLER_H_

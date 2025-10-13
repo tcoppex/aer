@@ -1,4 +1,3 @@
-
 #define VMA_IMPLEMENTATION
 #define VMA_LEAK_LOG_FORMAT(format, ...)        \
   {                                             \

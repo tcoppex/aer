@@ -29,6 +29,7 @@ GPUResources::~GPUResources() {
   if (material_fx_registry_) {
     material_fx_registry_->release();
   }
+
   if (allocator_ptr_ != nullptr) {
     // ---------------------------------------
     rt_scene_.reset();

@@ -1,5 +1,5 @@
-#ifndef AER_SCENE_HOST_RESOURCES_H
-#define AER_SCENE_HOST_RESOURCES_H
+#ifndef AER_SCENE_HOST_RESOURCES_H_
+#define AER_SCENE_HOST_RESOURCES_H_
 
 #include "aer/core/common.h"
 
@@ -75,4 +75,4 @@ struct HostResources {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_SCENE_HOST_RESOURCES_H
+#endif // AER_SCENE_HOST_RESOURCES_H_

@@ -1,5 +1,5 @@
-#ifndef AER_RENDERER_GPU_RESOURCES_H
-#define AER_RENDERER_GPU_RESOURCES_H
+#ifndef AER_RENDERER_GPU_RESOURCES_H_
+#define AER_RENDERER_GPU_RESOURCES_H_
 
 #include "aer/scene/host_resources.h"
 
@@ -100,4 +100,4 @@ struct GPUResources : scene::HostResources {
 
 using GLTFScene = std::shared_ptr<GPUResources>;
 
-#endif // AER_RENDERER_GPU_RESOURCES_H
+#endif // AER_RENDERER_GPU_RESOURCES_H_

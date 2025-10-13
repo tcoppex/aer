@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_COMMAND_ENCODER_H
-#define AER_PLATFORM_BACKEND_COMMAND_ENCODER_H
+#ifndef AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
+#define AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
 
 #include "aer/platform/backend/allocator.h"
 #include "aer/platform/backend/types.h"
@@ -446,4 +446,4 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_COMMAND_ENCODER_H
+#endif // AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_

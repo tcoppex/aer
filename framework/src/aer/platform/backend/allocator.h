@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_ALLOCATOR_H
-#define AER_PLATFORM_BACKEND_ALLOCATOR_H
+#ifndef AER_PLATFORM_BACKEND_ALLOCATOR_H_
+#define AER_PLATFORM_BACKEND_ALLOCATOR_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -16,8 +16,7 @@ class ResourceAllocator {
 
  public:
   ResourceAllocator() = default;
-
-  ~ResourceAllocator() {}
+  ~ResourceAllocator() = default;
 
   void init(VmaAllocatorCreateInfo alloc_create_info);
 
@@ -33,7 +32,6 @@ class ResourceAllocator {
     VmaAllocationCreateFlags const flags = {}
   ) const;
 
-  // [should return a std::unique_ptr !!]
   [[nodiscard]]
   backend::Buffer create_staging_buffer(
     size_t const bytesize = kDefaultStagingBufferSize,
@@ -57,11 +55,18 @@ class ResourceAllocator {
   // (should the allocator be allowed to write on device ?)
   // ------------------------
   size_t write_buffer(
-    backend::Buffer const& dst_buffer, size_t const dst_offset,
-    void const* host_data, size_t const host_offset, size_t const bytesize
+    backend::Buffer const& dst_buffer,
+    size_t const dst_offset,
+    void const* host_data,
+    size_t const host_offset,
+    size_t const bytesize
   ) const;
 
-  void upload_host_to_device(void const* host_data, size_t const bytesize, backend::Buffer const& dst_buffer) const {
+  void upload_host_to_device(
+    void const* host_data,
+    size_t const bytesize,
+    backend::Buffer const& dst_buffer
+  ) const {
     write_buffer(dst_buffer, 0u, host_data, 0u, bytesize);
   }
   // ------------------------
@@ -77,7 +82,11 @@ class ResourceAllocator {
   void create_image(VkImageCreateInfo const& image_info, backend::Image *image) const;
 
   /* Create an image with view with identical format. */
-  void create_image_with_view(VkImageCreateInfo const& image_info, VkImageViewCreateInfo const& view_info, backend::Image *image) const;
+  void create_image_with_view(
+    VkImageCreateInfo const& image_info,
+    VkImageViewCreateInfo const& view_info,
+    backend::Image *image
+  ) const;
 
   void destroy_image(backend::Image *image) const;
 

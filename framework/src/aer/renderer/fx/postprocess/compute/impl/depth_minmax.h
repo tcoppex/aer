@@ -1,5 +1,5 @@
-#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
-#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
+#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_
+#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_
 
 #include "aer/renderer/fx/postprocess/compute/compute_fx.h"
 
@@ -34,4 +34,4 @@ class DepthMinMax final : public ComputeFx {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
+#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_

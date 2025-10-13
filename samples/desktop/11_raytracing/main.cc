@@ -180,7 +180,6 @@ class BasicRayTracingFx : public RayTracingFx {
       return;
     }
 
-    LOG_CHECK(!proxy_materials.empty());
     materials_.reserve(proxy_materials.size());
 
     // [we should probably sent the material proxy buffer directly to the GPU]
@@ -274,9 +273,7 @@ class SampleApp final : public Application {
     if (future_scene_.valid()
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
-      // -------------------------------
       scene_->set_ray_tracing_fx(&ray_tracing_fx_);
-      // -------------------------------
     }
 
     if (camera_.update(dt)) {
@@ -295,7 +292,7 @@ class SampleApp final : public Application {
     {
       // RAY TRACER
       ray_tracing_fx_.execute(cmd);
-      renderer_.blit(cmd, ray_tracing_fx_.getImageOutput());
+      renderer_.blit_color(cmd, ray_tracing_fx_.getImageOutput());
     }
     else
     {

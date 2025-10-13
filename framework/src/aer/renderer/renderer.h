@@ -186,7 +186,7 @@ class Renderer {
   bool resize(uint32_t w, uint32_t h);
 
   /* Blit an image to the final color image, before the swapchain. */
-  void blit(
+  void blit_color(
     CommandEncoder const& cmd,
     backend::Image const& src_image
   ) const noexcept;
@@ -220,7 +220,6 @@ class Renderer {
  private:
   /* Non owning References. */
   RenderContext* context_ptr_{};
-  ResourceAllocator* allocator_ptr_{};
   VkDevice device_{};
   SwapchainInterface* swapchain_ptr_{};
 

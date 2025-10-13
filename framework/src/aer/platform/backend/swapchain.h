@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_SWAPCHAIN_H
-#define AER_PLATFORM_BACKEND_SWAPCHAIN_H
+#ifndef AER_PLATFORM_BACKEND_SWAPCHAIN_H_
+#define AER_PLATFORM_BACKEND_SWAPCHAIN_H_
 
 /* -------------------------------------------------------------------------- */
 
