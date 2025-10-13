@@ -28,12 +28,12 @@ class Window : public WMInterface {
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surface_width() const noexcept final {
+  uint32_t surfaceWidth() const noexcept final {
     return surface_w_;
   }
 
   [[nodiscard]]
-  uint32_t surface_height() const noexcept final {
+  uint32_t surfaceHeight() const noexcept final {
     return surface_h_;
   }
 

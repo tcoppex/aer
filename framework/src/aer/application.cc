@@ -185,9 +185,9 @@ bool Application::presetup(AppData_t app_data) {
 
     LOGI("> Retrieve original viewport size.");
     viewport_size_ = {
-      .width = wm_->surface_width(),
-      .height = wm_->surface_height(),
-    }; //
+      .width = wm_->surfaceWidth(),
+      .height = wm_->surfaceHeight(),
+    };
     LOGI("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
   }
   // -----------------------

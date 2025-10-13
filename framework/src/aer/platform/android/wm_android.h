@@ -26,13 +26,13 @@ struct WMAndroid final : public WMInterface {
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surface_width() const noexcept final {
+  uint32_t surfaceWidth() const noexcept final {
     LOG_CHECK(surface_width_ > 0u);
     return surface_width_;
   }
 
   [[nodiscard]]
-  uint32_t surface_height() const noexcept final {
+  uint32_t surfaceHeight() const noexcept final {
     LOG_CHECK(surface_height_ > 0u);
     return surface_height_;
   }
