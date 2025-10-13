@@ -47,7 +47,9 @@ class Context {
   }
 
   [[nodiscard]]
-  backend::Queue const& queue(TargetQueue const target = TargetQueue::Main) const noexcept {
+  backend::Queue const& queue(
+    TargetQueue const target = TargetQueue::Main
+  ) const noexcept {
     return queues_[target];
   }
 
@@ -122,27 +124,45 @@ class Context {
   // --- Shader Module ---
 
   [[nodiscard]]
-  backend::ShaderModule create_shader_module(std::string_view directory, std::string_view shader_name) const;
+  backend::ShaderModule create_shader_module(
+    std::string_view directory,
+    std::string_view shader_name
+  ) const;
 
   [[nodiscard]]
-  backend::ShaderModule create_shader_module(std::string_view filepath) const;
+  backend::ShaderModule create_shader_module(
+    std::string_view filepath
+  ) const;
 
   [[nodiscard]]
-  std::vector<backend::ShaderModule> create_shader_modules(std::string_view directory, std::vector<std::string_view> const& shader_names) const;
+  std::vector<backend::ShaderModule> create_shader_modules(
+    std::string_view directory,
+    std::vector<std::string_view> const& shader_names
+  ) const;
 
   [[nodiscard]]
-  std::vector<backend::ShaderModule> create_shader_modules(std::vector<std::string_view> const& filepaths) const;
+  std::vector<backend::ShaderModule> create_shader_modules(
+    std::vector<std::string_view> const& filepaths
+  ) const;
 
-  void release_shader_module(backend::ShaderModule const& shader) const;
+  void release_shader_module(
+    backend::ShaderModule const& shader
+  ) const;
 
-  void release_shader_modules(std::vector<backend::ShaderModule> const& shaders) const;
+  void release_shader_modules(
+    std::vector<backend::ShaderModule> const& shaders
+  ) const;
 
   // --- Command Encoder ---
 
   [[nodiscard]]
-  CommandEncoder create_transient_command_encoder(Context::TargetQueue const& target_queue = TargetQueue::Main) const;
+  CommandEncoder create_transient_command_encoder(
+    Context::TargetQueue const& target_queue = TargetQueue::Main
+  ) const;
 
-  void finish_transient_command_encoder(CommandEncoder const& encoder) const;
+  void finish_transient_command_encoder(
+    CommandEncoder const& encoder
+  ) const;
 
   // --- Transient Command Encoder Wrappers ---
 
@@ -156,13 +176,15 @@ class Context {
   template<typename T> requires (SpanConvertible<T>)
   [[nodiscard]] backend::Buffer create_buffer_and_upload(
     T const& host_data,
-    VkBufferUsageFlags2KHR const usage,
-    size_t const device_buffer_offset = 0u,
-    size_t const device_buffer_size = 0u
+    VkBufferUsageFlags2KHR usage,
+    size_t device_buffer_offset = 0u,
+    size_t device_buffer_size = 0u
   ) const {
     auto const host_span{ std::span(host_data) };
-    size_t const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    return create_buffer_and_upload(host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size);
+    auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
+    return create_buffer_and_upload(
+      host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
+    );
   }
 
   [[nodiscard]]
@@ -182,9 +204,12 @@ class Context {
   ) const;
 
   template<typename T> requires (SpanConvertible<T>)
-  void upload_buffer(T const& host_data, backend::Buffer const& device_buffer) {
+  void upload_buffer(
+    T const& host_data,
+    backend::Buffer const& device_buffer
+  ) {
     auto const host_span{ std::span(host_data) };
-    size_t const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
+    auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
     transfer_host_to_device(host_span.data(), bytesize, device_buffer);
   }
 
@@ -341,4 +366,4 @@ class Context {
 
 /* -------------------------------------------------------------------------- */
 
-#endif
+#endif // AER_PLATFORM_BACKEND_CONTEXT_H_

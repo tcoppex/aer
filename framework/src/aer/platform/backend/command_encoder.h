@@ -1,16 +1,16 @@
 #ifndef AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
 #define AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
 
-#include "aer/platform/backend/allocator.h"
 #include "aer/platform/backend/types.h"
 #include "aer/platform/backend/vk_utils.h"
-
 #include "aer/platform/swapchain_interface.h"
 
-class RenderPassEncoder;
+class ResourceAllocator;
 class PostFxInterface;
 
 /* -------------------------------------------------------------------------- */
+
+class RenderPassEncoder;
 
 /**
  * Interface to VkCommandBuffer wrappers.
