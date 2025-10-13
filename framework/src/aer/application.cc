@@ -164,6 +164,7 @@ bool Application::presetup(AppData_t app_data) {
     return false;
   }
 
+  // -----------------------
   // [~] Capture & handle surface resolution changes.
   {
     auto on_resize = [this](uint32_t w, uint32_t h) {
@@ -176,8 +177,12 @@ bool Application::presetup(AppData_t app_data) {
       reset_swapchain();
       renderer_.resize(viewport_size_.width, viewport_size_.height);
     };
-    default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
-    Events::Get().registerCallbacks(default_callbacks_.get());
+
+    // (meh..) Swapchain reset is not supported on OpenXR build.
+    if (!xr_) {
+      default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
+      Events::Get().registerCallbacks(default_callbacks_.get());
+    }
 
     LOGI("> Retrieve original viewport size.");
     viewport_size_ = {
@@ -186,6 +191,7 @@ bool Application::presetup(AppData_t app_data) {
     }; //
     LOGI("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
   }
+  // -----------------------
 
   /* Framework internal data. */
   {

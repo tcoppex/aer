@@ -81,13 +81,14 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
         desc_.debug_prefix + "::ResolveColor" + std::to_string(i)
       );
     }
-
-    context_ptr_->transition_images_layout(
-      resolves_,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
   }
+
+  context_ptr_->transition_images_layout(
+    use_msaa() ? resolves_ : colors_,
+    VK_IMAGE_LAYOUT_UNDEFINED,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    desc_.array_size
+  );
 
   /* Create an optional depth-stencil buffer. */
   if (desc_.depth_stencil.format != VK_FORMAT_UNDEFINED) {

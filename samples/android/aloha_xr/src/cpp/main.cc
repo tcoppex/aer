@@ -33,7 +33,11 @@ class SampleApp final : public Application {
   };
 
  public:
-  SampleApp() = default;
+  AppSettings settings() const noexcept final {
+    AppSettings S{};
+    S.renderer.sample_count = VK_SAMPLE_COUNT_4_BIT;
+    return S;
+  }
 
   bool setup() final {
     renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 1.0f));

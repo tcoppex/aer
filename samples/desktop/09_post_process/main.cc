@@ -306,9 +306,6 @@ class SampleApp final : public Application {
       sceneFx->updateUniforms();
     }
 
-    /* Disable the default renderer internal post-process pipeline. */
-    // renderer_.enable_postprocess(false); //
-
     return true;
   }
 

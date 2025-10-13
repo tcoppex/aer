@@ -16,10 +16,11 @@ VkShaderModule CreateShaderModule(
   char const* shader_name
 ) {
   /*
-  * Note :
-  * Since maintenance5, shader module creation can be bypassed if VkShaderModuleCreateInfo
-  * is passed to the VkPipelineShaderStageCreateInfo.
-  * see https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VkShaderModule
+  * Note:
+  * Since maintenance5, shader module creation can be bypassed if
+  * VkShaderModuleCreateInfo is passed to the VkPipelineShaderStageCreateInfo.
+  *
+  * https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VkShaderModule
   */
 
   namespace fs = std::filesystem;

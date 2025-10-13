@@ -100,10 +100,10 @@ struct XRVulkanInterface {
   [[nodiscard]]
   int64_t selectColorSwapchainFormat(std::vector<int64_t> const& formats) const {
     constexpr std::array<VkFormat, 4> kSupportedColorSwapchainFormats{
-      VK_FORMAT_B8G8R8A8_SRGB,
       VK_FORMAT_R8G8B8A8_SRGB,
+      VK_FORMAT_B8G8R8A8_SRGB,
+      VK_FORMAT_R8G8B8A8_UNORM,
       VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_R8G8B8A8_UNORM
     };
     auto it = std::find_first_of(
       formats.begin(),

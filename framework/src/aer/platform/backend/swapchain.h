@@ -74,7 +74,9 @@ class Swapchain : public SwapchainInterface {
 
  private:
   [[nodiscard]]
-  VkSurfaceFormat2KHR select_surface_format(VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2) const;
+  VkSurfaceFormat2KHR select_surface_format(
+    VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2
+  ) const;
 
   [[nodiscard]]
   VkPresentModeKHR select_present_mode(VkSurfaceKHR surface, bool use_vsync) const;

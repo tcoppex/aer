@@ -67,11 +67,17 @@ void GenericCommandEncoder::push_descriptor_set(
 
 // ----------------------------------------------------------------------------
 
-void GenericCommandEncoder::pipeline_buffer_barriers(std::vector<VkBufferMemoryBarrier2> barriers) const {
+void GenericCommandEncoder::pipeline_buffer_barriers(
+  std::vector<VkBufferMemoryBarrier2> barriers
+) const {
   for (auto& bb : barriers) {
     bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-    bb.srcQueueFamilyIndex = (bb.srcQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED : bb.srcQueueFamilyIndex; //
-    bb.dstQueueFamilyIndex = (bb.dstQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED : bb.dstQueueFamilyIndex; //
+    bb.srcQueueFamilyIndex = (bb.srcQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
+                                                            : bb.srcQueueFamilyIndex
+                                                            ;
+    bb.dstQueueFamilyIndex = (bb.dstQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
+                                                            : bb.dstQueueFamilyIndex
+                                                            ;
     bb.size = (bb.size == 0ULL) ? VK_WHOLE_SIZE : bb.size;
   }
   VkDependencyInfo const dependency{
@@ -85,7 +91,9 @@ void GenericCommandEncoder::pipeline_buffer_barriers(std::vector<VkBufferMemoryB
 
 // ----------------------------------------------------------------------------
 
-void GenericCommandEncoder::pipeline_image_barriers(std::vector<VkImageMemoryBarrier2> barriers) const {
+void GenericCommandEncoder::pipeline_image_barriers(
+  std::vector<VkImageMemoryBarrier2> barriers
+) const {
   // NOTE: we only have to set the old & new layout, as the mask will be automatically derived for generic cases
   //       when none are provided.
 
@@ -148,7 +156,8 @@ size_t CommandEncoder::copy_buffer(
 void CommandEncoder::transition_images_layout(
   std::vector<backend::Image> const& images,
   VkImageLayout const src_layout,
-  VkImageLayout const dst_layout
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
 ) const {
   /// [devnote] This is an helper method to transition multiple 2d single layer,
   //      single level images, using the default VkImageMemoryBarrier2 params
@@ -157,6 +166,13 @@ void CommandEncoder::transition_images_layout(
   VkImageMemoryBarrier2 const barrier2{
     .oldLayout = src_layout,
     .newLayout = dst_layout,
+    .subresourceRange = {
+      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .baseMipLevel = 0u,
+      .levelCount = 1u,
+      .baseArrayLayer = 0u,
+      .layerCount = layer_count
+    },
   };
   std::vector<VkImageMemoryBarrier2> barriers(images.size(), barrier2);
   for (size_t i = 0u; i < images.size(); ++i) {
@@ -172,20 +188,18 @@ void CommandEncoder::blit_image_2d(
   VkImageLayout src_layout,
   backend::Image const& dst,
   VkImageLayout dst_layout,
-  VkExtent2D const& extent
+  VkExtent2D const& extent,
+  uint32_t layer_count
 ) const {
-  VkImageSubresourceLayers const subresource{
+  auto const subresourceLayers = VkImageSubresourceLayers{
     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
     .mipLevel = 0u,
     .baseArrayLayer = 0u,
-    .layerCount = 1u,
+    .layerCount = layer_count,
   };
-  VkOffset3D const offsets[2u]{
-    {
-      .x = 0,
-      .y = 0,
-      .z = 0
-    },
+
+  VkOffset3D const offsets[2]{
+    {0, 0, 0},
     {
       .x = static_cast<int32_t>(extent.width),
       .y = static_cast<int32_t>(extent.height),
@@ -193,9 +207,9 @@ void CommandEncoder::blit_image_2d(
     }
   };
   VkImageBlit const blit_region{
-    .srcSubresource = subresource,
+    .srcSubresource = subresourceLayers,
     .srcOffsets = { offsets[0], offsets[1] },
-    .dstSubresource = subresource,
+    .dstSubresource = subresourceLayers,
     .dstOffsets = { offsets[0], offsets[1] },
   };
 
@@ -203,19 +217,29 @@ void CommandEncoder::blit_image_2d(
   //    * VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
   //    * VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL or
   //    * VK_IMAGE_LAYOUT_GENERAL
-  VkImageLayout const transition_src_layout{ VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL };
-  VkImageLayout const transition_dst_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
+  auto const transition_src_layout{ VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL };
+  auto const transition_dst_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
+
+  auto const subresourceRange = VkImageSubresourceRange{
+    .aspectMask = subresourceLayers.aspectMask,
+    .baseMipLevel = 0u,
+    .levelCount = 1u,
+    .baseArrayLayer = subresourceLayers.baseArrayLayer,
+    .layerCount = subresourceLayers.layerCount,
+  };
 
   pipeline_image_barriers({
     {
       .oldLayout = src_layout,
       .newLayout = transition_src_layout,
       .image = src.image,
+      .subresourceRange = subresourceRange,
     },
     {
       .oldLayout = dst_layout,
       .newLayout = transition_dst_layout,
       .image = dst.image,
+      .subresourceRange = subresourceRange,
     },
   });
 
@@ -232,43 +256,16 @@ void CommandEncoder::blit_image_2d(
       .oldLayout = transition_src_layout,
       .newLayout = src_layout,
       .image = src.image,
+      .subresourceRange = subresourceRange,
     },
     {
       .oldLayout = transition_dst_layout,
       .newLayout = dst_layout,
       .image = dst.image,
+      .subresourceRange = subresourceRange,
     },
   });
 }
-
-// ----------------------------------------------------------------------------
-
-// void CommandEncoder::blit(
-//   PostFxInterface const& fx_src,
-//   backend::RTInterface const& rt_dst
-// ) const {
-//   auto const& image = fx_src.getImageOutput();
-//   LOG_CHECK( image.valid() );
-//   blit_image_2d(
-//     image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-//     rt_dst.color_attachment(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, //
-//     rt_dst.surface_size()
-//   );
-// }
-
-// ----------------------------------------------------------------------------
-
-// void CommandEncoder::blit(
-//   backend::RTInterface const& rt_src,
-//   backend::RTInterface const& rt_dst,
-//   VkImageLayout dst_layout
-// ) const {
-//   blit_image_2d(
-//     rt_src.resolve_attachment(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-//     rt_dst.color_attachment(), dst_layout,
-//     rt_dst.surface_size()
-//   );
-// }
 
 // ----------------------------------------------------------------------------
 
@@ -320,7 +317,9 @@ backend::Buffer CommandEncoder::create_buffer_and_upload(
     usage | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR,
     VMA_MEMORY_USAGE_GPU_ONLY
   )};
-  transfer_host_to_device(host_data, host_data_size, device_buffer, device_buffer_offset);
+  transfer_host_to_device(
+    host_data, host_data_size, device_buffer, device_buffer_offset
+  );
 
   return device_buffer;
 }
@@ -328,7 +327,6 @@ backend::Buffer CommandEncoder::create_buffer_and_upload(
 // ----------------------------------------------------------------------------
 
 RenderPassEncoder CommandEncoder::begin_rendering(RenderPassDescriptor const& desc) const {
-  // used_default_rt_ = false;
   auto const rendering_info = VkRenderingInfoKHR{
     .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
     .pNext                = nullptr,
@@ -358,7 +356,8 @@ RenderPassEncoder CommandEncoder::begin_rendering(
   transition_images_layout(
     colors,
     VK_IMAGE_LAYOUT_UNDEFINED,
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    render_target.layer_count()
   );
 
   auto desc = RenderPassDescriptor{
@@ -440,7 +439,12 @@ void CommandEncoder::end_rendering() const {
     transition_images_layout(
       current_render_target_ptr_->resolve_attachments(),
       VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      // -----------------------------
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      // -----------------------------
+      current_render_target_ptr_->layer_count()
     );
     current_render_target_ptr_ = nullptr;
   }

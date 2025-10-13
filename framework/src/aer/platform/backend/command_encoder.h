@@ -5,6 +5,8 @@
 #include "aer/platform/backend/types.h"
 #include "aer/platform/backend/vk_utils.h"
 
+#include "aer/platform/swapchain_interface.h"
+
 class RenderPassEncoder;
 class PostFxInterface;
 
@@ -247,7 +249,8 @@ class CommandEncoder : public GenericCommandEncoder {
   void transition_images_layout(
     std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
-    VkImageLayout const dst_layout
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
   ) const;
 
   void copy_buffer_to_image(
@@ -277,7 +280,8 @@ class CommandEncoder : public GenericCommandEncoder {
     VkImageLayout src_layout,
     backend::Image const& dst,
     VkImageLayout dst_layout,
-    VkExtent2D const& extent
+    VkExtent2D const& extent,
+    uint32_t layer_count = 1u
   ) const;
 
   // void blit(

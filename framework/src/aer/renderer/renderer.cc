@@ -32,10 +32,12 @@ void Renderer::init(
 
   init_view_resources();
 
+  // -------------
+
   // Renderer internal effects.
   {
     LOGD(" > Internal Fx");
-    skybox_.init(*this);
+    skybox_.init(*this); //
   }
 }
 
@@ -84,7 +86,6 @@ void Renderer::deinit_view_resources() {
     vkFreeCommandBuffers(device_, frame.command_pool, 1u, &frame.command_buffer);
     vkDestroyCommandPool(device_, frame.command_pool, nullptr);
     frame.main_rt->release();
-    // frame.rt_ui->release();
   }
 }
 
@@ -172,17 +173,31 @@ void Renderer::apply_postprocess() {
   {
     auto const& src_rt = *frame.main_rt;
     auto const& src_img = src_rt.resolve_attachment();
+    auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                          ;
+
+    uint32_t const layer_count = src_rt.layer_count();
+    LOG_CHECK(layer_count == swapchain_ptr_->imageArraySize());
 
     frame.cmd.transition_images_layout(
       { src_img },
       VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      src_layout,
+      layer_count
     );
 
+    // The issue may lie in the images barriers settings used.
+    // Also, OpenXR might not like a Present_src_khr layout..
+
     frame.cmd.blit_image_2d(
-      src_img, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      src_img, src_layout,
+      // -----------------------------
       dst_img, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      surface_size()
+      // dst_img, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      // -----------------------------
+      surface_size(),
+      layer_count
     );
   }
 }
@@ -193,7 +208,9 @@ void Renderer::end_frame() {
   LOG_CHECK(swapchain_ptr_);
 
   // Transition the final image then blit to the swapchain frame.
-  apply_postprocess();
+  if (enable_postprocess_) {
+    apply_postprocess();
+  }
 
   auto const& frame = frame_resource();
   frame.cmd.end();
@@ -219,7 +236,7 @@ std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
     .depth_stencil = { .format = depth_stencil_format() },
     .size = surface_size(),
     .array_size = swapchain_ptr_->imageArraySize(), //
-    // .sample_count = VK_SAMPLE_COUNT_1_BIT, //sample_count(), //
+    .sample_count = VK_SAMPLE_COUNT_1_BIT, //sample_count(), //
   };
   desc.colors.resize(num_color_outputs, {
     .format = color_format(),
@@ -527,9 +544,17 @@ void Renderer::create_graphics_pipelines(
 
   std::vector<VkGraphicsPipelineCreateInfo> create_infos(descs.size());
   for (size_t i = 0; i < descs.size(); ++i) {
-    create_infos[i] = create_graphics_pipeline_create_info(datas[i], pipeline_layout, descs[i]);
+    create_infos[i] = create_graphics_pipeline_create_info(
+      datas[i],
+      pipeline_layout,
+      descs[i]
+    );
   }
-  context_ptr_->create_graphics_pipelines(pipeline_layout, create_infos, out_pipelines);
+  context_ptr_->create_graphics_pipelines(
+    pipeline_layout,
+    create_infos,
+    out_pipelines
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -595,7 +620,10 @@ GLTFScene Renderer::load_gltf(
 // ----------------------------------------------------------------------------
 
 GLTFScene Renderer::load_gltf(std::string_view gltf_filename) {
-  return load_gltf(gltf_filename, VertexInternal_t::GetDefaultAttributeLocationMap());
+  return load_gltf(
+    gltf_filename,
+    VertexInternal_t::GetDefaultAttributeLocationMap()
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -606,10 +634,12 @@ void Renderer::blit(
 ) const noexcept {
   cmd.blit_image_2d(
     src_image,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
     main_render_target().resolve_attachment(),
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED,
-    surface_size()
+    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
+    surface_size(),
+    swapchain_ptr_->imageArraySize() //
   );
 }
 

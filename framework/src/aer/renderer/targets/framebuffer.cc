@@ -38,7 +38,8 @@ void Framebuffer::resize(VkExtent2D const dimension) {
   context_ptr_->transition_images_layout(
     outputs_[BufferName::Color],
     desc_.color_desc.initialLayout,
-    desc_.color_desc.finalLayout
+    desc_.color_desc.finalLayout,
+    1u // layer_count
   );
 
   // DepthStencil(s).

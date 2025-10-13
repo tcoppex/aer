@@ -491,6 +491,7 @@ bool RenderContext::load_image_2d(
                       : is_srgb ? VK_FORMAT_R8G8B8A8_SRGB
                                 : VK_FORMAT_R8G8B8A8_UNORM
   };
+  uint32_t const layer_count = 1u;
 
   image = create_image_2d(
     extent.width,
@@ -515,7 +516,8 @@ bool RenderContext::load_image_2d(
     cmd.transition_images_layout(
       { image },
       VK_IMAGE_LAYOUT_UNDEFINED,
-      transfer_layout
+      transfer_layout,
+      layer_count
     );
 
     cmd.copy_buffer_to_image(staging_buffer, image, extent, transfer_layout);
@@ -523,7 +525,8 @@ bool RenderContext::load_image_2d(
     cmd.transition_images_layout(
       { image },
       transfer_layout,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      layer_count
     );
   }
 

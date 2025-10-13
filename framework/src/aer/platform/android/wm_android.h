@@ -14,7 +14,7 @@ struct WMAndroid final : public WMInterface {
   virtual ~WMAndroid() = default;
 
   [[nodiscard]]
-  bool init(AppData_t app_data) final;
+  bool init(Settings const& settings, AppData_t app_data) final;
 
   void shutdown() final;
 

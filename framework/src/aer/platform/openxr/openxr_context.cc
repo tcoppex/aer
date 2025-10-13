@@ -215,7 +215,10 @@ bool OpenXRContext::createSwapchains() {
       .type         = XR_TYPE_SWAPCHAIN_CREATE_INFO,
       .createFlags  = 0,
       .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
-                    | XR_SWAPCHAIN_USAGE_SAMPLED_BIT
+                    | XR_SWAPCHAIN_USAGE_SAMPLED_BIT            //
+                    | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT       // to blit on it
+                    | XR_SWAPCHAIN_USAGE_MUTABLE_FORMAT_BIT
+                    | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT
                     ,
       .format       = graphics_->selectColorSwapchainFormat(formats),
       .sampleCount  = config_view.recommendedSwapchainSampleCount,

@@ -149,7 +149,8 @@ class Context {
   void transition_images_layout(
     std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
-    VkImageLayout const dst_layout
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
   ) const;
 
   template<typename T> requires (SpanConvertible<T>)

@@ -112,8 +112,8 @@ backend::Image Context::create_image_2d(
   VkImageUsageFlags usage,
   std::string_view debugName
 ) const {
-  LOG_CHECK( width > 0 && height > 0 );
-  LOG_CHECK( array_layers > 0 );
+  LOG_CHECK( width > 0u && height > 0u );
+  LOG_CHECK( array_layers > 0u );
   LOG_CHECK( levels == 1u ); // [todo]
   LOG_CHECK( (sample_count > 0b0) && (sample_count <= max_sample_count()) );
 
@@ -127,8 +127,14 @@ backend::Image Context::create_image_2d(
                 ;
   }
 
+  VkImageCreateFlags createFlags{};
+  if (array_layers > 1u) {
+    createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+  }
+
   VkImageCreateInfo const image_info{
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .flags = createFlags,
     .imageType = VK_IMAGE_TYPE_2D,
     .format = format,
     .extent = {
@@ -147,9 +153,10 @@ backend::Image Context::create_image_2d(
 
   VkImageViewCreateInfo view_info{
     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .viewType = (image_info.arrayLayers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
-                                              : VK_IMAGE_VIEW_TYPE_2D
-                                              ,
+    .image = VK_NULL_HANDLE, // set by allocator
+    .viewType = (array_layers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                                    : VK_IMAGE_VIEW_TYPE_2D
+                                    ,
     .format = image_info.format,
     .components = {
       VK_COMPONENT_SWIZZLE_R,
@@ -291,10 +298,11 @@ void Context::finish_transient_command_encoder(CommandEncoder const& encoder) co
 void Context::transition_images_layout(
   std::vector<backend::Image> const& images,
   VkImageLayout const src_layout,
-  VkImageLayout const dst_layout
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
 ) const {
   auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  cmd.transition_images_layout(images, src_layout, dst_layout);
+  cmd.transition_images_layout(images, src_layout, dst_layout, layer_count);
   finish_transient_command_encoder(cmd);
 }
 

@@ -313,6 +313,7 @@ void GPUResources::upload_images(Context const& context) {
   copies.reserve(host_images.size());
 
   uint64_t staging_offset = 0lu;
+  uint32_t const layer_count = 1u;
   for (auto const& host_image : host_images) {
     auto const extent = VkExtent3D{
       .width = static_cast<uint32_t>(host_image.width),
@@ -336,7 +337,7 @@ void GPUResources::upload_images(Context const& context) {
       .bufferOffset = staging_offset,
       .imageSubresource = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .layerCount = 1u,
+        .layerCount = layer_count,
       },
       .imageExtent = extent,
     });
@@ -350,7 +351,8 @@ void GPUResources::upload_images(Context const& context) {
     cmd.transition_images_layout(
       device_images,
       VK_IMAGE_LAYOUT_UNDEFINED,
-      transfer_layout
+      transfer_layout,
+      layer_count
     );
     for (uint32_t i = 0u; i < device_images.size(); ++i) {
       vkCmdCopyBufferToImage(
@@ -365,7 +367,8 @@ void GPUResources::upload_images(Context const& context) {
     cmd.transition_images_layout(
       device_images,
       transfer_layout,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      layer_count
     );
   }
   context.finish_transient_command_encoder(cmd);

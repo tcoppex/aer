@@ -6,11 +6,10 @@
 #include "aer/core/common.h"
 
 #include "aer/platform/backend/swapchain.h"
+#include "aer/platform/backend/command_encoder.h"
 #include "aer/platform/openxr/openxr_context.h" //
 
 #include "aer/renderer/render_context.h"
-#include "aer/platform/backend/command_encoder.h"
-
 #include "aer/renderer/fx/skybox.h"
 #include "aer/renderer/gpu_resources.h" // (for GLTFScene)
 
@@ -156,7 +155,13 @@ class Renderer {
   [[nodiscard]]
   uint32_t swap_image_count() const noexcept {
     LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->imageCount(); //
+    return swapchain_ptr_->imageCount();
+  }
+
+  [[nodiscard]]
+  backend::Image swapchain_image() const noexcept {
+    LOG_CHECK(swapchain_ptr_ != nullptr);
+    return swapchain_ptr_->currentImage();
   }
 
   [[nodiscard]]
@@ -186,6 +191,9 @@ class Renderer {
     backend::Image const& src_image
   ) const noexcept;
 
+  void enable_postprocess(bool status) noexcept {
+    enable_postprocess_ = status;
+  }
 
  private:
   struct FrameResources {
@@ -193,7 +201,6 @@ class Renderer {
     VkCommandBuffer command_buffer{};
     CommandEncoder cmd{};
     std::unique_ptr<RenderTarget> main_rt{};
-    // std::unique_ptr<RenderTarget> rt_ui{};
   };
 
   void init_view_resources();
@@ -226,6 +233,7 @@ class Renderer {
   // ----------
 
   Skybox skybox_{};
+  bool enable_postprocess_{true};
 };
 
 /* -------------------------------------------------------------------------- */

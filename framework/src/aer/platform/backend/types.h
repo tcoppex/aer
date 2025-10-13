@@ -216,17 +216,15 @@ struct RTInterface {
     return (view_mask() > 0) ? 2u : 1u;
   }
 
-  // -----------------
   virtual VkSampleCountFlagBits sample_count() const noexcept = 0;
 
-  // virtual VkImageView resolve_view(uint32_t i = 0u) const noexcept = 0;
   virtual std::vector<backend::Image> resolve_attachments() const noexcept = 0;
+
   virtual backend::Image resolve_attachment(uint32_t i = 0u) const noexcept = 0;
 
   bool use_msaa() const noexcept {
     return sample_count() > VK_SAMPLE_COUNT_1_BIT;
   }
-  // -----------------
 
   // -- Setters --
 
