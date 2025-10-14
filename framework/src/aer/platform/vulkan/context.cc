@@ -7,7 +7,7 @@
 bool Context::init(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
-  std::shared_ptr<XRVulkanInterface> vulkan_xr
+  XRVulkanInterface *vulkan_xr
 ) {
   CHECK_VK(volkInitialize());
 

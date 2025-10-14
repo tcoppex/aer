@@ -47,10 +47,10 @@ struct OpenXRSwapchain : public SwapchainInterface {
   bool create(
     XrSession session,
     XrSwapchainCreateInfo const& info,
-    std::shared_ptr<XRVulkanInterface> xr_graphics //
+    XRVulkanInterface *xr_graphics //
   );
 
-  void destroy(std::shared_ptr<XRVulkanInterface> xr_graphics);
+  void destroy(XRVulkanInterface *xr_graphics);
 
   [[nodiscard]]
   XrExtent2Di extent() const noexcept {

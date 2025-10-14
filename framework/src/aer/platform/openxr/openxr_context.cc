@@ -17,8 +17,6 @@ static constexpr char const* kEngineName{FRAMEWORK_NAME}; //
 
 /* -------------------------------------------------------------------------- */
 
-// SwapchainInterface::~SwapchainInterface() = default;
-
 namespace {
 
 /* Localized an input parameter name : "new_param" to "New Param". */
@@ -139,7 +137,7 @@ bool OpenXRContext::init(
     CHECK_XR_RET(xrGetSystem(instance_, &system_info, &system_id_))
   }
 
-  graphics_ = std::make_shared<XRVulkanInterface>(instance_, system_id_);
+  graphics_ = std::make_unique<XRVulkanInterface>(instance_, system_id_);
 
   return true;
 }
@@ -229,7 +227,7 @@ bool OpenXRContext::createSwapchains() {
       .mipCount     = 1,
     };
 
-    if (!swapchain_.create(session_, create_info, graphics_)) {
+    if (!swapchain_.create(session_, create_info, graphics_.get())) {
       return false;
     }
   }
@@ -274,7 +272,7 @@ void OpenXRContext::terminate() {
     xrDestroyActionSet(controls_.action_set);
     controls_.action_set = XR_NULL_HANDLE;
   }
-  swapchain_.destroy(graphics_);
+  swapchain_.destroy(graphics_.get());
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }

@@ -108,8 +108,8 @@ class OpenXRContext : public XRInterface {
   }
 
   [[nodiscard]]
-  std::shared_ptr<XRVulkanInterface> graphicsInterface() noexcept {
-    return graphics_; //
+  XRVulkanInterface* graphicsInterface() noexcept {
+    return graphics_.get(); //
   }
 
   [[nodiscard]]
@@ -151,7 +151,7 @@ class OpenXRContext : public XRInterface {
   XrInstance instance_{XR_NULL_HANDLE};
   XrSystemId system_id_{XR_NULL_SYSTEM_ID};
 
-  std::shared_ptr<XRVulkanInterface> graphics_{}; //
+  std::unique_ptr<XRVulkanInterface> graphics_{}; //
 
   XrSession session_{XR_NULL_HANDLE};
 
