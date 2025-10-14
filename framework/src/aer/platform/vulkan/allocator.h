@@ -34,12 +34,18 @@ class Allocator {
     VmaAllocationCreateFlags const flags = {}
   ) const;
 
+  void destroy_buffer(backend::Buffer const& buffer) const {
+    vmaDestroyBuffer(allocator_, buffer.buffer, buffer.allocation);
+  }
+
   [[nodiscard]]
   backend::Buffer create_staging_buffer(
     size_t const bytesize = kDefaultStagingBufferSize,
     void const* host_data = nullptr,
     size_t host_data_size = 0u
   ) const;
+
+  void clear_staging_buffers() const;
 
   void map_memory(backend::Buffer const& buffer, void **data) const {
     CHECK_VK( vmaMapMemory(allocator_, buffer.allocation, data) );
@@ -49,6 +55,7 @@ class Allocator {
     vmaUnmapMemory(allocator_, buffer.allocation);
   }
 
+  /* Alias to map & copy host data to a device buffer. */
   size_t write_buffer(
     backend::Buffer const& dst_buffer,
     size_t const dst_offset,
@@ -57,19 +64,13 @@ class Allocator {
     size_t const bytesize
   ) const;
 
-  void upload_host_to_device(
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
     void const* host_data,
-    size_t const bytesize,
-    backend::Buffer const& dst_buffer
+    size_t const bytesize
   ) const {
-    write_buffer(dst_buffer, 0u, host_data, 0u, bytesize);
+    return write_buffer(dst_buffer, 0u, host_data, 0u, bytesize);
   }
-
-  void destroy_buffer(backend::Buffer const& buffer) const {
-    vmaDestroyBuffer(allocator_, buffer.buffer, buffer.allocation);
-  }
-
-  void clear_staging_buffers() const;
 
   // ----- Image -----
 

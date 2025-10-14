@@ -234,9 +234,10 @@ void RayTracingScene::build_tlas() {
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     , VMA_MEMORY_USAGE_CPU_TO_GPU
   );
-  allocator.upload_host_to_device(
-    tlas_.instances.data(), instances_bytesize,
-    instances_buffer
+  allocator.write_buffer(
+    instances_buffer,
+    tlas_.instances.data(),
+    instances_bytesize
   );
 #endif
 

@@ -111,10 +111,10 @@ backend::Buffer Allocator::create_staging_buffer(
   )};
   // Map host data to device.
   if (host_data != nullptr) {
-    upload_host_to_device(
+    write_buffer(
+      staging_buffer,
       host_data,
-      (host_data_size > 0u) ? host_data_size : bytesize,
-      staging_buffer
+      (host_data_size > 0u) ? host_data_size : bytesize
     );
   }
   staging_buffers_.push_back(staging_buffer);

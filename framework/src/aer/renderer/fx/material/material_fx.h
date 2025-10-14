@@ -130,10 +130,10 @@ class TMaterialFx : public MaterialFx {
 
     // ------------------------------
     if constexpr (kEditMode) {
-      context_ptr_->allocator().upload_host_to_device(
+      context_ptr_->allocator().write_buffer(
+        material_storage_buffer_,
         materials_.data(),
-        materials_.size() * sizeof(ShaderMaterial),
-        material_storage_buffer_
+        materials_.size() * sizeof(ShaderMaterial)
       );
     } else {
       context_ptr_->transfer_host_to_device(
