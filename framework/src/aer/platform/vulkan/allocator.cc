@@ -1,4 +1,3 @@
-
 #define VMA_IMPLEMENTATION
 #define VMA_LEAK_LOG_FORMAT(format, ...)        \
   {                                             \
@@ -6,13 +5,15 @@
     fprintf(stderr, "\n");                      \
   }
 
-#include "aer/platform/backend/allocator.h"
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/allocator.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/core/utils.h"
+
+namespace backend {
 
 /* -------------------------------------------------------------------------- */
 
-void ResourceAllocator::init(VmaAllocatorCreateInfo alloc_create_info) {
+void Allocator::init(VmaAllocatorCreateInfo alloc_create_info) {
   device_ = alloc_create_info.device;
 
   VmaVulkanFunctions const functions{
@@ -25,19 +26,19 @@ void ResourceAllocator::init(VmaAllocatorCreateInfo alloc_create_info) {
                           | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT
                           | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT
                    ;
-  vmaCreateAllocator(&alloc_create_info, &allocator_);
+  vmaCreateAllocator(&alloc_create_info, &handle_);
 }
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::deinit() {
+void Allocator::deinit() {
   clear_staging_buffers();
-  vmaDestroyAllocator(allocator_);
+  vmaDestroyAllocator(handle_);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer ResourceAllocator::create_buffer(
+backend::Buffer Allocator::create_buffer(
   VkDeviceSize size,
   VkBufferUsageFlags2KHR usage,
   VmaMemoryUsage memory_usage,
@@ -72,7 +73,7 @@ backend::Buffer ResourceAllocator::create_buffer(
   };
   VmaAllocationInfo result_alloc_info{};
   CHECK_VK(vmaCreateBuffer(
-    allocator_,
+    handle_,
     &buffer_info,
     &alloc_create_info,
     &buffer.buffer,
@@ -92,12 +93,12 @@ backend::Buffer ResourceAllocator::create_buffer(
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer ResourceAllocator::create_staging_buffer(
+backend::Buffer Allocator::create_staging_buffer(
   size_t const bytesize,
   void const* host_data,
   size_t host_data_size
 ) const {
-  LOG_CHECK(host_data_size <= bytesize);
+  LOG_CHECK( host_data_size <= bytesize );
 
   // TODO : use a pool to reuse some staging buffer.
 
@@ -110,10 +111,10 @@ backend::Buffer ResourceAllocator::create_staging_buffer(
   )};
   // Map host data to device.
   if (host_data != nullptr) {
-    upload_host_to_device(
+    write_buffer(
+      staging_buffer,
       host_data,
-      (host_data_size > 0u) ? host_data_size : bytesize,
-      staging_buffer
+      (host_data_size > 0u) ? host_data_size : bytesize
     );
   }
   staging_buffers_.push_back(staging_buffer);
@@ -122,31 +123,31 @@ backend::Buffer ResourceAllocator::create_staging_buffer(
 
 // ----------------------------------------------------------------------------
 
-size_t ResourceAllocator::write_buffer(
+size_t Allocator::write_buffer(
   backend::Buffer const& dst_buffer,
   size_t const dst_offset,
   void const* host_data,
   size_t const host_offset,
   size_t const bytesize
 ) const {
-  LOG_CHECK(host_data != nullptr);
-  LOG_CHECK(dst_buffer.valid());
-  LOG_CHECK(bytesize > 0);
+  LOG_CHECK( host_data != nullptr );
+  LOG_CHECK( dst_buffer.valid() );
+  LOG_CHECK( bytesize > 0 );
 
   void *device_data = nullptr;
-  CHECK_VK( vmaMapMemory(allocator_, dst_buffer.allocation, &device_data) );
+  CHECK_VK( vmaMapMemory(handle_, dst_buffer.allocation, &device_data) );
 
   memcpy(static_cast<char*>(device_data) + dst_offset,
          static_cast<const char*>(host_data) + host_offset, bytesize);
 
-  vmaUnmapMemory(allocator_, dst_buffer.allocation);
+  vmaUnmapMemory(handle_, dst_buffer.allocation);
 
   return dst_offset + bytesize;
 }
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::clear_staging_buffers() const {
+void Allocator::clear_staging_buffers() const {
   for (auto const& staging_buffer : staging_buffers_) {
     destroy_buffer(staging_buffer);
   }
@@ -155,55 +156,52 @@ void ResourceAllocator::clear_staging_buffers() const {
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::create_image(
+backend::Image Allocator::create_image(
   VkImageCreateInfo const& image_info,
-  backend::Image *image
+  VkImageViewCreateInfo view_info,
+  VmaMemoryUsage memory_usage
 ) const {
-  LOG_CHECK( image != nullptr );
+  LOG_CHECK( view_info.format == image_info.format );
   LOG_CHECK( image_info.format != VK_FORMAT_UNDEFINED );
   LOG_CHECK( image_info.extent.width > 0 && image_info.extent.height > 0 );
 
+  backend::Image image{};
+
   VmaAllocationCreateInfo const alloc_create_info{
-    .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .usage = memory_usage, //
   };
   VmaAllocationInfo alloc_info{};
+
   CHECK_VK(vmaCreateImage(
-    allocator_,
+    handle_,
     &image_info,
     &alloc_create_info,
-    &image->image,
-    &image->allocation,
+    &image.image,
+    &image.allocation,
     &alloc_info
   ));
-  image->format = image_info.format;
+  image.format = image_info.format;
+
+  view_info.image = image.image;
+  CHECK_VK(vkCreateImageView(device_, &view_info, nullptr, &image.view));
+
+  return image;
 }
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::create_image_with_view(
-  VkImageCreateInfo const& image_info,
-  VkImageViewCreateInfo const& view_info,
-  backend::Image *image
-) const {
-  LOG_CHECK( view_info.format == image_info.format );
-
-  create_image(image_info, image);
-  auto info{view_info};
-  info.image = image->image;
-  CHECK_VK(vkCreateImageView(device_, &info, nullptr, &image->view));
-}
-
-// ----------------------------------------------------------------------------
-
-void ResourceAllocator::destroy_image(backend::Image *image) const {
-  if (image && image->valid()) {
-    vmaDestroyImage(allocator_, image->image, image->allocation);
-    image->image = VK_NULL_HANDLE;
-    if (image->view != VK_NULL_HANDLE) {
-      vkDestroyImageView(device_, image->view, nullptr);
-      image->view = VK_NULL_HANDLE;
-    }
+void Allocator::destroy_image(backend::Image &image) const {
+  if (!image.valid()) {
+    return;
+  }
+  vmaDestroyImage(handle_, image.image, image.allocation);
+  image.image = VK_NULL_HANDLE;
+  if (image.view != VK_NULL_HANDLE) {
+    vkDestroyImageView(device_, image.view, nullptr);
+    image.view = VK_NULL_HANDLE;
   }
 }
 
 /* -------------------------------------------------------------------------- */
+
+} // namespace "backend"

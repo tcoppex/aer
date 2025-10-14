@@ -1,5 +1,5 @@
-#ifndef AER_PLATEFORM_ANDROID_JNI_CONTEXT_H_
-#define AER_PLATEFORM_ANDROID_JNI_CONTEXT_H_
+#ifndef AER_PLATEFORM_IMPL_ANDROID_JNI_CONTEXT_H_
+#define AER_PLATEFORM_IMPL_ANDROID_JNI_CONTEXT_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -10,8 +10,8 @@ extern "C" {
 }
 
 #include "aer/core/common.h"
-#include "aer/platform/common.h" //
 #include "aer/core/singleton.h"
+#include "aer/platform/common.h" //
 
 /* -------------------------------------------------------------------------- */
 
@@ -57,4 +57,4 @@ class JNIContext final : public Singleton<JNIContext> {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATEFORM_ANDROID_JNI_CONTEXT_H_
+#endif // AER_PLATEFORM_IMPL_ANDROID_JNI_CONTEXT_H_

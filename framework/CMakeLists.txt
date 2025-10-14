@@ -36,16 +36,10 @@ file(GLOB_RECURSE Sources CONFIGURE_DEPENDS
 # Platform specific Source dependencies.
 # -----------------------------------------------------------------------------
 
-set(FRAMEWORK_PLATFORM_SRC_DIR ${FRAMEWORK_SOURCE_DIR}/aer/platform) #!
+set(FRAMEWORK_PLATFORM_SRC_DIR ${FRAMEWORK_SOURCE_DIR}/aer/platform/impl)
 
 # Exclude all platform specific codes..
 list(FILTER Sources EXCLUDE REGEX "${FRAMEWORK_PLATFORM_SRC_DIR}/.*")
-# ..but those at the root.
-file(GLOB PlatformCommonSources CONFIGURE_DEPENDS
-  LIST_DIRECTORIES FALSE
-  ${FRAMEWORK_PLATFORM_SRC_DIR}/*.cc
-  ${FRAMEWORK_PLATFORM_SRC_DIR}/*.h
-)
 
 # Add back target platform specifics sources.
 if(ANDROID)
@@ -53,29 +47,14 @@ if(ANDROID)
 else()
   set(FRAMEWORK_PLATFORM_SRC_SUB_DIR ${FRAMEWORK_PLATFORM_SRC_DIR}/desktop)
 endif()
+
 file(GLOB_RECURSE PlatformSources CONFIGURE_DEPENDS
   LIST_DIRECTORIES FALSE
   ${FRAMEWORK_PLATFORM_SRC_SUB_DIR}/*.cc
   ${FRAMEWORK_PLATFORM_SRC_SUB_DIR}/*.h
 )
 
-# -----------------------------------------------
-# (hacky, todo, legacy stuff used to be separated from platform)
-# Add back Vulkan / OpenXR specific sources.
-file(GLOB VKSources LIST_DIRECTORIES FALSE
-  ${FRAMEWORK_PLATFORM_SRC_DIR}/backend/*.cc
-)
-file(GLOB XRSources LIST_DIRECTORIES FALSE
-  ${FRAMEWORK_PLATFORM_SRC_DIR}/openxr/*.cc
-)
-# -----------------------------------------------
-
-list(APPEND Sources
-  ${PlatformCommonSources}
-  ${PlatformSources}
-  ${VKSources}
-  ${XRSources}
-)
+list(APPEND Sources ${PlatformSources})
 
 # -----------------------------------------------------------------------------
 # Target library compilation.

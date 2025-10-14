@@ -1,7 +1,7 @@
 #include "aer/renderer/targets/framebuffer.h"
 
-#include "aer/platform/backend/context.h"
-#include "aer/renderer/targets/render_target.h" // (for kDefaultImageUsageFlags)
+#include "aer/platform/vulkan/context.h"
+#include "aer/renderer/targets/render_target.h" // (for kDefaultColorImageUsageFlags)
 #include "aer/platform/swapchain_interface.h"
 
 /* -------------------------------------------------------------------------- */
@@ -31,13 +31,15 @@ void Framebuffer::resize(VkExtent2D const dimension) {
       dimension.width,
       dimension.height,
       desc_.color_desc.format,
-      RenderTarget::kDefaultImageUsageFlags //
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | RenderTarget::kDefaultColorImageUsageFlags //
     );
   }
   context_ptr_->transition_images_layout(
     outputs_[BufferName::Color],
     desc_.color_desc.initialLayout,
-    desc_.color_desc.finalLayout
+    desc_.color_desc.finalLayout,
+    1u // layer_count
   );
 
   // DepthStencil(s).
@@ -47,7 +49,8 @@ void Framebuffer::resize(VkExtent2D const dimension) {
         dimension.width,
         dimension.height,
         desc_.depth_stencil_format,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+          VK_IMAGE_USAGE_SAMPLED_BIT
+        | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
       );
     }
   }
@@ -85,17 +88,16 @@ Framebuffer::Framebuffer(Context const& context, SwapchainInterface const& swapc
 
 void Framebuffer::release_buffers() {
   VkDevice const device = context_ptr_->device();
+
   for (auto &framebuffer : framebuffers_) {
     vkDestroyFramebuffer(device, framebuffer, nullptr);
     framebuffer = VK_NULL_HANDLE;
   }
-
-  auto allocator = context_ptr_->allocator();
   for (auto& color : outputs_[BufferName::Color]) {
-    allocator.destroy_image(&color);
+    context_ptr_->destroy_image(color);
   }
   for (auto& depth_stencil : outputs_[BufferName::DepthStencil]) {
-    allocator.destroy_image(&depth_stencil);
+    context_ptr_->destroy_image(depth_stencil);
   }
 }
 

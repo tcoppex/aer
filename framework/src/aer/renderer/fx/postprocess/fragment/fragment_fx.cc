@@ -1,6 +1,6 @@
 #include "aer/renderer/fx/postprocess/fragment/fragment_fx.h"
 #include "aer/renderer/renderer.h"
-#include "aer/platform/backend/command_encoder.h"
+#include "aer/platform/vulkan/command_encoder.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -55,7 +55,10 @@ void FragmentFx::createPipeline() {
     getVertexShaderName(),
     getShaderName()
   })};
-  pipeline_ = renderer_ptr_->create_graphics_pipeline(pipeline_layout_, getGraphicsPipelineDescriptor(shaders));
+  pipeline_ = renderer_ptr_->create_graphics_pipeline(
+    pipeline_layout_,
+    getGraphicsPipelineDescriptor(shaders)
+  );
   context_ptr_->release_shader_modules(shaders);
 }
 

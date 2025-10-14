@@ -28,7 +28,7 @@ class SampleApp final : public Application {
     void draw(RenderPassEncoder const& pass, uint32_t instance_count = 1u) const {
       pass.bind_vertex_buffer(vertex);
       pass.bind_index_buffer(index, vk_index_type());
-      pass.draw_indexed(get_index_count(), instance_count);
+      pass.draw_indexed(index_count(), instance_count);
     }
   };
 
@@ -48,7 +48,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("05 - přemýšlet s portály");
 
-    renderer_.set_color_clear_value({{ 0.1078f, 0.1079f, 0.1081f, 1.0f }});
+    renderer_.set_clear_color({ 0.108f, 0.108f, 0.108f, 1.0f});
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
@@ -92,11 +92,11 @@ class SampleApp final : public Application {
         mesh.initialize_submesh_descriptors(attrib_location_map);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.get_vertices(),
+          mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.get_indices(),
+          mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
         mesh.clear_indices_and_vertices();
@@ -112,11 +112,11 @@ class SampleApp final : public Application {
         mesh.initialize_submesh_descriptors(attrib_location_map);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.get_vertices(),
+          mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.get_indices(),
+          mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
         mesh.clear_indices_and_vertices();
@@ -178,13 +178,13 @@ class SampleApp final : public Application {
           .module = shaders[2u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = 0u,
             }
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_FALSE,
           .depthCompareOp = VK_COMPARE_OP_ALWAYS,
@@ -218,7 +218,7 @@ class SampleApp final : public Application {
           .module = shaders[2u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -228,7 +228,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -263,7 +263,7 @@ class SampleApp final : public Application {
           .module = shaders[2u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -273,7 +273,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -296,13 +296,11 @@ class SampleApp final : public Application {
     }
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
     context_.destroy_pipeline_layout(pipeline_layout_);
-
-    auto allocator = context_.allocator();
-    allocator.destroy_buffer(plane_.index);
-    allocator.destroy_buffer(plane_.vertex);
-    allocator.destroy_buffer(torus_.index);
-    allocator.destroy_buffer(torus_.vertex);
-    allocator.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(plane_.index);
+    context_.destroy_buffer(plane_.vertex);
+    context_.destroy_buffer(torus_.index);
+    context_.destroy_buffer(torus_.vertex);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void draw() final {

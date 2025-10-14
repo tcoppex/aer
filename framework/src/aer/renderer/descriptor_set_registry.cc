@@ -235,7 +235,7 @@ void DescriptorSetRegistry::init_descriptor_pool(uint32_t const max_sets) {
     nullptr, &
     main_pool_
   ));
-  vkutils::SetDebugObjectName(device_, main_pool_, "DescriptorSetRegistry::MainPool");
+  vk_utils::SetDebugObjectName(device_, main_pool_, "DescriptorSetRegistry::MainPool");
 }
 
 // ----------------------------------------------------------------------------
@@ -356,8 +356,8 @@ void DescriptorSetRegistry::create_main_set(
     .layout = layout,
   };
 
-  vkutils::SetDebugObjectName(device_, sets_[type].set,    "DescriptorSetRegistry::DescriptorSet::" + name);
-  vkutils::SetDebugObjectName(device_, sets_[type].layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
+  vk_utils::SetDebugObjectName(device_, sets_[type].set,    "DescriptorSetRegistry::DescriptorSet::" + name);
+  vk_utils::SetDebugObjectName(device_, sets_[type].layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
 };
 
 /* -------------------------------------------------------------------------- */

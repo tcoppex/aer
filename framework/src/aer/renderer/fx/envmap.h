@@ -4,7 +4,7 @@
 #include "aer/core/common.h"
 #include "aer/core/utils.h"
 
-#include "aer/platform/backend/command_encoder.h"
+#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/renderer/pipeline.h"
 
 namespace shader_interop::envmap {
@@ -79,8 +79,7 @@ class Envmap {
   void compute_specular();
 
  private:
-  RenderContext const* context_{};
-  ResourceAllocator const* allocator_ptr_{};
+  RenderContext const* context_ptr_{};
 
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};

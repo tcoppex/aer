@@ -1,5 +1,5 @@
-#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H
-#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H
+#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H_
+#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H_
 
 #include "aer/renderer/fx/postprocess/post_generic_fx.h"
 
@@ -132,4 +132,4 @@ class ComputeFx : public PostGenericFx {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H
+#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_COMPUTE_FX_H_

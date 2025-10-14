@@ -31,10 +31,16 @@ class SampleApp final : public Application {
   ~SampleApp() {}
 
  private:
+  AppSettings settings() const noexcept final {
+    AppSettings S{};
+    S.renderer.color_format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    return S;
+  }
+
   bool setup() final {
     wm_->setTitle("06 - Poussières d'Étoiles");
 
-    renderer_.set_color_clear_value({{ 0.02f, 0.03f, 0.12f, 1.0f }});
+    renderer_.set_clear_color({ 0.02f, 0.03f, 0.12f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
@@ -70,11 +76,11 @@ class SampleApp final : public Application {
         Geometry::MakePointListPlane(mesh.geo, 1.0f, 512u, 512u);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.geo.get_vertices(),
+          mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.geo.get_indices(),
+          mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
       }
@@ -164,7 +170,7 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -187,7 +193,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format, //
+          .format = renderer_.depth_stencil_format(), //
         },
         .primitive = {
           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -206,11 +212,9 @@ class SampleApp final : public Application {
     context_.destroy_pipeline(graphics_.pipeline);
     context_.destroy_descriptor_set_layout(graphics_.descriptor_set_layout);
     context_.destroy_pipeline_layout(graphics_.pipeline_layout);
-
-    auto allocator = context_.allocator();
-    allocator.destroy_buffer(point_grid_.index);
-    allocator.destroy_buffer(point_grid_.vertex);
-    allocator.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(point_grid_.index);
+    context_.destroy_buffer(point_grid_.vertex);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void draw() final {
@@ -243,7 +247,7 @@ class SampleApp final : public Application {
          *
          * For efficiency this is done in a vertex shader instead of a geometry shader.
          */
-        pass.draw(6u, point_grid_.geo.get_vertex_count());
+        pass.draw(6u, point_grid_.geo.vertex_count());
       }
       cmd.end_rendering();
     }

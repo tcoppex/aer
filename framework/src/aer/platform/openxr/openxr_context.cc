@@ -17,8 +17,6 @@ static constexpr char const* kEngineName{FRAMEWORK_NAME}; //
 
 /* -------------------------------------------------------------------------- */
 
-// SwapchainInterface::~SwapchainInterface() = default;
-
 namespace {
 
 /* Localized an input parameter name : "new_param" to "New Param". */
@@ -139,7 +137,7 @@ bool OpenXRContext::init(
     CHECK_XR_RET(xrGetSystem(instance_, &system_info, &system_id_))
   }
 
-  graphics_ = std::make_shared<XRVulkanInterface>(instance_, system_id_);
+  graphics_ = std::make_unique<XRVulkanInterface>(instance_, system_id_);
 
   return true;
 }
@@ -165,9 +163,13 @@ bool OpenXRContext::initSession() {
 
 // ----------------------------------------------------------------------------
 
-bool OpenXRContext::createSwapchains() {
+bool OpenXRContext::resetSwapchain() {
   LOG_CHECK(XR_NULL_HANDLE != instance_);
   LOG_CHECK(XR_NULL_HANDLE != session_);
+
+  if (swapchain_.handle != VK_NULL_HANDLE) {
+    swapchain_.destroy();
+  }
 
   /// NOTE:
   /// We need to use one swapchain per view, each of this swapchain
@@ -215,7 +217,10 @@ bool OpenXRContext::createSwapchains() {
       .type         = XR_TYPE_SWAPCHAIN_CREATE_INFO,
       .createFlags  = 0,
       .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
-                    | XR_SWAPCHAIN_USAGE_SAMPLED_BIT
+                    | XR_SWAPCHAIN_USAGE_SAMPLED_BIT            //
+                    | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT       // to blit on it
+                    | XR_SWAPCHAIN_USAGE_MUTABLE_FORMAT_BIT
+                    | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT
                     ,
       .format       = graphics_->selectColorSwapchainFormat(formats),
       .sampleCount  = config_view.recommendedSwapchainSampleCount,
@@ -226,7 +231,7 @@ bool OpenXRContext::createSwapchains() {
       .mipCount     = 1,
     };
 
-    if (!swapchain_.create(session_, create_info, graphics_)) {
+    if (!swapchain_.create(session_, create_info, graphics_.get())) {
       return false;
     }
   }
@@ -271,7 +276,9 @@ void OpenXRContext::terminate() {
     xrDestroyActionSet(controls_.action_set);
     controls_.action_set = XR_NULL_HANDLE;
   }
-  swapchain_.destroy(graphics_);
+
+  swapchain_.destroy();
+
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }

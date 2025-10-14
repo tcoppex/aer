@@ -8,7 +8,6 @@
 void GenericFx::init(Renderer const& renderer) {
   context_ptr_ = &renderer.context();
   renderer_ptr_ = &renderer;
-  allocator_ptr_ = context_ptr_->allocator_ptr();
 }
 
 // ----------------------------------------------------------------------------

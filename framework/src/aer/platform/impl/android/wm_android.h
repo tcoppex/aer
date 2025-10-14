@@ -1,9 +1,9 @@
-#ifndef AER_PLATEFORM_ANDROID_WM_ANDROID_H_
-#define AER_PLATEFORM_ANDROID_WM_ANDROID_H_
+#ifndef AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_
+#define AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_
 
 #include "aer/platform/common.h"
 #include "aer/platform/wm_interface.h"
-#include "aer/platform/android/xr_android.h"
+#include "aer/platform/impl/android/xr_android.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -14,7 +14,7 @@ struct WMAndroid final : public WMInterface {
   virtual ~WMAndroid() = default;
 
   [[nodiscard]]
-  bool init(AppData_t app_data) final;
+  bool init(Settings const& settings, AppData_t app_data) final;
 
   void shutdown() final;
 
@@ -26,13 +26,13 @@ struct WMAndroid final : public WMInterface {
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surface_width() const noexcept final {
+  uint32_t surfaceWidth() const noexcept final {
     LOG_CHECK(surface_width_ > 0u);
     return surface_width_;
   }
 
   [[nodiscard]]
-  uint32_t surface_height() const noexcept final {
+  uint32_t surfaceHeight() const noexcept final {
     LOG_CHECK(surface_height_ > 0u);
     return surface_height_;
   }
@@ -88,4 +88,4 @@ struct WMAndroid final : public WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATEFORM_ANDROID_WM_ANDROID_H_
+#endif // AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_

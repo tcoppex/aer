@@ -1,5 +1,5 @@
-#ifndef AER_SCENE_ANIMATION_H
-#define AER_SCENE_ANIMATION_H
+#ifndef AER_SCENE_ANIMATION_H_
+#define AER_SCENE_ANIMATION_H_
 
 #include "aer/core/common.h"
 
@@ -79,4 +79,4 @@ struct Skeleton {
 
 }  // namespace scene
 
-#endif // AER_SCENE_ANIMATION_H
+#endif // AER_SCENE_ANIMATION_H_

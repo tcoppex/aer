@@ -4,7 +4,7 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 
 #include "aer/renderer/targets/framebuffer.h"
 #include "aer/renderer/targets/render_target.h"
@@ -31,8 +31,7 @@ class RenderContext : public Context {
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
-    std::vector<char const*> const& device_extensions,
-    std::shared_ptr<XRVulkanInterface> vulkan_xr
+    XRVulkanInterface *vulkan_xr
   );
 
   void deinit();
@@ -44,7 +43,7 @@ class RenderContext : public Context {
 
   [[nodiscard]]
   std::unique_ptr<RenderTarget> create_render_target(
-    RenderTarget::Descriptor_t const& desc
+    RenderTarget::Descriptor const& desc
   ) const;
 
   // --- Framebuffer (Legacy Rendering) ---

@@ -210,6 +210,7 @@ bool HostResources::load_file(std::string_view filename) {
 
 #ifndef NDEBUG
   LOGI("> \"{}.{}\" has been loaded successfully.", basename, ext);
+  
   // This will also display the extra data procedurally created.
   std::cout << "┌────────────┬───── " << std::endl;
   std::cout << "│ Images     │ " << host_images.size() << std::endl;
@@ -247,8 +248,8 @@ void HostResources::reset_internal_descriptors() {
       .index_offset = index_buffer_size,
     });
     // ---------
-    vertex_buffer_size += mesh->get_vertices().size();
-    index_buffer_size += mesh->get_indices().size();
+    vertex_buffer_size += mesh->vertices_bytesize();
+    index_buffer_size += mesh->indices_bytesize();
   }
 
   for (auto const& host_image : host_images) {

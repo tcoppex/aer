@@ -1,5 +1,5 @@
-#ifndef AER_CORE_EVENT_CALLBACKS_H
-#define AER_CORE_EVENT_CALLBACKS_H
+#ifndef AER_CORE_EVENT_CALLBACKS_H_
+#define AER_CORE_EVENT_CALLBACKS_H_
 
 #include "aer/core/common.h"
 
@@ -34,4 +34,4 @@ struct EventCallbacks {
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_CORE_EVENT_CALLBACKS_H
+#endif  // AER_CORE_EVENT_CALLBACKS_H_

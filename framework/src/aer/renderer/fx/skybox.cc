@@ -2,7 +2,7 @@
 
 #include "aer/renderer/fx/skybox.h"
 
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 #include "aer/renderer/renderer.h"
 #include "aer/core/camera.h"
 
@@ -15,7 +15,7 @@ void Skybox::init(Renderer& renderer) {
   renderer_ptr_ = &renderer;
   auto const& context = renderer.context();
 
-  LOGD(" - Init Skybox -");
+  LOGD("- Initialize Skybox.");
   envmap_.init(context);
 
   /* Precalculate the BRDF LUT. */
@@ -44,11 +44,11 @@ void Skybox::init(Renderer& renderer) {
     auto cmd = context.create_transient_command_encoder();
 
     vertex_buffer_ = cmd.create_buffer_and_upload(
-      cube_.get_vertices(),
+      cube_.vertices(),
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
     index_buffer_ = cmd.create_buffer_and_upload(
-      cube_.get_indices(),
+      cube_.indices(),
       VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
     );
 
@@ -137,16 +137,15 @@ void Skybox::init(Renderer& renderer) {
 
 void Skybox::release(Renderer const& renderer) {
   auto const& context = renderer.context();
-  auto allocator = context.allocator();
 
-  allocator.destroy_image(&specular_brdf_lut_);
+  context.destroy_image(specular_brdf_lut_);
 
   context.destroy_pipeline(graphics_pipeline_);
   context.destroy_pipeline_layout(pipeline_layout_);
   context.destroy_descriptor_set_layout(descriptor_set_layout_);
 
-  allocator.destroy_buffer(index_buffer_);
-  allocator.destroy_buffer(vertex_buffer_);
+  context.destroy_buffer(index_buffer_);
+  context.destroy_buffer(vertex_buffer_);
 
   envmap_.release();
 }
@@ -179,7 +178,7 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
 
     pass.bind_vertex_buffer(vertex_buffer_);
     pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-    pass.draw_indexed(cube_.get_index_count());
+    pass.draw_indexed(cube_.index_count());
   }
 }
 
@@ -205,7 +204,9 @@ void Skybox::compute_specular_brdf_lut(Renderer const& renderer) {
           push_constant_.mapResolution,
           push_constant_.mapResolution,
           VK_FORMAT_R16G16_SFLOAT,
-          VK_IMAGE_USAGE_STORAGE_BIT
+            VK_IMAGE_USAGE_SAMPLED_BIT
+          | VK_IMAGE_USAGE_STORAGE_BIT,
+          "Skybox::SpecularBRDF_lut"
         )
       };
 

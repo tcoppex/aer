@@ -1,6 +1,6 @@
 #include "aer/renderer/fx/material/material_fx.h"
 
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
@@ -8,7 +8,6 @@
 void MaterialFx::init(Renderer const& renderer) {
   renderer_ptr_ = &renderer;
   context_ptr_ = &renderer.context(); //
-  allocator_ptr_ = context_ptr_->allocator_ptr();
 }
 
 // ----------------------------------------------------------------------------
@@ -134,7 +133,7 @@ GraphicsPipelineDescriptor_t MaterialFx::getGraphicsPipelineDescriptor(
       },
       .targets = {
         {
-          .format = renderer_ptr_->color_attachment(0).format,
+          .format = renderer_ptr_->color_format(), //
         },
       },
     },

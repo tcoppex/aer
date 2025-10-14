@@ -1,15 +1,12 @@
 #ifndef AER_CORE_PLATFORM_OPENXR_XR_VULKAN_INTERFACE_H_
 #define AER_CORE_PLATFORM_OPENXR_XR_VULKAN_INTERFACE_H_
 
-#if defined(ANDROID)
-#include <jni.h> //
-#endif
+/* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h" // (for backend::Image)
+#include "aer/platform/openxr/xr_common.h"
+
 #include "aer/platform/openxr/xr_utils.h"
-
-#include "volk.h"
-#include "openxr/openxr_platform.h"
+#include "aer/platform/vulkan/types.h" // (for backend::Image)
 
 // ----------------------------------------------------------------------------
 
@@ -100,10 +97,10 @@ struct XRVulkanInterface {
   [[nodiscard]]
   int64_t selectColorSwapchainFormat(std::vector<int64_t> const& formats) const {
     constexpr std::array<VkFormat, 4> kSupportedColorSwapchainFormats{
-      VK_FORMAT_B8G8R8A8_SRGB,
       VK_FORMAT_R8G8B8A8_SRGB,
+      VK_FORMAT_B8G8R8A8_SRGB,
+      VK_FORMAT_R8G8B8A8_UNORM,
       VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_R8G8B8A8_UNORM
     };
     auto it = std::find_first_of(
       formats.begin(),

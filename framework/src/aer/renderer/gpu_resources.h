@@ -1,18 +1,15 @@
-#ifndef AER_RENDERER_GPU_RESOURCES_H
-#define AER_RENDERER_GPU_RESOURCES_H
+#ifndef AER_RENDERER_GPU_RESOURCES_H_
+#define AER_RENDERER_GPU_RESOURCES_H_
 
 #include "aer/scene/host_resources.h"
 
 #include "aer/renderer/raytracing_scene.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
-class RenderContext; //
-class ResourceAllocator;
-
-// class SamplerPool;
-class RenderPassEncoder;
 class Camera;
-class RayTracingFx; //
+class RenderContext;
+class RenderPassEncoder;
+class RayTracingFx;
 
 /* -------------------------------------------------------------------------- */
 
@@ -92,7 +89,6 @@ struct GPUResources : scene::HostResources {
  private:
   Renderer const* renderer_ptr_{};
   RenderContext const* context_ptr_{};
-  ResourceAllocator const* allocator_ptr_{};
   uint32_t frame_index_{};
 };
 
@@ -100,4 +96,4 @@ struct GPUResources : scene::HostResources {
 
 using GLTFScene = std::shared_ptr<GPUResources>;
 
-#endif // AER_RENDERER_GPU_RESOURCES_H
+#endif // AER_RENDERER_GPU_RESOURCES_H_

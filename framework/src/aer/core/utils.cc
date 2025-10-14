@@ -5,7 +5,7 @@
 #include <fstream>
 
 #if defined(ANDROID)
-#include "aer/platform/android/jni_context.h"
+#include "aer/platform/impl/android/jni_context.h"
 #endif
 
 /* -------------------------------------------------------------------------- */

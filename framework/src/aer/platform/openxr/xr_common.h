@@ -3,12 +3,23 @@
 
 /* -------------------------------------------------------------------------- */
 
+extern "C" {
+
+#if defined(ANDROID)
+#include <jni.h>
+#endif
+
+#include "aer/platform/vulkan/vulkan_wrapper.h"
+
+#include <openxr/openxr_platform.h>
+#include <openxr/openxr.h>
+
+}
+
+/* -------------------------------------------------------------------------- */
+
 #include <array>
 #include <functional>
-
-extern "C" {
-#include <openxr/openxr.h>
-}
 
 #include "aer/core/common.h"
 

@@ -1,6 +1,5 @@
-#include "aer/platform/backend/context.h"
-
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/context.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/core/utils.h" // for ExtractBasename
 
 /* -------------------------------------------------------------------------- */
@@ -8,8 +7,7 @@
 bool Context::init(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
-  std::vector<char const*> const& device_extensions,
-  std::shared_ptr<XRVulkanInterface> vulkan_xr
+  XRVulkanInterface *vulkan_xr
 ) {
   CHECK_VK(volkInitialize());
 
@@ -39,8 +37,7 @@ bool Context::init(
     }
   }
 
-  resource_allocator_ = std::make_unique<ResourceAllocator>();
-  resource_allocator_->init({
+  allocator_.init({
     .physicalDevice = gpu_,
     .device = device_,
     .instance = instance_,
@@ -56,7 +53,7 @@ bool Context::init(
 void Context::deinit() {
   vkDeviceWaitIdle(device_);
 
-  resource_allocator_->deinit();
+  allocator_.deinit();
   for (auto &pool : transient_command_pools_) {
     vkDestroyCommandPool(device_, pool, nullptr); //
   }
@@ -68,38 +65,74 @@ void Context::deinit() {
 
 // ----------------------------------------------------------------------------
 
+VkSampleCountFlags Context::sample_counts() const noexcept {
+  auto const& limits = properties_.gpu2.properties.limits;
+  return limits.framebufferColorSampleCounts
+       & limits.framebufferDepthSampleCounts
+       // & limits.framebufferStencilSampleCounts
+       // & limits.framebufferNoAttachmentsSampleCounts
+       ;
+}
+
+// ----------------------------------------------------------------------------
+
+VkSampleCountFlagBits Context::max_sample_count() const noexcept {
+  std::array<VkSampleCountFlagBits, 6> constexpr kSampleCountBits{
+    VK_SAMPLE_COUNT_64_BIT,
+    VK_SAMPLE_COUNT_32_BIT,
+    VK_SAMPLE_COUNT_16_BIT,
+    VK_SAMPLE_COUNT_8_BIT,
+    VK_SAMPLE_COUNT_4_BIT,
+    VK_SAMPLE_COUNT_2_BIT,
+  };
+
+  auto const counts = sample_counts();
+
+  // [we could return 'counts' as the bitmask of all accepted values, but we
+  // return the max value instead]
+  for (auto flagbit : kSampleCountBits) {
+    if (counts & flagbit) {
+      return flagbit;
+    }
+  }
+  return VK_SAMPLE_COUNT_1_BIT;
+}
+
+// ----------------------------------------------------------------------------
+
 backend::Image Context::create_image_2d(
   uint32_t width,
   uint32_t height,
   uint32_t array_layers,
   uint32_t levels,
   VkFormat format,
-  VkImageUsageFlags extra_usage,
-  std::string_view debugName
+  VkSampleCountFlagBits sample_count,
+  VkImageUsageFlags usage,
+  std::string_view debug_name
 ) const {
-  LOG_CHECK( width > 0 && height > 0 );
-  LOG_CHECK( array_layers > 0 );
-
-  // [todo]
-  LOG_CHECK(levels == 1u);
-
-  VkImageUsageFlags usage{
-      VK_IMAGE_USAGE_SAMPLED_BIT
-    | extra_usage
-  };
+  LOG_CHECK( width > 0u && height > 0u );
+  LOG_CHECK( array_layers > 0u );
+  LOG_CHECK( levels == 1u ); // [todo]
+  LOG_CHECK( (sample_count > 0b0) && (sample_count <= max_sample_count()) );
 
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
 
   // [TODO] check format is a valid depth one too.
-  if (vkutils::IsValidStencilFormat(format)) {
+  if (vk_utils::IsValidStencilFormat(format)) {
     usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT
                 | VK_IMAGE_ASPECT_STENCIL_BIT
                 ;
   }
 
+  VkImageCreateFlags createFlags{};
+  if (array_layers > 1u) {
+    createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+  }
+
   VkImageCreateInfo const image_info{
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .flags = createFlags,
     .imageType = VK_IMAGE_TYPE_2D,
     .format = format,
     .extent = {
@@ -109,7 +142,7 @@ backend::Image Context::create_image_2d(
     },
     .mipLevels = levels,
     .arrayLayers = array_layers,
-    .samples = VK_SAMPLE_COUNT_1_BIT, //
+    .samples = sample_count,
     .tiling = VK_IMAGE_TILING_OPTIMAL,
     .usage = usage,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -118,9 +151,10 @@ backend::Image Context::create_image_2d(
 
   VkImageViewCreateInfo view_info{
     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .viewType = (image_info.arrayLayers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
-                                              : VK_IMAGE_VIEW_TYPE_2D
-                                              ,
+    .image = VK_NULL_HANDLE, // set by allocator
+    .viewType = (array_layers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                                    : VK_IMAGE_VIEW_TYPE_2D
+                                    ,
     .format = image_info.format,
     .components = {
       VK_COMPONENT_SWIZZLE_R,
@@ -137,12 +171,11 @@ backend::Image Context::create_image_2d(
     },
   };
 
-  backend::Image image{};
-  resource_allocator_->create_image_with_view(image_info, view_info, &image);
+  auto image = allocator_.create_image(image_info, view_info);
 
   set_debug_object_name(
     image.image,
-    std::string(debugName.empty() ? "Image2d::NoName" : debugName)
+    std::string(debug_name.empty() ? "Image2d::NoName" : debug_name)
   );
 
   return image;
@@ -155,7 +188,11 @@ backend::ShaderModule Context::create_shader_module(
   std::string_view shader_name
 ) const {
   return {
-    .module = vkutils::CreateShaderModule(device_, directory.data(), shader_name.data()),
+    .module = vk_utils::CreateShaderModule(
+      device_,
+      directory.data(),
+      shader_name.data()
+    ),
     .basename = utils::ExtractBasename(shader_name, true),
   };
 }
@@ -182,7 +219,9 @@ backend::ShaderModule Context::create_shader_module(std::string_view filepath) c
 
 // ----------------------------------------------------------------------------
 
-std::vector<backend::ShaderModule> Context::create_shader_modules(std::vector<std::string_view> const& filepaths) const {
+std::vector<backend::ShaderModule> Context::create_shader_modules(
+  std::vector<std::string_view> const& filepaths
+) const {
   return create_shader_modules("", filepaths); //
 }
 
@@ -194,7 +233,9 @@ void Context::release_shader_module(backend::ShaderModule const& shader) const {
 
 // ----------------------------------------------------------------------------
 
-void Context::release_shader_modules(std::vector<backend::ShaderModule> const& shaders) const {
+void Context::release_shader_modules(
+  std::vector<backend::ShaderModule> const& shaders
+) const {
   for (auto const& shader : shaders) {
     vkDestroyShaderModule(device_, shader.module, nullptr);
   }
@@ -202,7 +243,9 @@ void Context::release_shader_modules(std::vector<backend::ShaderModule> const& s
 
 // ----------------------------------------------------------------------------
 
-CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue const& target_queue) const {
+CommandEncoder Context::create_transient_command_encoder(
+  Context::TargetQueue const& target_queue
+) const {
   VkCommandBuffer cmd{};
   VkCommandBufferAllocateInfo const alloc_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -216,7 +259,8 @@ CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue co
     cmd,
     static_cast<uint32_t>(target_queue),
     device_,
-    resource_allocator_.get()
+    &allocator_, //
+    nullptr // (no render target for transient command buffer)
   );
   encoder.begin();
 
@@ -225,7 +269,9 @@ CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue co
 
 // ----------------------------------------------------------------------------
 
-void Context::finish_transient_command_encoder(CommandEncoder const& encoder) const {
+void Context::finish_transient_command_encoder(
+  CommandEncoder const& encoder
+) const {
   encoder.end();
 
   VkFenceCreateInfo const fence_info{
@@ -253,7 +299,9 @@ void Context::finish_transient_command_encoder(CommandEncoder const& encoder) co
   CHECK_VK( vkWaitForFences(device_, 1u, &fence, VK_TRUE, UINT64_MAX) );
   vkDestroyFence(device_, fence, nullptr);
 
-  vkFreeCommandBuffers(device_, transient_command_pools_[target_queue], 1u, &encoder.command_buffer_);
+  vkFreeCommandBuffers(
+    device_, transient_command_pools_[target_queue], 1u, &encoder.command_buffer_
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -261,51 +309,57 @@ void Context::finish_transient_command_encoder(CommandEncoder const& encoder) co
 void Context::transition_images_layout(
   std::vector<backend::Image> const& images,
   VkImageLayout const src_layout,
-  VkImageLayout const dst_layout
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  cmd.transition_images_layout(images, src_layout, dst_layout);
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
+  cmd.transition_images_layout(images, src_layout, dst_layout, layer_count);
   finish_transient_command_encoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer Context::create_buffer_and_upload(
+backend::Buffer Context::transient_create_buffer(
   void const* host_data,
-  size_t const host_data_size,
-  VkBufferUsageFlags2KHR const usage,
+  size_t host_data_size,
+  VkBufferUsageFlags2KHR usage,
   size_t device_buffer_offset,
-  size_t const device_buffer_size
+  size_t device_buffer_size
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  backend::Buffer buffer{
-    cmd.create_buffer_and_upload(host_data, host_data_size, usage, device_buffer_offset, device_buffer_size)
-  };
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
+  auto buffer = cmd.create_buffer_and_upload(
+    host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
+  );
   finish_transient_command_encoder(cmd);
   return buffer;
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::transfer_host_to_device(
+void Context::transient_upload_buffer(
   void const* host_data,
   size_t const host_data_size,
   backend::Buffer const& device_buffer,
   size_t const device_buffer_offset
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  cmd.transfer_host_to_device(host_data, host_data_size, device_buffer, device_buffer_offset);
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
+  cmd.transfer_host_to_device(
+    host_data,
+    host_data_size,
+    device_buffer,
+    device_buffer_offset
+  );
   finish_transient_command_encoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::copy_buffer(
+void Context::transient_copy_buffer(
   backend::Buffer const& src,
   backend::Buffer const& dst,
   size_t const buffersize
 ) const {
-  auto cmd{ create_transient_command_encoder(Context::TargetQueue::Transfer) };
+  auto cmd = create_transient_command_encoder(Context::TargetQueue::Transfer);
   cmd.copy_buffer(src, dst, buffersize);
   finish_transient_command_encoder(cmd);
 }
@@ -321,7 +375,7 @@ void Context::update_descriptor_set(
   }
 
   DescriptorSetWriteEntry::Result result{};
-  vkutils::TransformDescriptorSetWriteEntries(descriptor_set, entries, result);
+  vk_utils::TransformDescriptorSetWriteEntries(descriptor_set, entries, result);
 
   vkUpdateDescriptorSets(
     device_,
@@ -343,9 +397,12 @@ void Context::init_instance(
   std::vector<VkExtensionProperties> available_instance_extensions{};
 
   uint32_t layerCount = 0;
-  CHECK_VK( vkEnumerateInstanceLayerProperties(&layerCount, nullptr) );
+  CHECK_VK(vkEnumerateInstanceLayerProperties(&layerCount, nullptr));
   available_instance_layers.resize(layerCount);
-  CHECK_VK( vkEnumerateInstanceLayerProperties(&layerCount, available_instance_layers.data()) );
+  CHECK_VK(vkEnumerateInstanceLayerProperties(
+    &layerCount,
+    available_instance_layers.data()
+  ));
 
 #ifndef NDEBUG
   auto hasLayer = [&](char const* layerName) {
@@ -378,7 +435,7 @@ void Context::init_instance(
                  | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
                  | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
                  ,
-    .pfnUserCallback = vkutils::VulkanDebugMessage,
+    .pfnUserCallback = vk_utils::VulkanDebugMessage,
     .pUserData = this,
   };
 
@@ -387,11 +444,15 @@ void Context::init_instance(
   uint32_t extension_count{0u};
   vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
   available_instance_extensions.resize(extension_count);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, available_instance_extensions.data());
+  vkEnumerateInstanceExtensionProperties(
+    nullptr, &extension_count, available_instance_extensions.data()
+  );
 
   // Add extensions requested by the application.
   instance_extension_names_.insert(
-    instance_extension_names_.begin(), instance_extensions.begin(), instance_extensions.end()
+    instance_extension_names_.begin(),
+    instance_extensions.begin(),
+    instance_extensions.end()
   );
 
   VkApplicationInfo const application_info{
@@ -415,7 +476,9 @@ void Context::init_instance(
   };
 
   if (vulkan_xr_) {
-    CHECK_VK(vulkan_xr_->createVulkanInstance(&instance_create_info, nullptr, &instance_));
+    CHECK_VK(vulkan_xr_->createVulkanInstance(
+      &instance_create_info, nullptr, &instance_
+    ));
   } else {
     CHECK_VK(vkCreateInstance(&instance_create_info, nullptr, &instance_));
   }
@@ -424,7 +487,9 @@ void Context::init_instance(
 
   // ------------------------------------------
 
-  CHECK_VK(vkCreateDebugUtilsMessengerEXT(instance_, &debug_info, nullptr, &debug_utils_messenger_));
+  CHECK_VK(vkCreateDebugUtilsMessengerEXT(
+    instance_, &debug_info, nullptr, &debug_utils_messenger_
+  ));
 
 #ifndef NDEBUG
   LOGD("Vulkan version requested: {}.{}.{}",
@@ -468,7 +533,9 @@ void Context::select_gpu() {
 
     /* Search for a discrete GPU. */
     uint32_t selected_index{0u};
-    VkPhysicalDeviceProperties2 props{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    VkPhysicalDeviceProperties2 props{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
+    };
     for (uint32_t i = 0u; i < gpu_count; ++i) {
       vkGetPhysicalDeviceProperties2(gpus[i], &props);
       if (VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU == props.properties.deviceType) {
@@ -515,9 +582,13 @@ void Context::select_gpu() {
 bool Context::init_device() {
   /* Retrieve availables device extensions. */
   uint32_t extension_count{0u};
-  CHECK_VK(vkEnumerateDeviceExtensionProperties(gpu_, nullptr, &extension_count, nullptr));
+  CHECK_VK(vkEnumerateDeviceExtensionProperties(
+    gpu_, nullptr, &extension_count, nullptr
+  ));
   available_device_extensions_.resize(extension_count);
-  CHECK_VK(vkEnumerateDeviceExtensionProperties(gpu_, nullptr, &extension_count, available_device_extensions_.data()));
+  CHECK_VK(vkEnumerateDeviceExtensionProperties(
+    gpu_, nullptr, &extension_count, available_device_extensions_.data()
+  ));
 
 #ifndef NDEBUG
   // for (auto const& prop : available_device_extensions_) {
@@ -687,7 +758,9 @@ bool Context::init_device() {
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos{};
   std::vector<std::vector<float>> queue_priorities{};
   {
-    uint32_t const queue_family_count{static_cast<uint32_t>(properties_.queue_families2.size())};
+    uint32_t const queue_family_count{
+      static_cast<uint32_t>(properties_.queue_families2.size())
+    };
 
     std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_family_count, {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -743,9 +816,13 @@ bool Context::init_device() {
   };
 
   if (vulkan_xr_) {
-    CHECK_VK( vulkan_xr_->createVulkanDevice(gpu_, &device_info, nullptr, &device_) );
+    CHECK_VK(vulkan_xr_->createVulkanDevice(
+      gpu_, &device_info, nullptr, &device_
+    ));
   } else {
-    CHECK_VK( vkCreateDevice(gpu_, &device_info, nullptr, &device_) );
+    CHECK_VK(vkCreateDevice(
+      gpu_, &device_info, nullptr, &device_
+    ));
   }
 
   /* Load device extensions. */
@@ -754,18 +831,20 @@ bool Context::init_device() {
   /* Use aliases without suffixes. */
   {
     auto bind_func{ [](auto & f1, auto & f2) { if (!f1) { f1 = f2; } } };
-    bind_func(         vkWaitSemaphores, vkWaitSemaphoresKHR);
-    bind_func(    vkCmdPipelineBarrier2, vkCmdPipelineBarrier2KHR);
-    bind_func(           vkQueueSubmit2, vkQueueSubmit2KHR);
-    bind_func(      vkCmdBeginRendering, vkCmdBeginRenderingKHR);
-    bind_func(        vkCmdEndRendering, vkCmdEndRenderingKHR);
-    bind_func(  vkCmdBindVertexBuffers2, vkCmdBindVertexBuffers2EXT);
+    bind_func(        vkWaitSemaphores, vkWaitSemaphoresKHR);
+    bind_func(   vkCmdPipelineBarrier2, vkCmdPipelineBarrier2KHR);
+    bind_func(          vkQueueSubmit2, vkQueueSubmit2KHR);
+    bind_func(     vkCmdBeginRendering, vkCmdBeginRenderingKHR);
+    bind_func(       vkCmdEndRendering, vkCmdEndRenderingKHR);
+    bind_func( vkCmdBindVertexBuffers2, vkCmdBindVertexBuffers2EXT);
   }
 
   /* Retrieved requested queues. */
   for (auto& pair : queues) {
     auto *queue = pair.first;
-    vkGetDeviceQueue(device_, queue->family_index, queue->queue_index, &queue->queue);
+    vkGetDeviceQueue(
+      device_, queue->family_index, queue->queue_index, &queue->queue
+    );
   }
   if (vulkan_xr_) {
     auto const& Q = queues_[TargetQueue::Main];

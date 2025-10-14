@@ -44,9 +44,12 @@ bool OpenXRSwapchain::finishFrame(VkQueue queue) {
 bool OpenXRSwapchain::create(
   XrSession session,
   XrSwapchainCreateInfo const& info,
-  std::shared_ptr<XRVulkanInterface> xr_graphics //
+  XRVulkanInterface *xr_graphics
 ) {
+  LOG_CHECK( xr_graphics != nullptr );
+
   create_info = info;
+  xr_graphics_ = xr_graphics;
 
   // Create the swapchain object.
   CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle))
@@ -92,9 +95,14 @@ bool OpenXRSwapchain::create(
 
 // ----------------------------------------------------------------------------
 
-void OpenXRSwapchain::destroy(std::shared_ptr<XRVulkanInterface> xr_graphics) {
-  xr_graphics->releaseSwapchainImage(images);
+void OpenXRSwapchain::destroy() {
+  if (xr_graphics_ == nullptr) {
+    return;
+  }
+
+  xr_graphics_->releaseSwapchainImage(images);
   images.clear();
+
   if (handle != XR_NULL_HANDLE) {
     xrDestroySwapchain(handle);
     handle = XR_NULL_HANDLE;

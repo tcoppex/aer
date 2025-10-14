@@ -1,9 +1,9 @@
-#ifndef AER_PLATFORM_BACKEND_SWAPCHAIN_H
-#define AER_PLATFORM_BACKEND_SWAPCHAIN_H
+#ifndef AER_PLATFORM_VULKAN_SWAPCHAIN_H_
+#define AER_PLATFORM_VULKAN_SWAPCHAIN_H_
 
 /* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 class Context;
 
 #include "aer/platform/swapchain_interface.h" //
@@ -74,7 +74,9 @@ class Swapchain : public SwapchainInterface {
 
  private:
   [[nodiscard]]
-  VkSurfaceFormat2KHR select_surface_format(VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2) const;
+  VkSurfaceFormat2KHR select_surface_format(
+    VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2
+  ) const;
 
   [[nodiscard]]
   VkPresentModeKHR select_present_mode(VkSurfaceKHR surface, bool use_vsync) const;

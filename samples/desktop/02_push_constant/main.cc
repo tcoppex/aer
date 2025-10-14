@@ -48,13 +48,14 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("02 - танцующий треугольник");
 
-    renderer_.set_color_clear_value({.float32 = {0.60f, 0.65f, 0.55f, 1.0f}});
+    renderer_.set_clear_color({0.60f, 0.65f, 0.55f, 1.0f});
 
     /* Setup the device vertex buffer. */
     {
       auto cmd = context_.create_transient_command_encoder();
 
-      vertex_buffer_ = cmd.create_buffer_and_upload(kVertices,
+      vertex_buffer_ = cmd.create_buffer_and_upload(
+        kVertices,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
 
@@ -110,7 +111,7 @@ class SampleApp final : public Application {
             .module = shaders[1u].module,
             .targets = {
               {
-                .format = renderer_.color_attachment().format,
+                .format = renderer_.color_format(),
                 .writeMask = VK_COLOR_COMPONENT_R_BIT
                            | VK_COLOR_COMPONENT_G_BIT
                            | VK_COLOR_COMPONENT_B_BIT
@@ -120,7 +121,7 @@ class SampleApp final : public Application {
             },
           },
           .depthStencil = {
-            .format = renderer_.depth_stencil_attachment().format,
+            .format = renderer_.depth_stencil_format(),
             .depthTestEnable = VK_TRUE,
             .depthWriteEnable = VK_TRUE,
             .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -146,7 +147,7 @@ class SampleApp final : public Application {
 
   void release() final {
     context_.destroy_pipeline(graphics_pipeline_);
-    context_.allocator().destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
   }
 
   void draw() final {

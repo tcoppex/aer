@@ -33,19 +33,24 @@ class SampleApp final : public Application {
   };
 
  public:
-  SampleApp() = default;
+  AppSettings settings() const noexcept final {
+    AppSettings S{};
+    S.renderer.sample_count = VK_SAMPLE_COUNT_4_BIT;
+    return S;
+  }
 
   bool setup() final {
-    renderer_.set_color_clear_value(vec4(0.125f, 0.125f, 0.125f, 1.0f));
+    renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 1.0f));
 
-    vertex_buffer_ = context_.create_buffer_and_upload(
+    vertex_buffer_ = context_.transient_create_buffer(
       kVertices,
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
 
-    uniform_buffer_ = context_.allocator().create_buffer(
+    uniform_buffer_ = context_.create_buffer(
       2u * sizeof(shader_interop::UniformCameraData),
-      VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+      VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
+      VMA_MEMORY_USAGE_CPU_TO_GPU
     );
 
     /* Create the descriptor set with its binding. */
@@ -112,7 +117,7 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -122,14 +127,13 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
         },
         .primitive = {
           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-          // .cullMode = VK_CULL_MODE_NONE,
         }
       }
     );
@@ -145,8 +149,8 @@ class SampleApp final : public Application {
       pipeline_layout_,
       graphics_pipeline_
     );
-    context_.allocator().destroy_buffer(uniform_buffer_);
-    context_.allocator().destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
   }
 
   void update(float dt) final {
@@ -157,7 +161,7 @@ class SampleApp final : public Application {
     auto const& frame = xr_->frameData();
 
     // Update uniform buffer for both eyes.
-    std::vector<shader_interop::UniformCameraData> cameraBuffer{
+    std::vector<shader_interop::UniformCameraData> camera_data{
       {
         .projectionMatrix = frame.projMatrices[0],
         .viewMatrix = frame.viewMatrices[0]
@@ -167,7 +171,7 @@ class SampleApp final : public Application {
         .viewMatrix = frame.viewMatrices[1]
       },
     };
-    context_.upload_buffer(cameraBuffer, uniform_buffer_);
+    context_.write_buffer(uniform_buffer_, camera_data);
 
     // Handle controllers inputs.
     float z_angle_delta{};
@@ -195,11 +199,16 @@ class SampleApp final : public Application {
     // Calculate new model matrix.
     {
       float const tZ = -10.0f + z_depth_delta * 7.0f;
-      float const rZ = lina::radians(z_angle_delta * 180.0f);
-      mat4f const translateMatrix = linalg::translation_matrix(float3{0.0f, 0.0f, tZ});
-      push_constant_.modelMatrix = linalg::mul(push_constant_.modelMatrix, translateMatrix);
-      mat4f const rotationMatrix = lina::rotation_matrix_z(rZ);
-      push_constant_.modelMatrix = linalg::mul(push_constant_.modelMatrix, rotationMatrix);
+      auto translateMatrix = linalg::translation_matrix(vec3(0.0f, 0.0f, tZ));
+
+      auto rotationMatrix = lina::rotation_matrix_z(
+        lina::radians(z_angle_delta * 180.0f)
+      );
+
+      push_constant_.modelMatrix = linalg::mul(
+        push_constant_.modelMatrix,
+        linalg::mul(translateMatrix, rotationMatrix)
+      );
     }
   }
 

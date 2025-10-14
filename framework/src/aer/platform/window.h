@@ -6,10 +6,10 @@
 /* -------------------------------------------------------------------------- */
 
 #if defined(ANDROID)
-#include "aer/platform/android/wm_android.h"
+#include "aer/platform/impl/android/wm_android.h"
 using Window = WMAndroid;
 #else
-#include "aer/platform/desktop/window.h"
+#include "aer/platform/impl/desktop/window.h"
 // using Window = WMDesktop;
 #endif
 

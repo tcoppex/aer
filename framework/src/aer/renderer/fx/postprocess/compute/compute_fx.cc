@@ -101,10 +101,10 @@ void ComputeFx::execute(CommandEncoder& cmd) const {
 
 void ComputeFx::releaseImagesAndBuffers() {
   for (auto &image : images_) {
-    allocator_ptr_->destroy_image(&image);
+    context_ptr_->destroy_image(image);
   }
   for (auto &buffer : buffers_) {
-    allocator_ptr_->destroy_buffer(buffer);
+    context_ptr_->destroy_buffer(buffer);
   }
 }
 

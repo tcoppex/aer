@@ -1,11 +1,11 @@
-#ifndef AER_PLATFORM_BACKEND_CONTEXT_H
-#define AER_PLATFORM_BACKEND_CONTEXT_H
+#ifndef AER_PLATFORM_VULKAN_CONTEXT_H_
+#define AER_PLATFORM_VULKAN_CONTEXT_H_
 
 /* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h"
-#include "aer/platform/backend/command_encoder.h"
-#include "aer/platform/backend/allocator.h"
+#include "aer/platform/vulkan/types.h"
+#include "aer/platform/vulkan/command_encoder.h"
+#include "aer/platform/vulkan/allocator.h"
 
 #include "aer/platform/openxr/xr_vulkan_interface.h" //
 
@@ -26,8 +26,7 @@ class Context {
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
-    std::vector<char const*> const& device_extensions,
-    std::shared_ptr<XRVulkanInterface> vulkan_xr
+    XRVulkanInterface *vulkan_xr
   );
 
   void deinit();
@@ -48,38 +47,107 @@ class Context {
   }
 
   [[nodiscard]]
-  backend::Queue const& queue(TargetQueue const target = TargetQueue::Main) const noexcept {
+  backend::Queue const& queue(
+    TargetQueue const target = TargetQueue::Main
+  ) const noexcept {
     return queues_[target];
   }
 
   [[nodiscard]]
-  backend::GPUProperties const& gpu_properties() const noexcept {
+  backend::GPUProperties const& properties() const noexcept {
     return properties_;
   }
 
   [[nodiscard]]
-  ResourceAllocator* allocator_ptr() noexcept {
-    return resource_allocator_.get();
-  }
-
-  [[nodiscard]]
-  ResourceAllocator const* allocator_ptr() const noexcept {
-    return resource_allocator_.get();
-  }
-
-  [[nodiscard]]
-  ResourceAllocator& allocator() noexcept {
-    return *resource_allocator_;
-  }
-
-  [[nodiscard]]
-  ResourceAllocator const& allocator() const noexcept {
-    return *resource_allocator_;
+  backend::Allocator const& allocator() const noexcept {
+    return allocator_;
   }
 
   void device_wait_idle() const {
     CHECK_VK(vkDeviceWaitIdle(device_));
   }
+
+  // --- Allocator composition interface --
+
+  [[nodiscard]]
+  backend::Buffer create_buffer(
+    VkDeviceSize const size,
+    VkBufferUsageFlags2KHR const usage,
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateFlags const flags = {}
+  ) const {
+    return allocator_.create_buffer(size, usage, memory_usage, flags);
+  }
+
+  void destroy_buffer(backend::Buffer const& buffer) const {
+    allocator_.destroy_buffer(buffer);
+  }
+
+  [[nodiscard]]
+  backend::Buffer create_staging_buffer(
+    size_t const bytesize,
+    void const* host_data = nullptr,
+    size_t host_data_size = 0u
+  ) const {
+    return allocator_.create_staging_buffer(bytesize, host_data, host_data_size);
+  }
+
+  void clear_staging_buffers() const {
+    allocator_.clear_staging_buffers();
+  }
+
+  void map_memory(backend::Buffer const& buffer, void **data) const {
+    allocator_.map_memory(buffer, data);
+  }
+
+  void unmap_memory(backend::Buffer const& buffer) const {
+    allocator_.unmap_memory(buffer);
+  }
+
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    size_t dst_offset,
+    void const* host_data,
+    size_t host_offset,
+    size_t bytesize
+  ) const {
+    return allocator_.write_buffer(
+      dst_buffer, dst_offset, host_data, host_offset, bytesize
+    );
+  }
+
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    void const* host_data,
+    size_t bytesize
+  ) const {
+    return allocator_.write_buffer(dst_buffer, host_data, bytesize);
+  }
+
+  template<typename T> requires (SpanConvertible<T>)
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    T const& host_data
+  ) {
+    auto const host_span{ std::span(host_data) };
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
+    return write_buffer(dst_buffer, host_span.data(), bytesize);
+  }
+
+  backend::Image create_image(
+    VkImageCreateInfo const& image_info,
+    VkImageViewCreateInfo view_info,
+    VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_GPU_ONLY
+  ) const {
+    return allocator_.create_image(image_info, view_info, memory_usage);
+  }
+
+  void destroy_image(backend::Image &image) const {
+    allocator_.destroy_image(image);
+  }
+
 
   // --- Surface --
 
@@ -90,14 +158,21 @@ class Context {
   // --- Image ---
 
   [[nodiscard]]
+  VkSampleCountFlags sample_counts() const noexcept;
+
+  [[nodiscard]]
+  VkSampleCountFlagBits max_sample_count() const noexcept;
+
+  [[nodiscard]]
   backend::Image create_image_2d(
     uint32_t width,
     uint32_t height,
     uint32_t array_layers,
     uint32_t levels,
     VkFormat format,
-    VkImageUsageFlags extra_usage,
-    std::string_view debugName
+    VkSampleCountFlagBits sample_count,
+    VkImageUsageFlags usage,
+    std::string_view debug_name
   ) const;
 
   [[nodiscard]]
@@ -105,68 +180,93 @@ class Context {
     uint32_t width,
     uint32_t height,
     VkFormat format,
-    VkImageUsageFlags extra_usage = {},
-    std::string_view debugName = ""
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+    std::string_view debug_name = ""
   ) const {
-    return create_image_2d(width, height, 1u, 1u, format, extra_usage, debugName);
+    return create_image_2d(
+      width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debug_name
+    );
   }
-
 
   // --- Shader Module ---
 
   [[nodiscard]]
-  backend::ShaderModule create_shader_module(std::string_view directory, std::string_view shader_name) const;
+  backend::ShaderModule create_shader_module(
+    std::string_view directory,
+    std::string_view shader_name
+  ) const;
 
   [[nodiscard]]
-  backend::ShaderModule create_shader_module(std::string_view filepath) const;
+  backend::ShaderModule create_shader_module(
+    std::string_view filepath
+  ) const;
 
   [[nodiscard]]
-  std::vector<backend::ShaderModule> create_shader_modules(std::string_view directory, std::vector<std::string_view> const& shader_names) const;
+  std::vector<backend::ShaderModule> create_shader_modules(
+    std::string_view directory,
+    std::vector<std::string_view> const& shader_names
+  ) const;
 
   [[nodiscard]]
-  std::vector<backend::ShaderModule> create_shader_modules(std::vector<std::string_view> const& filepaths) const;
+  std::vector<backend::ShaderModule> create_shader_modules(
+    std::vector<std::string_view> const& filepaths
+  ) const;
 
-  void release_shader_module(backend::ShaderModule const& shader) const;
+  void release_shader_module(
+    backend::ShaderModule const& shader
+  ) const;
 
-  void release_shader_modules(std::vector<backend::ShaderModule> const& shaders) const;
+  void release_shader_modules(
+    std::vector<backend::ShaderModule> const& shaders
+  ) const;
 
-  // --- Command Encoder ---
+  // --- Transient Command Encoder ---
 
   [[nodiscard]]
-  CommandEncoder create_transient_command_encoder(Context::TargetQueue const& target_queue = TargetQueue::Main) const;
+  CommandEncoder create_transient_command_encoder(
+    Context::TargetQueue const& target_queue = TargetQueue::Main
+  ) const;
 
-  void finish_transient_command_encoder(CommandEncoder const& encoder) const;
+  void finish_transient_command_encoder(
+    CommandEncoder const& encoder
+  ) const;
 
   // --- Transient Command Encoder Wrappers ---
 
   void transition_images_layout(
     std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
-    VkImageLayout const dst_layout
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const;
+
+  // (formerly 'create_buffer_and_upload')
+  [[nodiscard]]
+  backend::Buffer transient_create_buffer(
+    void const* host_data,
+    size_t host_data_size,
+    VkBufferUsageFlags2KHR usage,
+    size_t device_buffer_offset = 0u,
+    size_t device_buffer_size = 0u
   ) const;
 
   template<typename T> requires (SpanConvertible<T>)
-  [[nodiscard]] backend::Buffer create_buffer_and_upload(
+  [[nodiscard]] backend::Buffer transient_create_buffer(
     T const& host_data,
-    VkBufferUsageFlags2KHR const usage,
-    size_t const device_buffer_offset = 0u,
-    size_t const device_buffer_size = 0u
+    VkBufferUsageFlags2KHR usage,
+    size_t device_buffer_offset = 0u,
+    size_t device_buffer_size = 0u
   ) const {
     auto const host_span{ std::span(host_data) };
-    size_t const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    return create_buffer_and_upload(host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size);
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
+    return transient_create_buffer(
+      host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
+    );
   }
 
-  [[nodiscard]]
-  backend::Buffer create_buffer_and_upload(
-    void const* host_data,
-    size_t const host_data_size,
-    VkBufferUsageFlags2KHR const usage,
-    size_t device_buffer_offset = 0u,
-    size_t const device_buffer_size = 0u
-  ) const;
-
-  void transfer_host_to_device(
+  void transient_upload_buffer(
     void const* host_data,
     size_t const host_data_size,
     backend::Buffer const& device_buffer,
@@ -174,13 +274,18 @@ class Context {
   ) const;
 
   template<typename T> requires (SpanConvertible<T>)
-  void upload_buffer(T const& host_data, backend::Buffer const& device_buffer) {
+  void transient_upload_buffer(
+    T const& host_data,
+    backend::Buffer const& device_buffer
+  ) {
     auto const host_span{ std::span(host_data) };
-    size_t const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    transfer_host_to_device(host_span.data(), bytesize, device_buffer);
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
+    transient_upload_buffer(host_span.data(), bytesize, device_buffer);
   }
 
-  void copy_buffer(
+  void transient_copy_buffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t const buffersize
@@ -198,7 +303,7 @@ class Context {
   template <typename T>
   void set_debug_object_name(T object, std::string_view name) const {
 #ifndef NDEBUG
-    vkutils::SetDebugObjectName(device_, object, name);
+    vk_utils::SetDebugObjectName(device_, object, name);
 #endif
   }
 
@@ -228,7 +333,7 @@ class Context {
       return false;
     }
     feature = { .sType = sType };
-    vkutils::PushNextVKStruct(&feature_.base, &feature);
+    vk_utils::PushNextVKStruct(&feature_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
         device_extension_names_.end(),
@@ -250,6 +355,7 @@ class Context {
   [[nodiscard]]
   bool init_device();
 
+
  private:
   static constexpr bool kEnableDebugValidationLayer{ true };
 
@@ -270,12 +376,9 @@ class Context {
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
     VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-
-    // -------------------------------
     VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
     VK_KHR_SPIRV_1_4_EXTENSION_NAME,
     VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
-    // -------------------------------
   };
   // -----------------------------------------------
 
@@ -318,8 +421,6 @@ class Context {
 
   } feature_;
 
-  std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
-
   VkInstance instance_{};
   VkPhysicalDevice gpu_{};
   VkDevice device_{};
@@ -329,9 +430,12 @@ class Context {
   EnumArray<backend::Queue, TargetQueue> queues_{};
   EnumArray<VkCommandPool, TargetQueue> transient_command_pools_{};
 
-  std::unique_ptr<ResourceAllocator> resource_allocator_{}; //
+  // --------------------------
+
+  backend::Allocator allocator_{};
+  XRVulkanInterface *vulkan_xr_{}; //
 };
 
 /* -------------------------------------------------------------------------- */
 
-#endif
+#endif // AER_PLATFORM_VULKAN_CONTEXT_H_

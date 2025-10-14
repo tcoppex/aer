@@ -5,13 +5,11 @@
 
 #include "aer/core/common.h"
 
-#include "aer/platform/backend/swapchain.h"
-// #include "aer/platform/openxr/xr_vulkan_interface.h" //
+#include "aer/platform/vulkan/swapchain.h"
+#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/openxr/openxr_context.h" //
 
 #include "aer/renderer/render_context.h"
-#include "aer/platform/backend/command_encoder.h"
-
 #include "aer/renderer/fx/skybox.h"
 #include "aer/renderer/gpu_resources.h" // (for GLTFScene)
 
@@ -27,15 +25,18 @@
  * -> 'create_render_target' can be used to create custom dynamic render target,
  *    'create_framebuffer' to create legacy rendering target.
  *
- *  Note: As a RTInterface, Renderer always returns 1 color_attachment in the
- *        form of the current swapchain image.
- *
  **/
-class Renderer : public backend::RTInterface {
+class Renderer {
  public:
   static constexpr VkClearValue kDefaultColorClearValue{{
     .float32 = {1.0f, 0.25f, 0.75f, 1.0f}
   }};
+
+  struct Settings {
+    VkFormat color_format{VK_FORMAT_UNDEFINED};
+    VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
+    VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+  };
 
  public:
   Renderer() = default;
@@ -43,24 +44,31 @@ class Renderer : public backend::RTInterface {
 
   void init(
     RenderContext& context,
-    SwapchainInterface* swapchain_ptr
+    SwapchainInterface** swapchain_ptr,
+    Settings const& settings
   );
 
   void deinit();
 
   [[nodiscard]]
-  CommandEncoder begin_frame();
+  CommandEncoder& begin_frame();
 
   void end_frame();
 
   [[nodiscard]]
-  RenderContext const& context() const noexcept { return *ctx_ptr_; }
+  RenderContext const& context() const noexcept {
+    return *context_ptr_;
+  }
 
   [[nodiscard]]
-  Skybox const& skybox() const noexcept { return skybox_; }
+  Skybox const& skybox() const noexcept {
+    return skybox_;
+  }
 
   [[nodiscard]]
-  Skybox& skybox() noexcept { return skybox_; }
+  Skybox& skybox() noexcept {
+    return skybox_;
+  }
 
   // --- Render Target (Dynamic Rendering) ---
 
@@ -70,9 +78,10 @@ class Renderer : public backend::RTInterface {
   ) const;
 
   // --- Graphics Pipelines ---
-  // [those methods are specialization of those found in RenderContext
+
+  // those methods are specialization of those found in RenderContext
   // to use internal color/depth buffer by default when unspecified.
-  // Ideally it should be remove from here altogether]
+  // Ideally it should be remove from here altogether
 
   [[nodiscard]]
   VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
@@ -127,132 +136,109 @@ class Renderer : public backend::RTInterface {
   }
 
  public:
-  /* ----- RTInterface Overrides ----- */
+  // ------------------------------
+  [[nodiscard]]
+  VkFormat color_format() const noexcept {
+    return settings_.color_format;
+  }
 
   [[nodiscard]]
-  VkExtent2D surface_size() const final {
+  VkFormat depth_stencil_format() const noexcept {
+    return settings_.depth_stencil_format;
+  }
+
+  [[nodiscard]]
+  VkSampleCountFlagBits sample_count() const noexcept {
+    return settings_.sample_count;
+  }
+  // ------------------------------
+
+  [[nodiscard]]
+  SwapchainInterface& swapchain() const {
     LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->surfaceSize();
+    return **swapchain_ptr_;
   }
 
   [[nodiscard]]
-  uint32_t color_attachment_count() const final {
-    return 1u;
+  uint32_t swapchain_image_count() const {
+    return swapchain().imageCount();
   }
 
   [[nodiscard]]
-  std::vector<backend::Image> color_attachments() const final {
-    return { color_attachment() };
+  backend::Image swapchain_image() const {
+    return swapchain().currentImage();
   }
 
   [[nodiscard]]
-  backend::Image color_attachment(uint32_t index = 0u) const final {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->currentImage();
-  }
-
-  // VkFormat color_attachment_format(uint32_t index = 0u) const {
-  //   return color_attachment(index).format;
-  // }
-
-  [[nodiscard]]
-  backend::Image depth_stencil_attachment() const final {
-    return depth_stencil_;
+  backend::RTInterface const& main_render_target() const noexcept {
+    return *frame_resource().main_rt;
   }
 
   [[nodiscard]]
-  VkClearValue color_clear_value(uint32_t index = 0u) const final {
-    return color_clear_value_;
+  VkExtent2D surface_size() const noexcept {
+    return main_render_target().surface_size(); //
   }
 
-  [[nodiscard]]
-  VkClearValue depth_stencil_clear_value() const final {
-    return depth_stencil_clear_value_;
+  void set_clear_color(vec4 const& color, uint32_t index = 0u) {
+    for (auto & frame : frames_) {
+      frame.main_rt->set_color_clear_value(
+        {.float32 = { color.x, color.y, color.z, color.w }},
+        index
+      );
+    }
   }
 
-  [[nodiscard]]
-  VkAttachmentLoadOp color_load_op(uint32_t index = 0u) const final {
-    return color_load_op_;
+  bool resize(uint32_t w, uint32_t h);
+
+  /* Blit an image to the final color image, before the swapchain. */
+  void blit_color(
+    CommandEncoder const& cmd,
+    backend::Image const& src_image
+  ) const noexcept;
+
+  void enable_postprocess(bool status) noexcept {
+    enable_postprocess_ = status;
   }
-
-  [[nodiscard]]
-  uint32_t view_mask() const noexcept final {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->viewMask();
-  }
-
-  void set_color_clear_value(VkClearColorValue clear_color, uint32_t index = 0u) final {
-    color_clear_value_.color = clear_color;
-  }
-
-  void set_depth_stencil_clear_value(VkClearDepthStencilValue clear_depth_stencil) final {
-    depth_stencil_clear_value_.depthStencil = clear_depth_stencil;
-  }
-
-  void set_color_load_op(VkAttachmentLoadOp load_op, uint32_t index = 0u) final {
-    color_load_op_ = load_op;
-  }
-
-  bool resize(uint32_t w, uint32_t h) final;
-
-  // -----------
-
-  void set_color_clear_value(vec4 clear_color, uint32_t index = 0u) {
-    set_color_clear_value(
-      {.float32 = { clear_color.x, clear_color.y, clear_color.z, clear_color.w }},
-      index
-    );
-  }
-
-  [[nodiscard]]
-  uint32_t swap_image_count() const noexcept {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->imageCount();
-  }
-
- private:
-  void init_view_resources();
-  void deinit_view_resources();
-
-  // ------------------------------------------
-  [[nodiscard]]
-  VkFormat valid_depth_format() const noexcept {
-    return VK_FORMAT_D24_UNORM_S8_UINT //
-           ;
-  }
-  // ------------------------------------------
 
  private:
   struct FrameResources {
     VkCommandPool command_pool{};
     VkCommandBuffer command_buffer{};
+    CommandEncoder cmd{};
+    std::unique_ptr<RenderTarget> main_rt{};
   };
 
-  /* References for quick access */
-  RenderContext* ctx_ptr_{};
-  ResourceAllocator* allocator_ptr_{};
+  void init_view_resources();
+
+  void deinit_view_resources();
+
+  FrameResources& frame_resource() noexcept {
+    return frames_[frame_index_];
+  }
+
+  FrameResources const& frame_resource() const noexcept {
+    return frames_[frame_index_];
+  }
+
+  void apply_postprocess();
+
+ private:
+  /* Non owning References. */
+  RenderContext* context_ptr_{};
   VkDevice device_{};
+  SwapchainInterface** swapchain_ptr_{};
 
-  SwapchainInterface* swapchain_ptr_{};
-
-  /* Default depth-stencil buffer. */
-  backend::Image depth_stencil_{}; // xxx
+  Settings settings_{};
 
   /* Timeline frame resources */
   std::vector<FrameResources> frames_{};
   uint32_t frame_index_{};
 
-  /* Miscs resources */
-  VkClearValue color_clear_value_{kDefaultColorClearValue};
-  VkClearValue depth_stencil_clear_value_{{{1.0f, 0u}}};
-  VkAttachmentLoadOp color_load_op_{VK_ATTACHMENT_LOAD_OP_CLEAR};
-
-  /* Reference to the current CommandEncoder returned by 'begin_frame' */
-  CommandEncoder cmd_{}; //
+  bool enable_postprocess_{true};
 
   // ----------
 
-  Skybox skybox_{}; //
+  Skybox skybox_{};
 };
 
 /* -------------------------------------------------------------------------- */

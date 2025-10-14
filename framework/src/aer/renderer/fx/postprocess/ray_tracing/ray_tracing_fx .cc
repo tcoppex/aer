@@ -1,6 +1,6 @@
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h"
 
-#include "aer/platform/backend/accel_struct.h"
+#include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
@@ -79,7 +79,8 @@ bool RayTracingFx::resize(VkExtent2D const dimension) {
     context_ptr_->create_image_2d(
       dimension_.width, dimension_.height,
       VK_FORMAT_R16G16B16A16_SFLOAT, // (for accumulation)
-        VK_IMAGE_USAGE_STORAGE_BIT
+        VK_IMAGE_USAGE_SAMPLED_BIT
+      | VK_IMAGE_USAGE_STORAGE_BIT
       | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // (for blitting)
       ,
       "RayTracingFx::AccumulationImage"
@@ -221,7 +222,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
   size_t const sbt_buffersize = offsetCallable + sizeCallable;
 
-  sbt_storage_buffer_ = allocator_ptr_->create_buffer(
+  sbt_storage_buffer_ = context_ptr_->create_buffer(
     sbt_buffersize,
       VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -231,12 +232,12 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
     VMA_MEMORY_USAGE_CPU_TO_GPU
   );
 
-  backend::Buffer staging_buffer = allocator_ptr_->create_staging_buffer(sbt_buffersize);
+  auto staging_buffer = context_ptr_->create_staging_buffer(sbt_buffersize);
 
   // Map staging and fill regions with shader handles
   {
-    void* mapped;
-    allocator_ptr_->map_memory(staging_buffer, &mapped);
+    void* mapped{};
+    context_ptr_->map_memory(staging_buffer, &mapped);
 
     uint8_t* pData = reinterpret_cast<uint8_t*>(mapped);
 
@@ -265,10 +266,10 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
     copyHandles(groupOffset, numCallable, offsetCallable);
 
-    allocator_ptr_->unmap_memory(staging_buffer);
+    context_ptr_->unmap_memory(staging_buffer);
   }
 
-  context_ptr_->copy_buffer(
+  context_ptr_->transient_copy_buffer(
     staging_buffer, sbt_storage_buffer_, sbt_buffersize
   );
   context_ptr_->device_wait_idle();

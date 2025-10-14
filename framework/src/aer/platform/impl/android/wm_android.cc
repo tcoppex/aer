@@ -3,8 +3,8 @@
 using namespace std::chrono_literals;
 
 #include "aer/core/events.h"
-#include "aer/platform/android/wm_android.h"
-#include "aer/platform/android/jni_context.h"
+#include "aer/platform/impl/android/wm_android.h"
+#include "aer/platform/impl/android/jni_context.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -16,10 +16,26 @@ struct DefaultAppCmdCallbacks final : public AppCmdCallbacks {
   void handleResize(android_app* app, bool signalOnResize = true) {
     int32_t const iw = ANativeWindow_getWidth(app->window);
     int32_t const ih = ANativeWindow_getHeight(app->window);
-    wma_->surface_width_ = static_cast<uint32_t>(iw);
-    wma_->surface_height_ = static_cast<uint32_t>(ih);
-    if (signalOnResize) {
-      Events::Get().onResize(iw, ih);
+    auto const w = static_cast<uint32_t>(iw);
+    auto const h = static_cast<uint32_t>(ih);
+    LOGD("handleResize {} {} // {} {}",
+      wma_->surface_width_, wma_->surface_height_,
+      w, h
+    );
+
+    if (!signalOnResize) {
+      wma_->surface_width_ = w;
+      wma_->surface_height_ = h;
+    }
+    else
+    {
+      // [in some case we need to trigger resize after having set the size]
+      // if (wma_->surface_width_ != w || wma_->surface_height_ != h)
+      {
+        wma_->surface_width_ = w;
+        wma_->surface_height_ = h;
+        Events::Get().onResize(iw, ih);
+      }
     }
   }
 
@@ -29,22 +45,24 @@ struct DefaultAppCmdCallbacks final : public AppCmdCallbacks {
     if (app->window != nullptr) {
       // We only need to create the display & context once.
       if (wma_->native_window == nullptr) {
-        LOGV("> Native Android Window created.");
-        // wma_->native_window = app->window;
-        // handleResize(app, false); //
+        LOGD("> Native Android Window created.");
+        wma_->native_window = app->window;
+        handleResize(app, false); //
       }
-      wma_->native_window = app->window;
+      // wma_->native_window = app->window;
 
       // we need to specify the surface resolution for the first initialization
       // but we don't want to create everything as it's the true "resize"
       // event that will signal it.
-      handleResize(app, false); //
+      // handleResize(app, false); //
     }
   }
 
   void onTermWindow(android_app* app) final {
     LOGD("{}", __FUNCTION__);
     wma_->native_window = nullptr;
+    wma_->surface_width_ = 0u;
+    wma_->surface_height_ = 0u;
   }
 
   void onWindowResized(android_app* app) final {
@@ -107,7 +125,7 @@ WMAndroid::WMAndroid()
 
 // ----------------------------------------------------------------------------
 
-bool WMAndroid::init(AppData_t app_data) {
+bool WMAndroid::init(Settings const& settings, AppData_t app_data) {
   LOG_CHECK(app_data != nullptr);
 
   JNIContext::Initialize(app_data);

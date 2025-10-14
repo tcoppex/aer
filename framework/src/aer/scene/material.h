@@ -1,5 +1,5 @@
-#ifndef AER_SCENE_MATERIAL_H
-#define AER_SCENE_MATERIAL_H
+#ifndef AER_SCENE_MATERIAL_H_
+#define AER_SCENE_MATERIAL_H_
 
 #include "aer/core/common.h"
 
@@ -87,4 +87,4 @@ struct MaterialRef {
 
 }  // namespace scene
 
-#endif // AER_SCENE_MATERIAL_H
+#endif // AER_SCENE_MATERIAL_H_

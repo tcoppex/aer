@@ -27,9 +27,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->setTitle("04 - خوراي ، كىشىلەر ماڭا دىققەت قىلىۋاتىدۇ");
 
-    renderer_.set_color_clear_value({{ 0.94f, 0.93f, 0.94f, 1.0f }});
-
-    allocator_ptr_ = context_.allocator_ptr();
+    renderer_.set_clear_color({ 0.94f, 0.93f, 0.94f, 1.0f});
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
@@ -69,11 +67,11 @@ class SampleApp final : public Application {
 
       /* Transfer the cube geometry (vertices attributes & indices) to the device. */
       vertex_buffer_ = cmd.create_buffer_and_upload(
-        cube_.get_vertices(),
+        cube_.vertices(),
         VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
       );
       index_buffer_ = cmd.create_buffer_and_upload(
-        cube_.get_indices(),
+        cube_.indices(),
         VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
       );
 
@@ -163,7 +161,7 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_attachment().format,
+              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -173,7 +171,7 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_attachment().format,
+          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -194,12 +192,10 @@ class SampleApp final : public Application {
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
     context_.destroy_pipeline_layout(graphics_pipeline_.layout());
     context_.destroy_pipeline(graphics_pipeline_);
-
-    allocator_ptr_->destroy_image(&image_);
-
-    allocator_ptr_->destroy_buffer(index_buffer_);
-    allocator_ptr_->destroy_buffer(vertex_buffer_);
-    allocator_ptr_->destroy_buffer(uniform_buffer_);
+    context_.destroy_image(image_);
+    context_.destroy_buffer(index_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void update(float const dt) final {
@@ -226,7 +222,7 @@ class SampleApp final : public Application {
 
           pass.bind_vertex_buffer(vertex_buffer_);
           pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-          pass.draw_indexed(cube_.get_index_count());
+          pass.draw_indexed(cube_.index_count());
 
           // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
         }
@@ -237,8 +233,6 @@ class SampleApp final : public Application {
   }
 
  private:
-  ResourceAllocator* allocator_ptr_{};
-
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 

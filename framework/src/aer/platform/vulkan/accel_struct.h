@@ -1,8 +1,8 @@
-#ifndef AER_PLATFORM_BACKEND_ACCEL_STRUCT_H_
-#define AER_PLATFORM_BACKEND_ACCEL_STRUCT_H_
+#ifndef AER_PLATFORM_VULKAN_ACCEL_STRUCT_H_
+#define AER_PLATFORM_VULKAN_ACCEL_STRUCT_H_
 
 #include <vector>
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 
 /* -------------------------------------------------------------------------- */
 

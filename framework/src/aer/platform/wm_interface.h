@@ -1,21 +1,28 @@
-#ifndef AER_PLATEFORM_WM_INTERFACE_H
-#define AER_PLATEFORM_WM_INTERFACE_H
+#ifndef AER_PLATEFORM_WM_INTERFACE_H_
+#define AER_PLATEFORM_WM_INTERFACE_H_
 
 #include "aer/core/common.h"
 #include "aer/platform/common.h"
 #include "aer/platform/openxr/xr_platform_interface.h"
 
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 
-/* -------------------------------------------------------------------------- */
+// ----------------------------------------------------------------------------
 
 struct WMInterface {
+ public:
+  struct Settings {
+    uint32_t width{};
+    uint32_t height{};
+  };
+
+ public:
   WMInterface() = default;
 
   virtual ~WMInterface() = default;
 
   [[nodiscard]]
-  virtual bool init(AppData_t app_data) = 0;
+  virtual bool init(Settings const& settings, AppData_t app_data) = 0;
 
   virtual void shutdown() = 0;
 
@@ -26,10 +33,10 @@ struct WMInterface {
   virtual void close() noexcept = 0;
 
   [[nodiscard]]
-  virtual uint32_t surface_width() const noexcept = 0;
+  virtual uint32_t surfaceWidth() const noexcept = 0;
 
   [[nodiscard]]
-  virtual uint32_t surface_height() const noexcept = 0;
+  virtual uint32_t surfaceHeight() const noexcept = 0;
 
   [[nodiscard]]
   virtual void* handle() const noexcept = 0;
@@ -55,4 +62,4 @@ struct WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_PLATEFORM_WM_INTERFACE_H
+#endif  // AER_PLATEFORM_WM_INTERFACE_H_

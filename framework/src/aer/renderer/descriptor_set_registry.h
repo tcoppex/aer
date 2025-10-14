@@ -1,7 +1,7 @@
 #pragma once
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 
 class Context;
 class Skybox;

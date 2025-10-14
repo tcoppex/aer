@@ -1,4 +1,4 @@
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 
 #include <filesystem>
 #include <vulkan/vk_enum_string_helper.h>
@@ -8,18 +8,19 @@
 
 /* -------------------------------------------------------------------------- */
 
-namespace vkutils {
+namespace vk_utils {
 
 VkShaderModule CreateShaderModule(
-  VkDevice const device,
+  VkDevice device,
   char const* shader_directory,
   char const* shader_name
 ) {
   /*
-  * Note :
-  * Since maintenance5, shader module creation can be bypassed if VkShaderModuleCreateInfo
-  * is passed to the VkPipelineShaderStageCreateInfo.
-  * see https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VkShaderModule
+  * Note:
+  * Since maintenance5, shader module creation can be bypassed if
+  * VkShaderModuleCreateInfo is passed to the VkPipelineShaderStageCreateInfo.
+  *
+  * https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VkShaderModule
   */
 
   namespace fs = std::filesystem;
@@ -28,9 +29,9 @@ VkShaderModule CreateShaderModule(
                           : fs::path(shader_directory) / (std::string(shader_name) + ".spv")
                           ;
 
-  std::string const filename{spirv_path.string()};
+  auto const filename{spirv_path.string()};
 
-  utils::FileReader reader;
+  ::utils::FileReader reader;
   if (!reader.read(filename)) {
     LOG_FATAL("The spirv shader \"{}\" could not be found.\n", spirv_path.string());
   }
@@ -50,7 +51,7 @@ VkShaderModule CreateShaderModule(
 
 // ----------------------------------------------------------------------------
 
-VkResult CheckVKResult(VkResult result, char const* file, int const line, bool const bExitOnFail) {
+VkResult CheckVKResult(VkResult result, char const* file, int line, bool bExitOnFail) {
   if (VK_SUCCESS != result) {
     LOGE("Vulkan error @ \"{}\" [{}] : [{}].\n", file, line, string_VkResult(result));
     if (bExitOnFail) {
@@ -62,7 +63,8 @@ VkResult CheckVKResult(VkResult result, char const* file, int const line, bool c
 
 // ----------------------------------------------------------------------------
 
-bool IsValidStencilFormat(VkFormat const format) {
+bool IsValidStencilFormat(VkFormat format) {
+  // return FormatIsDepthAndStencil(format);
   return (format == VK_FORMAT_D16_UNORM_S8_UINT)
       || (format == VK_FORMAT_D24_UNORM_S8_UINT)
       || (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
@@ -72,7 +74,7 @@ bool IsValidStencilFormat(VkFormat const format) {
 // ----------------------------------------------------------------------------
 
 std::tuple<VkPipelineStageFlags2, VkAccessFlags2> MakePipelineStageAccessTuple(
-  VkImageLayout const state
+  VkImageLayout state
 ) {
   switch(state) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
@@ -212,7 +214,7 @@ void TransformDescriptorSetWriteEntries(
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
   VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
   VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+  VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData,
   void* pUserData
 ) {
   std::string const errorTypeString = string_VkDebugUtilsMessageTypeFlagsEXT(messageTypes);

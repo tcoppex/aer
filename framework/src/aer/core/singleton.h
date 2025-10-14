@@ -1,5 +1,5 @@
-#ifndef AER_CORE_SINGLETON_H
-#define AER_CORE_SINGLETON_H
+#ifndef AER_CORE_SINGLETON_H_
+#define AER_CORE_SINGLETON_H_
 
 #include <cassert>
 #include <utility>
@@ -43,4 +43,4 @@ template<class T> T* Singleton<T>::sInstance = nullptr;
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_CORE_SINGLETON_H
+#endif  // AER_CORE_SINGLETON_H_

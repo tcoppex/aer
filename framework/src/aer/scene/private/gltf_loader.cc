@@ -647,7 +647,7 @@ void ExtractMeshes(
       for (uint32_t prim_index = 0u; prim_index < valid_prim_indices.size(); ++prim_index) {
         uint32_t const valid_prim_index = valid_prim_indices[prim_index];
         cgltf_primitive const& prim{ node.mesh->primitives[valid_prim_index] };
-        LOG_CHECK(ConvertTopology(prim) == mesh->get_topology());
+        LOG_CHECK(ConvertTopology(prim) == mesh->topology());
 
         Geometry::Primitive primitive{};
 

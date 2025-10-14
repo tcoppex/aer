@@ -5,15 +5,17 @@
 
 namespace scene {
 
-void Mesh::initialize_submesh_descriptors(AttributeLocationMap const& attribute_to_location) {
-  LOG_CHECK( get_primitive_count() > 0 );
+void Mesh::initialize_submesh_descriptors(
+  AttributeLocationMap const& attribute_to_location
+) {
+  LOG_CHECK( primitive_count() > 0 );
   if (submeshes.empty()) {
-    submeshes.resize(get_primitive_count(), {.parent = this});
+    submeshes.resize(primitive_count(), {.parent = this});
   }
-  LOG_CHECK( get_primitive_count() == submeshes.size() );
+  LOG_CHECK( primitive_count() == submeshes.size() );
 
-  for (uint32_t i = 0u; i < get_primitive_count(); ++i) {
-    auto const& prim{ get_primitive(i) };
+  for (uint32_t i = 0u; i < primitive_count(); ++i) {
+    auto const& prim{ primitive(i) };
     auto& submesh{ submeshes[i] };
 
     submesh.draw_descriptor = {
@@ -66,7 +68,7 @@ PipelineVertexBufferDescriptors Mesh::pipeline_vertex_buffer_descriptors() const
 // ----------------------------------------------------------------------------
 
 VkPrimitiveTopology Mesh::vk_primitive_topology() const {
-  switch (get_topology()) {
+  switch (topology()) {
     case Topology::TriangleStrip:
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 
@@ -82,7 +84,7 @@ VkPrimitiveTopology Mesh::vk_primitive_topology() const {
 // ----------------------------------------------------------------------------
 
 VkIndexType Mesh::vk_index_type() const {
-  auto format = get_index_format();
+  auto format = index_format();
   switch (format) {
 
     case IndexFormat::U32:
@@ -104,7 +106,7 @@ VkIndexType Mesh::vk_index_type() const {
 // ----------------------------------------------------------------------------
 
 VkFormat Mesh::vk_format(AttributeType const attrib_type) const {
-  switch (get_format(attrib_type)) {
+  switch (attribute_format(attrib_type)) {
     case AttributeFormat::RG_F32:
       return VK_FORMAT_R32G32_SFLOAT;
     break;
@@ -124,7 +126,10 @@ VkFormat Mesh::vk_format(AttributeType const attrib_type) const {
 
 // ----------------------------------------------------------------------------
 
-VertexInputDescriptor Mesh::create_vertex_input_descriptors(AttributeOffsetMap const& attribute_to_offset, AttributeLocationMap const& attribute_to_location) const {
+VertexInputDescriptor Mesh::create_vertex_input_descriptors(
+  AttributeOffsetMap const& attribute_to_offset,
+  AttributeLocationMap const& attribute_to_location
+) const {
   VertexInputDescriptor result{};
 
   std::map<uint64_t, std::vector<AttributeType>> offset_to_attributes{};
@@ -145,7 +150,7 @@ VertexInputDescriptor Mesh::create_vertex_input_descriptors(AttributeOffsetMap c
     }
 
     /* The stride is shared between attributes of the same binding. */
-    uint32_t const buffer_stride = get_stride(attrib_types[0u]);
+    uint32_t const buffer_stride = attribute_stride(attrib_types[0u]);
     uint64_t const buffer_offset = buffer_info_.vertex_offset + attrib_offset;
 
     result.vertexBufferOffsets.push_back(buffer_offset);
@@ -165,7 +170,7 @@ VertexInputDescriptor Mesh::create_vertex_input_descriptors(AttributeOffsetMap c
           .location = it->second,
           .binding = buffer_binding,
           .format = vk_format(type),
-          .offset = get_offset(type),
+          .offset = attribute_offset(type),
         });
       }
     }

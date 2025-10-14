@@ -1,5 +1,5 @@
-#include "aer/platform/backend/swapchain.h"
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/swapchain.h"
+#include "aer/platform/vulkan/context.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -172,6 +172,9 @@ void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 
 #if !defined(NDEBUG)
     auto const s_index = std::to_string(i);
+    context.set_debug_object_name(buffer.image,
+      "Swapchain::Image::" + s_index
+    );
     context.set_debug_object_name(buffer.view,
       "Swapchain::ImageView::" + s_index
     );
@@ -185,9 +188,11 @@ void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   }
 
   /* When using timeline semaphore, we need to transition images layout to present. */
-  context.transition_images_layout(images_,
+  context.transition_images_layout(
+    images_,
     VK_IMAGE_LAYOUT_UNDEFINED,
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    imageArraySize()
   );
   need_rebuild_ = false;
 }
@@ -353,47 +358,51 @@ VkSurfaceFormat2KHR Swapchain::select_surface_format(
 #endif
 
   uint32_t image_format_count{0u};
-  CHECK_VK( vkGetPhysicalDeviceSurfaceFormats2KHR(gpu_, surface_info2, &image_format_count, nullptr) );
-  std::vector<VkSurfaceFormat2KHR> formats(image_format_count, {.sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR});
-  CHECK_VK( vkGetPhysicalDeviceSurfaceFormats2KHR(gpu_, surface_info2, &image_format_count, formats.data()) );
+  CHECK_VK(vkGetPhysicalDeviceSurfaceFormats2KHR(
+    gpu_, surface_info2, &image_format_count, nullptr)
+  );
+  std::vector<VkSurfaceFormat2KHR> formats(
+    image_format_count, {.sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR}
+  );
+  CHECK_VK(vkGetPhysicalDeviceSurfaceFormats2KHR(
+    gpu_, surface_info2, &image_format_count, formats.data()
+  ));
+  // for (auto const& available : formats) {
+  //   LOGD("- {} {}", (int)available.surfaceFormat.format, (int)available.surfaceFormat.colorSpace);
+  // }
 
 #ifdef ANDROID
   LOGV("> End vkGetPhysicalDeviceSurfaceFormats2KHR");
 #endif
 
-  VkSurfaceFormat2KHR const default_format{
-    .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
-    .surfaceFormat = {
-      .format = VK_FORMAT_B8G8R8A8_UNORM,
-      .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-    },
-  };
-  if ((formats.size() == 1ul)
-   && (formats[0].surfaceFormat.format == VK_FORMAT_UNDEFINED)) {
-    return default_format;
-  }
-
   std::vector<VkSurfaceFormat2KHR> const preferred_formats{
-    default_format,
     VkSurfaceFormat2KHR{
       .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
       .surfaceFormat = {
-        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .format = VK_FORMAT_B8G8R8A8_UNORM,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+      },
+    },
+    VkSurfaceFormat2KHR{
+      .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
+      .surfaceFormat = {
+        .format = VK_FORMAT_B8G8R8A8_SRGB,    //< (should probably be preferred)
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
       },
     },
   };
 
-  for (auto const& available : formats) {
-    for (auto const& preferred : preferred_formats) {
+  for (auto const& preferred : preferred_formats) {
+    for (auto const& available : formats) {
       if ((available.surfaceFormat.format == preferred.surfaceFormat.format)
        && (available.surfaceFormat.colorSpace == preferred.surfaceFormat.colorSpace)) {
+        // LOGD("Chosen format : {}", (int)available.surfaceFormat.format);
         return available;
       }
     }
   }
 
-  return formats[0u];
+  return formats[0];
 }
 
 // ----------------------------------------------------------------------------
@@ -404,9 +413,13 @@ VkPresentModeKHR Swapchain::select_present_mode(VkSurfaceKHR surface, bool use_v
   }
 
   uint32_t present_mode_count{0u};
-  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu_, surface, &present_mode_count, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(
+    gpu_, surface, &present_mode_count, nullptr
+  );
   std::vector<VkPresentModeKHR> present_modes(present_mode_count);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(gpu_, surface, &present_mode_count, present_modes.data());
+  vkGetPhysicalDeviceSurfacePresentModesKHR(
+    gpu_, surface, &present_mode_count, present_modes.data()
+  );
 
   bool mailbox_available = false;
   bool immediate_available = false;

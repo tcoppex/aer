@@ -1,5 +1,5 @@
-#ifndef AER_PLATEFORM_DESKTOP_XR_DESKTOP_H_
-#define AER_PLATEFORM_DESKTOP_XR_DESKTOP_H_
+#ifndef AER_PLATEFORM_IMPL_DESKTOP_XR_DESKTOP_H_
+#define AER_PLATEFORM_IMPL_DESKTOP_XR_DESKTOP_H_
 
 #include "aer/platform/common.h"
 #include "aer/platform/openxr/xr_platform_interface.h"
@@ -27,4 +27,4 @@ struct XRPlatformDesktop final : XRPlatformInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATEFORM_DESKTOP_XR_DESKTOP_H_
+#endif // AER_PLATEFORM_IMPL_DESKTOP_XR_DESKTOP_H_

@@ -1,45 +1,45 @@
-#ifndef AER_PLATFORM_BACKEND_VKUTILS_H
-#define AER_PLATFORM_BACKEND_VKUTILS_H
+#ifndef AER_PLATFORM_VULKAN_UTILS_H_
+#define AER_PLATFORM_VULKAN_UTILS_H_
 
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/types.h"
 
-#include "volk.h" // load core vulkan + extensions.
+#include "aer/platform/vulkan/vulkan_wrapper.h"
+#include "aer/platform/vulkan/types.h"
 
 /* -------------------------------------------------------------------------- */
 
 #ifdef NDEBUG
 # define CHECK_VK(res)  res
 #else
-# define CHECK_VK(res)  vkutils::CheckVKResult(res, __FILE__, __LINE__, true)
+# define CHECK_VK(res)  vk_utils::CheckVKResult(res, __FILE__, __LINE__, true)
 #endif
 
 /* -------------------------------------------------------------------------- */
 
-namespace vkutils {
+namespace vk_utils {
 
 VkResult CheckVKResult(
   VkResult result,
   char const* file,
-  int const line,
-  bool const bExitOnFail
+  int line,
+  bool bExitOnFail
 );
 
 bool IsValidStencilFormat(
-  VkFormat const format
+  VkFormat format
 );
 
 VkShaderModule CreateShaderModule(
-  VkDevice const device,
+  VkDevice device,
   char const* shader_directory,
   char const* shader_name
 );
 
 // (from nvpro_sample/minimal_latest)
 std::tuple<VkPipelineStageFlags2, VkAccessFlags2> MakePipelineStageAccessTuple(
-  VkImageLayout const state
+  VkImageLayout state
 );
 
 void TransformDescriptorSetWriteEntries(
@@ -119,7 +119,7 @@ constexpr VkObjectType GetObjectType() {
 
 template <typename T>
 void SetDebugObjectName(VkDevice device, T object, std::string_view name) {
-  constexpr VkObjectType objectType = vkutils::GetObjectType<T>();
+  constexpr VkObjectType objectType = vk_utils::GetObjectType<T>();
 
   if (vkSetDebugUtilsObjectNameEXT && (objectType != VK_OBJECT_TYPE_UNKNOWN)) {
     VkDebugUtilsObjectNameInfoEXT info{
@@ -143,8 +143,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
 
 // ----------------------------------------------------------------------------
 
-} // namespace "vkutils"
+} // namespace "vk_utils"
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_VKUTILS_H
+#endif // AER_PLATFORM_VULKAN_UTILS_H_

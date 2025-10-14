@@ -1,5 +1,5 @@
-#ifndef AER_CORE_UTILS_H
-#define AER_CORE_UTILS_H
+#ifndef AER_CORE_UTILS_H_
+#define AER_CORE_UTILS_H_
 
 /* -------------------------------------------------------------------------- */
 //

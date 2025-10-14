@@ -33,7 +33,7 @@ class SceneFx final : public RenderTargetFx {
   void setup(VkExtent2D const dimension) final {
     RenderTargetFx::setup(dimension);
 
-    uniform_buffer_ = allocator_ptr_->create_buffer(
+    uniform_buffer_ = context_ptr_->create_buffer(
       sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -49,7 +49,7 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void release() final {
-    allocator_ptr_->destroy_buffer(uniform_buffer_);
+    context_ptr_->destroy_buffer(uniform_buffer_);
     scene_.reset();
     RenderTargetFx::release();
   }
@@ -65,18 +65,20 @@ class SceneFx final : public RenderTargetFx {
 
   void createRenderTarget(VkExtent2D const dimension) final {
     render_target_ = context_ptr_->create_render_target({
-      .color_formats = {
-        VK_FORMAT_R32G32B32A32_SFLOAT,
-        VK_FORMAT_R32G32B32A32_SFLOAT,
+      .colors = {
+        {
+          .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+          .clear_value = {{ 0.67f, 0.82f, 0.69f, 0.0f }}
+        },
+        {
+          .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+          .clear_value = {{ 0.0f, 0.0f, -1.0f, 0.0f }}
+        },
       },
-      .depth_stencil_format = VK_FORMAT_D24_UNORM_S8_UINT,
+      .depth_stencil = { VK_FORMAT_D24_UNORM_S8_UINT },
       .size = dimension,
-      .sampler = context_ptr_->default_sampler(),
+      .sample_count = VkSampleCountFlagBits(1), //renderer_ptr_->sample_count(),
     });
-
-    // Set the clear values for color attachments.
-    render_target_->set_color_clear_value({{ 0.67f, 0.82f, 0.69f, 0.0f }}, 0u);
-    render_target_->set_color_clear_value({{ 0.0f, 0.0f, -1.0f, 0.0f }}, 1u);
   }
 
   DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const final {
@@ -103,7 +105,9 @@ class SceneFx final : public RenderTargetFx {
   std::vector<VkPushConstantRange> getPushConstantRanges() const final {
     return {
       {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+                    | VK_SHADER_STAGE_FRAGMENT_BIT
+                    ,
         .size = sizeof(push_constant_),
       }
     };
@@ -125,8 +129,8 @@ class SceneFx final : public RenderTargetFx {
       .fragment = {
         .module = shaders[1u].module,
         .targets = {
-          { .format = render_target_->color_attachment(0).format },
-          { .format = render_target_->color_attachment(1).format }
+          { .format = render_target_->resolve_attachment(0).format },
+          { .format = render_target_->resolve_attachment(1).format }
         },
       },
       .depthStencil = {
@@ -136,6 +140,9 @@ class SceneFx final : public RenderTargetFx {
       },
       .primitive = {
         .cullMode = VK_CULL_MODE_BACK_BIT,
+      },
+      .multisample = {
+        .sampleCount = render_target_->sample_count(),
       }
     };
   }
@@ -194,7 +201,7 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void updateUniforms() {
-    context_ptr_->transfer_host_to_device(
+    context_ptr_->transient_upload_buffer(
       &host_data_, sizeof(host_data_), uniform_buffer_
     );
   }
@@ -312,7 +319,7 @@ class SampleApp final : public Application {
     mat4 const world_matrix{
       lina::rotation_matrix_axis(
         vec3(-0.25f, 1.0f, -0.15f),
-        frame_time() * 0.0f //
+        frame_time() * 0.075f //
       )
     };
 
@@ -328,11 +335,11 @@ class SampleApp final : public Application {
       /* Main rendering + Toon post-processing. */
       toon_pipeline_.execute(cmd);
 
-      /* Blit the result to a render target (here the main renderer). */
-      cmd.blit(toon_pipeline_, renderer_);
+      /* Blit the result directly to the current swapchain image. */
+      renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
 
       /* Draw UI on top. */
-      cmd.render_ui(renderer_);
+      draw_ui(cmd);
     }
     renderer_.end_frame();
   }
@@ -353,11 +360,8 @@ class SampleApp final : public Application {
  private:
   Camera camera_{};
   ArcBallController arcball_controller_{};
-
   ToonFxPipeline toon_pipeline_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 

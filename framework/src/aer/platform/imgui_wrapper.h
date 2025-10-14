@@ -4,7 +4,7 @@
 #include <imgui.h>
 
 #if defined(IMGUI_WRAPPER_IMPL)
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 #include <backends/imgui_impl_vulkan.h>
 #endif
 

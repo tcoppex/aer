@@ -12,7 +12,8 @@
 class MaterialFx {
  public:
   MaterialFx() = default;
-  virtual ~MaterialFx() {}
+  
+  virtual ~MaterialFx() = default;
 
   virtual void init(Renderer const& renderer);
 
@@ -82,7 +83,6 @@ class MaterialFx {
  protected:
   RenderContext const* context_ptr_{};
   Renderer const* renderer_ptr_{};
-  ResourceAllocator const* allocator_ptr_{};
 
   // ----------------
   VkDescriptorSetLayout descriptor_set_layout_{};
@@ -112,7 +112,7 @@ class TMaterialFx : public MaterialFx {
   }
 
   void release() override {
-    allocator_ptr_->destroy_buffer(material_storage_buffer_);
+    context_ptr_->destroy_buffer(material_storage_buffer_);
     MaterialFx::release();
   }
 
@@ -128,19 +128,21 @@ class TMaterialFx : public MaterialFx {
       return;
     }
 
+    // ------------------------------
     if constexpr (kEditMode) {
-      allocator_ptr_->upload_host_to_device(
+      context_ptr_->write_buffer(
+        material_storage_buffer_,
         materials_.data(),
-        materials_.size() * sizeof(ShaderMaterial),
-        material_storage_buffer_
+        materials_.size() * sizeof(ShaderMaterial)
       );
     } else {
-      context_ptr_->transfer_host_to_device(
+      context_ptr_->transient_upload_buffer(
         materials_.data(),
         materials_.size() * sizeof(ShaderMaterial),
         material_storage_buffer_
       );
     }
+    // ------------------------------
   }
 
   ShaderMaterial const& material(uint32_t index) const {
@@ -156,7 +158,7 @@ class TMaterialFx : public MaterialFx {
 
     if constexpr (kEditMode) {
       // Setup the SSBO for frequent host-device mapping (slower).
-      material_storage_buffer_ = allocator_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->create_buffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -165,7 +167,7 @@ class TMaterialFx : public MaterialFx {
       );
     } else {
       // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = allocator_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->create_buffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT,

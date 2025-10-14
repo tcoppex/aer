@@ -1,19 +1,22 @@
-#ifndef AER_APPLICATION_H
-#define AER_APPLICATION_H
+#ifndef AER_APPLICATION_H_
+#define AER_APPLICATION_H_
 
 /* -------------------------------------------------------------------------- */
 
 #include <chrono>
 using namespace std::chrono_literals;
 
+#include "aer/settings.h"
 #include "aer/core/common.h"
+#include "aer/core/event_callbacks.h"
 
 #include "aer/platform/common.h"
-#include "aer/core/event_callbacks.h"
 #include "aer/platform/wm_interface.h"
 #include "aer/platform/ui_controller.h"
-#include "aer/platform/xr_interface.h"
-#include "aer/platform/backend/swapchain.h"
+
+#include "aer/platform/swapchain_interface.h"
+#include "aer/platform/vulkan/swapchain.h" //
+
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/renderer.h"
 
@@ -23,9 +26,32 @@ class Application : public EventCallbacks
                   , public AppCmdCallbacks {
  public:
   Application() = default;
+
   virtual ~Application() = default;
 
-  int run(bool use_xr, AppData_t app_data = {});
+  virtual AppSettings settings() const noexcept {
+    return {};
+  }
+
+  int run(AppSettings const& app_settings, AppData_t app_data = {});
+
+ protected:
+  virtual bool setup() {
+    return true;
+  }
+
+  virtual void release() {}
+
+  [[nodiscard]]
+  virtual std::vector<char const*> xrExtensions() const noexcept {
+    return {};
+  }
+
+  virtual void build_ui() {}
+
+  virtual void update(float const dt) {}
+
+  virtual void draw() {}
 
  protected:
   [[nodiscard]]
@@ -41,32 +67,11 @@ class Application : public EventCallbacks
     return frame_time_ - last_frame_time_;
   }
 
- protected:
-  virtual bool setup() {
-    return true;
-  }
-
-  virtual void release() {}
-
-  [[nodiscard]]
-  virtual std::vector<char const*> xrExtensions() const noexcept {
-    return {};
-  }
-
-  [[nodiscard]]
-  virtual std::vector<char const*> vulkanDeviceExtensions() const noexcept {
-    return {};
-  }
-
-  virtual void build_ui() {}
-
-  virtual void update(float const dt) {}
-
-  virtual void draw() {}
+  void draw_ui(CommandEncoder const& cmd);
 
  private:
   [[nodiscard]]
-  bool presetup(bool use_xr, AppData_t app_data);
+  bool presetup(AppData_t app_data);
 
   [[nodiscard]]
   bool next_frame(AppData_t app_data);
@@ -83,29 +88,33 @@ class Application : public EventCallbacks
 
  protected:
   std::unique_ptr<WMInterface> wm_{};
-  std::unique_ptr<OpenXRContext> xr_{}; //
+  std::unique_ptr<OpenXRContext> xr_{};
   std::unique_ptr<UIController> ui_{};
 
   RenderContext context_{};
   Renderer renderer_{};
 
-  VkExtent2D viewport_size_{}; // (to remove)
+  VkExtent2D viewport_size_{}; // (to be removed)
 
  private:
-  // |Android only]
-  UserData user_data_{};
+  AppSettings settings_{};
 
-  // [Desktop only]
+  SwapchainInterface *swapchain_interface_{};
   std::unique_ptr<EventCallbacks> default_callbacks_{};
 
   // [non-XR only]
   VkSurfaceKHR surface_{};
   Swapchain swapchain_{};
 
+  // |Android only]
+  UserData user_data_{};
+
+  // [Time tracker]
   std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
   float frame_time_{};
   float last_frame_time_{};
-  uint32_t rand_seed_{};
+
+  uint32_t rng_seed_{};
 };
 
 /* -------------------------------------------------------------------------- */

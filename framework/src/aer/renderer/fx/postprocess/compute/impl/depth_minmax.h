@@ -1,5 +1,5 @@
-#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
-#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
+#ifndef AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_
+#define AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_
 
 #include "aer/renderer/fx/postprocess/compute/compute_fx.h"
 
@@ -15,7 +15,7 @@ class DepthMinMax final : public ComputeFx {
     }
 
     // (malformed, should use internal method to update descriptor..)
-    buffers_.push_back(allocator_ptr_->create_buffer(
+    buffers_.push_back(context_ptr_->create_buffer(
       2u * sizeof(float),
         VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
@@ -34,4 +34,4 @@ class DepthMinMax final : public ComputeFx {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H
+#endif // AER_RENDERER_FX_POSTPROCESS_COMPUTE_IMPL_DEPTH_MINMAX_H_

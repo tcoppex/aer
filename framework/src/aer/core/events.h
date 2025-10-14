@@ -1,5 +1,5 @@
-#ifndef AER_CORE_EVENTS_H
-#define AER_CORE_EVENTS_H
+#ifndef AER_CORE_EVENTS_H_
+#define AER_CORE_EVENTS_H_
 
 #include <functional>
 #include <set>
@@ -47,8 +47,8 @@ class Events final : public Singleton<Events>
   bool hasButtonDown() const noexcept { return mouse_button_down_; }
   bool hasResized() const noexcept { return has_resized_; }
 
-  uint32_t surface_width() const noexcept { return surface_w_; };
-  uint32_t surface_height() const noexcept { return surface_h_; };
+  uint32_t surfaceWidth() const noexcept { return surface_w_; };
+  uint32_t surfaceHeight() const noexcept { return surface_h_; };
 
   int mouseX() const noexcept { return mouse_x_; }
   int mouseY() const noexcept { return mouse_y_; }
@@ -138,4 +138,4 @@ class Events final : public Singleton<Events>
 
 // ----------------------------------------------------------------------------
 
-#endif // AER_CORE_EVENTS_H
+#endif // AER_CORE_EVENTS_H_

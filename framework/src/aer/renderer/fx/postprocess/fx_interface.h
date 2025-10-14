@@ -2,8 +2,8 @@
 #define AER_RENDERER_FX_FX_INTERFACE_H_
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/context.h"
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/context.h"
+#include "aer/platform/vulkan/types.h"
 
 class Renderer;
 class RenderContext;

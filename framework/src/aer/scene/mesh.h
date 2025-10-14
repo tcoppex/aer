@@ -1,11 +1,11 @@
-#ifndef AER_SCENE_MESH_H
-#define AER_SCENE_MESH_H
+#ifndef AER_SCENE_MESH_H_
+#define AER_SCENE_MESH_H_
 
 #include "aer/core/common.h"
 
 #include "aer/scene/geometry.h"
-#include "aer/platform/backend/types.h"      // for VertexInputDescriptor
-#include "aer/renderer/pipeline.h"  // for PipelineVertexBufferDescriptors
+#include "aer/platform/vulkan/types.h"      // for VertexInputDescriptor
+#include "aer/renderer/pipeline.h"          // for PipelineVertexBufferDescriptors
 
 namespace scene {
 
@@ -33,15 +33,17 @@ struct Mesh : Geometry {
   Mesh() = default;
 
   /* Bind mesh attributes to pipeline attributes location. */
-  void initialize_submesh_descriptors(AttributeLocationMap const& attribute_to_location);
+  void initialize_submesh_descriptors(
+    AttributeLocationMap const& attribute_to_location
+  );
 
   /* Defines offset to actual data from external buffers. */
   void set_buffer_info(BufferInfo const& buffer_info) {
     buffer_info_ = {
       .vertex_offset = buffer_info.vertex_offset,
       .index_offset = buffer_info.index_offset,
-      .vertex_size = get_vertices().size(),
-      .index_size = get_indices().size(),
+      .vertex_size = vertices_bytesize(),
+      .index_size = indices_bytesize(),
     };
   }
 
@@ -78,4 +80,4 @@ struct Mesh : Geometry {
 
 }  // namespace scene
 
-#endif // AER_SCENE_MESH_H
+#endif // AER_SCENE_MESH_H_

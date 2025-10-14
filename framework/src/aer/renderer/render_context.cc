@@ -9,9 +9,7 @@
 
 namespace {
 
-char const* kDefaulShaderEntryPoint{
-  "main"
-};
+char const* kDefaulShaderEntryPoint{ "main" };
 
 }
 
@@ -20,10 +18,9 @@ char const* kDefaulShaderEntryPoint{
 bool RenderContext::init(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
-  std::vector<char const*> const& device_extensions,
-  std::shared_ptr<XRVulkanInterface> vulkan_xr
+  XRVulkanInterface *vulkan_xr
 ) {
-  if (!Context::init(app_name, instance_extensions, device_extensions, vulkan_xr)) {
+  if (!Context::init(app_name, instance_extensions, vulkan_xr)) {
     return false;
   }
 
@@ -78,7 +75,7 @@ std::unique_ptr<RenderTarget> RenderContext::create_render_target() const {
 // ----------------------------------------------------------------------------
 
 std::unique_ptr<RenderTarget> RenderContext::create_render_target(
-  RenderTarget::Descriptor_t const& desc
+  RenderTarget::Descriptor const& desc
 ) const {
   if (auto rt = create_render_target(); rt) {
     rt->setup(desc);
@@ -186,7 +183,7 @@ void RenderContext::create_graphics_pipelines(
       pipelines[i],
       VK_PIPELINE_BIND_POINT_GRAPHICS
     );
-    vkutils::SetDebugObjectName(device(), pipelines[i], "GraphicsPipeline::NoName");
+    vk_utils::SetDebugObjectName(device(), pipelines[i], "GraphicsPipeline::NoName");
   }
 }
 
@@ -492,9 +489,15 @@ bool RenderContext::load_image_2d(
                       : is_srgb ? VK_FORMAT_R8G8B8A8_SRGB
                                 : VK_FORMAT_R8G8B8A8_UNORM
   };
+  uint32_t const layer_count = 1u;
 
   image = create_image_2d(
-    extent.width, extent.height, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT
+    extent.width,
+    extent.height,
+    format,
+      VK_IMAGE_USAGE_SAMPLED_BIT
+    | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    filename
   );
 
   /* Copy host data to a staging buffer. */
@@ -502,7 +505,7 @@ bool RenderContext::load_image_2d(
   size_t const bytesize{
     kForcedChannelCount * extent.width * extent.height * comp_bytesize
   };
-  auto staging_buffer = allocator().create_staging_buffer(bytesize, data); //
+  auto staging_buffer = create_staging_buffer(bytesize, data); //
   stbi_image_free(data);
 
   /* Transfer staging device buffer to image memory. */
@@ -511,7 +514,8 @@ bool RenderContext::load_image_2d(
     cmd.transition_images_layout(
       { image },
       VK_IMAGE_LAYOUT_UNDEFINED,
-      transfer_layout
+      transfer_layout,
+      layer_count
     );
 
     cmd.copy_buffer_to_image(staging_buffer, image, extent, transfer_layout);
@@ -519,7 +523,8 @@ bool RenderContext::load_image_2d(
     cmd.transition_images_layout(
       { image },
       transfer_layout,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      layer_count
     );
   }
 

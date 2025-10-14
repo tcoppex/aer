@@ -1,8 +1,8 @@
-#ifndef AER_PLATEFORM_DESKTOP_WINDOW_H_
-#define AER_PLATEFORM_DESKTOP_WINDOW_H_
+#ifndef AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_
+#define AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_
 
 #include "aer/platform/wm_interface.h"
-#include "aer/platform/desktop/xr_desktop.h"
+#include "aer/platform/impl/desktop/xr_desktop.h"
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
@@ -16,7 +16,7 @@ class Window : public WMInterface {
   virtual ~Window() = default;
 
   [[nodiscard]]
-  bool init(AppData_t app_data) final;
+  bool init(Settings const& settings, AppData_t app_data) final;
 
   void shutdown() final;
 
@@ -28,12 +28,12 @@ class Window : public WMInterface {
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surface_width() const noexcept final {
+  uint32_t surfaceWidth() const noexcept final {
     return surface_w_;
   }
 
   [[nodiscard]]
-  uint32_t surface_height() const noexcept final {
+  uint32_t surfaceHeight() const noexcept final {
     return surface_h_;
   }
 
@@ -66,4 +66,4 @@ class Window : public WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_WINDOW_H_
+#endif  // AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_

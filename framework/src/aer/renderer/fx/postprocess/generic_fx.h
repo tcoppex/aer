@@ -40,7 +40,6 @@ class GenericFx : public virtual FxInterface {
  protected:
   RenderContext const* context_ptr_{};
   Renderer const* renderer_ptr_{};
-  ResourceAllocator const* allocator_ptr_{};
 
   // ----------------
   VkDescriptorSetLayout descriptor_set_layout_{};
