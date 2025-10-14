@@ -190,7 +190,11 @@ backend::ShaderModule Context::create_shader_module(
   std::string_view shader_name
 ) const {
   return {
-    .module = vk_utils::CreateShaderModule(device_, directory.data(), shader_name.data()),
+    .module = vk_utils::CreateShaderModule(
+      device_,
+      directory.data(),
+      shader_name.data()
+    ),
     .basename = utils::ExtractBasename(shader_name, true),
   };
 }
@@ -217,7 +221,9 @@ backend::ShaderModule Context::create_shader_module(std::string_view filepath) c
 
 // ----------------------------------------------------------------------------
 
-std::vector<backend::ShaderModule> Context::create_shader_modules(std::vector<std::string_view> const& filepaths) const {
+std::vector<backend::ShaderModule> Context::create_shader_modules(
+  std::vector<std::string_view> const& filepaths
+) const {
   return create_shader_modules("", filepaths); //
 }
 
@@ -229,7 +235,9 @@ void Context::release_shader_module(backend::ShaderModule const& shader) const {
 
 // ----------------------------------------------------------------------------
 
-void Context::release_shader_modules(std::vector<backend::ShaderModule> const& shaders) const {
+void Context::release_shader_modules(
+  std::vector<backend::ShaderModule> const& shaders
+) const {
   for (auto const& shader : shaders) {
     vkDestroyShaderModule(device_, shader.module, nullptr);
   }
@@ -237,7 +245,9 @@ void Context::release_shader_modules(std::vector<backend::ShaderModule> const& s
 
 // ----------------------------------------------------------------------------
 
-CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue const& target_queue) const {
+CommandEncoder Context::create_transient_command_encoder(
+  Context::TargetQueue const& target_queue
+) const {
   VkCommandBuffer cmd{};
   VkCommandBufferAllocateInfo const alloc_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -261,7 +271,9 @@ CommandEncoder Context::create_transient_command_encoder(Context::TargetQueue co
 
 // ----------------------------------------------------------------------------
 
-void Context::finish_transient_command_encoder(CommandEncoder const& encoder) const {
+void Context::finish_transient_command_encoder(
+  CommandEncoder const& encoder
+) const {
   encoder.end();
 
   VkFenceCreateInfo const fence_info{
@@ -331,7 +343,12 @@ void Context::transfer_host_to_device(
   size_t const device_buffer_offset
 ) const {
   auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  cmd.transfer_host_to_device(host_data, host_data_size, device_buffer, device_buffer_offset);
+  cmd.transfer_host_to_device(
+    host_data,
+    host_data_size,
+    device_buffer,
+    device_buffer_offset
+  );
   finish_transient_command_encoder(cmd);
 }
 
@@ -342,7 +359,7 @@ void Context::copy_buffer(
   backend::Buffer const& dst,
   size_t const buffersize
 ) const {
-  auto cmd{ create_transient_command_encoder(Context::TargetQueue::Transfer) };
+  auto cmd = create_transient_command_encoder(Context::TargetQueue::Transfer);
   cmd.copy_buffer(src, dst, buffersize);
   finish_transient_command_encoder(cmd);
 }
@@ -380,9 +397,12 @@ void Context::init_instance(
   std::vector<VkExtensionProperties> available_instance_extensions{};
 
   uint32_t layerCount = 0;
-  CHECK_VK( vkEnumerateInstanceLayerProperties(&layerCount, nullptr) );
+  CHECK_VK(vkEnumerateInstanceLayerProperties(&layerCount, nullptr));
   available_instance_layers.resize(layerCount);
-  CHECK_VK( vkEnumerateInstanceLayerProperties(&layerCount, available_instance_layers.data()) );
+  CHECK_VK(vkEnumerateInstanceLayerProperties(
+    &layerCount,
+    available_instance_layers.data()
+  ));
 
 #ifndef NDEBUG
   auto hasLayer = [&](char const* layerName) {
@@ -424,11 +444,15 @@ void Context::init_instance(
   uint32_t extension_count{0u};
   vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
   available_instance_extensions.resize(extension_count);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, available_instance_extensions.data());
+  vkEnumerateInstanceExtensionProperties(
+    nullptr, &extension_count, available_instance_extensions.data()
+  );
 
   // Add extensions requested by the application.
   instance_extension_names_.insert(
-    instance_extension_names_.begin(), instance_extensions.begin(), instance_extensions.end()
+    instance_extension_names_.begin(),
+    instance_extensions.begin(),
+    instance_extensions.end()
   );
 
   VkApplicationInfo const application_info{
@@ -452,7 +476,9 @@ void Context::init_instance(
   };
 
   if (vulkan_xr_) {
-    CHECK_VK(vulkan_xr_->createVulkanInstance(&instance_create_info, nullptr, &instance_));
+    CHECK_VK(vulkan_xr_->createVulkanInstance(
+      &instance_create_info, nullptr, &instance_
+    ));
   } else {
     CHECK_VK(vkCreateInstance(&instance_create_info, nullptr, &instance_));
   }
@@ -461,7 +487,9 @@ void Context::init_instance(
 
   // ------------------------------------------
 
-  CHECK_VK(vkCreateDebugUtilsMessengerEXT(instance_, &debug_info, nullptr, &debug_utils_messenger_));
+  CHECK_VK(vkCreateDebugUtilsMessengerEXT(
+    instance_, &debug_info, nullptr, &debug_utils_messenger_
+  ));
 
 #ifndef NDEBUG
   LOGD("Vulkan version requested: {}.{}.{}",
@@ -505,7 +533,9 @@ void Context::select_gpu() {
 
     /* Search for a discrete GPU. */
     uint32_t selected_index{0u};
-    VkPhysicalDeviceProperties2 props{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    VkPhysicalDeviceProperties2 props{
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
+    };
     for (uint32_t i = 0u; i < gpu_count; ++i) {
       vkGetPhysicalDeviceProperties2(gpus[i], &props);
       if (VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU == props.properties.deviceType) {
@@ -552,9 +582,13 @@ void Context::select_gpu() {
 bool Context::init_device() {
   /* Retrieve availables device extensions. */
   uint32_t extension_count{0u};
-  CHECK_VK(vkEnumerateDeviceExtensionProperties(gpu_, nullptr, &extension_count, nullptr));
+  CHECK_VK(vkEnumerateDeviceExtensionProperties(
+    gpu_, nullptr, &extension_count, nullptr
+  ));
   available_device_extensions_.resize(extension_count);
-  CHECK_VK(vkEnumerateDeviceExtensionProperties(gpu_, nullptr, &extension_count, available_device_extensions_.data()));
+  CHECK_VK(vkEnumerateDeviceExtensionProperties(
+    gpu_, nullptr, &extension_count, available_device_extensions_.data()
+  ));
 
 #ifndef NDEBUG
   // for (auto const& prop : available_device_extensions_) {
@@ -724,7 +758,9 @@ bool Context::init_device() {
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos{};
   std::vector<std::vector<float>> queue_priorities{};
   {
-    uint32_t const queue_family_count{static_cast<uint32_t>(properties_.queue_families2.size())};
+    uint32_t const queue_family_count{
+      static_cast<uint32_t>(properties_.queue_families2.size())
+    };
 
     std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_family_count, {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -780,7 +816,9 @@ bool Context::init_device() {
   };
 
   if (vulkan_xr_) {
-    CHECK_VK( vulkan_xr_->createVulkanDevice(gpu_, &device_info, nullptr, &device_) );
+    CHECK_VK(vulkan_xr_->createVulkanDevice(
+      gpu_, &device_info, nullptr, &device_
+    ));
   } else {
     CHECK_VK( vkCreateDevice(gpu_, &device_info, nullptr, &device_) );
   }
@@ -791,18 +829,20 @@ bool Context::init_device() {
   /* Use aliases without suffixes. */
   {
     auto bind_func{ [](auto & f1, auto & f2) { if (!f1) { f1 = f2; } } };
-    bind_func(         vkWaitSemaphores, vkWaitSemaphoresKHR);
-    bind_func(    vkCmdPipelineBarrier2, vkCmdPipelineBarrier2KHR);
-    bind_func(           vkQueueSubmit2, vkQueueSubmit2KHR);
-    bind_func(      vkCmdBeginRendering, vkCmdBeginRenderingKHR);
-    bind_func(        vkCmdEndRendering, vkCmdEndRenderingKHR);
-    bind_func(  vkCmdBindVertexBuffers2, vkCmdBindVertexBuffers2EXT);
+    bind_func(        vkWaitSemaphores, vkWaitSemaphoresKHR);
+    bind_func(   vkCmdPipelineBarrier2, vkCmdPipelineBarrier2KHR);
+    bind_func(          vkQueueSubmit2, vkQueueSubmit2KHR);
+    bind_func(     vkCmdBeginRendering, vkCmdBeginRenderingKHR);
+    bind_func(       vkCmdEndRendering, vkCmdEndRenderingKHR);
+    bind_func( vkCmdBindVertexBuffers2, vkCmdBindVertexBuffers2EXT);
   }
 
   /* Retrieved requested queues. */
   for (auto& pair : queues) {
     auto *queue = pair.first;
-    vkGetDeviceQueue(device_, queue->family_index, queue->queue_index, &queue->queue);
+    vkGetDeviceQueue(
+      device_, queue->family_index, queue->queue_index, &queue->queue
+    );
   }
   if (vulkan_xr_) {
     auto const& Q = queues_[TargetQueue::Main];
