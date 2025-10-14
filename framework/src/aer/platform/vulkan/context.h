@@ -67,6 +67,74 @@ class Context {
     CHECK_VK(vkDeviceWaitIdle(device_));
   }
 
+  // --- Allocator composition interface --
+
+  [[nodiscard]]
+  backend::Buffer create_buffer(
+    VkDeviceSize const size,
+    VkBufferUsageFlags2KHR const usage,
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateFlags const flags = {}
+  ) const {
+    return allocator_.create_buffer(size, usage, memory_usage, flags);
+  }
+
+  void destroy_buffer(backend::Buffer const& buffer) const {
+    allocator_.destroy_buffer(buffer);
+  }
+
+  [[nodiscard]]
+  backend::Buffer create_staging_buffer(
+    size_t const bytesize,
+    void const* host_data = nullptr,
+    size_t host_data_size = 0u
+  ) const {
+    return allocator_.create_staging_buffer(bytesize, host_data, host_data_size);
+  }
+
+  void clear_staging_buffers() const {
+    allocator_.clear_staging_buffers();
+  }
+
+  void map_memory(backend::Buffer const& buffer, void **data) const {
+    allocator_.map_memory(buffer, data);
+  }
+
+  void unmap_memory(backend::Buffer const& buffer) const {
+    allocator_.unmap_memory(buffer);
+  }
+
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    size_t const dst_offset,
+    void const* host_data,
+    size_t const host_offset,
+    size_t const bytesize
+  ) const {
+    return allocator_.write_buffer(dst_buffer, dst_offset, host_data, host_offset, bytesize);
+  }
+
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    void const* host_data,
+    size_t const bytesize
+  ) const {
+    return allocator_.write_buffer(dst_buffer, host_data, bytesize);
+  }
+
+  backend::Image create_image(
+    VkImageCreateInfo const& image_info,
+    VkImageViewCreateInfo view_info,
+    VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_GPU_ONLY
+  ) const {
+    return allocator_.create_image(image_info, view_info, memory_usage);
+  }
+
+  void destroy_image(backend::Image &image) const {
+    allocator_.destroy_image(image);
+  }
+
+
   // --- Surface --
 
   void destroy_surface(VkSurfaceKHR surface) const {

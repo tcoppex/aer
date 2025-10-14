@@ -271,12 +271,10 @@ class SampleApp final : public Application {
     context_.destroy_pipeline(graphics_pipeline_);
     context_.destroy_pipeline_layout(pipeline_layout_);
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-
-    auto allocator = context_.allocator();
-    allocator.destroy_buffer(dot_product_buffer_);
-    allocator.destroy_buffer(point_grid_.index);
-    allocator.destroy_buffer(point_grid_.vertex);
-    allocator.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(dot_product_buffer_);
+    context_.destroy_buffer(point_grid_.index);
+    context_.destroy_buffer(point_grid_.vertex);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void draw() final {

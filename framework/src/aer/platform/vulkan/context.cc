@@ -299,7 +299,9 @@ void Context::finish_transient_command_encoder(
   CHECK_VK( vkWaitForFences(device_, 1u, &fence, VK_TRUE, UINT64_MAX) );
   vkDestroyFence(device_, fence, nullptr);
 
-  vkFreeCommandBuffers(device_, transient_command_pools_[target_queue], 1u, &encoder.command_buffer_);
+  vkFreeCommandBuffers(
+    device_, transient_command_pools_[target_queue], 1u, &encoder.command_buffer_
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -326,7 +328,9 @@ backend::Buffer Context::create_buffer_and_upload(
 ) const {
   auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
   backend::Buffer buffer{
-    cmd.create_buffer_and_upload(host_data, host_data_size, usage, device_buffer_offset, device_buffer_size)
+    cmd.create_buffer_and_upload(
+      host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
+    )
   };
   finish_transient_command_encoder(cmd);
   return buffer;

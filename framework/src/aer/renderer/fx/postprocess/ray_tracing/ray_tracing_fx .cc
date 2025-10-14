@@ -222,9 +222,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
   size_t const sbt_buffersize = offsetCallable + sizeCallable;
 
-  auto const& allocator = context_ptr_->allocator();
-
-  sbt_storage_buffer_ = allocator.create_buffer(
+  sbt_storage_buffer_ = context_ptr_->create_buffer(
     sbt_buffersize,
       VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -234,12 +232,12 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
     VMA_MEMORY_USAGE_CPU_TO_GPU
   );
 
-  auto staging_buffer = allocator.create_staging_buffer(sbt_buffersize);
+  auto staging_buffer = context_ptr_->create_staging_buffer(sbt_buffersize);
 
   // Map staging and fill regions with shader handles
   {
-    void* mapped;
-    allocator.map_memory(staging_buffer, &mapped);
+    void* mapped{};
+    context_ptr_->map_memory(staging_buffer, &mapped);
 
     uint8_t* pData = reinterpret_cast<uint8_t*>(mapped);
 
@@ -268,7 +266,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
     copyHandles(groupOffset, numCallable, offsetCallable);
 
-    allocator.unmap_memory(staging_buffer);
+    context_ptr_->unmap_memory(staging_buffer);
   }
 
   context_ptr_->copy_buffer(

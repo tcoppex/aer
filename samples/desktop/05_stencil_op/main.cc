@@ -296,13 +296,11 @@ class SampleApp final : public Application {
     }
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
     context_.destroy_pipeline_layout(pipeline_layout_);
-
-    auto allocator = context_.allocator();
-    allocator.destroy_buffer(plane_.index);
-    allocator.destroy_buffer(plane_.vertex);
-    allocator.destroy_buffer(torus_.index);
-    allocator.destroy_buffer(torus_.vertex);
-    allocator.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(plane_.index);
+    context_.destroy_buffer(plane_.vertex);
+    context_.destroy_buffer(torus_.index);
+    context_.destroy_buffer(torus_.vertex);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void draw() final {

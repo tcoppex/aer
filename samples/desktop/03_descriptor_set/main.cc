@@ -204,10 +204,9 @@ class SampleApp final : public Application {
     context_.destroy_pipeline_layout(pipeline_layout_);
     context_.destroy_pipeline(graphics_pipeline_);
 
-    auto const& allocator = context_.allocator();
-    allocator.destroy_buffer(index_buffer_);
-    allocator.destroy_buffer(vertex_buffer_);
-    allocator.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(index_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(uniform_buffer_);
   }
 
   void update(float const dt) final {

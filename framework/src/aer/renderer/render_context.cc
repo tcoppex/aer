@@ -505,7 +505,7 @@ bool RenderContext::load_image_2d(
   size_t const bytesize{
     kForcedChannelCount * extent.width * extent.height * comp_bytesize
   };
-  auto staging_buffer = allocator().create_staging_buffer(bytesize, data); //
+  auto staging_buffer = create_staging_buffer(bytesize, data); //
   stbi_image_free(data);
 
   /* Transfer staging device buffer to image memory. */

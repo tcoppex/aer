@@ -112,7 +112,7 @@ class TMaterialFx : public MaterialFx {
   }
 
   void release() override {
-    context_ptr_->allocator().destroy_buffer(material_storage_buffer_);
+    context_ptr_->destroy_buffer(material_storage_buffer_);
     MaterialFx::release();
   }
 
@@ -130,7 +130,7 @@ class TMaterialFx : public MaterialFx {
 
     // ------------------------------
     if constexpr (kEditMode) {
-      context_ptr_->allocator().write_buffer(
+      context_ptr_->write_buffer(
         material_storage_buffer_,
         materials_.data(),
         materials_.size() * sizeof(ShaderMaterial)
@@ -158,7 +158,7 @@ class TMaterialFx : public MaterialFx {
 
     if constexpr (kEditMode) {
       // Setup the SSBO for frequent host-device mapping (slower).
-      material_storage_buffer_ = context_ptr_->allocator().create_buffer(
+      material_storage_buffer_ = context_ptr_->create_buffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -167,7 +167,7 @@ class TMaterialFx : public MaterialFx {
       );
     } else {
       // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = context_ptr_->allocator().create_buffer(
+      material_storage_buffer_ = context_ptr_->create_buffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT,

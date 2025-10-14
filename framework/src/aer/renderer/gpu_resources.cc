@@ -30,21 +30,17 @@ GPUResources::~GPUResources() {
     material_fx_registry_->release();
   }
 
-  {
-    auto const& allocator = context_ptr_->allocator();
+  // ---------------------------------------
+  rt_scene_.reset();
+  // ---------------------------------------
 
-    // ---------------------------------------
-    rt_scene_.reset();
-    // ---------------------------------------
-
-    for (auto& img : device_images) {
-      allocator.destroy_image(img);
-    }
-    allocator.destroy_buffer(transforms_ssbo_);
-    allocator.destroy_buffer(frame_ubo_);
-    allocator.destroy_buffer(index_buffer);
-    allocator.destroy_buffer(vertex_buffer);
+  for (auto& img : device_images) {
+    context_ptr_->destroy_image(img);
   }
+  context_ptr_->destroy_buffer(transforms_ssbo_);
+  context_ptr_->destroy_buffer(frame_ubo_);
+  context_ptr_->destroy_buffer(index_buffer);
+  context_ptr_->destroy_buffer(vertex_buffer);
 }
 
 // ----------------------------------------------------------------------------
@@ -84,7 +80,7 @@ void GPUResources::upload_to_device(bool const bReleaseHostDataOnUpload) {
   material_fx_registry_->push_material_storage_buffers();
 
   /* Create the shared Frame UBO */
-  frame_ubo_ = context_ptr_->allocator().create_buffer(
+  frame_ubo_ = context_ptr_->create_buffer(
     sizeof(FrameData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
     | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -299,11 +295,9 @@ void GPUResources::set_ray_tracing_fx(RayTracingFx* fx) {
 void GPUResources::upload_images(Context const& context) {
   LOG_CHECK( total_image_size > 0 );
 
-  auto const& allocator = context.allocator();
-
   /* Create a staging buffer. */
   backend::Buffer staging_buffer{
-    allocator.create_staging_buffer( total_image_size ) //
+    context.create_staging_buffer( total_image_size ) //
   };
 
   device_images.reserve(host_images.size()); //
@@ -329,7 +323,7 @@ void GPUResources::upload_images(Context const& context) {
 
     /* Upload image to staging buffer */
     auto const img_bytesize = host_image.getBytesize();
-    allocator.write_buffer(
+    context.write_buffer(
       staging_buffer, staging_offset, host_image.getPixels(), 0u, img_bytesize
     );
     copies.push_back({
@@ -378,8 +372,6 @@ void GPUResources::upload_images(Context const& context) {
 void GPUResources::upload_buffers(Context const& context) {
   LOG_CHECK(vertex_buffer_size > 0);
 
-  auto const& allocator = context.allocator();
-
   VkBufferUsageFlags extra_flags{};
 
   // ---------------------------------------
@@ -395,7 +387,7 @@ void GPUResources::upload_buffers(Context const& context) {
   // ---------------------------------------
 
   /* Allocate device buffers for meshes & their transforms. */
-  vertex_buffer = allocator.create_buffer(
+  vertex_buffer = context.create_buffer(
     vertex_buffer_size,
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
@@ -405,7 +397,7 @@ void GPUResources::upload_buffers(Context const& context) {
   );
 
   if (index_buffer_size > 0) {
-    index_buffer = allocator.create_buffer(
+    index_buffer = context.create_buffer(
       index_buffer_size,
         VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
       | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
@@ -419,7 +411,7 @@ void GPUResources::upload_buffers(Context const& context) {
   size_t const transforms_buffer_size{ transforms.size() * sizeof(transforms[0]) };
   {
     // We assume most meshes would be static, so with unfrequent updates.
-    transforms_ssbo_ = allocator.create_buffer(
+    transforms_ssbo_ = context.create_buffer(
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -429,7 +421,7 @@ void GPUResources::upload_buffers(Context const& context) {
   }
 
   /* Copy host mesh data to the staging buffer. */
-  auto staging_buffer = allocator.create_staging_buffer(
+  auto staging_buffer = context.create_staging_buffer(
     vertex_buffer_size + index_buffer_size + transforms_buffer_size
   );
   {
@@ -438,7 +430,7 @@ void GPUResources::upload_buffers(Context const& context) {
 
     // Transfer the attributes & indices by ranges.
     std::byte* device_data{};
-    allocator.map_memory(staging_buffer, (void**)&device_data);
+    context.map_memory(staging_buffer, (void**)&device_data);
     for (auto const& mesh : meshes) {
       auto const& vertices = mesh->get_vertices();
       memcpy(device_data + vertex_offset, vertices.data(), vertices.size());
@@ -458,7 +450,7 @@ void GPUResources::upload_buffers(Context const& context) {
       transforms_buffer_size
     );
 
-    allocator.unmap_memory(staging_buffer);
+    context.unmap_memory(staging_buffer);
   }
 
   /* Copy device data from staging buffers to their respective buffers. */

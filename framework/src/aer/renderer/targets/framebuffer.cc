@@ -88,17 +88,16 @@ Framebuffer::Framebuffer(Context const& context, SwapchainInterface const& swapc
 
 void Framebuffer::release_buffers() {
   VkDevice const device = context_ptr_->device();
+
   for (auto &framebuffer : framebuffers_) {
     vkDestroyFramebuffer(device, framebuffer, nullptr);
     framebuffer = VK_NULL_HANDLE;
   }
-
-  auto allocator = context_ptr_->allocator();
   for (auto& color : outputs_[BufferName::Color]) {
-    allocator.destroy_image(color);
+    context_ptr_->destroy_image(color);
   }
   for (auto& depth_stencil : outputs_[BufferName::DepthStencil]) {
-    allocator.destroy_image(depth_stencil);
+    context_ptr_->destroy_image(depth_stencil);
   }
 }
 

@@ -35,7 +35,7 @@ class Allocator {
   ) const;
 
   void destroy_buffer(backend::Buffer const& buffer) const {
-    vmaDestroyBuffer(allocator_, buffer.buffer, buffer.allocation);
+    vmaDestroyBuffer(handle_, buffer.buffer, buffer.allocation);
   }
 
   [[nodiscard]]
@@ -48,11 +48,11 @@ class Allocator {
   void clear_staging_buffers() const;
 
   void map_memory(backend::Buffer const& buffer, void **data) const {
-    CHECK_VK( vmaMapMemory(allocator_, buffer.allocation, data) );
+    CHECK_VK( vmaMapMemory(handle_, buffer.allocation, data) );
   }
 
   void unmap_memory(backend::Buffer const& buffer) const {
-    vmaUnmapMemory(allocator_, buffer.allocation);
+    vmaUnmapMemory(handle_, buffer.allocation);
   }
 
   /* Alias to map & copy host data to a device buffer. */
@@ -85,7 +85,7 @@ class Allocator {
 
  private:
   VkDevice device_{};
-  VmaAllocator allocator_{};
+  VmaAllocator handle_{};
   mutable std::vector<backend::Buffer> staging_buffers_{};
 };
 

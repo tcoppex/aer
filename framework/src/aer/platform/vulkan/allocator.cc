@@ -26,14 +26,14 @@ void Allocator::init(VmaAllocatorCreateInfo alloc_create_info) {
                           | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT
                           | VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT
                    ;
-  vmaCreateAllocator(&alloc_create_info, &allocator_);
+  vmaCreateAllocator(&alloc_create_info, &handle_);
 }
 
 // ----------------------------------------------------------------------------
 
 void Allocator::deinit() {
   clear_staging_buffers();
-  vmaDestroyAllocator(allocator_);
+  vmaDestroyAllocator(handle_);
 }
 
 // ----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ backend::Buffer Allocator::create_buffer(
   };
   VmaAllocationInfo result_alloc_info{};
   CHECK_VK(vmaCreateBuffer(
-    allocator_,
+    handle_,
     &buffer_info,
     &alloc_create_info,
     &buffer.buffer,
@@ -135,12 +135,12 @@ size_t Allocator::write_buffer(
   LOG_CHECK(bytesize > 0);
 
   void *device_data = nullptr;
-  CHECK_VK( vmaMapMemory(allocator_, dst_buffer.allocation, &device_data) );
+  CHECK_VK( vmaMapMemory(handle_, dst_buffer.allocation, &device_data) );
 
   memcpy(static_cast<char*>(device_data) + dst_offset,
          static_cast<const char*>(host_data) + host_offset, bytesize);
 
-  vmaUnmapMemory(allocator_, dst_buffer.allocation);
+  vmaUnmapMemory(handle_, dst_buffer.allocation);
 
   return dst_offset + bytesize;
 }
@@ -173,7 +173,7 @@ backend::Image Allocator::create_image(
   VmaAllocationInfo alloc_info{};
 
   CHECK_VK(vmaCreateImage(
-    allocator_,
+    handle_,
     &image_info,
     &alloc_create_info,
     &image.image,
@@ -194,7 +194,7 @@ void Allocator::destroy_image(backend::Image &image) const {
   if (!image.valid()) {
     return;
   }
-  vmaDestroyImage(allocator_, image.image, image.allocation);
+  vmaDestroyImage(handle_, image.image, image.allocation);
   image.image = VK_NULL_HANDLE;
   if (image.view != VK_NULL_HANDLE) {
     vkDestroyImageView(device_, image.view, nullptr);

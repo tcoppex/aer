@@ -36,7 +36,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
       shutdown();
       return EXIT_FAILURE;
     }
-    context_.allocator().clear_staging_buffers();
+    context_.clear_staging_buffers();
   }
 
   if (xr_) {

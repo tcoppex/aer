@@ -137,16 +137,15 @@ void Skybox::init(Renderer& renderer) {
 
 void Skybox::release(Renderer const& renderer) {
   auto const& context = renderer.context();
-  auto allocator = context.allocator();
 
-  allocator.destroy_image(specular_brdf_lut_);
+  context.destroy_image(specular_brdf_lut_);
 
   context.destroy_pipeline(graphics_pipeline_);
   context.destroy_pipeline_layout(pipeline_layout_);
   context.destroy_descriptor_set_layout(descriptor_set_layout_);
 
-  allocator.destroy_buffer(index_buffer_);
-  allocator.destroy_buffer(vertex_buffer_);
+  context.destroy_buffer(index_buffer_);
+  context.destroy_buffer(vertex_buffer_);
 
   envmap_.release();
 }
