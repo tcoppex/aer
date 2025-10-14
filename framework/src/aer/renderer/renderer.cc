@@ -15,7 +15,7 @@ char const* kDefaulShaderEntryPoint{ "main" }; //
 
 void Renderer::init(
   RenderContext& context,
-  SwapchainInterface* swapchain_ptr,
+  SwapchainInterface** swapchain_ptr,
   Settings const& settings
 ) {
   LOGD("-- Renderer --");
@@ -43,7 +43,7 @@ void Renderer::init(
 void Renderer::init_view_resources() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
-  auto const frame_count = swapchain_ptr_->imageCount();
+  auto const frame_count = swapchain().imageCount();
   LOG_CHECK( frame_count > 0u );
 
   LOGD(" > Frames Resources");
@@ -70,14 +70,14 @@ void Renderer::init_view_resources() {
   }
 
   /* Setup per-frame image buffers. */
-  auto const dimension = swapchain_ptr_->surfaceSize();
+  auto const dimension = swapchain().surfaceSize();
   resize(dimension.width, dimension.height);
 }
 
 // ----------------------------------------------------------------------------
 
 void Renderer::deinit_view_resources() {
-  if (device_ == VK_NULL_HANDLE) {
+  if (context_ptr_ == nullptr) {
     return;
   }
 
@@ -102,7 +102,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOG_CHECK( w > 0 && h > 0 );
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
-  auto const layers = swapchain_ptr_->imageArraySize();
+  auto const layers = swapchain().imageArraySize();
 
   if (frames_[0].main_rt != nullptr) [[likely]] {
     for (auto &frame : frames_) {
@@ -135,9 +135,18 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 CommandEncoder& Renderer::begin_frame() {
   LOG_CHECK( device_ != VK_NULL_HANDLE );
 
+  // Handle swapchain resize.
+  {
+    auto const& A = swapchain().surfaceSize();
+    auto const& B = surface_size();
+    if (A.width != B.width || A.height != B.height) {
+      resize(A.width, A.height);
+    }
+  }
+
   // Acquire next availables image in the swapchain.
   LOG_CHECK(swapchain_ptr_);
-  if (!swapchain_ptr_->acquireNextImage()) {
+  if (!swapchain().acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
@@ -162,7 +171,7 @@ CommandEncoder& Renderer::begin_frame() {
 
 void Renderer::apply_postprocess() {
   auto const& frame = frame_resource();
-  auto const& dst_img = swapchain_ptr_->currentImage();
+  auto const& dst_img = swapchain().currentImage();
 
   // Blit Color to Swapchain.
   {
@@ -173,7 +182,7 @@ void Renderer::apply_postprocess() {
                           ;
 
     uint32_t const layer_count = src_rt.layer_count();
-    LOG_CHECK(layer_count == swapchain_ptr_->imageArraySize());
+    LOG_CHECK(layer_count == swapchain().imageArraySize());
 
     frame.cmd.transition_images_layout(
       { src_img },
@@ -212,14 +221,14 @@ void Renderer::end_frame() {
 
   // Submit the CommandBuffer to the main queue.
   auto const& queue = context_ptr_->queue(Context::TargetQueue::Main).queue;
-  if (!swapchain_ptr_->submitFrame(queue, frame.cmd.handle())) {
+  if (!swapchain().submitFrame(queue, frame.cmd.handle())) {
     LOGV("{}: Invalid swapchain, skip that frame.", __FUNCTION__);
     return; 
   }
 
   // Present the swapchain frame's image.
-  swapchain_ptr_->finishFrame(queue);
-  frame_index_ = (frame_index_ + 1u) % swapchain_ptr_->imageCount();
+  swapchain().finishFrame(queue);
+  frame_index_ = (frame_index_ + 1u) % swapchain().imageCount();
 }
 
 // ----------------------------------------------------------------------------
@@ -230,7 +239,7 @@ std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
   auto desc = RenderTarget::Descriptor{
     .depth_stencil = { .format = depth_stencil_format() },
     .size = surface_size(),
-    .array_size = swapchain_ptr_->imageArraySize(), //
+    .array_size = swapchain().imageArraySize(), //
     .sample_count = VK_SAMPLE_COUNT_1_BIT, //
   };
   desc.colors.resize(num_color_outputs, {
@@ -323,7 +332,7 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
     data.dynamic_rendering_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
       .pNext = nullptr,
-      .viewMask = swapchain_ptr_->viewMask(), ///
+      .viewMask = swapchain().viewMask(), ///
       .colorAttachmentCount = static_cast<uint32_t>(data.color_attachments.size()),
       .pColorAttachmentFormats = data.color_attachments.data(),
       .depthAttachmentFormat = depthFormat,
@@ -634,7 +643,7 @@ void Renderer::blit_color(
     // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
     surface_size(),
-    swapchain_ptr_->imageArraySize() //
+    swapchain().imageArraySize() //
   );
 }
 

@@ -258,7 +258,9 @@ class Context {
     size_t device_buffer_size = 0u
   ) const {
     auto const host_span{ std::span(host_data) };
-    auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
     return transient_create_buffer(
       host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
     );
@@ -277,7 +279,9 @@ class Context {
     backend::Buffer const& device_buffer
   ) {
     auto const host_span{ std::span(host_data) };
-    auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
     transient_upload_buffer(host_span.data(), bytesize, device_buffer);
   }
 

@@ -5,7 +5,6 @@
 
 #include "aer/core/common.h"
 
-#include "aer/platform/xr_interface.h"
 #include "aer/platform/openxr/xr_common.h"
 #include "aer/platform/openxr/xr_utils.h"
 
@@ -15,7 +14,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-class OpenXRContext : public XRInterface {
+class OpenXRContext {
  private:
   // Generic parameters for a stereoscopic VR Headset.
   static constexpr XrFormFactor kHMDFormFactor{
@@ -49,38 +48,38 @@ class OpenXRContext : public XRInterface {
     XRPlatformInterface const& platform,
     std::string_view appName,
     std::vector<char const*> const& appExtensions
-  ) final;
+  );
 
   [[nodiscard]]
-  bool initSession() final;
+  bool initSession();
 
   [[nodiscard]]
-  bool createSwapchains() final;
+  bool resetSwapchain();
 
   [[nodiscard]]
-  bool completeSetup() final;
+  bool completeSetup();
 
-  void terminate() final;
+  void terminate();
 
-  void pollEvents() final;
+  void pollEvents();
 
   void processFrame(
     XRUpdateFunc_t const& update_frame_cb,
     XRRenderFunc_t const& render_view_cb
-  ) final;
+  );
 
   [[nodiscard]]
-  bool isSessionRunning() const noexcept final {
+  bool isSessionRunning() const noexcept {
     return session_running_;
   }
 
   [[nodiscard]]
-  bool isSessionFocused() const noexcept final {
+  bool isSessionFocused() const noexcept {
     return session_focused_;
   }
 
   [[nodiscard]]
-  bool shouldStopRender() const noexcept final {
+  bool shouldStopRender() const noexcept {
     return end_render_loop_;
   }
 
@@ -113,7 +112,7 @@ class OpenXRContext : public XRInterface {
   }
 
   [[nodiscard]]
-  SwapchainInterface* swapchain_ptr() noexcept {
+  SwapchainInterface* swapchainInterface() noexcept {
     return &swapchain_;
   }
 

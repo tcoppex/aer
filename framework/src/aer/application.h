@@ -13,7 +13,8 @@ using namespace std::chrono_literals;
 #include "aer/platform/common.h"
 #include "aer/platform/wm_interface.h"
 #include "aer/platform/ui_controller.h"
-#include "aer/platform/xr_interface.h"
+
+#include "aer/platform/swapchain_interface.h"
 #include "aer/platform/vulkan/swapchain.h" //
 
 #include "aer/renderer/render_context.h"
@@ -98,22 +99,22 @@ class Application : public EventCallbacks
  private:
   AppSettings settings_{};
 
-  std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
-  float frame_time_{};
-  float last_frame_time_{};
-  uint32_t rand_seed_{};
-
-  // -------------------------------
-  // |Android only]
-  UserData user_data_{};
-
-  // [Desktop only]
+  SwapchainInterface *swapchain_interface_{};
   std::unique_ptr<EventCallbacks> default_callbacks_{};
 
   // [non-XR only]
   VkSurfaceKHR surface_{};
   Swapchain swapchain_{};
-  // -------------------------------
+
+  // |Android only]
+  UserData user_data_{};
+
+  // [Time tracker]
+  std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
+  float frame_time_{};
+  float last_frame_time_{};
+
+  uint32_t rng_seed_{};
 };
 
 /* -------------------------------------------------------------------------- */

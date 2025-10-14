@@ -163,9 +163,13 @@ bool OpenXRContext::initSession() {
 
 // ----------------------------------------------------------------------------
 
-bool OpenXRContext::createSwapchains() {
+bool OpenXRContext::resetSwapchain() {
   LOG_CHECK(XR_NULL_HANDLE != instance_);
   LOG_CHECK(XR_NULL_HANDLE != session_);
+
+  if (swapchain_.handle != VK_NULL_HANDLE) {
+    swapchain_.destroy();
+  }
 
   /// NOTE:
   /// We need to use one swapchain per view, each of this swapchain
@@ -272,7 +276,9 @@ void OpenXRContext::terminate() {
     xrDestroyActionSet(controls_.action_set);
     controls_.action_set = XR_NULL_HANDLE;
   }
-  swapchain_.destroy(graphics_.get());
+
+  swapchain_.destroy();
+
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }

@@ -44,7 +44,7 @@ class Renderer {
 
   void init(
     RenderContext& context,
-    SwapchainInterface* swapchain_ptr,
+    SwapchainInterface** swapchain_ptr,
     Settings const& settings
   );
 
@@ -78,9 +78,10 @@ class Renderer {
   ) const;
 
   // --- Graphics Pipelines ---
-  // [those methods are specialization of those found in RenderContext
+
+  // those methods are specialization of those found in RenderContext
   // to use internal color/depth buffer by default when unspecified.
-  // Ideally it should be remove from here altogether]
+  // Ideally it should be remove from here altogether
 
   [[nodiscard]]
   VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
@@ -153,15 +154,19 @@ class Renderer {
   // ------------------------------
 
   [[nodiscard]]
-  uint32_t swap_image_count() const noexcept {
+  SwapchainInterface& swapchain() const {
     LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->imageCount();
+    return **swapchain_ptr_;
   }
 
   [[nodiscard]]
-  backend::Image swapchain_image() const noexcept {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
-    return swapchain_ptr_->currentImage();
+  uint32_t swapchain_image_count() const {
+    return swapchain().imageCount();
+  }
+
+  [[nodiscard]]
+  backend::Image swapchain_image() const {
+    return swapchain().currentImage();
   }
 
   [[nodiscard]]
@@ -221,7 +226,7 @@ class Renderer {
   /* Non owning References. */
   RenderContext* context_ptr_{};
   VkDevice device_{};
-  SwapchainInterface* swapchain_ptr_{};
+  SwapchainInterface** swapchain_ptr_{};
 
   Settings settings_{};
 
@@ -229,10 +234,11 @@ class Renderer {
   std::vector<FrameResources> frames_{};
   uint32_t frame_index_{};
 
+  bool enable_postprocess_{true};
+
   // ----------
 
   Skybox skybox_{};
-  bool enable_postprocess_{true};
 };
 
 /* -------------------------------------------------------------------------- */

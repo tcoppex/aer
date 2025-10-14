@@ -149,12 +149,11 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* Default Renderer. */
-  {
-    auto *swapchain_interface = xr_ ? xr_->swapchain_ptr()
-                                    : &swapchain_
-                                    ;
-    renderer_.init(context_, swapchain_interface, settings_.renderer);
-  }
+  renderer_.init(
+    context_,
+    &swapchain_interface_,
+    settings_.renderer
+  );
 
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {
@@ -163,8 +162,7 @@ bool Application::presetup(AppData_t app_data) {
     return false;
   }
 
-  // -----------------------
-  // [~] Capture & handle surface resolution changes.
+  // [~] Capture and handle surface resolution change.
   {
     auto on_resize = [this](uint32_t w, uint32_t h) {
       context_.device_wait_idle();
@@ -172,16 +170,11 @@ bool Application::presetup(AppData_t app_data) {
         .width = w,
         .height = h,
       };
-      LOGV("> AppResize (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+      LOGV("> Surface resize (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
       reset_swapchain();
-      renderer_.resize(viewport_size_.width, viewport_size_.height);
     };
-
-    // (meh..) Swapchain reset is not supported on OpenXR build.
-    if (!xr_) {
-      default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
-      Events::Get().registerCallbacks(default_callbacks_.get());
-    }
+    default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
+    Events::Get().registerCallbacks(default_callbacks_.get());
 
     LOGI("> Retrieve original viewport size.");
     viewport_size_ = {
@@ -190,7 +183,6 @@ bool Application::presetup(AppData_t app_data) {
     };
     LOGI("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
   }
-  // -----------------------
 
   /* Framework internal data. */
   {
@@ -201,8 +193,8 @@ bool Application::presetup(AppData_t app_data) {
     chrono_ = std::chrono::high_resolution_clock::now();
 
     // Initialize the standard C RNG seed, in cases any lib use it.
-    rand_seed_ = static_cast<uint32_t>(std::time(nullptr));
-    std::srand(rand_seed_);
+    rng_seed_ = static_cast<uint32_t>(std::time(nullptr));
+    std::srand(rng_seed_);
   }
 
   LOGD("--------------------------------------------\n");
@@ -296,42 +288,45 @@ bool Application::reset_swapchain() {
   LOGD("[Reset the Swapchain]");
   
   context_.device_wait_idle();
+  bool bSuccess = false;
 
-  // -------------------------------
-  // [OpenXR bypass traditionnal Surface+Swapchain creation]
-  if (xr_) {
-    return xr_->createSwapchains();
-  }
-  // -------------------------------
+  if (!xr_) [[likely]] {
+    auto surface_creation = VK_SUCCESS;
 
-  auto surface_creation = VK_SUCCESS;
-
-  /* Release previous swapchain if any, and create the surface when needed. */
-  if (VK_NULL_HANDLE == surface_) [[unlikely]] {
-    // Initial surface creation.
-    surface_creation = CHECK_VK(
-      wm_->createWindowSurface(context_.instance(), &surface_)
-    );
-  } else {
+    /* Release previous swapchain if any, and create the surface when needed. */
+    if (VK_NULL_HANDLE == surface_) [[unlikely]] {
+      // Initial surface creation.
+      surface_creation = CHECK_VK(
+        wm_->createWindowSurface(context_.instance(), &surface_)
+      );
+    } else {
 #if defined(ANDROID)
-    // On Android we use a new window, so we recreate everything.
-    context_.destroy_surface(surface_);
-    swapchain_.deinit();
-    surface_creation = CHECK_VK(
-      wm_->createWindowSurface(context_.instance(), &surface_)
-    );
+      // On Android we use a new window, so we recreate everything.
+      context_.destroy_surface(surface_);
+      swapchain_.deinit();
+      surface_creation = CHECK_VK(
+        wm_->createWindowSurface(context_.instance(), &surface_)
+      );
 #else
-    // On Desktop we can recreate a new swapchain from the old one.
-    swapchain_.deinit(true);
+      // On Desktop we can recreate a new swapchain from the old one.
+      swapchain_.deinit(true);
 #endif
-  }
-  auto const surface_created{ VK_SUCCESS == surface_creation };
+    }
 
-  // Recreate the Swapchain.
-  if (surface_created) {
-    swapchain_.init(context_, surface_);
+    // Recreate the Swapchain.
+    if (VK_SUCCESS == surface_creation) {
+      swapchain_.init(context_, surface_);
+      bSuccess = true;
+    }
+  } else {
+    // [OpenXR bypass traditionnal Surface + Swapchain creation]
+    bSuccess = xr_->resetSwapchain();
   }
-  return surface_created;
+
+  swapchain_interface_ = xr_ ? xr_->swapchainInterface()
+                             : &swapchain_
+                             ;
+  return bSuccess;
 }
 
 // ----------------------------------------------------------------------------

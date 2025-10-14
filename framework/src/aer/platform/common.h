@@ -6,16 +6,16 @@
 extern "C" {
 
 #if defined(ANDROID)
+
 #include <jni.h>
+
 #include <android/log.h>
 #include <android/native_window.h>
 #include <android/window.h>
 #include <android/keycodes.h>
-#endif
 
-//(should this be best linked to the app instead of the framework?)
-#if defined(ANDROID)
-#include <android_native_app_glue.h>
+#include <android_native_app_glue.h> //
+
 #endif
 
 }
@@ -36,7 +36,7 @@ using AppData_t = void*;
 // [wip] Android user data for AppData_t->userData.
 struct UserData {
   void *self{};
-  XRInterface *xr{};
+  OpenXRContext *xr{};
 };
 
 // [used only by Android app]
