@@ -21,8 +21,8 @@ class RayTracingFx : public PostGenericFx {
 
  public:
   void release() override {
-    allocator_ptr_->destroy_buffer(material_storage_buffer_);
-    allocator_ptr_->destroy_buffer(sbt_storage_buffer_);
+    context_ptr_->allocator().destroy_buffer(material_storage_buffer_);
+    context_ptr_->allocator().destroy_buffer(sbt_storage_buffer_);
     releaseOutputImagesAndBuffers();
     GenericFx::release();
   }
@@ -47,11 +47,13 @@ class RayTracingFx : public PostGenericFx {
 
   void execute(CommandEncoder& cmd) const override;
 
-  void buildMaterialStorageBuffer(std::vector<scene::MaterialProxy> const& proxy_materials) {
+  void buildMaterialStorageBuffer(
+    std::vector<scene::MaterialProxy> const& proxy_materials
+  ) {
     buildMaterials(proxy_materials);
     if (size_t bufferSize = getMaterialBufferSize(); bufferSize > 0) {
       // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = allocator_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->allocator().create_buffer(
         bufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -145,12 +147,12 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void releaseOutputImagesAndBuffers() {
     for (auto &image : out_images_) {
-      allocator_ptr_->destroy_image(&image);
+      context_ptr_->allocator().destroy_image(&image);
     }
     out_images_.clear();
 
     for (auto &buffer : out_buffers_) {
-      allocator_ptr_->destroy_buffer(buffer);
+      context_ptr_->allocator().destroy_buffer(buffer);
     }
     out_buffers_.clear();
   }

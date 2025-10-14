@@ -9,9 +9,11 @@
 #include "aer/platform/vulkan/utils.h"
 #include "aer/core/utils.h"
 
+namespace backend {
+
 /* -------------------------------------------------------------------------- */
 
-void ResourceAllocator::init(VmaAllocatorCreateInfo alloc_create_info) {
+void Allocator::init(VmaAllocatorCreateInfo alloc_create_info) {
   device_ = alloc_create_info.device;
 
   VmaVulkanFunctions const functions{
@@ -29,14 +31,14 @@ void ResourceAllocator::init(VmaAllocatorCreateInfo alloc_create_info) {
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::deinit() {
+void Allocator::deinit() {
   clear_staging_buffers();
   vmaDestroyAllocator(allocator_);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer ResourceAllocator::create_buffer(
+backend::Buffer Allocator::create_buffer(
   VkDeviceSize size,
   VkBufferUsageFlags2KHR usage,
   VmaMemoryUsage memory_usage,
@@ -91,7 +93,7 @@ backend::Buffer ResourceAllocator::create_buffer(
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer ResourceAllocator::create_staging_buffer(
+backend::Buffer Allocator::create_staging_buffer(
   size_t const bytesize,
   void const* host_data,
   size_t host_data_size
@@ -121,7 +123,7 @@ backend::Buffer ResourceAllocator::create_staging_buffer(
 
 // ----------------------------------------------------------------------------
 
-size_t ResourceAllocator::write_buffer(
+size_t Allocator::write_buffer(
   backend::Buffer const& dst_buffer,
   size_t const dst_offset,
   void const* host_data,
@@ -145,7 +147,7 @@ size_t ResourceAllocator::write_buffer(
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::clear_staging_buffers() const {
+void Allocator::clear_staging_buffers() const {
   for (auto const& staging_buffer : staging_buffers_) {
     destroy_buffer(staging_buffer);
   }
@@ -154,7 +156,7 @@ void ResourceAllocator::clear_staging_buffers() const {
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::create_image(
+void Allocator::create_image(
   VkImageCreateInfo const& image_info,
   backend::Image *image
 ) const {
@@ -179,7 +181,7 @@ void ResourceAllocator::create_image(
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::create_image_with_view(
+void Allocator::create_image_with_view(
   VkImageCreateInfo const& image_info,
   VkImageViewCreateInfo const& view_info,
   backend::Image *image
@@ -194,7 +196,7 @@ void ResourceAllocator::create_image_with_view(
 
 // ----------------------------------------------------------------------------
 
-void ResourceAllocator::destroy_image(backend::Image *image) const {
+void Allocator::destroy_image(backend::Image *image) const {
   if (image && image->valid()) {
     vmaDestroyImage(allocator_, image->image, image->allocation);
     image->image = VK_NULL_HANDLE;
@@ -206,3 +208,5 @@ void ResourceAllocator::destroy_image(backend::Image *image) const {
 }
 
 /* -------------------------------------------------------------------------- */
+
+} // namespace "backend"

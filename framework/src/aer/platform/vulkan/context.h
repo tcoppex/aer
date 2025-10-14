@@ -58,25 +58,12 @@ class Context {
     return properties_;
   }
 
+  // ------------------------
   [[nodiscard]]
-  ResourceAllocator* allocator_ptr() noexcept {
-    return allocator_.get();
-  }
-
-  [[nodiscard]]
-  ResourceAllocator const* allocator_ptr() const noexcept {
-    return allocator_.get();
-  }
-
-  [[nodiscard]]
-  ResourceAllocator& allocator() noexcept {
+  backend::Allocator const& allocator() const noexcept {
     return *allocator_;
   }
-
-  [[nodiscard]]
-  ResourceAllocator const& allocator() const noexcept {
-    return *allocator_;
-  }
+  // ------------------------
 
   void device_wait_idle() const {
     CHECK_VK(vkDeviceWaitIdle(device_));
@@ -105,7 +92,7 @@ class Context {
     VkFormat format,
     VkSampleCountFlagBits sample_count,
     VkImageUsageFlags usage,
-    std::string_view debugName
+    std::string_view debug_name
   ) const;
 
   [[nodiscard]]
@@ -114,10 +101,10 @@ class Context {
     uint32_t height,
     VkFormat format,
     VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT,
-    std::string_view debugName = ""
+    std::string_view debug_name = ""
   ) const {
     return create_image_2d(
-      width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debugName
+      width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debug_name
     );
   }
 
@@ -359,7 +346,7 @@ class Context {
 
   // --------------------------
 
-  std::unique_ptr<ResourceAllocator> allocator_{}; //
+  std::unique_ptr<backend::Allocator> allocator_{}; //
 
   std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
 };

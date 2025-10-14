@@ -6,10 +6,9 @@
 #include "aer/renderer/raytracing_scene.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
-class RenderContext;
-class ResourceAllocator;
-class RenderPassEncoder;
 class Camera;
+class RenderContext;
+class RenderPassEncoder;
 class RayTracingFx;
 
 /* -------------------------------------------------------------------------- */
@@ -90,7 +89,6 @@ struct GPUResources : scene::HostResources {
  private:
   Renderer const* renderer_ptr_{};
   RenderContext const* context_ptr_{};
-  ResourceAllocator const* allocator_ptr_{};
   uint32_t frame_index_{};
 };
 

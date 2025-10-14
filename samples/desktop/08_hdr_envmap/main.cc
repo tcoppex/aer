@@ -78,9 +78,9 @@ class SampleApp final : public Application {
       LOG_CHECK(scene_->device_images.size() <= kMaxNumTextures); //
     }
 
-    /* Release the temporary staging buffers. */
-    allocator_ptr_ = context_.allocator_ptr();
-    allocator_ptr_->clear_staging_buffers();
+    /* Release the temporary staging buffers.
+     * This is done automatically at the end of setup(). */
+    context_.allocator().clear_staging_buffers();
 
     /* Descriptor set. */
     {
@@ -198,7 +198,7 @@ class SampleApp final : public Application {
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
     context_.destroy_pipeline_layout(graphics_pipeline_.layout());
     context_.destroy_pipeline(graphics_pipeline_);
-    allocator_ptr_->destroy_buffer(uniform_buffer_);
+    context_.allocator().destroy_buffer(uniform_buffer_);
     scene_.reset();
   }
 
@@ -253,8 +253,6 @@ class SampleApp final : public Application {
   }
 
  private:
-  ResourceAllocator* allocator_ptr_{};
-
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 

@@ -6,10 +6,11 @@
 /* -------------------------------------------------------------------------- */
 
 void Envmap::init(RenderContext const& context) {
-  context_ = &context;
-  allocator_ptr_ = context_->allocator_ptr();
+  auto const& allocator = context.allocator();
 
-  irradiance_matrices_buffer_ = allocator_ptr_->create_buffer(
+  context_ptr_ = &context;
+
+  irradiance_matrices_buffer_ = allocator.create_buffer(
     sizeof(shader_interop::envmap::SHMatrices),
       VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
@@ -55,16 +56,16 @@ void Envmap::init(RenderContext const& context) {
     view_info.format = image_info.format;
 
     image_info.extent = { kDiffuseResolution, kDiffuseResolution, 1u };
-    allocator_ptr_->create_image_with_view(image_info, view_info, &images_[ImageType::Diffuse]);
+    allocator.create_image_with_view(image_info, view_info, &images_[ImageType::Diffuse]);
 
     image_info.extent = { kIrradianceResolution, kIrradianceResolution, 1u };
-    allocator_ptr_->create_image_with_view(image_info, view_info, &images_[ImageType::Irradiance]);
+    allocator.create_image_with_view(image_info, view_info, &images_[ImageType::Irradiance]);
 
     image_info.extent = { kSpecularResolution, kSpecularResolution, 1u };
     image_info.mipLevels = kSpecularLevelCount;
     // view_info.subresourceRange.baseMipLevel = 2u;
     view_info.subresourceRange.levelCount = image_info.mipLevels;
-    allocator_ptr_->create_image_with_view(image_info, view_info, &images_[ImageType::Specular]);
+    allocator.create_image_with_view(image_info, view_info, &images_[ImageType::Specular]);
   }
 
   /* Shared descriptor sets */
@@ -75,7 +76,7 @@ void Envmap::init(RenderContext const& context) {
       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
     };
 
-    descriptor_set_layout_ = context_->create_descriptor_set_layout({
+    descriptor_set_layout_ = context_ptr_->create_descriptor_set_layout({
       {
         .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -113,7 +114,7 @@ void Envmap::init(RenderContext const& context) {
       },
     });
 
-    descriptor_set_ = context_->create_descriptor_set(descriptor_set_layout_, {
+    descriptor_set_ = context_ptr_->create_descriptor_set(descriptor_set_layout_, {
       {
         .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImage,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -132,7 +133,7 @@ void Envmap::init(RenderContext const& context) {
     });
   }
 
-  pipeline_layout_ = context_->create_pipeline_layout({
+  pipeline_layout_ = context_ptr_->create_pipeline_layout({
     .setLayouts = { descriptor_set_layout_ },
     .pushConstantRanges = {
       {
@@ -145,7 +146,7 @@ void Envmap::init(RenderContext const& context) {
 
   /* Create the compute pipelines. */
   {
-    auto shaders{context_->create_shader_modules(FRAMEWORK_COMPILED_SHADERS_DIR "envmap", {
+    auto shaders{context_ptr_->create_shader_modules(FRAMEWORK_COMPILED_SHADERS_DIR "envmap", {
       "spherical_to_cubemap.comp.glsl",
       "irradiance_calculate_coeff.comp.glsl",
       "irradiance_reduce_step.comp.glsl",
@@ -153,8 +154,8 @@ void Envmap::init(RenderContext const& context) {
       "irradiance_convolution.comp.glsl",
       "specular_convolution.comp.glsl",
     })};
-    context_->create_compute_pipelines(pipeline_layout_, shaders, compute_pipelines_.data());
-    context_->release_shader_modules(shaders);
+    context_ptr_->create_compute_pipelines(pipeline_layout_, shaders, compute_pipelines_.data());
+    context_ptr_->release_shader_modules(shaders);
   }
 
   /* internal sampler */
@@ -170,27 +171,27 @@ void Envmap::init(RenderContext const& context) {
       .anisotropyEnable = VK_FALSE,
       .maxLod = 0,
     };
-    CHECK_VK( vkCreateSampler(context_->device(), &sampler_create_info, nullptr, &sampler_) );
+    CHECK_VK( vkCreateSampler(context_ptr_->device(), &sampler_create_info, nullptr, &sampler_) );
   }
 }
 
 // ----------------------------------------------------------------------------
 
 void Envmap::release() {
-  if (!allocator_ptr_) {
+  if (!context_ptr_) {
     return;
   }
 
-  allocator_ptr_->destroy_buffer(irradiance_matrices_buffer_);
-  vkDestroySampler(context_->device(), sampler_, nullptr); //
+  context_ptr_->allocator().destroy_buffer(irradiance_matrices_buffer_);
+  vkDestroySampler(context_ptr_->device(), sampler_, nullptr); //
   for (auto &image : images_) {
-    allocator_ptr_->destroy_image(&image);
+    context_ptr_->allocator().destroy_image(&image);
   }
   for (auto pipeline : compute_pipelines_) {
-    context_->destroy_pipeline(pipeline);
+    context_ptr_->destroy_pipeline(pipeline);
   }
-  context_->destroy_pipeline_layout(pipeline_layout_);
-  context_->destroy_descriptor_set_layout(descriptor_set_layout_);
+  context_ptr_->destroy_pipeline_layout(pipeline_layout_);
+  context_ptr_->destroy_descriptor_set_layout(descriptor_set_layout_);
 }
 
 // ----------------------------------------------------------------------------
@@ -201,7 +202,7 @@ bool Envmap::setup(std::string_view hdr_filename) {
     return false;
   }
 
-  context_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->update_descriptor_set(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -226,11 +227,11 @@ bool Envmap::setup(std::string_view hdr_filename) {
 
 bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
   backend::Image spherical_envmap{};
-  if (!context_->load_image_2d(hdr_filename, spherical_envmap)) {
+  if (!context_ptr_->load_image_2d(hdr_filename, spherical_envmap)) {
     return false;
   }
 
-  context_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->update_descriptor_set(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -247,7 +248,7 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
   auto const& diffuse = images_[ImageType::Diffuse];
 
   /* Transform the spherical texture into a cubemap. */
-  auto cmd = context_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
   {
     cmd.pipeline_image_barriers({
       {
@@ -280,9 +281,9 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
       }
     });
   }
-  context_->finish_transient_command_encoder(cmd);
+  context_ptr_->finish_transient_command_encoder(cmd);
 
-  allocator_ptr_->destroy_image(&spherical_envmap);
+  context_ptr_->allocator().destroy_image(&spherical_envmap);
 
   return true;
 }
@@ -300,13 +301,13 @@ void Envmap::compute_irradiance_sh_coeff() {
 
   auto const& diffuse = images_[ImageType::Diffuse];
 
-  backend::Buffer sh_coefficient_buffer{allocator_ptr_->create_buffer(
+  backend::Buffer sh_coefficient_buffer{context_ptr_->allocator().create_buffer(
     bufferSize * sizeof(shader_interop::envmap::SHCoeff),
       VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
   )};
 
-  context_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->update_descriptor_set(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -327,7 +328,7 @@ void Envmap::compute_irradiance_sh_coeff() {
 
   // --------------------
 
-  auto cmd = context_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
   {
     cmd.bind_descriptor_set(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -417,9 +418,9 @@ void Envmap::compute_irradiance_sh_coeff() {
       });
     }
   }
-  context_->finish_transient_command_encoder(cmd);
+  context_ptr_->finish_transient_command_encoder(cmd);
 
-  allocator_ptr_->destroy_buffer(sh_coefficient_buffer);
+  context_ptr_->allocator().destroy_buffer(sh_coefficient_buffer);
 }
 
 // ----------------------------------------------------------------------------
@@ -427,7 +428,7 @@ void Envmap::compute_irradiance_sh_coeff() {
 void Envmap::compute_irradiance() {
   auto const& irradiance = images_[ImageType::Irradiance];
 
-  context_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->update_descriptor_set(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImage,
       .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -440,7 +441,7 @@ void Envmap::compute_irradiance() {
     }
   });
 
-  auto cmd = context_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
   {
     cmd.pipeline_image_barriers({
       {
@@ -473,7 +474,7 @@ void Envmap::compute_irradiance() {
       }
     });
   }
-  context_->finish_transient_command_encoder(cmd);
+  context_ptr_->finish_transient_command_encoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
@@ -509,11 +510,11 @@ void Envmap::compute_specular() {
   for (uint32_t level = 0u; level < kSpecularLevelCount; ++level) {
     view_info.subresourceRange.baseMipLevel = level;
     CHECK_VK(vkCreateImageView(
-      context_->device(), &view_info, nullptr, &desc_image_infos[level].imageView
+      context_ptr_->device(), &view_info, nullptr, &desc_image_infos[level].imageView
     ));
   }
 
-  context_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->update_descriptor_set(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImageArray,
       .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -521,7 +522,7 @@ void Envmap::compute_specular() {
     }
   });
 
-  auto cmd = context_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
   {
     cmd.pipeline_image_barriers({
       {
@@ -567,10 +568,10 @@ void Envmap::compute_specular() {
       }
     });
   }
-  context_->finish_transient_command_encoder(cmd);
+  context_ptr_->finish_transient_command_encoder(cmd);
 
   for (auto const& desc_image_info : desc_image_infos) {
-    vkDestroyImageView(context_->device(), desc_image_info.imageView, nullptr);
+    vkDestroyImageView(context_ptr_->device(), desc_image_info.imageView, nullptr);
   }
 }
 

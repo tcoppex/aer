@@ -79,8 +79,7 @@ class Envmap {
   void compute_specular();
 
  private:
-  RenderContext const* context_{};
-  ResourceAllocator const* allocator_ptr_{};
+  RenderContext const* context_ptr_{};
 
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};

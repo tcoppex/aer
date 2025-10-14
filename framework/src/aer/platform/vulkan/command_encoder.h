@@ -5,7 +5,10 @@
 #include "aer/platform/vulkan/utils.h"
 #include "aer/platform/swapchain_interface.h"
 
-class ResourceAllocator;
+namespace backend {
+class Allocator;
+}
+
 class PostFxInterface;
 
 /* -------------------------------------------------------------------------- */
@@ -189,7 +192,7 @@ class GenericCommandEncoder {
  **/
 class CommandEncoder : public GenericCommandEncoder {
  public:
-  ~CommandEncoder() {}
+  ~CommandEncoder() = default;
 
   // --- Buffers ---
 
@@ -272,7 +275,9 @@ class CommandEncoder : public GenericCommandEncoder {
       .imageOffset = {},
       .imageExtent = extent,
     };
-    vkCmdCopyBufferToImage(command_buffer_, src.buffer, dst.image, image_layout, 1u, &copy);
+    vkCmdCopyBufferToImage(
+      command_buffer_, src.buffer, dst.image, image_layout, 1u, &copy
+    );
   }
 
   void blit_image_2d(
@@ -283,17 +288,6 @@ class CommandEncoder : public GenericCommandEncoder {
     VkExtent2D const& extent,
     uint32_t layer_count = 1u
   ) const;
-
-  // void blit(
-  //   PostFxInterface const& fx_src,
-  //   backend::RTInterface const& rt_dst
-  // ) const;
-
-  // void blit(
-  //   backend::RTInterface const& rt_src,
-  //   backend::RTInterface const& rt_dst,
-  //   VkImageLayout dst_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-  // ) const;
 
   // --- Rendering ---
 
@@ -325,7 +319,7 @@ class CommandEncoder : public GenericCommandEncoder {
     VkCommandBuffer const command_buffer,
     uint32_t const target_queue_index,
     VkDevice const device,
-    ResourceAllocator *allocator_ptr,
+    backend::Allocator const* allocator_ptr,
     backend::RTInterface const* default_rt
   ) : GenericCommandEncoder(command_buffer, target_queue_index)
     , device_{device}
@@ -347,7 +341,7 @@ class CommandEncoder : public GenericCommandEncoder {
 
  protected:
   VkDevice device_{};
-  ResourceAllocator* allocator_ptr_{};
+  backend::Allocator const* allocator_ptr_{};
 
   /* Link the default backend::RTInterface when one is available. */
   backend::RTInterface const* default_render_target_ptr_{};
@@ -370,7 +364,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
   static constexpr bool kDefaultViewportFlipY{ true };
 
  public:
-  ~RenderPassEncoder() {}
+  ~RenderPassEncoder() = default;
 
   // --- Dynamic States ---
 

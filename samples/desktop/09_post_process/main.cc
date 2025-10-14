@@ -33,7 +33,7 @@ class SceneFx final : public RenderTargetFx {
   void setup(VkExtent2D const dimension) final {
     RenderTargetFx::setup(dimension);
 
-    uniform_buffer_ = allocator_ptr_->create_buffer(
+    uniform_buffer_ = context_ptr_->allocator().create_buffer(
       sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -49,7 +49,7 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void release() final {
-    allocator_ptr_->destroy_buffer(uniform_buffer_);
+    context_ptr_->allocator().destroy_buffer(uniform_buffer_);
     scene_.reset();
     RenderTargetFx::release();
   }

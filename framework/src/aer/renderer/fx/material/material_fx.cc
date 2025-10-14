@@ -8,7 +8,6 @@
 void MaterialFx::init(Renderer const& renderer) {
   renderer_ptr_ = &renderer;
   context_ptr_ = &renderer.context(); //
-  allocator_ptr_ = context_ptr_->allocator_ptr();
 }
 
 // ----------------------------------------------------------------------------

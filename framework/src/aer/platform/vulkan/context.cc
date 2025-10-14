@@ -37,7 +37,7 @@ bool Context::init(
     }
   }
 
-  allocator_ = std::make_unique<ResourceAllocator>();
+  allocator_ = std::make_unique<backend::Allocator>();
   allocator_->init({
     .physicalDevice = gpu_,
     .device = device_,
@@ -109,7 +109,7 @@ backend::Image Context::create_image_2d(
   VkFormat format,
   VkSampleCountFlagBits sample_count,
   VkImageUsageFlags usage,
-  std::string_view debugName
+  std::string_view debug_name
 ) const {
   LOG_CHECK( width > 0u && height > 0u );
   LOG_CHECK( array_layers > 0u );
@@ -177,7 +177,7 @@ backend::Image Context::create_image_2d(
 
   set_debug_object_name(
     image.image,
-    std::string(debugName.empty() ? "Image2d::NoName" : debugName)
+    std::string(debug_name.empty() ? "Image2d::NoName" : debug_name)
   );
 
   return image;

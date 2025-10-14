@@ -149,9 +149,9 @@ CommandEncoder& Renderer::begin_frame() {
   frame.cmd = CommandEncoder(
     frame.command_buffer,
     static_cast<uint32_t>(Context::TargetQueue::Main),
-    device_,
-    context_ptr_->allocator_ptr(),
-    frame.main_rt.get() //
+    device_, //
+    &context_ptr_->allocator(), //
+    frame.main_rt.get()
   );
   frame.cmd.begin();
 

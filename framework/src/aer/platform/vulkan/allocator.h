@@ -9,14 +9,16 @@
 
 /* -------------------------------------------------------------------------- */
 
-class ResourceAllocator {
+namespace backend {
+
+class Allocator {
  public:
   static constexpr size_t kDefaultStagingBufferSize{ 32u * 1024u * 1024u };
   static constexpr bool kAutoAlignBufferSize{ false };
 
  public:
-  ResourceAllocator() = default;
-  ~ResourceAllocator() = default;
+  Allocator() = default;
+  ~Allocator() = default;
 
   void init(VmaAllocatorCreateInfo alloc_create_info);
 
@@ -52,8 +54,6 @@ class ResourceAllocator {
     vmaUnmapMemory(allocator_, buffer.allocation);
   }
 
-  // (should the allocator be allowed to write on device ?)
-  // ------------------------
   size_t write_buffer(
     backend::Buffer const& dst_buffer,
     size_t const dst_offset,
@@ -69,7 +69,6 @@ class ResourceAllocator {
   ) const {
     write_buffer(dst_buffer, 0u, host_data, 0u, bytesize);
   }
-  // ------------------------
 
   void destroy_buffer(backend::Buffer const& buffer) const {
     vmaDestroyBuffer(allocator_, buffer.buffer, buffer.allocation);
@@ -79,7 +78,10 @@ class ResourceAllocator {
 
   // ----- Image -----
 
-  void create_image(VkImageCreateInfo const& image_info, backend::Image *image) const;
+  void create_image(
+    VkImageCreateInfo const& image_info,
+    backend::Image *image
+  ) const;
 
   /* Create an image with view with identical format. */
   void create_image_with_view(
@@ -96,6 +98,8 @@ class ResourceAllocator {
   mutable std::vector<backend::Buffer> staging_buffers_{};
 };
 
+} // namespace "backend"
+
 /* -------------------------------------------------------------------------- */
 
-#endif
+#endif // AER_PLATFORM_VULKAN_ALLOCATOR_H_

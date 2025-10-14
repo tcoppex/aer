@@ -54,8 +54,6 @@ class SampleApp final : public Application {
 
     renderer_.set_clear_color({0.125f, 0.125f, 0.125f, 1.0f});
 
-    allocator_ptr_ = context_.allocator_ptr();
-
     /* Initialize the scene data on the host, here just the camera matrices. */
     host_data_.scene.camera = {
       .viewMatrix = linalg::lookat_matrix(
@@ -204,12 +202,12 @@ class SampleApp final : public Application {
     /* As we've created the pipeline layout externally we should destroy it manually.
      * We could also use 'graphics_pipeline_.layout()'' if we didn't kept it. */
     context_.destroy_pipeline_layout(pipeline_layout_);
-
     context_.destroy_pipeline(graphics_pipeline_);
 
-    allocator_ptr_->destroy_buffer(index_buffer_);
-    allocator_ptr_->destroy_buffer(vertex_buffer_);
-    allocator_ptr_->destroy_buffer(uniform_buffer_);
+    auto const& allocator = context_.allocator();
+    allocator.destroy_buffer(index_buffer_);
+    allocator.destroy_buffer(vertex_buffer_);
+    allocator.destroy_buffer(uniform_buffer_);
   }
 
   void update(float const dt) final {
@@ -259,8 +257,6 @@ class SampleApp final : public Application {
   }
 
  private:
-  ResourceAllocator* allocator_ptr_{};
-
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 
