@@ -30,7 +30,7 @@
 #include "aer/platform/backend/context.h"
 #include "aer/platform/backend/command_encoder.h"
 
-#include "aer/platform/desktop/window.h" // for glfwGetWindowContentScale
+#include "aer/platform/impl/desktop/window.h" // for glfwGetWindowContentScale
 
 /* -------------------------------------------------------------------------- */
 

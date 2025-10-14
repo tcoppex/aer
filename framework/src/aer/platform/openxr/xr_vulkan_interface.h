@@ -1,15 +1,12 @@
 #ifndef AER_CORE_PLATFORM_OPENXR_XR_VULKAN_INTERFACE_H_
 #define AER_CORE_PLATFORM_OPENXR_XR_VULKAN_INTERFACE_H_
 
-#if defined(ANDROID)
-#include <jni.h> //
-#endif
+/* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/vulkan_wrapper.h"
-#include <openxr/openxr_platform.h>
+#include "aer/platform/openxr/xr_common.h"
 
-#include "aer/platform/backend/types.h" // (for backend::Image)
 #include "aer/platform/openxr/xr_utils.h"
+#include "aer/platform/backend/types.h" // (for backend::Image)
 
 // ----------------------------------------------------------------------------
 

@@ -1,8 +1,8 @@
-#ifndef AER_PLATEFORM_DESKTOP_WINDOW_H_
-#define AER_PLATEFORM_DESKTOP_WINDOW_H_
+#ifndef AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_
+#define AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_
 
 #include "aer/platform/wm_interface.h"
-#include "aer/platform/desktop/xr_desktop.h"
+#include "aer/platform/impl/desktop/xr_desktop.h"
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
@@ -66,4 +66,4 @@ class Window : public WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif  // AER_WINDOW_H_
+#endif  // AER_PLATEFORM_IMPL_DESKTOP_WINDOW_H_

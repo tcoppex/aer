@@ -2,7 +2,7 @@
   #include <windows.h> // for SetConsoleOutputCP
 #endif
 
-#include "aer/platform/desktop/window.h"
+#include "aer/platform/impl/desktop/window.h"
 #include "aer/core/events.h"
 #include "aer/core/logger.h"
 

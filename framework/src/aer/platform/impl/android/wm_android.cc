@@ -3,8 +3,8 @@
 using namespace std::chrono_literals;
 
 #include "aer/core/events.h"
-#include "aer/platform/android/wm_android.h"
-#include "aer/platform/android/jni_context.h"
+#include "aer/platform/impl/android/wm_android.h"
+#include "aer/platform/impl/android/jni_context.h"
 
 /* -------------------------------------------------------------------------- */
 

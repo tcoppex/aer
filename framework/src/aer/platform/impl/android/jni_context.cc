@@ -1,4 +1,4 @@
-#include "aer/platform/android/jni_context.h"
+#include "aer/platform/impl/android/jni_context.h"
 
 extern "C" {
 #include <android/asset_manager_jni.h>

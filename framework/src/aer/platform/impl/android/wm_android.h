@@ -1,9 +1,9 @@
-#ifndef AER_PLATEFORM_ANDROID_WM_ANDROID_H_
-#define AER_PLATEFORM_ANDROID_WM_ANDROID_H_
+#ifndef AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_
+#define AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_
 
 #include "aer/platform/common.h"
 #include "aer/platform/wm_interface.h"
-#include "aer/platform/android/xr_android.h"
+#include "aer/platform/impl/android/xr_android.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -88,4 +88,4 @@ struct WMAndroid final : public WMInterface {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATEFORM_ANDROID_WM_ANDROID_H_
+#endif // AER_PLATEFORM_IMPL_ANDROID_WM_ANDROID_H_
