@@ -41,11 +41,6 @@ class Allocator {
     size_t host_data_size = 0u
   ) const;
 
-  template<typename T> [[nodiscard]]
-  backend::Buffer create_staging_buffer(std::span<T> const& host_data) const {
-    return create_staging_buffer(sizeof(T) * host_data.size(), host_data.data());
-  }
-
   void map_memory(backend::Buffer const& buffer, void **data) const {
     CHECK_VK( vmaMapMemory(allocator_, buffer.allocation, data) );
   }
@@ -78,19 +73,14 @@ class Allocator {
 
   // ----- Image -----
 
-  void create_image(
-    VkImageCreateInfo const& image_info,
-    backend::Image *image
-  ) const;
-
   /* Create an image with view with identical format. */
-  void create_image_with_view(
+  backend::Image create_image(
     VkImageCreateInfo const& image_info,
-    VkImageViewCreateInfo const& view_info,
-    backend::Image *image
+    VkImageViewCreateInfo view_info,
+    VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_GPU_ONLY
   ) const;
 
-  void destroy_image(backend::Image *image) const;
+  void destroy_image(backend::Image &image) const;
 
  private:
   VkDevice device_{};

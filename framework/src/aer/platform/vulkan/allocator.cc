@@ -156,54 +156,49 @@ void Allocator::clear_staging_buffers() const {
 
 // ----------------------------------------------------------------------------
 
-void Allocator::create_image(
+backend::Image Allocator::create_image(
   VkImageCreateInfo const& image_info,
-  backend::Image *image
+  VkImageViewCreateInfo view_info,
+  VmaMemoryUsage memory_usage
 ) const {
-  LOG_CHECK( image != nullptr );
+  LOG_CHECK( view_info.format == image_info.format );
   LOG_CHECK( image_info.format != VK_FORMAT_UNDEFINED );
   LOG_CHECK( image_info.extent.width > 0 && image_info.extent.height > 0 );
 
+  backend::Image image{};
+
   VmaAllocationCreateInfo const alloc_create_info{
-    .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .usage = memory_usage, //
   };
   VmaAllocationInfo alloc_info{};
+
   CHECK_VK(vmaCreateImage(
     allocator_,
     &image_info,
     &alloc_create_info,
-    &image->image,
-    &image->allocation,
+    &image.image,
+    &image.allocation,
     &alloc_info
   ));
-  image->format = image_info.format;
+  image.format = image_info.format;
+
+  view_info.image = image.image;
+  CHECK_VK(vkCreateImageView(device_, &view_info, nullptr, &image.view));
+
+  return image;
 }
 
 // ----------------------------------------------------------------------------
 
-void Allocator::create_image_with_view(
-  VkImageCreateInfo const& image_info,
-  VkImageViewCreateInfo const& view_info,
-  backend::Image *image
-) const {
-  LOG_CHECK( view_info.format == image_info.format );
-
-  create_image(image_info, image);
-  auto info{view_info};
-  info.image = image->image;
-  CHECK_VK(vkCreateImageView(device_, &info, nullptr, &image->view));
-}
-
-// ----------------------------------------------------------------------------
-
-void Allocator::destroy_image(backend::Image *image) const {
-  if (image && image->valid()) {
-    vmaDestroyImage(allocator_, image->image, image->allocation);
-    image->image = VK_NULL_HANDLE;
-    if (image->view != VK_NULL_HANDLE) {
-      vkDestroyImageView(device_, image->view, nullptr);
-      image->view = VK_NULL_HANDLE;
-    }
+void Allocator::destroy_image(backend::Image &image) const {
+  if (!image.valid()) {
+    return;
+  }
+  vmaDestroyImage(allocator_, image.image, image.allocation);
+  image.image = VK_NULL_HANDLE;
+  if (image.view != VK_NULL_HANDLE) {
+    vkDestroyImageView(device_, image.view, nullptr);
+    image.view = VK_NULL_HANDLE;
   }
 }
 

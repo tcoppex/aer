@@ -194,7 +194,7 @@ class SampleApp final : public Application {
     context_.destroy_pipeline(graphics_pipeline_);
 
     auto const& allocator = context_.allocator();
-    allocator.destroy_image(&image_);
+    allocator.destroy_image(image_);
     allocator.destroy_buffer(index_buffer_);
     allocator.destroy_buffer(vertex_buffer_);
     allocator.destroy_buffer(uniform_buffer_);

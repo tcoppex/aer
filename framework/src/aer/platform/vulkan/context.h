@@ -58,12 +58,10 @@ class Context {
     return properties_;
   }
 
-  // ------------------------
   [[nodiscard]]
   backend::Allocator const& allocator() const noexcept {
     return *allocator_;
   }
-  // ------------------------
 
   void device_wait_idle() const {
     CHECK_VK(vkDeviceWaitIdle(device_));

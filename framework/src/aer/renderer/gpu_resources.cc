@@ -38,7 +38,7 @@ GPUResources::~GPUResources() {
     // ---------------------------------------
 
     for (auto& img : device_images) {
-      allocator.destroy_image(&img);
+      allocator.destroy_image(img);
     }
     allocator.destroy_buffer(transforms_ssbo_);
     allocator.destroy_buffer(frame_ubo_);

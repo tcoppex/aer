@@ -147,7 +147,7 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void releaseOutputImagesAndBuffers() {
     for (auto &image : out_images_) {
-      context_ptr_->allocator().destroy_image(&image);
+      context_ptr_->allocator().destroy_image(image);
     }
     out_images_.clear();
 

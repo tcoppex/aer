@@ -139,7 +139,7 @@ void Skybox::release(Renderer const& renderer) {
   auto const& context = renderer.context();
   auto allocator = context.allocator();
 
-  allocator.destroy_image(&specular_brdf_lut_);
+  allocator.destroy_image(specular_brdf_lut_);
 
   context.destroy_pipeline(graphics_pipeline_);
   context.destroy_pipeline_layout(pipeline_layout_);

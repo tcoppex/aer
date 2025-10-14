@@ -95,10 +95,10 @@ void Framebuffer::release_buffers() {
 
   auto allocator = context_ptr_->allocator();
   for (auto& color : outputs_[BufferName::Color]) {
-    allocator.destroy_image(&color);
+    allocator.destroy_image(color);
   }
   for (auto& depth_stencil : outputs_[BufferName::DepthStencil]) {
-    allocator.destroy_image(&depth_stencil);
+    allocator.destroy_image(depth_stencil);
   }
 }
 

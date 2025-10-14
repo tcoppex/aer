@@ -24,12 +24,12 @@ void RenderTarget::release() {
   LOG_CHECK(context_ptr_ != nullptr);
 
   auto allocator = context_ptr_->allocator();
-  allocator.destroy_image(&depth_stencil_);
+  allocator.destroy_image(depth_stencil_);
   for(auto& resolve : resolves_) {
-    allocator.destroy_image(&resolve);
+    allocator.destroy_image(resolve);
   }
   for(auto& color : colors_) {
-    allocator.destroy_image(&color);
+    allocator.destroy_image(color);
   }
 }
 

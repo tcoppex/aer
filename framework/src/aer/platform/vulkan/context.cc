@@ -172,8 +172,7 @@ backend::Image Context::create_image_2d(
     },
   };
 
-  backend::Image image{};
-  allocator_->create_image_with_view(image_info, view_info, &image);
+  auto image = allocator_->create_image(image_info, view_info);
 
   set_debug_object_name(
     image.image,
