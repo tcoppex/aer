@@ -67,11 +67,11 @@ class SampleApp final : public Application {
 
       /* Transfer the cube geometry (vertices attributes & indices) to the device. */
       vertex_buffer_ = cmd.create_buffer_and_upload(
-        cube_.get_vertices(),
+        cube_.vertices(),
         VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
       );
       index_buffer_ = cmd.create_buffer_and_upload(
-        cube_.get_indices(),
+        cube_.indices(),
         VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
       );
 
@@ -222,7 +222,7 @@ class SampleApp final : public Application {
 
           pass.bind_vertex_buffer(vertex_buffer_);
           pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-          pass.draw_indexed(cube_.get_index_count());
+          pass.draw_indexed(cube_.index_count());
 
           // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
         }

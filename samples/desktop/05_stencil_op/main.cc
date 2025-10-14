@@ -28,7 +28,7 @@ class SampleApp final : public Application {
     void draw(RenderPassEncoder const& pass, uint32_t instance_count = 1u) const {
       pass.bind_vertex_buffer(vertex);
       pass.bind_index_buffer(index, vk_index_type());
-      pass.draw_indexed(get_index_count(), instance_count);
+      pass.draw_indexed(index_count(), instance_count);
     }
   };
 
@@ -92,11 +92,11 @@ class SampleApp final : public Application {
         mesh.initialize_submesh_descriptors(attrib_location_map);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.get_vertices(),
+          mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.get_indices(),
+          mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
         mesh.clear_indices_and_vertices();
@@ -112,11 +112,11 @@ class SampleApp final : public Application {
         mesh.initialize_submesh_descriptors(attrib_location_map);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.get_vertices(),
+          mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.get_indices(),
+          mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
         mesh.clear_indices_and_vertices();

@@ -129,57 +129,67 @@ class Geometry {
   /* --- Getters --- */
 
   [[nodiscard]]
-  Topology get_topology() const noexcept {
+  Topology topology() const noexcept {
     return topology_;
   }
 
   [[nodiscard]]
-  IndexFormat get_index_format() const noexcept {
+  IndexFormat index_format() const noexcept {
     return index_format_;
   }
 
   [[nodiscard]]
-  uint32_t get_index_count() const noexcept {
+  uint32_t index_count() const noexcept {
     return index_count_;
   }
 
   [[nodiscard]]
-  uint32_t get_vertex_count() const noexcept {
+  uint32_t vertex_count() const noexcept {
     return vertex_count_;
   }
 
   [[nodiscard]]
-  AttributeFormat get_format(AttributeType const attrib_type) const {
+  AttributeFormat attribute_format(AttributeType const attrib_type) const {
     return attributes_.at(attrib_type).format;
   }
 
   [[nodiscard]]
-  uint32_t get_offset(AttributeType const attrib_type) const {
+  uint32_t attribute_offset(AttributeType const attrib_type) const {
     return attributes_.at(attrib_type).offset;
   }
 
   [[nodiscard]]
-  uint32_t get_stride(AttributeType const attrib_type = AttributeType::Position) const {
+  uint32_t attribute_stride(AttributeType const attrib_type = AttributeType::Position) const {
     return attributes_.at(attrib_type).stride;
   }
 
   [[nodiscard]]
-  std::vector<std::byte> const& get_indices() const noexcept {
+  uint64_t indices_bytesize() const noexcept {
+    return indices_.size();
+  }
+
+  [[nodiscard]]
+  uint64_t vertices_bytesize() const noexcept {
+    return vertices_.size();
+  }
+
+  [[nodiscard]]
+  std::vector<std::byte> const& indices() const noexcept {
     return indices_;
   }
 
   [[nodiscard]]
-  std::vector<std::byte> const& get_vertices() const noexcept {
+  std::vector<std::byte> const& vertices() const noexcept {
     return vertices_;
   }
 
   [[nodiscard]]
-  Primitive const& get_primitive(uint32_t const primitive_index = 0u) const {
+  Primitive const& primitive(uint32_t const primitive_index = 0u) const {
     return primitives_.at(primitive_index);
   }
 
   [[nodiscard]]
-  uint32_t get_primitive_count() const noexcept {
+  uint32_t primitive_count() const noexcept {
     return static_cast<uint32_t>(primitives_.size());
   }
 

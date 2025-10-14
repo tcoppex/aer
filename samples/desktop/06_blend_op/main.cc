@@ -76,11 +76,11 @@ class SampleApp final : public Application {
         Geometry::MakePointListPlane(mesh.geo, 1.0f, 512u, 512u);
 
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.geo.get_vertices(),
+          mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.geo.get_indices(),
+          mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
       }
@@ -247,7 +247,7 @@ class SampleApp final : public Application {
          *
          * For efficiency this is done in a vertex shader instead of a geometry shader.
          */
-        pass.draw(6u, point_grid_.geo.get_vertex_count());
+        pass.draw(6u, point_grid_.geo.vertex_count());
       }
       cmd.end_rendering();
     }

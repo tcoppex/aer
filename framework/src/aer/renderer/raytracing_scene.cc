@@ -124,7 +124,7 @@ bool RayTracingScene::build_blas(scene::Mesh::SubMesh const& submesh) {
     .vertexData    = {
       .deviceAddress = vertex_address_ + desc.vertexOffset, //
     },
-    .vertexStride  = mesh.get_stride(Geometry::AttributeType::Position), //sizeof(VertexInternal_t)
+    .vertexStride  = mesh.attribute_stride(Geometry::AttributeType::Position), //sizeof(VertexInternal_t)
     .maxVertex     = desc.vertexCount - 1,
     .indexType     = desc.indexType,
     .indexData     = {

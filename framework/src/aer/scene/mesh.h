@@ -42,8 +42,8 @@ struct Mesh : Geometry {
     buffer_info_ = {
       .vertex_offset = buffer_info.vertex_offset,
       .index_offset = buffer_info.index_offset,
-      .vertex_size = get_vertices().size(),
-      .index_size = get_indices().size(),
+      .vertex_size = vertices_bytesize(),
+      .index_size = indices_bytesize(),
     };
   }
 

@@ -86,16 +86,16 @@ class SampleApp final : public Application {
         auto &mesh = point_grid_;
         Geometry::MakePointListPlane(mesh.geo, 16.0f, kPointGridSize, kPointGridSize);
 
-        vertex_buffer_bytesize_ = mesh.geo.get_vertices().size();
+        vertex_buffer_bytesize_ = mesh.geo.vertices_bytesize();
         mesh.vertex = cmd.create_buffer_and_upload(
-          mesh.geo.get_vertices(),
+          mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
           vertex_buffer_bytesize_, 2u * vertex_buffer_bytesize_
         );
 
-        index_buffer_bytesize_ = mesh.geo.get_indices().size();
+        index_buffer_bytesize_ = mesh.geo.indices_bytesize();
         mesh.index = cmd.create_buffer_and_upload(
-          mesh.geo.get_indices(),
+          mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
           0u, 2u * index_buffer_bytesize_
         );
@@ -105,7 +105,7 @@ class SampleApp final : public Application {
 
       /* Buffer used to store the dot product of particles toward the view direction. */
       dot_product_buffer_ = context_.create_buffer(
-        point_grid_.geo.get_vertex_count() * sizeof(float),
+        point_grid_.geo.vertex_count() * sizeof(float),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY
       );
@@ -296,7 +296,7 @@ class SampleApp final : public Application {
 
       /* Simulate & Sort particles */
       {
-        auto const nelems = point_grid_.geo.get_vertex_count();
+        auto const nelems = point_grid_.geo.vertex_count();
 
         push_constant_.compute.model.worldMatrix = world_matrix;
         push_constant_.compute.time = frame_time();
@@ -352,7 +352,7 @@ class SampleApp final : public Application {
         /// 2) Sort indices via their dot products using a bitonic sort.
         cmd.bind_pipeline(compute_pipelines_.at(Compute_SortIndices));
         {
-          uint32_t const index_buffer_offset = point_grid_.geo.get_index_count();
+          uint32_t const index_buffer_offset = point_grid_.geo.index_count();
           uint32_t index_buffer_binding = 0u;
 
           // Get trailing bits count.
@@ -434,7 +434,7 @@ class SampleApp final : public Application {
           offsetof(shader_interop::PushConstant, graphics)
         );
 
-        pass.draw(4u, point_grid_.geo.get_vertex_count());
+        pass.draw(4u, point_grid_.geo.vertex_count());
       }
       cmd.end_rendering();
     }

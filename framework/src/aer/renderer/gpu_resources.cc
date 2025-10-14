@@ -432,12 +432,12 @@ void GPUResources::upload_buffers(Context const& context) {
     std::byte* device_data{};
     context.map_memory(staging_buffer, (void**)&device_data);
     for (auto const& mesh : meshes) {
-      auto const& vertices = mesh->get_vertices();
+      auto const& vertices = mesh->vertices();
       memcpy(device_data + vertex_offset, vertices.data(), vertices.size());
       vertex_offset += vertices.size();
 
       if (index_buffer_size > 0) {
-        auto const& indices = mesh->get_indices();
+        auto const& indices = mesh->indices();
         memcpy(device_data + index_offset, indices.data(), indices.size());
         index_offset += indices.size();
       }
