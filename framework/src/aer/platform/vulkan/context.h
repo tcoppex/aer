@@ -60,7 +60,7 @@ class Context {
 
   [[nodiscard]]
   backend::Allocator const& allocator() const noexcept {
-    return *allocator_;
+    return allocator_;
   }
 
   void device_wait_idle() const {
@@ -344,9 +344,8 @@ class Context {
 
   // --------------------------
 
-  std::unique_ptr<backend::Allocator> allocator_{}; //
-
-  std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
+  backend::Allocator allocator_{};
+  XRVulkanInterface *vulkan_xr_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

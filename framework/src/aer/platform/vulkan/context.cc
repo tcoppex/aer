@@ -37,8 +37,7 @@ bool Context::init(
     }
   }
 
-  allocator_ = std::make_unique<backend::Allocator>();
-  allocator_->init({
+  allocator_.init({
     .physicalDevice = gpu_,
     .device = device_,
     .instance = instance_,
@@ -54,7 +53,7 @@ bool Context::init(
 void Context::deinit() {
   vkDeviceWaitIdle(device_);
 
-  allocator_->deinit();
+  allocator_.deinit();
   for (auto &pool : transient_command_pools_) {
     vkDestroyCommandPool(device_, pool, nullptr); //
   }
@@ -172,7 +171,7 @@ backend::Image Context::create_image_2d(
     },
   };
 
-  auto image = allocator_->create_image(image_info, view_info);
+  auto image = allocator_.create_image(image_info, view_info);
 
   set_debug_object_name(
     image.image,
@@ -260,8 +259,8 @@ CommandEncoder Context::create_transient_command_encoder(
     cmd,
     static_cast<uint32_t>(target_queue),
     device_,
-    allocator_.get(),
-    nullptr
+    &allocator_, //
+    nullptr // (no render target for transient command buffer)
   );
   encoder.begin();
 
