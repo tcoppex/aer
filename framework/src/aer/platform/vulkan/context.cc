@@ -312,39 +312,37 @@ void Context::transition_images_layout(
   VkImageLayout const dst_layout,
   uint32_t layer_count
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
   cmd.transition_images_layout(images, src_layout, dst_layout, layer_count);
   finish_transient_command_encoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer Context::create_buffer_and_upload(
+backend::Buffer Context::transient_create_buffer(
   void const* host_data,
-  size_t const host_data_size,
-  VkBufferUsageFlags2KHR const usage,
+  size_t host_data_size,
+  VkBufferUsageFlags2KHR usage,
   size_t device_buffer_offset,
-  size_t const device_buffer_size
+  size_t device_buffer_size
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
-  backend::Buffer buffer{
-    cmd.create_buffer_and_upload(
-      host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
-    )
-  };
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
+  auto buffer = cmd.create_buffer_and_upload(
+    host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
+  );
   finish_transient_command_encoder(cmd);
   return buffer;
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::transfer_host_to_device(
+void Context::transient_upload_buffer(
   void const* host_data,
   size_t const host_data_size,
   backend::Buffer const& device_buffer,
   size_t const device_buffer_offset
 ) const {
-  auto cmd{ create_transient_command_encoder(TargetQueue::Transfer) };
+  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
   cmd.transfer_host_to_device(
     host_data,
     host_data_size,
@@ -356,7 +354,7 @@ void Context::transfer_host_to_device(
 
 // ----------------------------------------------------------------------------
 
-void Context::copy_buffer(
+void Context::transient_copy_buffer(
   backend::Buffer const& src,
   backend::Buffer const& dst,
   size_t const buffersize
@@ -822,7 +820,9 @@ bool Context::init_device() {
       gpu_, &device_info, nullptr, &device_
     ));
   } else {
-    CHECK_VK( vkCreateDevice(gpu_, &device_info, nullptr, &device_) );
+    CHECK_VK(vkCreateDevice(
+      gpu_, &device_info, nullptr, &device_
+    ));
   }
 
   /* Load device extensions. */

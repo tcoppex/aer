@@ -201,7 +201,7 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void updateUniforms() {
-    context_ptr_->transfer_host_to_device(
+    context_ptr_->transient_upload_buffer(
       &host_data_, sizeof(host_data_), uniform_buffer_
     );
   }

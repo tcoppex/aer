@@ -269,7 +269,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
     context_ptr_->unmap_memory(staging_buffer);
   }
 
-  context_ptr_->copy_buffer(
+  context_ptr_->transient_copy_buffer(
     staging_buffer, sbt_storage_buffer_, sbt_buffersize
   );
   context_ptr_->device_wait_idle();

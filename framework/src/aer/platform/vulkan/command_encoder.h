@@ -24,8 +24,10 @@ class GenericCommandEncoder {
  public:
   GenericCommandEncoder() = default;
 
-  GenericCommandEncoder(VkCommandBuffer command_buffer, uint32_t target_queue_index)
-    : command_buffer_(command_buffer)
+  GenericCommandEncoder(
+    VkCommandBuffer command_buffer,
+    uint32_t target_queue_index
+  ) : command_buffer_(command_buffer)
     , target_queue_index_{target_queue_index}
   {}
 
@@ -65,7 +67,7 @@ class GenericCommandEncoder {
     VkDescriptorSet descriptor_set,
     VkShaderStageFlags stage_flags
   ) const {
-    LOG_CHECK(nullptr != currently_bound_pipeline_);
+    LOG_CHECK( nullptr != currently_bound_pipeline_ );
     bind_descriptor_set(descriptor_set, currently_bound_pipeline_->layout(), stage_flags);
   }
 
@@ -109,33 +111,22 @@ class GenericCommandEncoder {
     }
   }
 
-  // template<typename T> requires (SpanConvertible<T>)
-  // void push_constants(
-  //   T const& values,
-  //   VkPipelineLayout const pipeline_layout,
-  //   VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
-  //   uint32_t const offset = 0u
-  // ) const {
-  //   auto const span_values{ std::span(values) };
-  //   VkPushConstantsInfoKHR const push_info{
-  //     .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR,
-  //     .layout = pipeline_layout,
-  //     .stageFlags = stage_flags,
-  //     .offset = offset,
-  //     .size = sizeof(typename decltype(span_values)::value_type) * span_values.size(),
-  //     .pValues = span_values.data(),
-  //   };
-  //   vkCmdPushConstants2KHR(command_buffer_, &push_info);
-  // }
-
   template<typename T> requires (!SpanConvertible<T>)
-  void push_constant(T const& value, VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS, uint32_t const offset = 0u) const {
+  void push_constant(
+    T const& value,
+    VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
+    uint32_t const offset = 0u
+  ) const {
     LOG_CHECK(nullptr != currently_bound_pipeline_);
     push_constant(value, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
   template<typename T> requires (SpanConvertible<T>)
-  void push_constants(T const& values, VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS, uint32_t const offset = 0u) const {
+  void push_constants(
+    T const& values,
+    VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
+    uint32_t const offset = 0u
+  ) const {
     LOG_CHECK(nullptr != currently_bound_pipeline_);
     push_constants(values, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
@@ -163,7 +154,12 @@ class GenericCommandEncoder {
 
   // --- Ray Tracing ---
 
-  void trace_rays(backend::RayTracingAddressRegion const& region, uint32_t width, uint32_t height, uint32_t depth = 1u) {
+  void trace_rays(
+    backend::RayTracingAddressRegion const& region,
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth = 1u
+  ) const {
     vkCmdTraceRaysKHR(
       command_buffer_,
       &region.raygen,
@@ -181,7 +177,6 @@ class GenericCommandEncoder {
   uint32_t target_queue_index_{};
 
  private:
-  // VkPipelineLayout currently_bound_pipeline_layout_{};
   backend::PipelineInterface const* currently_bound_pipeline_{};
 };
 
@@ -242,9 +237,13 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t const device_buffer_offset = 0u,
     size_t const device_buffer_size = 0u
   ) const {
-    auto const host_span{ std::span(host_data) };
-    size_t const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    return create_buffer_and_upload(host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size);
+    auto const host_span = std::span(host_data);
+    size_t const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
+    return create_buffer_and_upload(
+      host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
+    );
   }
 
   // --- Images ---
@@ -368,13 +367,30 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   // --- Dynamic States ---
 
-  void set_viewport(float x, float y, float width, float height, bool flip_y = kDefaultViewportFlipY) const;
+  void set_viewport(
+    float x,
+    float y,
+    float width,
+    float height,
+    bool flip_y = kDefaultViewportFlipY
+  ) const;
 
-  void set_scissor(int32_t x, int32_t y, uint32_t width, uint32_t height) const;
+  void set_scissor(
+    int32_t x,
+    int32_t y,
+    uint32_t width,
+    uint32_t height
+  ) const;
 
-  void set_viewport_scissor(VkRect2D const rect, bool flip_y = kDefaultViewportFlipY) const;
+  void set_viewport_scissor(
+    VkRect2D const rect,
+    bool flip_y = kDefaultViewportFlipY
+  ) const;
 
-  void set_viewport_scissor(VkExtent2D const extent, bool flip_y = kDefaultViewportFlipY) const {
+  void set_viewport_scissor(
+    VkExtent2D const extent,
+    bool flip_y = kDefaultViewportFlipY
+  ) const {
     set_viewport_scissor({{0, 0}, extent}, flip_y);
   }
 
@@ -395,43 +411,79 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   // --- Buffer binding ---
 
-  void bind_vertex_buffer(backend::Buffer const& buffer, uint32_t binding = 0u, uint64_t const offset = 0u) const {
-    vkCmdBindVertexBuffers(command_buffer_, binding, 1u, &buffer.buffer, &offset);
+  void bind_vertex_buffer(
+    backend::Buffer const& buffer,
+    uint32_t binding = 0u,
+    uint64_t offset = 0u
+  ) const {
+    vkCmdBindVertexBuffers(
+      command_buffer_, binding, 1u, &buffer.buffer, &offset
+    );
   }
 
-  void bind_vertex_buffer(backend::Buffer const& buffer, uint32_t binding, uint64_t const offset, uint64_t const stride) const {
+  void bind_vertex_buffer(
+    backend::Buffer const& buffer,
+    uint32_t binding,
+    uint64_t offset,
+    uint64_t stride
+  ) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
-    vkCmdBindVertexBuffers2(command_buffer_, binding, 1u, &buffer.buffer, &offset, nullptr, &stride);
+    vkCmdBindVertexBuffers2(
+      command_buffer_, binding, 1u, &buffer.buffer, &offset, nullptr, &stride
+    );
   }
 
-  void bind_index_buffer(backend::Buffer const& buffer, VkIndexType const index_type = VK_INDEX_TYPE_UINT32, VkDeviceSize const offset = 0u, VkDeviceSize const size = VK_WHOLE_SIZE) const {
+  void bind_index_buffer(
+    backend::Buffer const& buffer,
+    VkIndexType const index_type = VK_INDEX_TYPE_UINT32,
+    VkDeviceSize const offset = 0u,
+    VkDeviceSize const size = VK_WHOLE_SIZE
+  ) const {
     // VK_KHR_maintenance5 or VK_VERSION_1_4
-    vkCmdBindIndexBuffer2KHR(command_buffer_, buffer.buffer, offset, size, index_type);
+    vkCmdBindIndexBuffer2KHR(
+      command_buffer_, buffer.buffer, offset, size, index_type
+    );
   }
 
   // --- Draw ---
 
-  void draw(uint32_t vertex_count,
-            uint32_t instance_count = 1u,
-            uint32_t first_vertex = 0u,
-            uint32_t first_instance = 0u) const {
+  void draw(
+    uint32_t vertex_count,
+    uint32_t instance_count = 1u,
+    uint32_t first_vertex = 0u,
+    uint32_t first_instance = 0u
+  ) const {
     vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
-  void draw_indexed(uint32_t index_count,
-                    uint32_t instance_count = 1u,
-                    uint32_t first_index = 0u,
-                    int32_t vertex_offset = 0,
-                    uint32_t first_instance = 0u) const {
-    vkCmdDrawIndexed(command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
+  void draw_indexed(
+    uint32_t index_count,
+    uint32_t instance_count = 1u,
+    uint32_t first_index = 0u,
+    int32_t vertex_offset = 0,
+    uint32_t first_instance = 0u
+  ) const {
+    vkCmdDrawIndexed(
+      command_buffer_,
+      index_count,
+      instance_count,
+      first_index,
+      vertex_offset,
+      first_instance
+    );
   }
 
-  // [WIP]
-  void draw(DrawDescriptor const& desc, backend::Buffer const& vertex_buffer, backend::Buffer const& index_buffer) const;
+  void draw(
+    DrawDescriptor const& desc,
+    backend::Buffer const& vertex_buffer,
+    backend::Buffer const& index_buffer
+  ) const;
 
  private:
-  RenderPassEncoder(VkCommandBuffer const command_buffer, uint32_t target_queue_index)
-    : GenericCommandEncoder(command_buffer, target_queue_index)
+  RenderPassEncoder(
+    VkCommandBuffer const command_buffer,
+    uint32_t target_queue_index
+  ) : GenericCommandEncoder(command_buffer, target_queue_index)
   {}
 
  public:

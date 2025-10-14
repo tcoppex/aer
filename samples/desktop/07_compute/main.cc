@@ -104,7 +104,7 @@ class SampleApp final : public Application {
       context_.finish_transient_command_encoder(cmd);
 
       /* Buffer used to store the dot product of particles toward the view direction. */
-      dot_product_buffer_ = context_.allocator().create_buffer(
+      dot_product_buffer_ = context_.create_buffer(
         point_grid_.geo.get_vertex_count() * sizeof(float),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY

@@ -47,7 +47,7 @@ class SampleApp final : public Application {
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
 
-    uniform_buffer_ = context_.allocator().create_buffer(
+    uniform_buffer_ = context_.create_buffer(
       2u * sizeof(shader_interop::UniformCameraData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
     );
@@ -149,8 +149,8 @@ class SampleApp final : public Application {
       pipeline_layout_,
       graphics_pipeline_
     );
-    context_.allocator().destroy_buffer(uniform_buffer_);
-    context_.allocator().destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
   }
 
   void update(float dt) final {

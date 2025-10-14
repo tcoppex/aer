@@ -60,7 +60,7 @@ class RayTracingFx : public PostGenericFx {
         VMA_MEMORY_USAGE_GPU_ONLY
       );
 
-      context_ptr_->transfer_host_to_device(
+      context_ptr_->transient_upload_buffer(
         getMaterialBufferData(),
         bufferSize,
         material_storage_buffer_

@@ -111,7 +111,9 @@ class Context {
     size_t const host_offset,
     size_t const bytesize
   ) const {
-    return allocator_.write_buffer(dst_buffer, dst_offset, host_data, host_offset, bytesize);
+    return allocator_.write_buffer(
+      dst_buffer, dst_offset, host_data, host_offset, bytesize
+    );
   }
 
   size_t write_buffer(
@@ -206,7 +208,7 @@ class Context {
     std::vector<backend::ShaderModule> const& shaders
   ) const;
 
-  // --- Command Encoder ---
+  // --- Transient Command Encoder ---
 
   [[nodiscard]]
   CommandEncoder create_transient_command_encoder(
@@ -226,8 +228,17 @@ class Context {
     uint32_t layer_count = 1u
   ) const;
 
+  [[nodiscard]]
+  backend::Buffer transient_create_buffer(
+    void const* host_data,
+    size_t host_data_size,
+    VkBufferUsageFlags2KHR usage,
+    size_t device_buffer_offset = 0u,
+    size_t device_buffer_size = 0u
+  ) const;
+
   template<typename T> requires (SpanConvertible<T>)
-  [[nodiscard]] backend::Buffer create_buffer_and_upload(
+  [[nodiscard]] backend::Buffer transient_create_buffer(
     T const& host_data,
     VkBufferUsageFlags2KHR usage,
     size_t device_buffer_offset = 0u,
@@ -235,21 +246,12 @@ class Context {
   ) const {
     auto const host_span{ std::span(host_data) };
     auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    return create_buffer_and_upload(
+    return transient_create_buffer(
       host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
     );
   }
 
-  [[nodiscard]]
-  backend::Buffer create_buffer_and_upload(
-    void const* host_data,
-    size_t const host_data_size,
-    VkBufferUsageFlags2KHR const usage,
-    size_t device_buffer_offset = 0u,
-    size_t const device_buffer_size = 0u
-  ) const;
-
-  void transfer_host_to_device(
+  void transient_upload_buffer(
     void const* host_data,
     size_t const host_data_size,
     backend::Buffer const& device_buffer,
@@ -257,16 +259,16 @@ class Context {
   ) const;
 
   template<typename T> requires (SpanConvertible<T>)
-  void upload_buffer(
+  void transient_upload_buffer(
     T const& host_data,
     backend::Buffer const& device_buffer
   ) {
     auto const host_span{ std::span(host_data) };
     auto const bytesize{ sizeof(typename decltype(host_span)::element_type) * host_span.size() };
-    transfer_host_to_device(host_span.data(), bytesize, device_buffer);
+    transient_upload_buffer(host_span.data(), bytesize, device_buffer);
   }
 
-  void copy_buffer(
+  void transient_copy_buffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t const buffersize
@@ -335,6 +337,7 @@ class Context {
 
   [[nodiscard]]
   bool init_device();
+
 
  private:
   static constexpr bool kEnableDebugValidationLayer{ true };

@@ -517,7 +517,7 @@ void GPUResources::update_frame_data(
     .frame = frame_index_++,
   };
 
-  context_ptr_->transfer_host_to_device(
+  context_ptr_->transient_upload_buffer(
     &frame_data, sizeof(frame_data), frame_ubo_
   );
 }

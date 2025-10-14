@@ -108,7 +108,7 @@ private:
 
   void release() final {
     context_.destroy_pipeline(graphics_pipeline_);
-    context_.allocator().destroy_buffer(vertex_buffer_);
+    context_.destroy_buffer(vertex_buffer_);
   }
 
   void draw() final {

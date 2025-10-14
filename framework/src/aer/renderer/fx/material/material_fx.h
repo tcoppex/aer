@@ -136,7 +136,7 @@ class TMaterialFx : public MaterialFx {
         materials_.size() * sizeof(ShaderMaterial)
       );
     } else {
-      context_ptr_->transfer_host_to_device(
+      context_ptr_->transient_upload_buffer(
         materials_.data(),
         materials_.size() * sizeof(ShaderMaterial),
         material_storage_buffer_

@@ -98,7 +98,7 @@ backend::Buffer Allocator::create_staging_buffer(
   void const* host_data,
   size_t host_data_size
 ) const {
-  LOG_CHECK(host_data_size <= bytesize);
+  LOG_CHECK( host_data_size <= bytesize );
 
   // TODO : use a pool to reuse some staging buffer.
 
@@ -130,9 +130,9 @@ size_t Allocator::write_buffer(
   size_t const host_offset,
   size_t const bytesize
 ) const {
-  LOG_CHECK(host_data != nullptr);
-  LOG_CHECK(dst_buffer.valid());
-  LOG_CHECK(bytesize > 0);
+  LOG_CHECK( host_data != nullptr );
+  LOG_CHECK( dst_buffer.valid() );
+  LOG_CHECK( bytesize > 0 );
 
   void *device_data = nullptr;
   CHECK_VK( vmaMapMemory(handle_, dst_buffer.allocation, &device_data) );

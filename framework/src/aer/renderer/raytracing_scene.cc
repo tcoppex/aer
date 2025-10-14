@@ -214,7 +214,7 @@ void RayTracingScene::build_tlas() {
   }
 
 #if 0
-  backend::Buffer instances_buffer = context_ptr_->create_buffer_and_upload(
+  auto instances_buffer = context_ptr_->transient_create_buffer(
     tlas_.instances,
       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -318,7 +318,7 @@ void RayTracingScene::build_instances_data_buffer(
       });
     }
   }
-  instances_data_buffer_ = context_ptr_->create_buffer_and_upload(
+  instances_data_buffer_ = context_ptr_->transient_create_buffer(
     instances,
     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
   );

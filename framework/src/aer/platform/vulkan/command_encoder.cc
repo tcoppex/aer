@@ -291,7 +291,9 @@ void CommandEncoder::transfer_host_to_device(
     auto staging_buffer{
       allocator_ptr_->create_staging_buffer(host_data_size, host_data)   //
     };
-    copy_buffer(staging_buffer, 0u, device_buffer, device_buffer_offset, host_data_size);
+    copy_buffer(
+      staging_buffer, 0u, device_buffer, device_buffer_offset, host_data_size
+    );
   }
 }
 

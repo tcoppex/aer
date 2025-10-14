@@ -49,11 +49,22 @@ class SampleApp final : public Application {
         .projectionMatrix = camera_.proj(),
       };
 
-      /* Directly create and upload the uniform values. */
-      uniform_buffer_ = context_.create_buffer_and_upload(
-        &host_data_, sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
-      );
+      /* Create and upload the uniform values directly. */
+      if constexpr (true) {
+        /* Using an internal transient command buffer. */
+        uniform_buffer_ = context_.transient_create_buffer(
+          &host_data_, sizeof(host_data_),
+          VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        );
+      } else {
+        /* Or writing the data from the host via mapping operations. */
+        uniform_buffer_ = context_.create_buffer(
+          sizeof(host_data_),
+          VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
+          VMA_MEMORY_USAGE_CPU_TO_GPU
+        );
+        context_.write_buffer(uniform_buffer_, &host_data_, sizeof(host_data_));
+      }
     }
 
     /* Initialize the skybox and setup the HDR diffuse envmap used to calculate
@@ -80,7 +91,7 @@ class SampleApp final : public Application {
 
     /* Release the temporary staging buffers.
      * This is done automatically at the end of setup(). */
-    context_.allocator().clear_staging_buffers();
+    context_.clear_staging_buffers();
 
     /* Descriptor set. */
     {
@@ -198,7 +209,7 @@ class SampleApp final : public Application {
     context_.destroy_descriptor_set_layout(descriptor_set_layout_);
     context_.destroy_pipeline_layout(graphics_pipeline_.layout());
     context_.destroy_pipeline(graphics_pipeline_);
-    context_.allocator().destroy_buffer(uniform_buffer_);
+    context_.destroy_buffer(uniform_buffer_);
     scene_.reset();
   }
 
