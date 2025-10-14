@@ -9,9 +9,7 @@
 
 namespace {
 
-char const* kDefaulShaderEntryPoint{
-  "main"
-};
+char const* kDefaulShaderEntryPoint{ "main" };
 
 }
 

@@ -32,9 +32,11 @@ class RayTracingSceneInterface {
   [[nodiscard]]
   virtual backend::Buffer instances_data_buffer() const = 0;
 
+  // --------------------------
   // TODO:
   // add tlas update
   // Add tlas rebuild
+  // --------------------------
 
  protected:
   /* Build the Bottom Level Acceleration Structure. */

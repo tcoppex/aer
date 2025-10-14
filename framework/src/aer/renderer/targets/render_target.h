@@ -73,15 +73,15 @@ class RenderTarget : public backend::RTInterface {
     return colors_[i];
   }
 
-  // ---------------------------
+  [[nodiscard]]
   std::vector<backend::Image> resolve_attachments() const noexcept final {
     return use_msaa() ? resolves_ : colors_;
   }
 
+  [[nodiscard]]
   backend::Image resolve_attachment(uint32_t i = 0u) const noexcept final {
     return use_msaa() ? resolves_[i] : colors_[i];
   }
-  // ---------------------------
 
   [[nodiscard]]
   backend::Image depth_stencil_attachment() const final {
@@ -116,6 +116,7 @@ class RenderTarget : public backend::RTInterface {
     return desc_.array_size;
   }
 
+  [[nodiscard]]
   VkSampleCountFlagBits sample_count() const noexcept final {
     return desc_.sample_count;
   }
@@ -141,12 +142,12 @@ class RenderTarget : public backend::RTInterface {
  private:
   Context const* context_ptr_{};
 
-  Descriptor desc_{}; //
+  Descriptor desc_{};
   VkExtent2D surface_size_{};
 
   std::vector<backend::Image> colors_{};
   std::vector<backend::Image> resolves_{};
-  backend::Image depth_stencil_{}; //
+  backend::Image depth_stencil_{};
 
  private:
   friend class RenderContext;

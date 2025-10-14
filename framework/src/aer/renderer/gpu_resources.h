@@ -6,13 +6,11 @@
 #include "aer/renderer/raytracing_scene.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
-class RenderContext; //
+class RenderContext;
 class ResourceAllocator;
-
-// class SamplerPool;
 class RenderPassEncoder;
 class Camera;
-class RayTracingFx; //
+class RayTracingFx;
 
 /* -------------------------------------------------------------------------- */
 

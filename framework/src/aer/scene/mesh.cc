@@ -5,7 +5,9 @@
 
 namespace scene {
 
-void Mesh::initialize_submesh_descriptors(AttributeLocationMap const& attribute_to_location) {
+void Mesh::initialize_submesh_descriptors(
+  AttributeLocationMap const& attribute_to_location
+) {
   LOG_CHECK( get_primitive_count() > 0 );
   if (submeshes.empty()) {
     submeshes.resize(get_primitive_count(), {.parent = this});
@@ -124,7 +126,10 @@ VkFormat Mesh::vk_format(AttributeType const attrib_type) const {
 
 // ----------------------------------------------------------------------------
 
-VertexInputDescriptor Mesh::create_vertex_input_descriptors(AttributeOffsetMap const& attribute_to_offset, AttributeLocationMap const& attribute_to_location) const {
+VertexInputDescriptor Mesh::create_vertex_input_descriptors(
+  AttributeOffsetMap const& attribute_to_offset,
+  AttributeLocationMap const& attribute_to_location
+) const {
   VertexInputDescriptor result{};
 
   std::map<uint64_t, std::vector<AttributeType>> offset_to_attributes{};

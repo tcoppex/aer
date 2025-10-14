@@ -1,7 +1,7 @@
 #ifndef AER_SCENE_SAMPLER_H_
 #define AER_SCENE_SAMPLER_H_
 
-#include "aer/platform/vulkan/utils.h" // for VkSamplerCreateInfo..
+#include "aer/platform/vulkan/vulkan_wrapper.h" // for VkSamplerCreateInfo..
 
 namespace scene {
 
@@ -19,7 +19,7 @@ struct Sampler {
     return !set_;
   }
 
-  // (should be changed to not use Vulkan)
+  // (should be changed to not use Vulkan internally)
   VkSamplerCreateInfo info{}; //
 
  private:

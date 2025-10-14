@@ -5,7 +5,7 @@
 
 #include "aer/scene/geometry.h"
 #include "aer/platform/vulkan/types.h"      // for VertexInputDescriptor
-#include "aer/renderer/pipeline.h"  // for PipelineVertexBufferDescriptors
+#include "aer/renderer/pipeline.h"          // for PipelineVertexBufferDescriptors
 
 namespace scene {
 
@@ -33,7 +33,9 @@ struct Mesh : Geometry {
   Mesh() = default;
 
   /* Bind mesh attributes to pipeline attributes location. */
-  void initialize_submesh_descriptors(AttributeLocationMap const& attribute_to_location);
+  void initialize_submesh_descriptors(
+    AttributeLocationMap const& attribute_to_location
+  );
 
   /* Defines offset to actual data from external buffers. */
   void set_buffer_info(BufferInfo const& buffer_info) {
