@@ -2,8 +2,8 @@
 #define AER_PLATEFORM_SWAPCHAIN_INTERFACE_H_
 
 #include <vector>
-#include "aer/platform/backend/vulkan_wrapper.h"
-#include "aer/platform/backend/types.h" // (for backend::Image)
+#include "aer/platform/vulkan/vulkan_wrapper.h"
+#include "aer/platform/vulkan/types.h" // (for backend::Image)
 
 /* -------------------------------------------------------------------------- */
 

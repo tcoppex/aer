@@ -1,24 +1,24 @@
-#ifndef AER_PLATFORM_BACKEND_VKUTILS_H_
-#define AER_PLATFORM_BACKEND_VKUTILS_H_
+#ifndef AER_PLATFORM_VULKAN_UTILS_H_
+#define AER_PLATFORM_VULKAN_UTILS_H_
 
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
 
-#include "aer/platform/backend/vulkan_wrapper.h"
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/vulkan_wrapper.h"
+#include "aer/platform/vulkan/types.h"
 
 /* -------------------------------------------------------------------------- */
 
 #ifdef NDEBUG
 # define CHECK_VK(res)  res
 #else
-# define CHECK_VK(res)  vkutils::CheckVKResult(res, __FILE__, __LINE__, true)
+# define CHECK_VK(res)  vk::utils::CheckVKResult(res, __FILE__, __LINE__, true)
 #endif
 
 /* -------------------------------------------------------------------------- */
 
-namespace vkutils {
+namespace vk::utils {
 
 VkResult CheckVKResult(
   VkResult result,
@@ -119,7 +119,7 @@ constexpr VkObjectType GetObjectType() {
 
 template <typename T>
 void SetDebugObjectName(VkDevice device, T object, std::string_view name) {
-  constexpr VkObjectType objectType = vkutils::GetObjectType<T>();
+  constexpr VkObjectType objectType = vk::utils::GetObjectType<T>();
 
   if (vkSetDebugUtilsObjectNameEXT && (objectType != VK_OBJECT_TYPE_UNKNOWN)) {
     VkDebugUtilsObjectNameInfoEXT info{
@@ -143,8 +143,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
 
 // ----------------------------------------------------------------------------
 
-} // namespace "vkutils"
+} // namespace "vk::utils"
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_VKUTILS_H_
+#endif // AER_PLATFORM_VULKAN_UTILS_H_

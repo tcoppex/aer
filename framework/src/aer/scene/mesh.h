@@ -4,7 +4,7 @@
 #include "aer/core/common.h"
 
 #include "aer/scene/geometry.h"
-#include "aer/platform/backend/types.h"      // for VertexInputDescriptor
+#include "aer/platform/vulkan/types.h"      // for VertexInputDescriptor
 #include "aer/renderer/pipeline.h"  // for PipelineVertexBufferDescriptors
 
 namespace scene {

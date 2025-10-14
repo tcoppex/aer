@@ -1,6 +1,6 @@
 #include "aer/renderer/targets/framebuffer.h"
 
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 #include "aer/renderer/targets/render_target.h" // (for kDefaultColorImageUsageFlags)
 #include "aer/platform/swapchain_interface.h"
 

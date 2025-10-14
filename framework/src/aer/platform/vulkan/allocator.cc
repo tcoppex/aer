@@ -5,8 +5,8 @@
     fprintf(stderr, "\n");                      \
   }
 
-#include "aer/platform/backend/allocator.h"
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/allocator.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/core/utils.h"
 
 /* -------------------------------------------------------------------------- */

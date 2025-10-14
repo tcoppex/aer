@@ -1,6 +1,6 @@
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/core/utils.h" // for ExtractBasename
 
 /* -------------------------------------------------------------------------- */
@@ -120,7 +120,7 @@ backend::Image Context::create_image_2d(
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
 
   // [TODO] check format is a valid depth one too.
-  if (vkutils::IsValidStencilFormat(format)) {
+  if (vk::utils::IsValidStencilFormat(format)) {
     usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT
                 | VK_IMAGE_ASPECT_STENCIL_BIT
@@ -191,7 +191,7 @@ backend::ShaderModule Context::create_shader_module(
   std::string_view shader_name
 ) const {
   return {
-    .module = vkutils::CreateShaderModule(device_, directory.data(), shader_name.data()),
+    .module = vk::utils::CreateShaderModule(device_, directory.data(), shader_name.data()),
     .basename = utils::ExtractBasename(shader_name, true),
   };
 }
@@ -359,7 +359,7 @@ void Context::update_descriptor_set(
   }
 
   DescriptorSetWriteEntry::Result result{};
-  vkutils::TransformDescriptorSetWriteEntries(descriptor_set, entries, result);
+  vk::utils::TransformDescriptorSetWriteEntries(descriptor_set, entries, result);
 
   vkUpdateDescriptorSets(
     device_,
@@ -416,7 +416,7 @@ void Context::init_instance(
                  | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
                  | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
                  ,
-    .pfnUserCallback = vkutils::VulkanDebugMessage,
+    .pfnUserCallback = vk::utils::VulkanDebugMessage,
     .pUserData = this,
   };
 

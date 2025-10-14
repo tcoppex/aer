@@ -293,7 +293,7 @@ VkGraphicsPipelineCreateInfo Renderer::create_graphics_pipeline_create_info(
                                                         : depth_stencil_format()
     };
     VkFormat const stencilFormat{
-      vkutils::IsValidStencilFormat(depthFormat) ? depthFormat
+      vk::utils::IsValidStencilFormat(depthFormat) ? depthFormat
                                                  : VK_FORMAT_UNDEFINED
     };
     // ------------------------------------------

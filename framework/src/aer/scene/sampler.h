@@ -1,7 +1,7 @@
 #ifndef AER_SCENE_SAMPLER_H_
 #define AER_SCENE_SAMPLER_H_
 
-#include "aer/platform/backend/vk_utils.h" // for VkSamplerCreateInfo..
+#include "aer/platform/vulkan/utils.h" // for VkSamplerCreateInfo..
 
 namespace scene {
 

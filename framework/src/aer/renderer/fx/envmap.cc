@@ -295,7 +295,7 @@ void Envmap::compute_irradiance_sh_coeff() {
 
   /* Allocate a buffer large enough to ping pong input/output of the reduce stages. */
   uint32_t const bufferSize = faceResolution
-                            + vkutils::GetKernelGridDim(faceResolution, reduceKernelSize)
+                            + vk::utils::GetKernelGridDim(faceResolution, reduceKernelSize)
                             ;
 
   auto const& diffuse = images_[ImageType::Diffuse];
@@ -347,7 +347,7 @@ void Envmap::compute_irradiance_sh_coeff() {
     uint32_t nelems = faceResolution;
     uint32_t buffer_binding = 0u;
     while (nelems > 1u) {
-      uint32_t const ngroups{vkutils::GetKernelGridDim(nelems, reduceKernelSize)};
+      uint32_t const ngroups{vk::utils::GetKernelGridDim(nelems, reduceKernelSize)};
 
       uint64_t const read_buffer_bytesize{nelems * sizeof(shader_interop::envmap::SHCoeff)};
       uint64_t const write_buffer_bytesize{ngroups * sizeof(shader_interop::envmap::SHCoeff)};

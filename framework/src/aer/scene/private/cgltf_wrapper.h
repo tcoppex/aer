@@ -18,7 +18,7 @@ extern "C" {
 
 }
 
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/scene/geometry.h"
 
 /* -------------------------------------------------------------------------- */

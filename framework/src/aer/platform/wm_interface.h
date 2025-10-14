@@ -5,7 +5,7 @@
 #include "aer/platform/common.h"
 #include "aer/platform/openxr/xr_platform_interface.h"
 
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 
 // ----------------------------------------------------------------------------
 

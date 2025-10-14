@@ -1,11 +1,11 @@
-#ifndef AER_PLATFORM_BACKEND_CONTEXT_H_
-#define AER_PLATFORM_BACKEND_CONTEXT_H_
+#ifndef AER_PLATFORM_VULKAN_CONTEXT_H_
+#define AER_PLATFORM_VULKAN_CONTEXT_H_
 
 /* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h"
-#include "aer/platform/backend/command_encoder.h"
-#include "aer/platform/backend/allocator.h"
+#include "aer/platform/vulkan/types.h"
+#include "aer/platform/vulkan/command_encoder.h"
+#include "aer/platform/vulkan/allocator.h"
 
 #include "aer/platform/openxr/xr_vulkan_interface.h" //
 
@@ -231,7 +231,7 @@ class Context {
   template <typename T>
   void set_debug_object_name(T object, std::string_view name) const {
 #ifndef NDEBUG
-    vkutils::SetDebugObjectName(device_, object, name);
+    vk::utils::SetDebugObjectName(device_, object, name);
 #endif
   }
 
@@ -261,7 +261,7 @@ class Context {
       return false;
     }
     feature = { .sType = sType };
-    vkutils::PushNextVKStruct(&feature_.base, &feature);
+    vk::utils::PushNextVKStruct(&feature_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
         device_extension_names_.end(),
@@ -366,4 +366,4 @@ class Context {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_CONTEXT_H_
+#endif // AER_PLATFORM_VULKAN_CONTEXT_H_

@@ -1,5 +1,5 @@
-#ifndef AER_PLATFORM_BACKEND_TYPES_H_
-#define AER_PLATFORM_BACKEND_TYPES_H_
+#ifndef AER_PLATFORM_VULKAN_TYPES_H_
+#define AER_PLATFORM_VULKAN_TYPES_H_
 
 /* -------------------------------------------------------------------------- */
 

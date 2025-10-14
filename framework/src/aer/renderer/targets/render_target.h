@@ -3,7 +3,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 
 class Context;
 class ResourceAllocator;

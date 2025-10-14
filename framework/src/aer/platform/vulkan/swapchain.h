@@ -1,9 +1,9 @@
-#ifndef AER_PLATFORM_BACKEND_SWAPCHAIN_H_
-#define AER_PLATFORM_BACKEND_SWAPCHAIN_H_
+#ifndef AER_PLATFORM_VULKAN_SWAPCHAIN_H_
+#define AER_PLATFORM_VULKAN_SWAPCHAIN_H_
 
 /* -------------------------------------------------------------------------- */
 
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 class Context;
 
 #include "aer/platform/swapchain_interface.h" //

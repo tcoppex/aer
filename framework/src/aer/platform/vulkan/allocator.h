@@ -1,11 +1,11 @@
-#ifndef AER_PLATFORM_BACKEND_ALLOCATOR_H_
-#define AER_PLATFORM_BACKEND_ALLOCATOR_H_
+#ifndef AER_PLATFORM_VULKAN_ALLOCATOR_H_
+#define AER_PLATFORM_VULKAN_ALLOCATOR_H_
 
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/types.h"
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/types.h"
+#include "aer/platform/vulkan/utils.h"
 
 /* -------------------------------------------------------------------------- */
 

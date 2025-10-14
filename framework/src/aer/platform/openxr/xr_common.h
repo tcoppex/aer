@@ -9,7 +9,7 @@ extern "C" {
 #include <jni.h>
 #endif
 
-#include "aer/platform/backend/vulkan_wrapper.h"
+#include "aer/platform/vulkan/vulkan_wrapper.h"
 
 #include <openxr/openxr_platform.h>
 #include <openxr/openxr.h>

@@ -2,7 +2,7 @@
 #define AER_RENDERER_FX_MATERIAL_MATERIAL_FX_REGISTRY_H_
 
 #include "aer/core/common.h"
-#include "aer/platform/backend/types.h"  // for DescriptorSetWriteEntry
+#include "aer/platform/vulkan/types.h"  // for DescriptorSetWriteEntry
 #include "aer/scene/material.h" // for scene::MaterialRef, scene::MaterialProxy
 
 #include <set>

@@ -1,4 +1,4 @@
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/utils.h"
 
 #include <filesystem>
 #include <vulkan/vk_enum_string_helper.h>
@@ -8,7 +8,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-namespace vkutils {
+namespace vk::utils {
 
 VkShaderModule CreateShaderModule(
   VkDevice device,
@@ -31,7 +31,7 @@ VkShaderModule CreateShaderModule(
 
   auto const filename{spirv_path.string()};
 
-  utils::FileReader reader;
+  ::utils::FileReader reader;
   if (!reader.read(filename)) {
     LOG_FATAL("The spirv shader \"{}\" could not be found.\n", spirv_path.string());
   }

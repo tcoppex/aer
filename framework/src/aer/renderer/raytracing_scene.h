@@ -1,8 +1,8 @@
 #ifndef AER_RENDERER_RAYTRACING_SCENE_H_
 #define AER_RENDERER_RAYTRACING_SCENE_H_
 
-#include "aer/platform/backend/context.h"
-#include "aer/platform/backend/accel_struct.h"
+#include "aer/platform/vulkan/context.h"
+#include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/host_resources.h" // for scene::ResourceBuffer
 #include "aer/scene/mesh.h"
 

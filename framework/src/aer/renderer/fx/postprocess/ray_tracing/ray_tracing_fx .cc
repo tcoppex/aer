@@ -1,6 +1,6 @@
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h"
 
-#include "aer/platform/backend/accel_struct.h"
+#include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */

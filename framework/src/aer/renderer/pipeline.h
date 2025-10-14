@@ -1,7 +1,7 @@
 #ifndef AER_RENDERER_PIPELINE_H_
 #define AER_RENDERER_PIPELINE_H_
 
-#include "aer/platform/backend/types.h"
+#include "aer/platform/vulkan/types.h"
 class Renderer;
 
 /* -------------------------------------------------------------------------- */

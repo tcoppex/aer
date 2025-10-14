@@ -6,7 +6,7 @@
 #include "aer/platform/openxr/xr_common.h"
 
 #include "aer/platform/openxr/xr_utils.h"
-#include "aer/platform/backend/types.h" // (for backend::Image)
+#include "aer/platform/vulkan/types.h" // (for backend::Image)
 
 // ----------------------------------------------------------------------------
 

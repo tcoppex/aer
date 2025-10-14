@@ -1,8 +1,8 @@
-#ifndef AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
-#define AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
+#ifndef AER_PLATFORM_VULKAN_COMMAND_ENCODER_H_
+#define AER_PLATFORM_VULKAN_COMMAND_ENCODER_H_
 
-#include "aer/platform/backend/types.h"
-#include "aer/platform/backend/vk_utils.h"
+#include "aer/platform/vulkan/types.h"
+#include "aer/platform/vulkan/utils.h"
 #include "aer/platform/swapchain_interface.h"
 
 class ResourceAllocator;
@@ -152,9 +152,9 @@ class GenericCommandEncoder {
     LOG_CHECK(z > 0u);
 
     vkCmdDispatch(command_buffer_,
-      vkutils::GetKernelGridDim(x, tX),
-      vkutils::GetKernelGridDim(y, tY),
-      vkutils::GetKernelGridDim(z, tZ)
+      vk::utils::GetKernelGridDim(x, tX),
+      vk::utils::GetKernelGridDim(y, tY),
+      vk::utils::GetKernelGridDim(z, tZ)
     );
   }
 
@@ -446,4 +446,4 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_PLATFORM_BACKEND_COMMAND_ENCODER_H_
+#endif // AER_PLATFORM_VULKAN_COMMAND_ENCODER_H_

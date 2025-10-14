@@ -5,8 +5,8 @@
 
 #include "aer/core/common.h"
 
-#include "aer/platform/backend/swapchain.h"
-#include "aer/platform/backend/command_encoder.h"
+#include "aer/platform/vulkan/swapchain.h"
+#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/openxr/openxr_context.h" //
 
 #include "aer/renderer/render_context.h"

@@ -26,7 +26,7 @@
 #endif
 
 #include "aer/renderer/renderer.h"
-#include "aer/platform/backend/context.h"
+#include "aer/platform/vulkan/context.h"
 
 /* -------------------------------------------------------------------------- */
 
