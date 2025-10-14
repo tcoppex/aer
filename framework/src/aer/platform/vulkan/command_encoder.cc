@@ -47,7 +47,7 @@ void GenericCommandEncoder::push_descriptor_set(
   std::vector<DescriptorSetWriteEntry> const& entries
 ) const {
   DescriptorSetWriteEntry::Result out{};
-  vk::utils::TransformDescriptorSetWriteEntries(
+  vk_utils::TransformDescriptorSetWriteEntries(
     VK_NULL_HANDLE,
     entries,
     out
@@ -98,8 +98,8 @@ void GenericCommandEncoder::pipeline_image_barriers(
   //       when none are provided.
 
   for (auto& bb : barriers) {
-    auto const [src_stage, src_access] = vk::utils::MakePipelineStageAccessTuple(bb.oldLayout);
-    auto const [dst_stage, dst_access] = vk::utils::MakePipelineStageAccessTuple(bb.newLayout);
+    auto const [src_stage, src_access] = vk_utils::MakePipelineStageAccessTuple(bb.oldLayout);
+    auto const [dst_stage, dst_access] = vk_utils::MakePipelineStageAccessTuple(bb.newLayout);
     bb.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     bb.srcStageMask        = (bb.srcStageMask == 0u) ? src_stage : bb.srcStageMask;
     bb.srcAccessMask       = (bb.srcAccessMask == 0u) ? src_access : bb.srcAccessMask;

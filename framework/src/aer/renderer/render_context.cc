@@ -185,7 +185,7 @@ void RenderContext::create_graphics_pipelines(
       pipelines[i],
       VK_PIPELINE_BIND_POINT_GRAPHICS
     );
-    vk::utils::SetDebugObjectName(device(), pipelines[i], "GraphicsPipeline::NoName");
+    vk_utils::SetDebugObjectName(device(), pipelines[i], "GraphicsPipeline::NoName");
   }
 }
 

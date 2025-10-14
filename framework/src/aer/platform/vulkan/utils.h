@@ -13,12 +13,12 @@
 #ifdef NDEBUG
 # define CHECK_VK(res)  res
 #else
-# define CHECK_VK(res)  vk::utils::CheckVKResult(res, __FILE__, __LINE__, true)
+# define CHECK_VK(res)  vk_utils::CheckVKResult(res, __FILE__, __LINE__, true)
 #endif
 
 /* -------------------------------------------------------------------------- */
 
-namespace vk::utils {
+namespace vk_utils {
 
 VkResult CheckVKResult(
   VkResult result,
@@ -119,7 +119,7 @@ constexpr VkObjectType GetObjectType() {
 
 template <typename T>
 void SetDebugObjectName(VkDevice device, T object, std::string_view name) {
-  constexpr VkObjectType objectType = vk::utils::GetObjectType<T>();
+  constexpr VkObjectType objectType = vk_utils::GetObjectType<T>();
 
   if (vkSetDebugUtilsObjectNameEXT && (objectType != VK_OBJECT_TYPE_UNKNOWN)) {
     VkDebugUtilsObjectNameInfoEXT info{
@@ -143,7 +143,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
 
 // ----------------------------------------------------------------------------
 
-} // namespace "vk::utils"
+} // namespace "vk_utils"
 
 /* -------------------------------------------------------------------------- */
 

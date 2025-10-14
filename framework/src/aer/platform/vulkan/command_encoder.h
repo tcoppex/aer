@@ -152,9 +152,9 @@ class GenericCommandEncoder {
     LOG_CHECK(z > 0u);
 
     vkCmdDispatch(command_buffer_,
-      vk::utils::GetKernelGridDim(x, tX),
-      vk::utils::GetKernelGridDim(y, tY),
-      vk::utils::GetKernelGridDim(z, tZ)
+      vk_utils::GetKernelGridDim(x, tX),
+      vk_utils::GetKernelGridDim(y, tY),
+      vk_utils::GetKernelGridDim(z, tZ)
     );
   }
 

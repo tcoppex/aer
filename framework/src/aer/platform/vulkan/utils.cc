@@ -8,7 +8,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-namespace vk::utils {
+namespace vk_utils {
 
 VkShaderModule CreateShaderModule(
   VkDevice device,

@@ -231,7 +231,7 @@ class Context {
   template <typename T>
   void set_debug_object_name(T object, std::string_view name) const {
 #ifndef NDEBUG
-    vk::utils::SetDebugObjectName(device_, object, name);
+    vk_utils::SetDebugObjectName(device_, object, name);
 #endif
   }
 
@@ -261,7 +261,7 @@ class Context {
       return false;
     }
     feature = { .sType = sType };
-    vk::utils::PushNextVKStruct(&feature_.base, &feature);
+    vk_utils::PushNextVKStruct(&feature_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
         device_extension_names_.end(),
