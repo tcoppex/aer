@@ -60,22 +60,22 @@ class Context {
 
   [[nodiscard]]
   ResourceAllocator* allocator_ptr() noexcept {
-    return resource_allocator_.get();
+    return allocator_.get();
   }
 
   [[nodiscard]]
   ResourceAllocator const* allocator_ptr() const noexcept {
-    return resource_allocator_.get();
+    return allocator_.get();
   }
 
   [[nodiscard]]
   ResourceAllocator& allocator() noexcept {
-    return *resource_allocator_;
+    return *allocator_;
   }
 
   [[nodiscard]]
   ResourceAllocator const& allocator() const noexcept {
-    return *resource_allocator_;
+    return *allocator_;
   }
 
   void device_wait_idle() const {
@@ -359,7 +359,7 @@ class Context {
 
   // --------------------------
 
-  std::unique_ptr<ResourceAllocator> resource_allocator_{}; //
+  std::unique_ptr<ResourceAllocator> allocator_{}; //
 
   std::shared_ptr<XRVulkanInterface> vulkan_xr_{}; //
 };
