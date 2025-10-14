@@ -106,10 +106,10 @@ class Context {
 
   size_t write_buffer(
     backend::Buffer const& dst_buffer,
-    size_t const dst_offset,
+    size_t dst_offset,
     void const* host_data,
-    size_t const host_offset,
-    size_t const bytesize
+    size_t host_offset,
+    size_t bytesize
   ) const {
     return allocator_.write_buffer(
       dst_buffer, dst_offset, host_data, host_offset, bytesize
@@ -119,9 +119,21 @@ class Context {
   size_t write_buffer(
     backend::Buffer const& dst_buffer,
     void const* host_data,
-    size_t const bytesize
+    size_t bytesize
   ) const {
     return allocator_.write_buffer(dst_buffer, host_data, bytesize);
+  }
+
+  template<typename T> requires (SpanConvertible<T>)
+  size_t write_buffer(
+    backend::Buffer const& dst_buffer,
+    T const& host_data
+  ) {
+    auto const host_span{ std::span(host_data) };
+    auto const bytesize{
+      sizeof(typename decltype(host_span)::element_type) * host_span.size()
+    };
+    return write_buffer(dst_buffer, host_span.data(), bytesize);
   }
 
   backend::Image create_image(
@@ -228,6 +240,7 @@ class Context {
     uint32_t layer_count = 1u
   ) const;
 
+  // (formerly 'create_buffer_and_upload')
   [[nodiscard]]
   backend::Buffer transient_create_buffer(
     void const* host_data,

@@ -47,7 +47,7 @@ private:
   bool setup() final {
     renderer_.set_clear_color(vec4(0.75f, 0.15f, 0.30f, 1.0f));
 
-    vertex_buffer_ = context_.create_buffer_and_upload(
+    vertex_buffer_ = context_.transient_create_buffer(
       kVertices, VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
 
