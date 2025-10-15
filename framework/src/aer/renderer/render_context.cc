@@ -97,6 +97,30 @@ std::unique_ptr<RenderTarget> RenderContext::create_render_target(
 
 // ----------------------------------------------------------------------------
 
+std::unique_ptr<RenderTarget> RenderContext::create_default_render_target() const {
+  auto desc = RenderTarget::Descriptor{
+    .colors = {
+      {
+        .format = default_color_format(),
+        .clear_value = {0.0f, 0.0f, 0.0f, 0.0f},
+      },
+    },
+    .depth_stencil = {
+      .format = default_depth_stencil_format(),
+      .clear_value = {1u, 0.0f},
+    },
+    .size = default_surface_size(),
+    .array_size = 1u,
+    .sample_count = VK_SAMPLE_COUNT_1_BIT, //
+  };
+  if (default_view_mask_ > 1) {
+    desc.array_size = utils::CountBits(default_view_mask_);
+  }
+  return create_render_target(desc);
+}
+
+// ----------------------------------------------------------------------------
+
 std::unique_ptr<Framebuffer> RenderContext::create_framebuffer(
   SwapchainInterface const& swapchain
 ) const {

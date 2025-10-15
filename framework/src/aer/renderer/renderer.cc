@@ -20,7 +20,7 @@ void Renderer::init(
   // Renderer internal effects.
   {
     LOGD(" > Internal Fx");
-    skybox_.init(*this); //
+    skybox_.init(context);
   }
 }
 
@@ -76,7 +76,6 @@ void Renderer::release() {
   if (context_ptr_ == nullptr) {
     return;
   }
-
   skybox_.release(*context_ptr_);
   release_view_resources();
 }
@@ -88,6 +87,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOG_CHECK( w > 0 && h > 0 );
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
+  auto const surface_size = VkExtent2D{ w, h };
   auto const layers = swapchain().imageArraySize();
 
   if (frames_[0].main_rt != nullptr) [[likely]] {
@@ -105,13 +105,16 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
         .depth_stencil = {
           .format = depth_stencil_format(),
         },
-        .size = { w, h },
+        .size = surface_size,
         .array_size = layers,
         .sample_count = sample_count(),
         .debug_prefix = std::string("Renderer::MainRT_" + std::to_string(i)),
       });
     }
   }
+
+  /* Inform the RenderContext of the new size, if any subsystem needs it. */
+  context_ptr_->set_default_surface_size(surface_size); //
 
   return true;
 }
@@ -232,24 +235,6 @@ void Renderer::blit_color(
     surface_size(),
     swapchain().imageArraySize() //
   );
-}
-
-// ----------------------------------------------------------------------------
-
-std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
-  uint32_t num_color_outputs
-) const {
-  auto desc = RenderTarget::Descriptor{
-    .depth_stencil = { .format = depth_stencil_format() },
-    .size = surface_size(),
-    .array_size = swapchain().imageArraySize(), //
-    .sample_count = VK_SAMPLE_COUNT_1_BIT, //
-  };
-  desc.colors.resize(num_color_outputs, {
-    .format = color_format(),
-    .clear_value = kDefaultColorClearValue,
-  });
-  return context_ptr_->create_render_target(desc);
 }
 
 // ----------------------------------------------------------------------------

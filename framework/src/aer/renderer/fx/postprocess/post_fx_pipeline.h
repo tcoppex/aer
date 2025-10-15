@@ -2,6 +2,7 @@
 #define AER_RENDERER_FX_POSTPROCESS_POST_FX_PIPELINE_H_
 
 #include "aer/renderer/fx/postprocess/post_fx_interface.h"
+#include "aer/platform/vulkan/context.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -55,7 +56,7 @@ class PostFxPipeline : public PostFxInterface {
   virtual void setupDependencies();
 
  public:
-  void init(Renderer const& renderer) override;
+  void init(RenderContext const& context) override;
 
   void setup(VkExtent2D const dimension) override {
     for (auto fx : effects_) {
@@ -139,7 +140,6 @@ class PostFxPipeline : public PostFxInterface {
 
  protected:
   Context const* context_ptr_{};
-  Renderer const* renderer_ptr_{};
   std::vector<std::shared_ptr<PostFxInterface>> effects_{};
   std::vector<PostFxDependencies> dependencies_{};
 };
@@ -199,10 +199,14 @@ class TPostFxPipeline : public PostFxPipeline {
 // Blank Fx used to pass data to a specialized pipeline
 class PassDataNoFx final : public PostFxInterface {
  public:
-  void init(Renderer const& renderer) final {}
+  void init(RenderContext const& context) final {}
+
   void setup(VkExtent2D const dimension) final {}
+
   bool resize(VkExtent2D const dimension) final { return false; }
+
   void execute(CommandEncoder const& cmd) const final {}
+
   void setupUI() final {}
 
   void release() final {

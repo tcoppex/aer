@@ -231,7 +231,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
   };
 
  public:
-  void init(Renderer const& renderer) final {
+  void init(RenderContext const& context) final {
     auto entry_fx = getEntryFx();
 
     auto depth_minmax = add<fx::compute::DepthMinMax>({
@@ -255,7 +255,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
       },
     });
 
-    TPostFxPipeline<SceneFx>::init(renderer);
+    TPostFxPipeline<SceneFx>::init(context);
   }
 };
 
@@ -298,8 +298,8 @@ class SampleApp final : public Application {
     });
 
     /* Fx Pipeline. */
-    toon_pipeline_.init(renderer_);
-    toon_pipeline_.setup(renderer_.surface_size());
+    toon_pipeline_.init(context_);
+    toon_pipeline_.setup(renderer_.surface_size()); //
 
     if (auto sceneFx = toon_pipeline_.getEntryFx(); sceneFx) {
       sceneFx->setModel(gltf_scene);

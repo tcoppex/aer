@@ -32,6 +32,8 @@ class RenderTargetFx : public FragmentFx
   }
 
  protected:
+  virtual void createRenderTarget(VkExtent2D const dimension);
+
   std::string getVertexShaderName() const override {
     return GetMapScreenVertexShaderName();
   }
@@ -45,8 +47,6 @@ class RenderTargetFx : public FragmentFx
   void draw(RenderPassEncoder const& pass) const override {
     pass.draw(3u);
   }
-
-  virtual void createRenderTarget(VkExtent2D const dimension);
 
  protected:
   std::shared_ptr<RenderTarget> render_target_{}; //

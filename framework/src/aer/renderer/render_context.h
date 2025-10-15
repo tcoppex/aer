@@ -54,6 +54,9 @@ class RenderContext : public Context {
     RenderTarget::Descriptor const& desc
   ) const;
 
+  [[nodiscard]]
+  std::unique_ptr<RenderTarget> create_default_render_target() const;
+
   // --- Framebuffer (Legacy Rendering) ---
 
   [[nodiscard]]
@@ -220,6 +223,15 @@ class RenderContext : public Context {
     return default_view_mask_;
   }
 
+  [[nodiscard]]
+  VkExtent2D default_surface_size() const noexcept {
+    return default_surface_size_;
+  }
+
+  void set_default_surface_size(VkExtent2D const& surface_size) noexcept {
+    default_surface_size_ = surface_size;
+  }
+
  public:
   template <typename... VulkanHandles>
   void destroyResources(VulkanHandles... handles) const {
@@ -233,9 +245,10 @@ class RenderContext : public Context {
 
  private:
   Settings settings_{};
+  uint32_t default_view_mask_{};
+  VkExtent2D default_surface_size_{};
 
   VkPipelineCache pipeline_cache_{};
-  uint32_t default_view_mask_{};
 
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};

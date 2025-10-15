@@ -58,7 +58,9 @@ bool GPUResources::load_file(std::string_view filename) {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::initialize_submesh_descriptors(Mesh::AttributeLocationMap const& attribute_to_location) {
+void GPUResources::initialize_submesh_descriptors(
+  Mesh::AttributeLocationMap const& attribute_to_location
+) {
   for (auto& mesh : meshes) {
     mesh->initialize_submesh_descriptors(attribute_to_location);
   }
@@ -340,7 +342,7 @@ void GPUResources::upload_images() {
     staging_offset += img_bytesize;
   }
 
-  auto cmd{ context_.create_transient_command_encoder(Context::TargetQueue::Transfer) };
+  auto cmd = context_.create_transient_command_encoder(Context::TargetQueue::Transfer);
   {
     VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
 

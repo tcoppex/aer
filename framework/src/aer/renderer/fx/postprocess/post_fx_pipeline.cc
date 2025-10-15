@@ -1,22 +1,22 @@
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
-#include "aer/platform/vulkan/context.h"
-#include "aer/renderer/renderer.h"
+#include "aer/renderer/render_context.h"
 
 /* -------------------------------------------------------------------------- */
 
-void PostFxPipeline::init(Renderer const& renderer) {
-  context_ptr_ = &renderer.context();
-  renderer_ptr_ = &renderer;
+void PostFxPipeline::init(RenderContext const& context) {
+  context_ptr_ = &context;
 
   LOG_CHECK(!effects_.empty());
   for (auto fx : effects_) {
-    fx->init(renderer);
+    fx->init(context);
   }
 }
 
+// ----------------------------------------------------------------------------
+
 void PostFxPipeline::setupDependencies() {
-  LOG_CHECK(context_ptr_ != nullptr);
-  LOG_CHECK(!effects_.empty());
+  LOG_CHECK( context_ptr_ != nullptr );
+  LOG_CHECK( !effects_.empty() );
 
   context_ptr_->device_wait_idle();
 

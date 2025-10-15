@@ -13,7 +13,7 @@ namespace shader_interop::skybox {
 }
 
 class Context;
-class Renderer;
+class RenderContext;
 class Camera;
 
 /* -------------------------------------------------------------------------- */
@@ -25,7 +25,7 @@ class Skybox {
  public:
   Skybox() = default;
 
-  void init(Renderer& renderer); //
+  void init(RenderContext& context); //
 
   void release(RenderContext const& context);
 
@@ -58,12 +58,13 @@ class Skybox {
   }
 
  private:
-  void compute_specular_brdf_lut(Renderer const& renderer);
+  void compute_specular_brdf_lut();
 
  private:
   using PushConstant_t = shader_interop::skybox::PushConstant;
 
-  Renderer const* renderer_ptr_{};
+  RenderContext const* context_ptr_{};
+
   Envmap envmap_{};
 
   backend::Image specular_brdf_lut_{};

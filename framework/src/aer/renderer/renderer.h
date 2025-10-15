@@ -47,13 +47,6 @@ class Renderer {
 
 
   // -----------------------------------------------
-  // --- Render Target (Dynamic Rendering) ---
-
-  [[nodiscard]]
-  std::unique_ptr<RenderTarget> create_default_render_target(
-    uint32_t num_color_outputs = 1u
-  ) const;
-
   // --- GPUResources gltf objects ---
 
   [[nodiscard]]

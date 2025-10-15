@@ -2,7 +2,7 @@
 #define AER_RENDERER_FX_POSTPROCESS_GENERIC_FX_H_
 
 #include "aer/renderer/fx/postprocess/fx_interface.h"
-#include "aer/renderer/pipeline.h"
+#include "aer/renderer/render_context.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -10,7 +10,7 @@ class GenericFx : public virtual FxInterface {
  public:
   virtual ~GenericFx() = default;
 
-  void init(Renderer const& renderer) override;
+  void init(RenderContext const& context) override;
 
   void setup(VkExtent2D const dimension) override;
 
@@ -39,13 +39,10 @@ class GenericFx : public virtual FxInterface {
 
  protected:
   RenderContext const* context_ptr_{};
-  Renderer const* renderer_ptr_{};
 
-  // ----------------
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{}; //
   VkPipelineLayout pipeline_layout_{}; // (redundant, as also kept in pipeline_ when created)
-  // ----------------
 
   Pipeline pipeline_{};
 };
