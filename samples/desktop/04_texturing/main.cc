@@ -189,13 +189,17 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-    context_.destroy_pipeline_layout(graphics_pipeline_.layout());
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_image(image_);
-    context_.destroy_buffer(index_buffer_);
-    context_.destroy_buffer(vertex_buffer_);
-    context_.destroy_buffer(uniform_buffer_);
+    /* We can simplify destroying resources via the RenderContext::destroyResources
+     * method. */
+    context_.destroyResources(
+      descriptor_set_layout_,
+      graphics_pipeline_.layout(),
+      graphics_pipeline_,
+      image_,
+      index_buffer_,
+      vertex_buffer_,
+      uniform_buffer_
+    );
   }
 
   void update(float const dt) final {

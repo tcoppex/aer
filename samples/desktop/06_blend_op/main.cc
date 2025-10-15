@@ -209,12 +209,14 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_.pipeline);
-    context_.destroy_descriptor_set_layout(graphics_.descriptor_set_layout);
-    context_.destroy_pipeline_layout(graphics_.pipeline_layout);
-    context_.destroy_buffer(point_grid_.index);
-    context_.destroy_buffer(point_grid_.vertex);
-    context_.destroy_buffer(uniform_buffer_);
+    context_.destroyResources(
+      graphics_.pipeline,
+      graphics_.descriptor_set_layout,
+      graphics_.pipeline_layout,
+      point_grid_.index,
+      point_grid_.vertex,
+      uniform_buffer_
+    );
   }
 
   void draw(CommandEncoder const& cmd) final {

@@ -206,10 +206,12 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-    context_.destroy_pipeline_layout(graphics_pipeline_.layout());
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(uniform_buffer_);
+    context_.destroyResources(
+      descriptor_set_layout_,
+      graphics_pipeline_.layout(),
+      graphics_pipeline_,
+      uniform_buffer_
+    );
     scene_.reset();
   }
 

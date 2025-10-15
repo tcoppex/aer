@@ -147,10 +147,10 @@ class SampleApp final : public Application {
     context_.destroyResources(
       descriptor_set_layout_,
       pipeline_layout_,
-      graphics_pipeline_
+      graphics_pipeline_,
+      uniform_buffer_,
+      vertex_buffer_
     );
-    context_.destroy_buffer(uniform_buffer_);
-    context_.destroy_buffer(vertex_buffer_);
   }
 
   void update(float dt) final {

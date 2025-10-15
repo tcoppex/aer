@@ -294,13 +294,15 @@ class SampleApp final : public Application {
     for (auto const& pipeline : pipelines_) {
       context_.destroy_pipeline(pipeline);
     }
-    context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-    context_.destroy_pipeline_layout(pipeline_layout_);
-    context_.destroy_buffer(plane_.index);
-    context_.destroy_buffer(plane_.vertex);
-    context_.destroy_buffer(torus_.index);
-    context_.destroy_buffer(torus_.vertex);
-    context_.destroy_buffer(uniform_buffer_);
+    context_.destroyResources(
+      descriptor_set_layout_,
+      pipeline_layout_,
+      plane_.index,
+      plane_.vertex,
+      torus_.index,
+      torus_.vertex,
+      uniform_buffer_
+    );
   }
 
   void draw(CommandEncoder const& cmd) final {

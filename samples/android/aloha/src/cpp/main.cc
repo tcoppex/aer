@@ -107,8 +107,10 @@ private:
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(vertex_buffer_);
+    context_.destroyResources(
+      graphics_pipeline_,
+      vertex_buffer_
+    );
   }
 
   void draw(CommandEncoder const& cmd) final {

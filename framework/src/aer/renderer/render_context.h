@@ -199,8 +199,8 @@ class RenderContext : public Context {
   void destroyResource(VkPipelineLayout h)              { destroy_pipeline_layout(h); }
   void destroyResource(Pipeline const& h)               { destroy_pipeline(h); }
   // void destroyResource(VkPipeline h)                    { vkDestroyPipeline(device_, h, nullptr); }
-  // void destroyResource(backend::Buffer const& buffer)   { allocator_ptr->destroy_buffer(buffer); }
-  // void destroyResource(backend::Image const& image)     { allocator_ptr->destroy_image(buffer); }
+  void destroyResource(backend::Buffer const& buffer)   { destroy_buffer(buffer); }
+  void destroyResource(backend::Image & image)          { destroy_image(image); }
 
  private:
   VkPipelineCache pipeline_cache_{};
