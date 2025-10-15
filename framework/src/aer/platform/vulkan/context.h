@@ -23,6 +23,7 @@ class Context {
  public:
   Context() = default;
 
+  [[nodiscard]]
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
@@ -136,6 +137,7 @@ class Context {
     return write_buffer(dst_buffer, host_span.data(), bytesize);
   }
 
+  [[nodiscard]]
   backend::Image create_image(
     VkImageCreateInfo const& image_info,
     VkImageViewCreateInfo view_info,

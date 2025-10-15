@@ -39,18 +39,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
     context_.clear_staging_buffers();
   }
 
-  // if (xr_) {
-  //   LOGD("--- Start XR Session ---");
-  //   // xrStartSession();
-  // }
-
   mainloop(app_data);
-
-  // if (xr_) {
-  //   LOGD("--- End XR Session ---");
-  //   // xrEndSession();
-  // }
-
   shutdown();
 
   return EXIT_SUCCESS;
@@ -324,7 +313,7 @@ bool Application::reset_swapchain() {
       bSuccess = swapchain_.init(context_, surface_);
     }
   } else {
-    // [OpenXR bypass traditionnal Surface + Swapchain creation]
+    // [OpenXR bypass traditionnal Vulkan surface + swapchain creation]
     bSuccess = xr_->resetSwapchain();
   }
 
@@ -364,7 +353,7 @@ void Application::shutdown() {
     context_.destroy_surface(surface_);
   }
 
-  LOGD("> Render Context");
+  LOGD("> Device Context");
   context_.release();
 
   if (wm_) {
