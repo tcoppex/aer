@@ -139,11 +139,9 @@ void Skybox::release(Renderer const& renderer) {
   auto const& context = renderer.context();
 
   context.destroy_image(specular_brdf_lut_);
-
   context.destroy_pipeline(graphics_pipeline_);
   context.destroy_pipeline_layout(pipeline_layout_);
   context.destroy_descriptor_set_layout(descriptor_set_layout_);
-
   context.destroy_buffer(index_buffer_);
   context.destroy_buffer(vertex_buffer_);
 
@@ -254,11 +252,12 @@ void Skybox::compute_specular_brdf_lut(Renderer const& renderer) {
   brdf_pipeline.init(renderer);
   brdf_pipeline.setup({ kBRDFLutResolution, kBRDFLutResolution });
 
-  auto cmd = renderer.context().create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto const& ctx = renderer.context();
+  auto const& cmd = ctx.create_transient_command_encoder(Context::TargetQueue::Compute);
   {
     brdf_pipeline.execute(cmd);
   }
-  renderer.context().finish_transient_command_encoder(cmd);
+  ctx.finish_transient_command_encoder(cmd);
 
   specular_brdf_lut_ = brdf_pipeline.getImageOutput();
   brdf_pipeline.release();

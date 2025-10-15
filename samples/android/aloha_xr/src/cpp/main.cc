@@ -212,9 +212,7 @@ class SampleApp final : public Application {
     }
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.begin_rendering();
     {
       pass.bind_pipeline(graphics_pipeline_);
@@ -225,8 +223,6 @@ class SampleApp final : public Application {
       pass.draw(kVertices.size());
     }
     cmd.end_rendering();
-
-    renderer_.end_frame();
   }
 
  private:

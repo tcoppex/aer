@@ -111,9 +111,7 @@ private:
     context_.destroy_buffer(vertex_buffer_);
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.begin_rendering();
     {
       pass.set_viewport_scissor(viewport_size_, false);
@@ -122,8 +120,6 @@ private:
       pass.draw(kVertices.size());
     }
     cmd.end_rendering();
-
-    renderer_.end_frame();
   }
 
   void onPointerUp(int x, int y, KeyCode_t button) final {

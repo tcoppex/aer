@@ -77,7 +77,7 @@ class SceneFx final : public RenderTargetFx {
       },
       .depth_stencil = { VK_FORMAT_D24_UNORM_S8_UINT },
       .size = dimension,
-      .sample_count = VkSampleCountFlagBits(1), //renderer_ptr_->sample_count(),
+      .sample_count = VK_SAMPLE_COUNT_1_BIT, //
     });
   }
 
@@ -260,6 +260,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
 };
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
 class SampleApp final : public Application {
  public:
@@ -329,19 +330,15 @@ class SampleApp final : public Application {
     sceneFx->setWorldMatrix(world_matrix);
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-    {
-      /* Main rendering + Toon post-processing. */
-      toon_pipeline_.execute(cmd);
+  void draw(CommandEncoder const& cmd) final {
+    /* Main rendering + Toon post-processing. */
+    toon_pipeline_.execute(cmd);
 
-      /* Blit the result directly to the current swapchain image. */
-      renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
+    /* Blit the result directly to the current swapchain image. */
+    renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
 
-      /* Draw UI on top. */
-      draw_ui(cmd);
-    }
-    renderer_.end_frame();
+    /* Draw UI on top. */
+    draw_ui(cmd);
   }
 
   void build_ui() final {

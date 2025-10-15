@@ -303,7 +303,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(uniform_buffer_);
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     float const tick{ frame_time() };
 
     mat4 const portal_world_matrix = linalg::mul(
@@ -314,49 +314,49 @@ class SampleApp final : public Application {
       )
     );
 
-    auto cmd = renderer_.begin_frame();
+    /* As the pipeline shared the same layout, we can bind them just once directly. */
+    cmd.bind_descriptor_set(
+      descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT
+    );
+
+    /* All objects but the last one use the same world matrix. */
+    push_constant_.model.worldMatrix = portal_world_matrix;
+    cmd.push_constant(
+      push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT
+    );
+
+    auto pass = cmd.begin_rendering();
     {
-      /* As the pipeline shared the same layout, we can bind them just once directly. */
-      cmd.bind_descriptor_set(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.set_viewport_scissor(viewport_size_);
 
-      /* All objects but the last one use the same world matrix. */
-      push_constant_.model.worldMatrix = portal_world_matrix;
-      cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT);
+      // Draw the portal mask into the stencil buffer.
+      pass.bind_pipeline(pipelines_[PipelineID::StencilMask]);
+      plane_.draw(pass);
 
-      auto pass = cmd.begin_rendering();
+      // Draw instanced rings when passing the stencil test.
+      pass.bind_pipeline(pipelines_[PipelineID::StencilTest]);
+      torus_.draw(pass, 256u);
+
+      // Draw the portal mask into the depth buffer.
+      pass.bind_pipeline(pipelines_[PipelineID::DepthMask]);
+      plane_.draw(pass);
+
+      // Draw regular objects 'outside' the portal.
+      pass.bind_pipeline(pipelines_[PipelineID::Rendering]);
       {
-        pass.set_viewport_scissor(viewport_size_);
+        // Portal frame.
+        torus_.draw(pass);
 
-        // Draw the portal mask into the stencil buffer.
-        pass.bind_pipeline(pipelines_[PipelineID::StencilMask]);
-        plane_.draw(pass);
-
-        // Draw instanced rings when passing the stencil test.
-        pass.bind_pipeline(pipelines_[PipelineID::StencilTest]);
-        torus_.draw(pass, 256u);
-
-        // Draw the portal mask into the depth buffer.
-        pass.bind_pipeline(pipelines_[PipelineID::DepthMask]);
-        plane_.draw(pass);
-
-        // Draw regular objects 'outside' the portal.
-        pass.bind_pipeline(pipelines_[PipelineID::Rendering]);
-        {
-          // Portal frame.
-          torus_.draw(pass);
-
-          // Outer-ring.
-          push_constant_.model.worldMatrix = linalg::mul(
-            linalg::scaling_matrix(vec3(3.0)),
-            lina::rotation_matrix_z(-0.32f * tick)
-          );
-          pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
-          torus_.draw(pass);
-        }
+        // Outer-ring.
+        push_constant_.model.worldMatrix = linalg::mul(
+          linalg::scaling_matrix(vec3(3.0)),
+          lina::rotation_matrix_z(-0.32f * tick)
+        );
+        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        torus_.draw(pass);
       }
-      cmd.end_rendering();
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:

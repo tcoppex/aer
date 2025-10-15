@@ -130,9 +130,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(vertex_buffer_);
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     /**
      * 'begin_rendering' (dynamic_rendering) or 'begin_render_pass' (legacy rendering)
      * returns a RenderPassEncoder, which is a specialized CommandEncoder to specify
@@ -158,8 +156,6 @@ class SampleApp final : public Application {
       pass.draw(kVertices.size());
     }
     cmd.end_rendering();
-
-    renderer_.end_frame();
   }
 
  private:

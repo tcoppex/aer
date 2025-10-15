@@ -21,9 +21,7 @@ class SampleApp final : public Application {
     return true;
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
 #if 1 /* Direct method */
 
     /* Change the default Render Target clear color value. */
@@ -93,8 +91,6 @@ class SampleApp final : public Application {
     );
 
 #endif
-
-    renderer_.end_frame();
   }
 };
 

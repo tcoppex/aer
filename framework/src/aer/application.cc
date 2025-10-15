@@ -39,17 +39,17 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
     context_.clear_staging_buffers();
   }
 
-  if (xr_) {
-    LOGD("--- Start XR Session ---");
-    // xrStartSession();
-  }
+  // if (xr_) {
+  //   LOGD("--- Start XR Session ---");
+  //   // xrStartSession();
+  // }
 
   mainloop(app_data);
 
-  if (xr_) {
-    LOGD("--- End XR Session ---");
-    // xrEndSession();
-  }
+  // if (xr_) {
+  //   LOGD("--- End XR Session ---");
+  //   // xrEndSession();
+  // }
 
   shutdown();
 
@@ -244,12 +244,18 @@ void Application::mainloop(AppData_t app_data) {
     if (xr_->shouldStopRender()) {
       return false;
     }
-    // update_ui(); //
 
     if (xr_->isSessionRunning()) [[likely]] {
       xr_->processFrame(
-        [this]() { update(delta_time()); },
-        [this]() { draw(); }
+        [this]() {
+          update_ui();
+          update(delta_time());
+        },
+        [this]() {
+          auto const& cmd = renderer_.begin_frame();
+          draw(cmd);
+          renderer_.end_frame();
+        }
       );
     } else {
       std::this_thread::sleep_for(10ms);
@@ -264,7 +270,9 @@ void Application::mainloop(AppData_t app_data) {
     if (wm_->isActive()) [[likely]] {
       update_ui();
       update(delta_time());
-      draw();
+      auto const& cmd = renderer_.begin_frame();
+      draw(cmd);
+      renderer_.end_frame();
     } else {
       std::this_thread::sleep_for(10ms);
     }

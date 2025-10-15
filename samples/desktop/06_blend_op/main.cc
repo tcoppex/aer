@@ -217,7 +217,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(uniform_buffer_);
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     mat4 const world_matrix(
       linalg::mul(
         lina::rotation_matrix_y(0.25f * frame_time()),
@@ -225,33 +225,29 @@ class SampleApp final : public Application {
       )
     );
 
-    auto cmd = renderer_.begin_frame();
+    cmd.bind_descriptor_set(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+
+    graphics_.push_constant.model.worldMatrix = world_matrix;
+    graphics_.push_constant.time = frame_time();
+    cmd.push_constant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+
+    auto pass = cmd.begin_rendering();
     {
-      cmd.bind_descriptor_set(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.set_viewport_scissor(viewport_size_);
 
-      graphics_.push_constant.model.worldMatrix = world_matrix;
-      graphics_.push_constant.time = frame_time();
-      cmd.push_constant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.bind_pipeline(graphics_.pipeline);
 
-      auto pass = cmd.begin_rendering();
-      {
-        pass.set_viewport_scissor(viewport_size_);
-
-        pass.bind_pipeline(graphics_.pipeline);
-
-        /* For each particle vertex we output two triangles to form a quad,
-         * so (2 * 3 = 6) vertices per points.
-         *
-         * As we don't use any vertex inputs, we will just send 6 'empty' vertices
-         * instanced the number of positions to transform.
-         *
-         * For efficiency this is done in a vertex shader instead of a geometry shader.
-         */
-        pass.draw(6u, point_grid_.geo.vertex_count());
-      }
-      cmd.end_rendering();
+      /* For each particle vertex we output two triangles to form a quad,
+       * so (2 * 3 = 6) vertices per points.
+       *
+       * As we don't use any vertex inputs, we will just send 6 'empty' vertices
+       * instanced the number of positions to transform.
+       *
+       * For efficiency this is done in a vertex shader instead of a geometry shader.
+       */
+      pass.draw(6u, point_grid_.geo.vertex_count());
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:

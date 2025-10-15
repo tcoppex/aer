@@ -277,7 +277,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(uniform_buffer_);
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     mat4 const world_matrix(
       linalg::mul(
         lina::rotation_matrix_y(0.05f * frame_time()),
@@ -285,160 +285,156 @@ class SampleApp final : public Application {
       )
     );
 
-    auto cmd = renderer_.begin_frame();
+    /* Bind the shared descriptor set. */
+    cmd.bind_descriptor_set(
+      descriptor_set_,
+      pipeline_layout_,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
+    );
+
+    /* Simulate & Sort particles */
     {
-      /* Bind the shared descriptor set. */
-      cmd.bind_descriptor_set(
-        descriptor_set_,
+      auto const nelems = point_grid_.geo.vertex_count();
+
+      push_constant_.compute.model.worldMatrix = world_matrix;
+      push_constant_.compute.time = frame_time();
+      push_constant_.compute.numElems = nelems;
+
+      cmd.push_constant(
+        push_constant_.compute,
         pipeline_layout_,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        offsetof(shader_interop::PushConstant, compute)
       );
 
-      /* Simulate & Sort particles */
-      {
-        auto const nelems = point_grid_.geo.vertex_count();
+      /// 1) Simulate a simple particle system (Wave simulations).
+      cmd.bind_pipeline(compute_pipelines_.at(Compute_Simulation));
+      cmd.dispatch<shader_interop::kCompute_Simulation_kernelSize_x>(nelems);
 
-        push_constant_.compute.model.worldMatrix = world_matrix;
-        push_constant_.compute.time = frame_time();
-        push_constant_.compute.numElems = nelems;
+      /// 2) Fill the first part of the indices buffer with continuous indices.
+      cmd.bind_pipeline(compute_pipelines_.at(Compute_FillIndices));
+      cmd.dispatch<shader_interop::kCompute_FillIndex_kernelSize_x>(nelems);
 
-        cmd.push_constant(
-          push_constant_.compute,
-          pipeline_layout_,
-          VK_SHADER_STAGE_COMPUTE_BIT,
-          offsetof(shader_interop::PushConstant, compute)
-        );
-
-        /// 1) Simulate a simple particle system (Wave simulations).
-        cmd.bind_pipeline(compute_pipelines_.at(Compute_Simulation));
-        cmd.dispatch<shader_interop::kCompute_Simulation_kernelSize_x>(nelems);
-
-        /// 2) Fill the first part of the indices buffer with continuous indices.
-        cmd.bind_pipeline(compute_pipelines_.at(Compute_FillIndices));
-        cmd.dispatch<shader_interop::kCompute_FillIndex_kernelSize_x>(nelems);
-
-        cmd.pipeline_buffer_barriers({
-          {
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .buffer = point_grid_.vertex.buffer,
-          }
-        });
-
-        /// 3) Compute the particles dot products against the camera view direction.
-        cmd.bind_pipeline(compute_pipelines_.at(Compute_DotProduct));
-        cmd.dispatch<shader_interop::kCompute_DotProduct_kernelSize_x>(nelems);
-
-        cmd.pipeline_buffer_barriers({
-          {
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .buffer = dot_product_buffer_.buffer,
-          },
-          {
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .buffer = point_grid_.index.buffer,
-          }
-        });
-
-
-        /// 2) Sort indices via their dot products using a bitonic sort.
-        cmd.bind_pipeline(compute_pipelines_.at(Compute_SortIndices));
+      cmd.pipeline_buffer_barriers({
         {
-          uint32_t const index_buffer_offset = point_grid_.geo.index_count();
-          uint32_t index_buffer_binding = 0u;
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = point_grid_.vertex.buffer,
+        }
+      });
 
-          // Get trailing bits count.
-          uint32_t nsteps = 0u;
-          for (uint32_t i = nelems; i > 1u; i >>= 1u) {
-            ++nsteps;
-          }
+      /// 3) Compute the particles dot products against the camera view direction.
+      cmd.bind_pipeline(compute_pipelines_.at(Compute_DotProduct));
+      cmd.dispatch<shader_interop::kCompute_DotProduct_kernelSize_x>(nelems);
 
-          for (uint32_t stage = 0u; stage < nsteps; ++stage)
-          {
-            uint32_t const max_block_width{ 2u << stage };
-            for (uint32_t pass = 0u; pass <= stage; ++pass)
-            {
-              uint32_t const block_width{ 2u << (stage - pass) };
-              uint32_t const read_offset{ index_buffer_offset * index_buffer_binding };
-              uint32_t const write_offset{ index_buffer_offset * (index_buffer_binding ^ 1u) };
+      cmd.pipeline_buffer_barriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = dot_product_buffer_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = point_grid_.index.buffer,
+        }
+      });
 
-              push_constant_.compute.readOffset = read_offset;
-              push_constant_.compute.writeOffset = write_offset;
-              push_constant_.compute.blockWidth = block_width;
-              push_constant_.compute.maxBlockWidth = max_block_width;
-              cmd.push_constant(
-                push_constant_.compute,
-                pipeline_layout_,
-                VK_SHADER_STAGE_COMPUTE_BIT,
-                offsetof(shader_interop::PushConstant, compute)
-              );
 
-              cmd.dispatch<shader_interop::kCompute_SortIndex_kernelSize_x>(nelems / 2u);
+      /// 2) Sort indices via their dot products using a bitonic sort.
+      cmd.bind_pipeline(compute_pipelines_.at(Compute_SortIndices));
+      {
+        uint32_t const index_buffer_offset = point_grid_.geo.index_count();
+        uint32_t index_buffer_binding = 0u;
 
-              cmd.pipeline_buffer_barriers({
-                {
-                  .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                  .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                  .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                  .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                  .buffer = point_grid_.index.buffer,
-                  .offset = read_offset * sizeof(uint32_t),
-                  .size = index_buffer_bytesize_,
-                },
-                {
-                  .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                  .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                  .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                  .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                  .buffer = point_grid_.index.buffer,
-                  .offset = write_offset * sizeof(uint32_t),
-                  .size = index_buffer_bytesize_,
-                },
-              });
-
-              index_buffer_binding ^= 1u;
-            }
-          }
+        // Get trailing bits count.
+        uint32_t nsteps = 0u;
+        for (uint32_t i = nelems; i > 1u; i >>= 1u) {
+          ++nsteps;
         }
 
-        cmd.pipeline_buffer_barriers({
+        for (uint32_t stage = 0u; stage < nsteps; ++stage)
+        {
+          uint32_t const max_block_width{ 2u << stage };
+          for (uint32_t pass = 0u; pass <= stage; ++pass)
           {
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-            .buffer = point_grid_.index.buffer,
-          },
-        });
+            uint32_t const block_width{ 2u << (stage - pass) };
+            uint32_t const read_offset{ index_buffer_offset * index_buffer_binding };
+            uint32_t const write_offset{ index_buffer_offset * (index_buffer_binding ^ 1u) };
+
+            push_constant_.compute.readOffset = read_offset;
+            push_constant_.compute.writeOffset = write_offset;
+            push_constant_.compute.blockWidth = block_width;
+            push_constant_.compute.maxBlockWidth = max_block_width;
+            cmd.push_constant(
+              push_constant_.compute,
+              pipeline_layout_,
+              VK_SHADER_STAGE_COMPUTE_BIT,
+              offsetof(shader_interop::PushConstant, compute)
+            );
+
+            cmd.dispatch<shader_interop::kCompute_SortIndex_kernelSize_x>(nelems / 2u);
+
+            cmd.pipeline_buffer_barriers({
+              {
+                .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .buffer = point_grid_.index.buffer,
+                .offset = read_offset * sizeof(uint32_t),
+                .size = index_buffer_bytesize_,
+              },
+              {
+                .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                .buffer = point_grid_.index.buffer,
+                .offset = write_offset * sizeof(uint32_t),
+                .size = index_buffer_bytesize_,
+              },
+            });
+
+            index_buffer_binding ^= 1u;
+          }
+        }
       }
 
-      /* Rendering */
-      auto pass = cmd.begin_rendering();
-      {
-        pass.set_viewport_scissor(viewport_size_);
-
-        pass.bind_pipeline(graphics_pipeline_);
-
-        push_constant_.graphics.model.worldMatrix = world_matrix;
-        pass.push_constant(
-          push_constant_.graphics,
-          VK_SHADER_STAGE_VERTEX_BIT,
-          offsetof(shader_interop::PushConstant, graphics)
-        );
-
-        pass.draw(4u, point_grid_.geo.vertex_count());
-      }
-      cmd.end_rendering();
+      cmd.pipeline_buffer_barriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .buffer = point_grid_.index.buffer,
+        },
+      });
     }
-    renderer_.end_frame();
+
+    /* Rendering */
+    auto pass = cmd.begin_rendering();
+    {
+      pass.set_viewport_scissor(viewport_size_);
+
+      pass.bind_pipeline(graphics_pipeline_);
+
+      push_constant_.graphics.model.worldMatrix = world_matrix;
+      pass.push_constant(
+        push_constant_.graphics,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        offsetof(shader_interop::PushConstant, graphics)
+      );
+
+      pass.draw(4u, point_grid_.geo.vertex_count());
+    }
+    cmd.end_rendering();
   }
 
  private:

@@ -234,7 +234,7 @@ class SampleApp final : public Application {
     push_constant_.viewMatrix = camera_.view();
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     mat4 const worldMatrix{
       lina::rotation_matrix_axis(
         vec3(-0.25f, 1.0f, -0.15f),
@@ -242,25 +242,21 @@ class SampleApp final : public Application {
       )
     };
 
-    auto cmd = renderer_.begin_frame();
+    auto pass = cmd.begin_rendering();
     {
-      auto pass = cmd.begin_rendering();
+      pass.set_viewport_scissor(viewport_size_);
+
+      /* First render the skybox. */
+      renderer_.skybox().render(pass, camera_);
+
+      /* Then the scene / model. */
+      pass.bind_pipeline(graphics_pipeline_);
       {
-        pass.set_viewport_scissor(viewport_size_);
-
-        /* First render the skybox. */
-        renderer_.skybox().render(pass, camera_);
-
-        /* Then the scene / model. */
-        pass.bind_pipeline(graphics_pipeline_);
-        {
-          pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-          draw_model(pass, worldMatrix);
-        }
+        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        draw_model(pass, worldMatrix);
       }
-      cmd.end_rendering();
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:
@@ -272,8 +268,6 @@ class SampleApp final : public Application {
   shader_interop::PushConstant push_constant_{};
 
   Pipeline graphics_pipeline_{};
-
-  // -----------------------
 
   Camera camera_{};
   ArcBallController arcball_controller_{};

@@ -137,10 +137,7 @@ class SampleApp final : public Application {
         }
       );
     }
-
     context_.release_shader_modules(shaders);
-
-    // -------------
 
     return true;
   }
@@ -150,7 +147,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(vertex_buffer_);
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     /* Retrieve the current frame time. */
     float const tick{ frame_time() };
 
@@ -164,47 +161,43 @@ class SampleApp final : public Application {
       .extent = half_screen,
     };
 
-    auto cmd = renderer_.begin_frame();
+    /* By specifying the pipeline layout to target, we can push constants
+     * before the actual pipeline is bound. */
+    cmd.push_constant(tick * 1.4f, graphics_pipeline_.layout());
+
+    auto pass = cmd.begin_rendering();
     {
-      /* By specifying the pipeline layout to target, we can push constants
-       * before the actual pipeline is bound. */
-      cmd.push_constant(tick * 1.4f, graphics_pipeline_.layout());
+      pass.bind_pipeline(graphics_pipeline_);
+      pass.bind_vertex_buffer(vertex_buffer_);
 
-      auto pass = cmd.begin_rendering();
+      // Left-side.
       {
-        pass.bind_pipeline(graphics_pipeline_);
-        pass.bind_vertex_buffer(vertex_buffer_);
-
-        // Left-side.
-        {
-          /* Set viewport-scissor using a VkExtent2D (with no offset). */
-          pass.set_viewport_scissor(half_screen, kFlipScreenVertically);
-          pass.draw(kVertices.size());
-        }
-
-        // Right-side.
-        {
-          /* Set viewport-scissor using a VkRect2D (with offset). */
-          pass.set_viewport_scissor(right_side, !kFlipScreenVertically);
-
-          /**
-           * If no pipeline layout is specified, the pass encoder will take the
-           * one from the currently bound pipeline, when available.
-           *
-           * This is only possible using a non const RenderPassEncoder.
-           **/
-          pass.push_constant(tick * 4.0f);
-          pass.draw(kVertices.size());
-        }
+        /* Set viewport-scissor using a VkExtent2D (with no offset). */
+        pass.set_viewport_scissor(half_screen, kFlipScreenVertically);
+        pass.draw(kVertices.size());
       }
-      cmd.end_rendering();
+
+      // Right-side.
+      {
+        /* Set viewport-scissor using a VkRect2D (with offset). */
+        pass.set_viewport_scissor(right_side, !kFlipScreenVertically);
+
+        /**
+         * If no pipeline layout is specified, the pass encoder will take the
+         * one from the currently bound pipeline, when available.
+         *
+         * This is only possible using a non const RenderPassEncoder.
+         **/
+        pass.push_constant(tick * 4.0f);
+        pass.draw(kVertices.size());
+      }
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:
-  backend::Buffer vertex_buffer_;
-  Pipeline graphics_pipeline_;
+  backend::Buffer vertex_buffer_{};
+  Pipeline graphics_pipeline_{};
 };
 
 

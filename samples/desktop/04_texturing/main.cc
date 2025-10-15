@@ -208,28 +208,24 @@ class SampleApp final : public Application {
     );
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
+  void draw(CommandEncoder const& cmd) final {
+    auto pass = cmd.begin_rendering();
     {
-      auto pass = cmd.begin_rendering();
+      pass.set_viewport_scissor(viewport_size_);
+
+      pass.bind_pipeline(graphics_pipeline_);
       {
-        pass.set_viewport_scissor(viewport_size_);
+        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
-        pass.bind_pipeline(graphics_pipeline_);
-        {
-          pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-          pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.bind_vertex_buffer(vertex_buffer_);
+        pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
+        pass.draw_indexed(cube_.index_count());
 
-          pass.bind_vertex_buffer(vertex_buffer_);
-          pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-          pass.draw_indexed(cube_.index_count());
-
-          // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
-        }
+        // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
       }
-      cmd.end_rendering();
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:

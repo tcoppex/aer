@@ -51,7 +51,7 @@ class Application : public EventCallbacks
 
   virtual void update(float const dt) {}
 
-  virtual void draw() {}
+  virtual void draw(CommandEncoder const& cmd) {}
 
  protected:
   [[nodiscard]]
