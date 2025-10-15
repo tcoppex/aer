@@ -350,7 +350,7 @@ RenderPassEncoder CommandEncoder::begin_rendering(RenderPassDescriptor const& de
 
 RenderPassEncoder CommandEncoder::begin_rendering(
   backend::RTInterface const& render_target
-) {
+) const {
   auto const& colors = render_target.color_attachments();
   auto depthStencilImageView = render_target.depth_stencil_attachment().view;
 
@@ -423,7 +423,7 @@ RenderPassEncoder CommandEncoder::begin_rendering(
 
 // ----------------------------------------------------------------------------
 
-RenderPassEncoder CommandEncoder::begin_rendering() {
+RenderPassEncoder CommandEncoder::begin_rendering() const {
   LOG_CHECK( default_render_target_ptr_ != nullptr );
   auto pass = begin_rendering( *default_render_target_ptr_ );
   pass.set_viewport_scissor(default_render_target_ptr_->surface_size()); //

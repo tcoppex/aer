@@ -45,12 +45,8 @@ class GenericCommandEncoder {
 
   // --- Pipeline ---
 
-  void bind_pipeline(backend::PipelineInterface const& pipeline) {
-    currently_bound_pipeline_ = &pipeline;
-    vkCmdBindPipeline(command_buffer_, pipeline.bind_point(), pipeline.handle());
-  }
-
   void bind_pipeline(backend::PipelineInterface const& pipeline) const {
+    currently_bound_pipeline_ = &pipeline;
     vkCmdBindPipeline(command_buffer_, pipeline.bind_point(), pipeline.handle());
   }
 
@@ -177,7 +173,7 @@ class GenericCommandEncoder {
   uint32_t target_queue_index_{};
 
  private:
-  backend::PipelineInterface const* currently_bound_pipeline_{};
+  mutable backend::PipelineInterface const* currently_bound_pipeline_{};
 };
 
 /* -------------------------------------------------------------------------- */
@@ -296,10 +292,10 @@ class CommandEncoder : public GenericCommandEncoder {
   RenderPassEncoder begin_rendering(RenderPassDescriptor const& desc) const;
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering(backend::RTInterface const& render_target);
+  RenderPassEncoder begin_rendering(backend::RTInterface const& render_target) const;
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering();
+  RenderPassEncoder begin_rendering() const;
 
   void end_rendering() const;
 
