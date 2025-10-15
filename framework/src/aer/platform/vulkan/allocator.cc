@@ -31,7 +31,7 @@ void Allocator::init(VmaAllocatorCreateInfo alloc_create_info) {
 
 // ----------------------------------------------------------------------------
 
-void Allocator::deinit() {
+void Allocator::release() {
   clear_staging_buffers();
   vmaDestroyAllocator(handle_);
 }

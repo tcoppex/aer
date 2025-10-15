@@ -34,7 +34,7 @@ class RenderContext : public Context {
     XRVulkanInterface *vulkan_xr
   );
 
-  void deinit();
+  void release();
 
   // --- Render Target (Dynamic Rendering) ---
 

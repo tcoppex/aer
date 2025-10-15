@@ -29,7 +29,7 @@ class Context {
     XRVulkanInterface *vulkan_xr
   );
 
-  void deinit();
+  void release();
 
   [[nodiscard]]
   VkInstance instance() const noexcept {

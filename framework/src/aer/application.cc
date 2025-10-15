@@ -298,7 +298,7 @@ bool Application::reset_swapchain() {
   context_.device_wait_idle();
   bool bSuccess = false;
 
-  if (!xr_) [[likely]] {
+  if (!xr_) {
     auto surface_creation = VK_SUCCESS;
 
     /* Release previous swapchain if any, and create the surface when needed. */
@@ -311,13 +311,13 @@ bool Application::reset_swapchain() {
 #if defined(ANDROID)
       // On Android we use a new window, so we recreate everything.
       context_.destroy_surface(surface_);
-      swapchain_.deinit();
+      swapchain_.release();
       surface_creation = CHECK_VK(
         wm_->createWindowSurface(context_.instance(), &surface_)
       );
 #else
       // On Desktop we can recreate a new swapchain from the old one.
-      swapchain_.deinit(true);
+      swapchain_.release(Swapchain::kKeepPreviousSwapchain);
 #endif
     }
 
@@ -354,20 +354,20 @@ void Application::shutdown() {
   }
 
   LOGD("> Renderer");
-  renderer_.deinit();
+  renderer_.release();
 
   if (xr_) {
     LOGD("> OpenXR");
-    xr_->terminate();
+    xr_->shutdown();
     xr_.reset();
   } else {
     LOGD("> Swapchain");
-    swapchain_.deinit();
+    swapchain_.release();
     context_.destroy_surface(surface_);
   }
 
   LOGD("> Render Context");
-  context_.deinit();
+  context_.release();
 
   if (wm_) {
     LOGD("> Window Manager");

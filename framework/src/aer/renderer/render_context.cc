@@ -54,16 +54,16 @@ bool RenderContext::init(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::deinit() {
+void RenderContext::release() {
   if (device() == VK_NULL_HANDLE) {
     return;
   }
 
-  sampler_pool_.deinit();
+  sampler_pool_.release();
   descriptor_set_registry_.release();
   vkDestroyPipelineCache(device(), pipeline_cache_, nullptr);
 
-  Context::deinit();
+  Context::release();
 }
 
 // ----------------------------------------------------------------------------

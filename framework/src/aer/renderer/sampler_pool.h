@@ -31,7 +31,7 @@ class SamplerPool {
     });
   }
 
-  void deinit() {
+  void release() {
     for (auto const& [_, sampler] : map_) {
       vkDestroySampler(device_, sampler, nullptr);
     }

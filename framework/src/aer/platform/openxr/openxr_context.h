@@ -59,7 +59,7 @@ class OpenXRContext {
   [[nodiscard]]
   bool completeSetup();
 
-  void terminate();
+  void shutdown();
 
   void pollEvents();
 

@@ -76,11 +76,7 @@ void Renderer::init_view_resources() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::deinit_view_resources() {
-  if (context_ptr_ == nullptr) {
-    return;
-  }
-
+void Renderer::release_view_resources() {
   for (auto & frame : frames_) {
     vkFreeCommandBuffers(device_, frame.command_pool, 1u, &frame.command_buffer);
     vkDestroyCommandPool(device_, frame.command_pool, nullptr);
@@ -90,9 +86,13 @@ void Renderer::deinit_view_resources() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::deinit() {
-  skybox_.release(*this); //
-  deinit_view_resources();
+void Renderer::release() {
+  if (context_ptr_ == nullptr) {
+    return;
+  }
+
+  skybox_.release(*context_ptr_);
+  release_view_resources();
 }
 
 // ----------------------------------------------------------------------------

@@ -199,7 +199,7 @@ void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 
 // ----------------------------------------------------------------------------
 
-void Swapchain::deinit(bool keep_previous_swapchain) {
+void Swapchain::release(bool keep_previous_swapchain) {
   LOGD("Destroy swapchain resources,{} keep previous handle.",
     keep_previous_swapchain ? "" : " don't"
   );

@@ -50,10 +50,10 @@ bool Context::init(
 
 // ----------------------------------------------------------------------------
 
-void Context::deinit() {
+void Context::release() {
   vkDeviceWaitIdle(device_);
 
-  allocator_.deinit();
+  allocator_.release();
   for (auto &pool : transient_command_pools_) {
     vkDestroyCommandPool(device_, pool, nullptr); //
   }

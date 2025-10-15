@@ -48,7 +48,7 @@ class Renderer {
     Settings const& settings
   );
 
-  void deinit();
+  void release();
 
   [[nodiscard]]
   CommandEncoder& begin_frame();
@@ -210,7 +210,7 @@ class Renderer {
 
   void init_view_resources();
 
-  void deinit_view_resources();
+  void release_view_resources();
 
   FrameResources& frame_resource() noexcept {
     return frames_[frame_index_];
