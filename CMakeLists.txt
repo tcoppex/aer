@@ -12,7 +12,7 @@ project(${PROJECT_NAME}
   LANGUAGES
     CXX C
   HOMEPAGE_URL
-    "https://github.com/tcoppex/vk-playground"
+    "https://github.com/tcoppex/aer"
 )
 
 # -----------------------------------------------------------------------------
