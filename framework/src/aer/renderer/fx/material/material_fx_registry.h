@@ -8,7 +8,7 @@
 #include <set>
 
 class Context;
-class Renderer;
+class RenderContext;
 class MaterialFx;
 
 /* -------------------------------------------------------------------------- */
@@ -18,7 +18,7 @@ class MaterialFxRegistry {
   MaterialFxRegistry() = default;
 
   /* Create the initial material fx LUT. */
-  void init(Renderer const& renderer);
+  void init(RenderContext const& context);
 
   /* Release all allocated resources. */
   void release();

@@ -32,10 +32,8 @@ struct PushConstant {
   uint transform_index;
   uint material_index;
   uint instance_index;
-  uint dynamic_states;
+  uint _pad0[1]; // uint dynamic_states;
 };
-
-const uint kIrradianceBit = 0x1 << 0; //
 
 // ---------------------------------------------------------------------------
 

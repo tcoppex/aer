@@ -39,6 +39,10 @@ const uint kDescriptorSet_RayTracing_InstanceSBO    = 1;
 
 // ----------------------------------------------------------------------------
 
+const uint kRendererState_IrradianceBit = 0x1 << 0; //
+
+// ----------------------------------------------------------------------------
+
 struct FrameData {
   mat4 projectionMatrix;
   mat4 invProjectionMatrix;
@@ -48,7 +52,7 @@ struct FrameData {
   vec4 cameraPos_Time;   // xyz = camera, w = time
   vec2 resolution;
   uint frame;
-  uint _pad0;
+  uint renderer_states; //
 };
 
 struct TransformSBO {

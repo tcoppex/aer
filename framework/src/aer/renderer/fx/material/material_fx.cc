@@ -1,13 +1,12 @@
 #include "aer/renderer/fx/material/material_fx.h"
 
-#include "aer/platform/vulkan/context.h"
+// #include "aer/platform/vulkan/context.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
 
-void MaterialFx::init(Renderer const& renderer) {
-  renderer_ptr_ = &renderer;
-  context_ptr_ = &renderer.context(); //
+void MaterialFx::init(RenderContext const& context) {
+  context_ptr_ = &context;
 }
 
 // ----------------------------------------------------------------------------

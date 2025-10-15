@@ -120,40 +120,6 @@ class RenderContext : public Context {
     GraphicsPipelineDescriptor_t const& desc
   ) const;
 
-  // // [[nodiscard]]
-  // // VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
-  // //   GraphicsPipelineCreateInfoData_t &data,
-  // //   VkPipelineLayout pipeline_layout,
-  // //   GraphicsPipelineDescriptor_t const& desc
-  // // ) const;
-
-  // // Batch create graphics pipelines from a common layout.
-  // void create_graphics_pipelines(
-  //   VkPipelineLayout pipeline_layout,
-  //   std::vector<VkGraphicsPipelineCreateInfo> const& _create_infos,
-  //   std::vector<Pipeline> *out_pipelines
-  // ) const;
-
-  // // Create a graphics pipeline with a pre-defined layout.
-  // [[nodiscard]]
-  // Pipeline create_graphics_pipeline(
-  //   VkPipelineLayout pipeline_layout,
-  //   VkGraphicsPipelineCreateInfo const& create_info
-  // ) const;
-
-  // // Create a graphics pipeline and a layout based on description.
-  // [[nodiscard]]
-  // Pipeline create_graphics_pipeline(
-  //   PipelineLayoutDescriptor_t const& layout_desc,
-  //   VkGraphicsPipelineCreateInfo const& create_info
-  // ) const;
-
-  // // Create a graphics pipeline with a default empty layout.
-  // [[nodiscard]]
-  // Pipeline create_graphics_pipeline(
-  //   VkGraphicsPipelineCreateInfo const& create_info
-  // ) const;
-
   // --- Compute Pipelines ---
 
   void create_compute_pipelines(
@@ -232,7 +198,8 @@ class RenderContext : public Context {
     return sampler_pool_;
   }
 
-  // ------------------------------
+  // --- Settings ---
+
   [[nodiscard]]
   VkFormat default_color_format() const noexcept {
     return settings_.color_format;
@@ -252,7 +219,6 @@ class RenderContext : public Context {
   uint32_t default_view_mask() const noexcept {
     return default_view_mask_;
   }
-  // ------------------------------
 
  public:
   template <typename... VulkanHandles>

@@ -150,7 +150,6 @@ class Context {
     allocator_.destroy_image(image);
   }
 
-
   // --- Surface --
 
   void destroy_surface(VkSurfaceKHR surface) const {

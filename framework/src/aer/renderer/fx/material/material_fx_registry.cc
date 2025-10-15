@@ -1,14 +1,12 @@
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
-#include "aer/platform/vulkan/context.h"
-#include "aer/renderer/renderer.h"
-
+#include "aer/renderer/render_context.h"
 #include "aer/renderer/fx/material/impl/pbr_metallic_roughness.h" //
 #include "aer/renderer/fx/material/impl/unlit.h" //
 
 /* -------------------------------------------------------------------------- */
 
-void MaterialFxRegistry::init(Renderer const& renderer) {
+void MaterialFxRegistry::init(RenderContext const& context) {
   fx_map_ = {
     {
       scene::MaterialModel::PBRMetallicRoughness,
@@ -21,7 +19,7 @@ void MaterialFxRegistry::init(Renderer const& renderer) {
   };
 
   for (auto [_, fx] : fx_map_) {
-    fx->init(renderer);
+    fx->init(context);
   }
 }
 

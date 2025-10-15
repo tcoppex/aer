@@ -117,6 +117,10 @@ FragInfo_t calculate_world_space_frag_info(
   return frag;
 }
 
+bool has_render_state(uint state_bits) {
+  return (uFrame.renderer_states & state_bits) == state_bits;
+}
+
 PBRMetallicRoughness_Material_t calculate_pbr_material_data(
   in FragInfo_t frag,
   in Material mat,
@@ -151,7 +155,7 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
   {
     // Irradiance.
     vec3 irradiance = vec3(1.0);
-    if ((pushConstant.dynamic_states & kIrradianceBit) == kIrradianceBit) //
+    if (has_render_state(kRendererState_IrradianceBit)) //
     {
       irradiance = texture(uEnvMapIrradiance, frag.N).rgb;
       irradiance *= 0.5; //

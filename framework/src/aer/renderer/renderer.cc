@@ -219,6 +219,23 @@ void Renderer::end_frame() {
 
 // ----------------------------------------------------------------------------
 
+void Renderer::blit_color(
+  CommandEncoder const& cmd,
+  backend::Image const& src_image
+) const noexcept {
+  cmd.blit_image_2d(
+    src_image,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
+    main_render_target().resolve_attachment(),
+    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
+    surface_size(),
+    swapchain().imageArraySize() //
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 std::unique_ptr<RenderTarget> Renderer::create_default_render_target(
   uint32_t num_color_outputs
 ) const {
@@ -241,7 +258,7 @@ GLTFScene Renderer::load_gltf(
   std::string_view gltf_filename,
   scene::Mesh::AttributeLocationMap const& attribute_to_location
 ) {
-  if (GLTFScene scene = std::make_shared<GPUResources>(*this); scene) {
+  if (auto scene = std::make_shared<GPUResources>(*context_ptr_); scene) {
     scene->setup();
     if (scene->load_file(gltf_filename)) {
       scene->initialize_submesh_descriptors(attribute_to_location);
@@ -249,7 +266,6 @@ GLTFScene Renderer::load_gltf(
       return scene;
     }
   }
-
   return {};
 }
 
@@ -259,23 +275,6 @@ GLTFScene Renderer::load_gltf(std::string_view gltf_filename) {
   return load_gltf(
     gltf_filename,
     VertexInternal_t::GetDefaultAttributeLocationMap()
-  );
-}
-
-// ----------------------------------------------------------------------------
-
-void Renderer::blit_color(
-  CommandEncoder const& cmd,
-  backend::Image const& src_image
-) const noexcept {
-  cmd.blit_image_2d(
-    src_image,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
-    main_render_target().resolve_attachment(),
-    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
-    surface_size(),
-    swapchain().imageArraySize() //
   );
 }
 

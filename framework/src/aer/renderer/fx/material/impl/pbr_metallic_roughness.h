@@ -79,14 +79,11 @@ class PBRMetallicRoughnessFx final : public TMaterialFx<PBRMetallicRoughnessMate
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) final {
-    // -------------------------
-    if (renderer_ptr_->skybox().is_valid()) {
-      push_constant_.dynamic_states |= pbr_metallic_roughness_shader_interop::kIrradianceBit;
-    } else {
-      push_constant_.dynamic_states &= ~pbr_metallic_roughness_shader_interop::kIrradianceBit;
-    }
-    // -------------------------
-    cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.push_constant(
+      push_constant_,
+      pipeline_layout_,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+    );
   }
 
  private:
