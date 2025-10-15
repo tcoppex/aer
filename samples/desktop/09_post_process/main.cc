@@ -77,7 +77,7 @@ class SceneFx final : public RenderTargetFx {
       },
       .depth_stencil = { VK_FORMAT_D24_UNORM_S8_UINT },
       .size = dimension,
-      .sample_count = VkSampleCountFlagBits(1), //renderer_ptr_->sample_count(),
+      .sample_count = VK_SAMPLE_COUNT_1_BIT, //
     });
   }
 
@@ -231,7 +231,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
   };
 
  public:
-  void init(Renderer const& renderer) final {
+  void init(RenderContext const& context) final {
     auto entry_fx = getEntryFx();
 
     auto depth_minmax = add<fx::compute::DepthMinMax>({
@@ -255,10 +255,11 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
       },
     });
 
-    TPostFxPipeline<SceneFx>::init(renderer);
+    TPostFxPipeline<SceneFx>::init(context);
   }
 };
 
+/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
 class SampleApp final : public Application {
@@ -297,8 +298,8 @@ class SampleApp final : public Application {
     });
 
     /* Fx Pipeline. */
-    toon_pipeline_.init(renderer_);
-    toon_pipeline_.setup(renderer_.surface_size());
+    toon_pipeline_.init(context_);
+    toon_pipeline_.setup(renderer_.surface_size()); //
 
     if (auto sceneFx = toon_pipeline_.getEntryFx(); sceneFx) {
       sceneFx->setModel(gltf_scene);
@@ -329,19 +330,15 @@ class SampleApp final : public Application {
     sceneFx->setWorldMatrix(world_matrix);
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-    {
-      /* Main rendering + Toon post-processing. */
-      toon_pipeline_.execute(cmd);
+  void draw(CommandEncoder const& cmd) final {
+    /* Main rendering + Toon post-processing. */
+    toon_pipeline_.execute(cmd);
 
-      /* Blit the result directly to the current swapchain image. */
-      renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
+    /* Blit the result directly to the current swapchain image. */
+    renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
 
-      /* Draw UI on top. */
-      draw_ui(cmd);
-    }
-    renderer_.end_frame();
+    /* Draw UI on top. */
+    draw_ui(cmd);
   }
 
   void build_ui() final {

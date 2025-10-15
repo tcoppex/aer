@@ -2,12 +2,10 @@
 #define AER_RENDERER_FX_FX_INTERFACE_H_
 
 #include "aer/core/common.h"
-#include "aer/platform/vulkan/context.h"
+#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/vulkan/types.h"
 
-class Renderer;
 class RenderContext;
-class CommandEncoder;
 
 /* -------------------------------------------------------------------------- */
 
@@ -15,9 +13,9 @@ class FxInterface {
  public:
   FxInterface() = default;
 
-  virtual ~FxInterface() {}
+  virtual ~FxInterface() = default;
 
-  virtual void init(Renderer const& renderer) = 0;
+  virtual void init(RenderContext const& context) = 0;
 
   virtual void setup(VkExtent2D const dimension) = 0; //
 
@@ -26,6 +24,7 @@ class FxInterface {
   virtual void setupUI() = 0;
 
   // -----------------
+
   virtual void setImageInputs(std::vector<backend::Image> const& inputs) = 0;
 
   virtual void setImageInput(backend::Image const& input) {
@@ -38,8 +37,7 @@ class FxInterface {
     setBufferInputs({ input });
   }
 
-  virtual void execute(CommandEncoder& cmd) const = 0;
-  // -----------------
+  virtual void execute(CommandEncoder const& cmd) const = 0;
 };
 
 /* -------------------------------------------------------------------------- */

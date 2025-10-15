@@ -5,7 +5,6 @@
 #include "aer/scene/material.h"
 
 #include "aer/renderer/render_context.h"
-#include "aer/renderer/renderer.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -15,7 +14,7 @@ class MaterialFx {
   
   virtual ~MaterialFx() = default;
 
-  virtual void init(Renderer const& renderer);
+  virtual void init(RenderContext const& context);
 
   virtual void setup() {
     createPipelineLayout();
@@ -82,12 +81,9 @@ class MaterialFx {
 
  protected:
   RenderContext const* context_ptr_{};
-  Renderer const* renderer_ptr_{};
 
-  // ----------------
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{}; //
-  // ----------------
   VkPipelineLayout pipeline_layout_{}; //
 
   std::map<scene::MaterialStates, Pipeline> pipelines_{};

@@ -28,9 +28,10 @@ bool IsSwapchainInvalid(VkResult const result, std::string_view msg) {
 
 /* -------------------------------------------------------------------------- */
 
-void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
+bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   LOG_CHECK(VK_NULL_HANDLE != surface);
   LOG_CHECK(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
+
   gpu_ = context.physical_device();
   device_ = context.device();
 
@@ -121,14 +122,14 @@ void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 
   /* Create the swapchain image. */
   handle_ = VK_NULL_HANDLE;
-  CHECK_VK(vkCreateSwapchainKHR(
+  CHECK_VK_RET(vkCreateSwapchainKHR(
     device_, &swapchain_create_info_, nullptr, &handle_
   ));
   context.set_debug_object_name(handle_, "Swapchain");
 
   /* Create the swapchain resources (Views + Semaphores). */
   std::vector<VkImage> images(image_count_);
-  CHECK_VK(vkGetSwapchainImagesKHR(
+  CHECK_VK_RET(vkGetSwapchainImagesKHR(
     device_, handle_, &image_count_, images.data()
   ));
 
@@ -195,11 +196,13 @@ void Swapchain::init(Context const& context, VkSurfaceKHR surface) {
     imageArraySize()
   );
   need_rebuild_ = false;
+
+  return true;
 }
 
 // ----------------------------------------------------------------------------
 
-void Swapchain::deinit(bool keep_previous_swapchain) {
+void Swapchain::release(bool keep_previous_swapchain) {
   LOGD("Destroy swapchain resources,{} keep previous handle.",
     keep_previous_swapchain ? "" : " don't"
   );

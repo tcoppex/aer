@@ -125,23 +125,26 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_.descriptor_set = context_.create_descriptor_set(graphics_.descriptor_set_layout, {
+      graphics_.descriptor_set = context_.create_descriptor_set(
+        graphics_.descriptor_set_layout,
         {
-          .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
-          .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .buffers = { { uniform_buffer_.buffer } }
-        },
-        {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .buffers = { { point_grid_.vertex.buffer } }
-        },
-        {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .buffers = { { point_grid_.index.buffer } }
-        },
-      });
+          {
+            .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .buffers = { { uniform_buffer_.buffer } }
+          },
+          {
+            .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .buffers = { { point_grid_.vertex.buffer } }
+          },
+          {
+            .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .buffers = { { point_grid_.index.buffer } }
+          },
+        }
+      );
     }
 
     graphics_.pipeline_layout = context_.create_pipeline_layout({
@@ -162,45 +165,48 @@ class SampleApp final : public Application {
       })};
 
       /* Setup a pipeline with additive blend and no depth buffer. */
-      graphics_.pipeline = renderer_.create_graphics_pipeline(graphics_.pipeline_layout, {
-        .vertex = {
-          .module = shaders[0u].module,
-        },
-        .fragment = {
-          .module = shaders[1u].module,
-          .targets = {
-            {
-              .format = renderer_.color_format(),
-              .writeMask = VK_COLOR_COMPONENT_R_BIT
-                         | VK_COLOR_COMPONENT_G_BIT
-                         | VK_COLOR_COMPONENT_B_BIT
-                         | VK_COLOR_COMPONENT_A_BIT
-                         ,
-              .blend = {
-                .enable = VK_TRUE,
-                .color = {
-                  .operation = VK_BLEND_OP_ADD,
-                  .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                  .dstFactor = VK_BLEND_FACTOR_ONE,
-                },
-                .alpha =  {
-                  .operation = VK_BLEND_OP_ADD,
-                  .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                  .dstFactor = VK_BLEND_FACTOR_ONE,
-                },
-              }
-            }
+      graphics_.pipeline = context_.create_graphics_pipeline(
+        graphics_.pipeline_layout,
+        {
+          .vertex = {
+            .module = shaders[0u].module,
           },
-        },
-        .depthStencil = {
-          .format = renderer_.depth_stencil_format(), //
-        },
-        .primitive = {
-          .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-          /* We disable culling as we let the billboard particles face whatever direction. */
-          // .cullMode = VK_CULL_MODE_BACK_BIT,
-        },
-      });
+          .fragment = {
+            .module = shaders[1u].module,
+            .targets = {
+              {
+                .writeMask = VK_COLOR_COMPONENT_R_BIT
+                           | VK_COLOR_COMPONENT_G_BIT
+                           | VK_COLOR_COMPONENT_B_BIT
+                           | VK_COLOR_COMPONENT_A_BIT
+                           ,
+                .blend = {
+                  .enable = VK_TRUE,
+                  .color = {
+                    .operation = VK_BLEND_OP_ADD,
+                    .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                    .dstFactor = VK_BLEND_FACTOR_ONE,
+                  },
+                  .alpha =  {
+                    .operation = VK_BLEND_OP_ADD,
+                    .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                    .dstFactor = VK_BLEND_FACTOR_ONE,
+                  },
+                }
+              }
+            },
+          },
+          /* (we do not need a depthStencil buffer here) */
+          // .depthStencil = {
+          //   .format = context_.default_depth_stencil_format(),
+          // },
+          .primitive = {
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            /* We disable culling as we let the billboard particles face whatever direction. */
+            // .cullMode = VK_CULL_MODE_BACK_BIT,
+          },
+        }
+      );
 
       context_.release_shader_modules(shaders);
     }
@@ -209,15 +215,17 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_.pipeline);
-    context_.destroy_descriptor_set_layout(graphics_.descriptor_set_layout);
-    context_.destroy_pipeline_layout(graphics_.pipeline_layout);
-    context_.destroy_buffer(point_grid_.index);
-    context_.destroy_buffer(point_grid_.vertex);
-    context_.destroy_buffer(uniform_buffer_);
+    context_.destroyResources(
+      graphics_.pipeline,
+      graphics_.descriptor_set_layout,
+      graphics_.pipeline_layout,
+      point_grid_.index,
+      point_grid_.vertex,
+      uniform_buffer_
+    );
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     mat4 const world_matrix(
       linalg::mul(
         lina::rotation_matrix_y(0.25f * frame_time()),
@@ -225,33 +233,29 @@ class SampleApp final : public Application {
       )
     );
 
-    auto cmd = renderer_.begin_frame();
+    cmd.bind_descriptor_set(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+
+    graphics_.push_constant.model.worldMatrix = world_matrix;
+    graphics_.push_constant.time = frame_time();
+    cmd.push_constant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+
+    auto pass = cmd.begin_rendering();
     {
-      cmd.bind_descriptor_set(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.set_viewport_scissor(viewport_size_);
 
-      graphics_.push_constant.model.worldMatrix = world_matrix;
-      graphics_.push_constant.time = frame_time();
-      cmd.push_constant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.bind_pipeline(graphics_.pipeline);
 
-      auto pass = cmd.begin_rendering();
-      {
-        pass.set_viewport_scissor(viewport_size_);
-
-        pass.bind_pipeline(graphics_.pipeline);
-
-        /* For each particle vertex we output two triangles to form a quad,
-         * so (2 * 3 = 6) vertices per points.
-         *
-         * As we don't use any vertex inputs, we will just send 6 'empty' vertices
-         * instanced the number of positions to transform.
-         *
-         * For efficiency this is done in a vertex shader instead of a geometry shader.
-         */
-        pass.draw(6u, point_grid_.geo.vertex_count());
-      }
-      cmd.end_rendering();
+      /* For each particle vertex we output two triangles to form a quad,
+       * so (2 * 3 = 6) vertices per points.
+       *
+       * As we don't use any vertex inputs, we will just send 6 'empty' vertices
+       * instanced the number of positions to transform.
+       *
+       * For efficiency this is done in a vertex shader instead of a geometry shader.
+       */
+      pass.draw(6u, point_grid_.geo.vertex_count());
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:

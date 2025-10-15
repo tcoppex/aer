@@ -23,18 +23,26 @@ class RenderContext : public Context {
  public:
   static constexpr uint32_t kMaxDescriptorPoolSets{ 256u };
 
+  // Default graphics settings.
+  struct Settings {
+    VkFormat color_format{VK_FORMAT_UNDEFINED};
+    VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
+    VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+  };
+
  public:
   RenderContext() = default;
   ~RenderContext() = default;
 
   [[nodiscard]]
   bool init(
+    Settings const& settings,
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
     XRVulkanInterface *vulkan_xr
   );
 
-  void deinit();
+  void release();
 
   // --- Render Target (Dynamic Rendering) ---
 
@@ -45,6 +53,9 @@ class RenderContext : public Context {
   std::unique_ptr<RenderTarget> create_render_target(
     RenderTarget::Descriptor const& desc
   ) const;
+
+  [[nodiscard]]
+  std::unique_ptr<RenderTarget> create_default_render_target() const;
 
   // --- Framebuffer (Legacy Rendering) ---
 
@@ -78,17 +89,17 @@ class RenderContext : public Context {
 
   // --- Graphics Pipelines ---
 
-  // [[nodiscard]]
-  // VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
-  //   GraphicsPipelineCreateInfoData_t &data,
-  //   VkPipelineLayout pipeline_layout,
-  //   GraphicsPipelineDescriptor_t const& desc
-  // ) const;
+  [[nodiscard]]
+  VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
+    GraphicsPipelineCreateInfoData_t &data,
+    VkPipelineLayout pipeline_layout,
+    GraphicsPipelineDescriptor_t const& desc
+  ) const;
 
   // Batch create graphics pipelines from a common layout.
   void create_graphics_pipelines(
     VkPipelineLayout pipeline_layout,
-    std::vector<VkGraphicsPipelineCreateInfo> const& _create_infos,
+    std::vector<GraphicsPipelineDescriptor_t> const& descs,
     std::vector<Pipeline> *out_pipelines
   ) const;
 
@@ -96,20 +107,20 @@ class RenderContext : public Context {
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
     VkPipelineLayout pipeline_layout,
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline and a layout based on description.
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
     PipelineLayoutDescriptor_t const& layout_desc,
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline with a default empty layout.
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // --- Compute Pipelines ---
@@ -190,20 +201,55 @@ class RenderContext : public Context {
     return sampler_pool_;
   }
 
+  // --- Settings ---
+
+  [[nodiscard]]
+  VkFormat default_color_format() const noexcept {
+    return settings_.color_format;
+  }
+
+  [[nodiscard]]
+  VkFormat default_depth_stencil_format() const noexcept {
+    return settings_.depth_stencil_format;
+  }
+
+  [[nodiscard]]
+  VkSampleCountFlagBits default_sample_count() const noexcept {
+    return settings_.sample_count;
+  }
+
+  [[nodiscard]]
+  uint32_t default_view_mask() const noexcept {
+    return default_view_mask_;
+  }
+
+  [[nodiscard]]
+  VkExtent2D default_surface_size() const noexcept {
+    return default_surface_size_;
+  }
+
+  void set_default_surface_size(VkExtent2D const& surface_size) noexcept {
+    default_surface_size_ = surface_size;
+  }
+
  public:
   template <typename... VulkanHandles>
-  void destroyResources(VulkanHandles... handles) {
+  void destroyResources(VulkanHandles... handles) const {
     (destroyResource(handles), ...);
   }
-  void destroyResource(VkDescriptorSetLayout h)         { destroy_descriptor_set_layout(h); }
-  void destroyResource(VkPipelineLayout h)              { destroy_pipeline_layout(h); }
-  void destroyResource(Pipeline const& h)               { destroy_pipeline(h); }
-  // void destroyResource(VkPipeline h)                    { vkDestroyPipeline(device_, h, nullptr); }
-  // void destroyResource(backend::Buffer const& buffer)   { allocator_ptr->destroy_buffer(buffer); }
-  // void destroyResource(backend::Image const& image)     { allocator_ptr->destroy_image(buffer); }
+  void destroyResource(VkDescriptorSetLayout h) const        { destroy_descriptor_set_layout(h); }
+  void destroyResource(VkPipelineLayout h) const             { destroy_pipeline_layout(h); }
+  void destroyResource(Pipeline const& h) const              { destroy_pipeline(h); }
+  void destroyResource(backend::Buffer const& buffer) const  { destroy_buffer(buffer); }
+  void destroyResource(backend::Image & image) const         { destroy_image(image); }
 
  private:
+  Settings settings_{};
+  uint32_t default_view_mask_{};
+  VkExtent2D default_surface_size_{};
+
   VkPipelineCache pipeline_cache_{};
+
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
 };

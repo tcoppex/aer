@@ -74,7 +74,7 @@ class SampleApp final : public Application {
      * and will be destroy alongside the pipeline.
      * If one is provided the destruction is let to the user.
      **/
-    graphics_pipeline_ = renderer_.create_graphics_pipeline({
+    graphics_pipeline_ = context_.create_graphics_pipeline({
       .vertex = {
         .module = shaders[0u].module,
         .buffers = {
@@ -99,7 +99,7 @@ class SampleApp final : public Application {
         .module = shaders[1u].module,
         .targets = {
           {
-            .format = renderer_.color_format(),
+            .format = context_.default_color_format(),
             .writeMask = VK_COLOR_COMPONENT_R_BIT
                        | VK_COLOR_COMPONENT_G_BIT
                        | VK_COLOR_COMPONENT_B_BIT
@@ -109,7 +109,7 @@ class SampleApp final : public Application {
         },
       },
       .depthStencil = {
-        .format = renderer_.depth_stencil_format(),
+        .format = context_.default_depth_stencil_format(),
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
         .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -130,9 +130,7 @@ class SampleApp final : public Application {
     context_.destroy_buffer(vertex_buffer_);
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     /**
      * 'begin_rendering' (dynamic_rendering) or 'begin_render_pass' (legacy rendering)
      * returns a RenderPassEncoder, which is a specialized CommandEncoder to specify
@@ -158,8 +156,6 @@ class SampleApp final : public Application {
       pass.draw(kVertices.size());
     }
     cmd.end_rendering();
-
-    renderer_.end_frame();
   }
 
  private:

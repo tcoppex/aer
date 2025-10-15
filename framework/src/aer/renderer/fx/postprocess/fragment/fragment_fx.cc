@@ -1,6 +1,5 @@
 #include "aer/renderer/fx/postprocess/fragment/fragment_fx.h"
-#include "aer/renderer/renderer.h"
-#include "aer/platform/vulkan/command_encoder.h"
+#include "aer/renderer/render_context.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -38,7 +37,7 @@ void FragmentFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
 
 // ----------------------------------------------------------------------------
 
-void FragmentFx::execute(CommandEncoder& cmd) const {
+void FragmentFx::execute(CommandEncoder const& cmd) const {
   auto pass = cmd.begin_rendering(); //
   {
     prepareDrawState(pass);
@@ -55,7 +54,7 @@ void FragmentFx::createPipeline() {
     getVertexShaderName(),
     getShaderName()
   })};
-  pipeline_ = renderer_ptr_->create_graphics_pipeline(
+  pipeline_ = context_ptr_->create_graphics_pipeline(
     pipeline_layout_,
     getGraphicsPipelineDescriptor(shaders)
   );
@@ -64,8 +63,36 @@ void FragmentFx::createPipeline() {
 
 // ----------------------------------------------------------------------------
 
-VkExtent2D FragmentFx::getRenderSurfaceSize() const {
-  return renderer_ptr_->surface_size();
+DescriptorSetLayoutParamsBuffer FragmentFx::getDescriptorSetLayoutParams() const {
+  return {
+    {
+      .binding = kDefaultCombinedImageSamplerBinding,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = kDefaultCombinedImageSamplerDescriptorCount,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+    },
+    {
+      .binding = kDefaultStorageBufferBinding,
+      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .descriptorCount = kDefaultStorageBufferDescriptorCount,
+      .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+    },
+  };
+}
+
+// ----------------------------------------------------------------------------
+
+void FragmentFx::prepareDrawState(RenderPassEncoder const& pass) const {
+  pass.bind_pipeline(pipeline_);
+  pass.bind_descriptor_set(
+    descriptor_set_,
+    pipeline_layout_,
+      VK_SHADER_STAGE_VERTEX_BIT
+    | VK_SHADER_STAGE_FRAGMENT_BIT
+  );
+  pass.set_viewport_scissor(getRenderSurfaceSize()); //
 }
 
 /* -------------------------------------------------------------------------- */

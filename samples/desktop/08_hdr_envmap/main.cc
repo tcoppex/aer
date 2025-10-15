@@ -169,7 +169,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = renderer_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
         .dynamicStates = {
           VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
           VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
@@ -206,10 +206,12 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-    context_.destroy_pipeline_layout(graphics_pipeline_.layout());
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(uniform_buffer_);
+    context_.destroyResources(
+      descriptor_set_layout_,
+      graphics_pipeline_.layout(),
+      graphics_pipeline_,
+      uniform_buffer_
+    );
     scene_.reset();
   }
 
@@ -234,7 +236,7 @@ class SampleApp final : public Application {
     push_constant_.viewMatrix = camera_.view();
   }
 
-  void draw() final {
+  void draw(CommandEncoder const& cmd) final {
     mat4 const worldMatrix{
       lina::rotation_matrix_axis(
         vec3(-0.25f, 1.0f, -0.15f),
@@ -242,25 +244,21 @@ class SampleApp final : public Application {
       )
     };
 
-    auto cmd = renderer_.begin_frame();
+    auto pass = cmd.begin_rendering();
     {
-      auto pass = cmd.begin_rendering();
+      pass.set_viewport_scissor(viewport_size_);
+
+      /* First render the skybox. */
+      renderer_.skybox().render(pass, camera_);
+
+      /* Then the scene / model. */
+      pass.bind_pipeline(graphics_pipeline_);
       {
-        pass.set_viewport_scissor(viewport_size_);
-
-        /* First render the skybox. */
-        renderer_.skybox().render(pass, camera_);
-
-        /* Then the scene / model. */
-        pass.bind_pipeline(graphics_pipeline_);
-        {
-          pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-          draw_model(pass, worldMatrix);
-        }
+        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        draw_model(pass, worldMatrix);
       }
-      cmd.end_rendering();
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:
@@ -272,8 +270,6 @@ class SampleApp final : public Application {
   shader_interop::PushConstant push_constant_{};
 
   Pipeline graphics_pipeline_{};
-
-  // -----------------------
 
   Camera camera_{};
   ArcBallController arcball_controller_{};

@@ -77,27 +77,23 @@ class SampleApp final : public Application {
     }
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
+  void draw(CommandEncoder const& cmd) final {
+    auto pass = cmd.begin_rendering();
     {
-      auto pass = cmd.begin_rendering();
-      {
-        // SKYBOX.
-        if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
-          skybox.render(pass, camera_);
-        }
-
-        // SCENE.
-        if (scene_) {
-          scene_->render(pass);
-        }
+      // SKYBOX.
+      if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
+        skybox.render(pass, camera_);
       }
-      cmd.end_rendering();
 
-      // UI.
-      draw_ui(cmd);
+      // SCENE.
+      if (scene_) {
+        scene_->render(pass);
+      }
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
+
+    // UI.
+    draw_ui(cmd);
   }
 
  private:

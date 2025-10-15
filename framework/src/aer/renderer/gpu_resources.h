@@ -18,7 +18,7 @@ struct GPUResources : scene::HostResources {
   static bool constexpr kReleaseHostDataOnUpload = true;
 
  public:
-  GPUResources(Renderer const& renderer);
+  GPUResources(RenderContext const& context);
 
   ~GPUResources();
 
@@ -41,8 +41,8 @@ struct GPUResources : scene::HostResources {
   /* Update relevant resources before rendering (eg. shared uniform buffers). */
   void update(
     Camera const& camera,
-    VkExtent2D const& surfaceSize,
-    float elapsedTime
+    VkExtent2D const& surface_size,
+    float elapsed_time
   );
 
   /* Render the scene batch per MaterialFx. */
@@ -53,13 +53,13 @@ struct GPUResources : scene::HostResources {
   // -------------------------------
 
  private:
-  void upload_images(Context const& context);
-  void upload_buffers(Context const& context);
+  void upload_images();
+  void upload_buffers();
 
   void update_frame_data(
     Camera const& camera,
-    VkExtent2D const& surfaceSize,
-    float elapsedTime
+    VkExtent2D const& surface_size,
+    float elapsed_time
   );
 
  public:
@@ -87,8 +87,7 @@ struct GPUResources : scene::HostResources {
   EnumArray<FxHashPairToSubmeshesMap, scene::MaterialStates::AlphaMode> lookups_{};
 
  private:
-  Renderer const* renderer_ptr_{};
-  RenderContext const* context_ptr_{};
+  RenderContext const& context_;
   uint32_t frame_index_{};
 };
 

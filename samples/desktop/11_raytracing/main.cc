@@ -68,7 +68,7 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void execute(CommandEncoder& cmd) const override {
+  void execute(CommandEncoder const& cmd) const override {
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
       RayTracingFx::execute(cmd);
     }
@@ -246,8 +246,10 @@ class SampleApp final : public Application {
     }
 
     // -------------------------------
-    ray_tracing_fx_.init(renderer_);
-    ray_tracing_fx_.setup(renderer_.surface_size());
+
+    ray_tracing_fx_.init(context_);
+    ray_tracing_fx_.setup(renderer_.surface_size()); //
+
     // -------------------------------
 
     /* Load a glTF Scene. */
@@ -285,9 +287,7 @@ class SampleApp final : public Application {
     }
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     if (ray_tracing_fx_.enabled())
     {
       // RAY TRACER
@@ -303,8 +303,6 @@ class SampleApp final : public Application {
     }
 
     draw_ui(cmd);
-
-    renderer_.end_frame();
   }
 
   void build_ui() final {

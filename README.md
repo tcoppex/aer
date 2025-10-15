@@ -21,8 +21,8 @@ Runs on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](B
 # export ANDROID_SDK=~/Android/Sdk
 
 # Clone the repository.
-git clone https://github.com/tcoppex/vk-playground
-cd vk-playground
+git clone https://github.com/tcoppex/aer
+cd aer
 
 # Build.
 cmake . -B build -DCMAKE_BUILD_TYPE=Release

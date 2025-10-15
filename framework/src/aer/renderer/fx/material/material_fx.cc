@@ -1,13 +1,12 @@
 #include "aer/renderer/fx/material/material_fx.h"
 
-#include "aer/platform/vulkan/context.h"
+// #include "aer/platform/vulkan/context.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
 
-void MaterialFx::init(Renderer const& renderer) {
-  renderer_ptr_ = &renderer;
-  context_ptr_ = &renderer.context(); //
+void MaterialFx::init(RenderContext const& context) {
+  context_ptr_ = &context;
 }
 
 // ----------------------------------------------------------------------------
@@ -37,7 +36,9 @@ void MaterialFx::createPipelines(std::vector<scene::MaterialStates> const& state
 
   // Batch create the pipelines.
   std::vector<Pipeline> pipelines(states.size());
-  renderer_ptr_->create_graphics_pipelines(pipeline_layout_, descs, &pipelines);
+  context_ptr_->create_graphics_pipelines(
+    pipeline_layout_, descs, &pipelines
+  );
 
   // Store them into the pipeline map.
   for (size_t i = 0; i < states.size(); ++i) {
@@ -133,7 +134,7 @@ GraphicsPipelineDescriptor_t MaterialFx::getGraphicsPipelineDescriptor(
       },
       .targets = {
         {
-          .format = renderer_ptr_->color_format(), //
+          // .format = context_ptr_->default_color_format(), //
         },
       },
     },

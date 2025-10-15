@@ -1,13 +1,10 @@
 #include "aer/renderer/fx/postprocess/generic_fx.h"
-
 #include "aer/renderer/render_context.h"
-#include "aer/renderer/renderer.h"
 
 /* -------------------------------------------------------------------------- */
 
-void GenericFx::init(Renderer const& renderer) {
-  context_ptr_ = &renderer.context();
-  renderer_ptr_ = &renderer;
+void GenericFx::init(RenderContext const& context) {
+  context_ptr_ = &context;
 }
 
 // ----------------------------------------------------------------------------
@@ -22,12 +19,15 @@ void GenericFx::setup(VkExtent2D const dimension) {
 // ----------------------------------------------------------------------------
 
 void GenericFx::release() {
-  if (pipeline_layout_ != VK_NULL_HANDLE) {
-    context_ptr_->destroy_pipeline(pipeline_);
-    context_ptr_->destroy_pipeline_layout(pipeline_layout_); //
-    context_ptr_->destroy_descriptor_set_layout(descriptor_set_layout_);
-    pipeline_layout_ = VK_NULL_HANDLE;
+  if (pipeline_layout_ == VK_NULL_HANDLE) {
+    return;
   }
+  context_ptr_->destroyResources(
+    pipeline_,
+    pipeline_layout_,
+    descriptor_set_layout_
+  );
+  pipeline_layout_ = VK_NULL_HANDLE;
 }
 
 // ----------------------------------------------------------------------------

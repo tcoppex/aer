@@ -112,6 +112,8 @@ struct GraphicsPipelineDescriptor_t {
 
   std::vector<VkDynamicState> dynamicStates{};
 
+  bool offscreenSingleView{}; //
+
   struct Vertex {
     struct Buffer {
       uint32_t stride{};
@@ -147,6 +149,7 @@ struct GraphicsPipelineDescriptor_t {
     std::string entryPoint{};
     SpecializationConstants specializationConstants{};
     std::vector<Target> targets{};
+    // uint32_t viewMask{}; //
   } fragment{};
 
   struct DepthStencil {

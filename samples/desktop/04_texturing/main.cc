@@ -148,7 +148,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = renderer_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
         .vertex = {
           .module = shaders[0u].module,
           /* Get buffer descriptors compatible with the mesh vertex inputs.
@@ -161,7 +161,8 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_format(),
+              /* When specifying no format, the default one will be used. */
+              // .format = context_.default_color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -171,7 +172,8 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_format(),
+          /* When specifying no format, the default one will be used. */
+          // .format = context_.default_depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -189,13 +191,17 @@ class SampleApp final : public Application {
   }
 
   void release() final {
-    context_.destroy_descriptor_set_layout(descriptor_set_layout_);
-    context_.destroy_pipeline_layout(graphics_pipeline_.layout());
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_image(image_);
-    context_.destroy_buffer(index_buffer_);
-    context_.destroy_buffer(vertex_buffer_);
-    context_.destroy_buffer(uniform_buffer_);
+    /* We can simplify destroying resources via the RenderContext::destroyResources
+     * method. */
+    context_.destroyResources(
+      descriptor_set_layout_,
+      graphics_pipeline_.layout(),
+      graphics_pipeline_,
+      image_,
+      index_buffer_,
+      vertex_buffer_,
+      uniform_buffer_
+    );
   }
 
   void update(float const dt) final {
@@ -208,28 +214,24 @@ class SampleApp final : public Application {
     );
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
+  void draw(CommandEncoder const& cmd) final {
+    auto pass = cmd.begin_rendering();
     {
-      auto pass = cmd.begin_rendering();
+      pass.set_viewport_scissor(viewport_size_);
+
+      pass.bind_pipeline(graphics_pipeline_);
       {
-        pass.set_viewport_scissor(viewport_size_);
+        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
-        pass.bind_pipeline(graphics_pipeline_);
-        {
-          pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-          pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.bind_vertex_buffer(vertex_buffer_);
+        pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
+        pass.draw_indexed(cube_.index_count());
 
-          pass.bind_vertex_buffer(vertex_buffer_);
-          pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-          pass.draw_indexed(cube_.index_count());
-
-          // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
-        }
+        // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
       }
-      cmd.end_rendering();
     }
-    renderer_.end_frame();
+    cmd.end_rendering();
   }
 
  private:

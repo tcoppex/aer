@@ -22,12 +22,12 @@ void GenericCommandEncoder::bind_descriptor_set(
       .descriptorSetCount = 1u, //
       .pDescriptorSets = &descriptor_set,
     };
-    vkCmdBindDescriptorSets2KHR(command_buffer_, &bind_desc_sets_info);
+    vkCmdBindDescriptorSets2KHR(handle_, &bind_desc_sets_info);
   }
   else
   {
     vkCmdBindDescriptorSets(
-      command_buffer_,
+      handle_,
       currently_bound_pipeline_->bind_point(),
       pipeline_layout,
       first_set,
@@ -56,7 +56,7 @@ void GenericCommandEncoder::push_descriptor_set(
   // (requires VK_KHR_get_physical_device_properties2 or VK_VERSION_1_4)
   LOG_CHECK(vkCmdPushDescriptorSetKHR != nullptr);
   vkCmdPushDescriptorSetKHR(
-    command_buffer_,
+    handle_,
     pipeline.bind_point(),
     pipeline.layout(),
     set,
@@ -86,7 +86,7 @@ void GenericCommandEncoder::pipeline_buffer_barriers(
     .pBufferMemoryBarriers = barriers.data(),
   };
   // (requires VK_KHR_synchronization2 or VK_VERSION_1_3)
-  vkCmdPipelineBarrier2(command_buffer_, &dependency);
+  vkCmdPipelineBarrier2(handle_, &dependency);
 }
 
 // ----------------------------------------------------------------------------
@@ -116,7 +116,7 @@ void GenericCommandEncoder::pipeline_image_barriers(
     .imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size()),
     .pImageMemoryBarriers = barriers.data(),
   };
-  vkCmdPipelineBarrier2(command_buffer_, &dependency);
+  vkCmdPipelineBarrier2(handle_, &dependency);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -127,7 +127,7 @@ void CommandEncoder::copy_buffer(
   std::vector<VkBufferCopy> const& regions
 ) const {
   vkCmdCopyBuffer(
-    command_buffer_, src.buffer, dst.buffer, static_cast<uint32_t>(regions.size()), regions.data()
+    handle_, src.buffer, dst.buffer, static_cast<uint32_t>(regions.size()), regions.data()
   );
 }
 
@@ -244,7 +244,7 @@ void CommandEncoder::blit_image_2d(
   });
 
   vkCmdBlitImage(
-    command_buffer_,
+    handle_,
     src.image, transition_src_layout,
     dst.image, transition_dst_layout,
     1u, &blit_region,
@@ -280,7 +280,7 @@ void CommandEncoder::transfer_host_to_device(
 
   if (host_data_size < 65536u) {
     vkCmdUpdateBuffer(
-      command_buffer_,
+      handle_,
       device_buffer.buffer,
       device_buffer_offset,
       host_data_size,
@@ -341,16 +341,16 @@ RenderPassEncoder CommandEncoder::begin_rendering(RenderPassDescriptor const& de
     .pDepthAttachment     = &desc.depthAttachment,
     .pStencilAttachment   = &desc.stencilAttachment, //
   };
-  vkCmdBeginRenderingKHR(command_buffer_, &rendering_info);
+  vkCmdBeginRenderingKHR(handle_, &rendering_info);
 
-  return RenderPassEncoder(command_buffer_, target_queue_index());
+  return RenderPassEncoder(handle_, target_queue_index());
 }
 
 // ----------------------------------------------------------------------------
 
 RenderPassEncoder CommandEncoder::begin_rendering(
   backend::RTInterface const& render_target
-) {
+) const {
   auto const& colors = render_target.color_attachments();
   auto depthStencilImageView = render_target.depth_stencil_attachment().view;
 
@@ -423,7 +423,7 @@ RenderPassEncoder CommandEncoder::begin_rendering(
 
 // ----------------------------------------------------------------------------
 
-RenderPassEncoder CommandEncoder::begin_rendering() {
+RenderPassEncoder CommandEncoder::begin_rendering() const {
   LOG_CHECK( default_render_target_ptr_ != nullptr );
   auto pass = begin_rendering( *default_render_target_ptr_ );
   pass.set_viewport_scissor(default_render_target_ptr_->surface_size()); //
@@ -433,7 +433,7 @@ RenderPassEncoder CommandEncoder::begin_rendering() {
 // ----------------------------------------------------------------------------
 
 void CommandEncoder::end_rendering() const {
-  vkCmdEndRendering(command_buffer_);
+  vkCmdEndRendering(handle_);
 
   // Transition the color buffers to "shader read only".
   if (current_render_target_ptr_ != nullptr) [[likely]]
@@ -467,15 +467,15 @@ RenderPassEncoder CommandEncoder::begin_render_pass(backend::RPInterface const& 
     .clearValueCount = static_cast<uint32_t>(clear_values.size()),
     .pClearValues = clear_values.data(),
   };
-  vkCmdBeginRenderPass(command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(handle_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-  return RenderPassEncoder(command_buffer_, target_queue_index());
+  return RenderPassEncoder(handle_, target_queue_index());
 }
 
 // ----------------------------------------------------------------------------
 
 void CommandEncoder::end_render_pass() const {
-  vkCmdEndRenderPass(command_buffer_);
+  vkCmdEndRenderPass(handle_);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -489,7 +489,7 @@ void RenderPassEncoder::set_viewport(float x, float y, float width, float height
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
-  vkCmdSetViewport(command_buffer_, 0u, 1u, &vp);
+  vkCmdSetViewport(handle_, 0u, 1u, &vp);
 }
 
 // ----------------------------------------------------------------------------
@@ -505,7 +505,7 @@ void RenderPassEncoder::set_scissor(int32_t x, int32_t y, uint32_t width, uint32
       .height = height,
     },
   };
-  vkCmdSetScissor(command_buffer_, 0u, 1u, &rect);
+  vkCmdSetScissor(handle_, 0u, 1u, &rect);
 }
 
 // ----------------------------------------------------------------------------

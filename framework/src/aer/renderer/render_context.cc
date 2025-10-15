@@ -1,3 +1,5 @@
+#include <set>
+
 #include "aer/renderer/render_context.h"
 
 #include "aer/platform/swapchain_interface.h" //
@@ -16,6 +18,7 @@ char const* kDefaulShaderEntryPoint{ "main" };
 /* -------------------------------------------------------------------------- */
 
 bool RenderContext::init(
+  Settings const& settings,
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions,
   XRVulkanInterface *vulkan_xr
@@ -25,6 +28,14 @@ bool RenderContext::init(
   }
 
   LOGD("-- RenderContext --");
+
+  settings_ = settings;
+  settings_.sample_count = static_cast<VkSampleCountFlagBits>(
+    static_cast<VkSampleCountFlags>(settings_.sample_count) & sample_counts()
+  );
+
+  // (a bit hacky)
+  default_view_mask_ = (vulkan_xr != nullptr) ? 0b11u : 0u; //
 
   /* Create the shared pipeline cache. */
   LOGD(" > PipelineCacheInfo");
@@ -54,16 +65,16 @@ bool RenderContext::init(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::deinit() {
+void RenderContext::release() {
   if (device() == VK_NULL_HANDLE) {
     return;
   }
 
-  sampler_pool_.deinit();
+  sampler_pool_.release();
   descriptor_set_registry_.release();
   vkDestroyPipelineCache(device(), pipeline_cache_, nullptr);
 
-  Context::deinit();
+  Context::release();
 }
 
 // ----------------------------------------------------------------------------
@@ -82,6 +93,30 @@ std::unique_ptr<RenderTarget> RenderContext::create_render_target(
     return rt;
   }
   return nullptr;
+}
+
+// ----------------------------------------------------------------------------
+
+std::unique_ptr<RenderTarget> RenderContext::create_default_render_target() const {
+  auto desc = RenderTarget::Descriptor{
+    .colors = {
+      {
+        .format = default_color_format(),
+        .clear_value = {0.0f, 0.0f, 0.0f, 0.0f},
+      },
+    },
+    .depth_stencil = {
+      .format = default_depth_stencil_format(),
+      .clear_value = {1u, 0.0f},
+    },
+    .size = default_surface_size(),
+    .array_size = 1u,
+    .sample_count = VK_SAMPLE_COUNT_1_BIT, //
+  };
+  if (default_view_mask_ > 1) {
+    desc.array_size = utils::CountBits(default_view_mask_);
+  }
+  return create_render_target(desc);
 }
 
 // ----------------------------------------------------------------------------
@@ -142,32 +177,324 @@ VkPipelineLayout RenderContext::create_pipeline_layout(
 
 // ----------------------------------------------------------------------------
 
+VkGraphicsPipelineCreateInfo RenderContext::create_graphics_pipeline_create_info(
+  GraphicsPipelineCreateInfoData_t &data,
+  VkPipelineLayout pipeline_layout,
+  GraphicsPipelineDescriptor_t const& desc
+) const {
+  LOG_CHECK( desc.vertex.module != VK_NULL_HANDLE );
+  LOG_CHECK( desc.fragment.module != VK_NULL_HANDLE );
+
+  if (desc.fragment.targets.empty()) {
+    LOGW("Fragment targets were not specified for a graphic pipeline.");
+  }
+
+  bool const useDynamicRendering{desc.renderPass == VK_NULL_HANDLE};
+
+  data = {};
+
+  // Default color blend attachment.
+  data.color_blend_attachments = {
+    {
+      .blendEnable = VK_FALSE,
+      .srcColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+      .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+      .colorBlendOp = VK_BLEND_OP_ADD,
+      .srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+      .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+      .alphaBlendOp = VK_BLEND_OP_ADD,
+
+      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT
+                      | VK_COLOR_COMPONENT_G_BIT
+                      | VK_COLOR_COMPONENT_B_BIT
+                      | VK_COLOR_COMPONENT_A_BIT
+                      ,
+    }
+  };
+
+  /* Dynamic Rendering. */
+  if (useDynamicRendering)
+  {
+    data.color_attachments.resize(desc.fragment.targets.size());
+    data.color_blend_attachments.resize(
+      data.color_attachments.size(),
+      data.color_blend_attachments[0u]
+    );
+
+    /* (~) If no depth format is setup, use the default one. */
+    VkFormat const depthFormat{
+      (desc.depthStencil.format != VK_FORMAT_UNDEFINED) ? desc.depthStencil.format
+                                                        : default_depth_stencil_format()
+    };
+    VkFormat const stencilFormat{
+      vk_utils::IsValidStencilFormat(depthFormat) ? depthFormat
+                                                  : VK_FORMAT_UNDEFINED
+    };
+
+    /* By default we will always use the viewMask of the swapchain. */
+    uint32_t const viewMask{
+      desc.offscreenSingleView ? 0b0u : default_view_mask()
+    };
+
+    for (size_t i = 0; i < data.color_attachments.size(); ++i) {
+      auto const& target = desc.fragment.targets[i];
+
+      /* (~) If no color format is setup, use the default one. */
+      VkFormat const colorFormat{
+        (target.format != VK_FORMAT_UNDEFINED) ? target.format
+                                               : default_color_format()
+      };
+
+      data.color_attachments[i] = colorFormat;
+      data.color_blend_attachments[i] = {
+        .blendEnable         = target.blend.enable,
+        .srcColorBlendFactor = target.blend.color.srcFactor,
+        .dstColorBlendFactor = target.blend.color.dstFactor,
+        .colorBlendOp        = target.blend.color.operation,
+        .srcAlphaBlendFactor = target.blend.alpha.srcFactor,
+        .dstAlphaBlendFactor = target.blend.alpha.dstFactor,
+        .alphaBlendOp        = target.blend.alpha.operation,
+        .colorWriteMask      = target.writeMask,
+      };
+    }
+
+    data.dynamic_rendering_create_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+      .pNext = nullptr,
+      .viewMask = viewMask,
+      .colorAttachmentCount = static_cast<uint32_t>(data.color_attachments.size()),
+      .pColorAttachmentFormats = data.color_attachments.data(),
+      .depthAttachmentFormat = depthFormat,
+      .stencilAttachmentFormat = stencilFormat,
+    };
+  }
+
+  /* Shaders stages */
+  auto getShaderEntryPoint{[](std::string const& entryPoint) -> char const* {
+    return entryPoint.empty() ? kDefaulShaderEntryPoint : entryPoint.c_str();
+  }};
+
+  data.shader_stages = {
+    // VERTEX
+    {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .flags = 0,
+      .stage = VK_SHADER_STAGE_VERTEX_BIT,
+      .module = desc.vertex.module,
+      .pName = getShaderEntryPoint(desc.vertex.entryPoint),
+    },
+    // FRAGMENT
+    {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .flags = 0,
+      .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .module = desc.fragment.module,
+      .pName = getShaderEntryPoint(desc.fragment.entryPoint),
+    }
+  };
+
+  /* Shader specializations */
+  data.specializations.resize(data.shader_stages.size());
+  data.shader_stages[0].pSpecializationInfo = data.specializations[0].info(
+    desc.vertex.specializationConstants
+  );
+  data.shader_stages[1].pSpecializationInfo = data.specializations[1].info(
+    desc.fragment.specializationConstants
+  );
+
+  /* Vertex Input */
+  {
+    uint32_t binding = 0u;
+    for (auto const& buffer : desc.vertex.buffers) {
+      data.vertex_bindings.push_back({
+        .binding = binding,
+        .stride = buffer.stride,
+        .inputRate = buffer.inputRate,
+      });
+      for (auto attrib : buffer.attributes) {
+        attrib.binding = binding;
+        data.vertex_attributes.push_back(attrib);
+      }
+      ++binding;
+    }
+
+    data.vertex_input = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount   = static_cast<uint32_t>(data.vertex_bindings.size()),
+      .pVertexBindingDescriptions      = data.vertex_bindings.data(),
+      .vertexAttributeDescriptionCount = static_cast<uint32_t>(data.vertex_attributes.size()),
+      .pVertexAttributeDescriptions    = data.vertex_attributes.data(),
+    };
+  }
+
+  /* Input Assembly */
+  data.input_assembly = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    .topology = desc.primitive.topology,
+    .primitiveRestartEnable = VK_FALSE,
+  };
+
+  /* Tessellation */
+  data.tessellation = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+  };
+
+  /* Viewport Scissor */
+  data.viewport = {
+    .sType          = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    // Viewport and Scissor are set as dynamic, but without VK_EXT_extended_dynamic_state
+    // we need to specify the number for each one.
+    .viewportCount  = 1u,
+    .scissorCount   = 1u,
+  };
+
+  /* Rasterization */
+  data.rasterization = {
+    .sType                    = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    .depthClampEnable         = VK_FALSE,
+    .rasterizerDiscardEnable  = VK_FALSE,
+    .polygonMode              = desc.primitive.polygonMode,
+    .cullMode                 = desc.primitive.cullMode,
+    .frontFace                = desc.primitive.frontFace,
+    .lineWidth                = 1.0f, //
+  };
+
+  /* Multisampling */
+  auto const sampleCount = (desc.multisample.sampleCount != 0) ? desc.multisample.sampleCount
+                                                               : default_sample_count()
+                                                               ;
+  data.multisample = {
+    .sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    .rasterizationSamples   = sampleCount, //
+    .sampleShadingEnable    = VK_FALSE,
+    .minSampleShading       = 0.0f,
+    .pSampleMask            = nullptr,
+    .alphaToCoverageEnable  = VK_FALSE,
+    .alphaToOneEnable       = VK_FALSE,
+  };
+
+  /* Depth Stencil */
+  data.depth_stencil = {
+    .sType                  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+    .depthTestEnable        = desc.depthStencil.depthTestEnable,
+    .depthWriteEnable       = desc.depthStencil.depthWriteEnable,
+    .depthCompareOp         = desc.depthStencil.depthCompareOp,
+    .depthBoundsTestEnable  = VK_FALSE, //
+    .stencilTestEnable      = desc.depthStencil.stencilTestEnable,
+    .front                  = desc.depthStencil.stencilFront,
+    .back                   = desc.depthStencil.stencilBack,
+  };
+
+  /* Color Blend */
+  data.color_blend = {
+    .sType            = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    .logicOpEnable    = VK_FALSE,
+    .logicOp          = VK_LOGIC_OP_COPY,
+    .attachmentCount  = static_cast<uint32_t>(data.color_blend_attachments.size()),
+    .pAttachments     = data.color_blend_attachments.data(),
+    .blendConstants   = { 0.0f, 0.0f, 0.0f, 0.0f },
+  };
+
+  /* Dynamic states */
+  {
+    // Default states.
+    data.dynamic_states = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR,
+
+      // VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+      // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+      // VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+
+      // VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
+      // VK_DYNAMIC_STATE_STENCIL_OP_EXT,
+
+      // VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
+      // VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT,
+
+      // VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
+      // VK_DYNAMIC_STATE_CULL_MODE_EXT,
+
+      // VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT,
+    };
+
+    // User defined states.
+    data.dynamic_states.insert(
+      data.dynamic_states.end(), desc.dynamicStates.begin(), desc.dynamicStates.end()
+    );
+
+    // Remove dupplicates.
+    std::set<VkDynamicState> s(data.dynamic_states.begin(), data.dynamic_states.end());
+    data.dynamic_states.assign(s.begin(), s.end());
+
+    data.dynamic_state_create_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = static_cast<uint32_t>(data.dynamic_states.size()),
+      .pDynamicStates = data.dynamic_states.data(),
+    };
+  }
+
+  auto graphics_pipeline_create_info = VkGraphicsPipelineCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .flags                = 0,
+    .stageCount           = static_cast<uint32_t>(data.shader_stages.size()),
+    .pStages              = data.shader_stages.data(),
+    .pVertexInputState    = &data.vertex_input,
+    .pInputAssemblyState  = &data.input_assembly,
+    .pTessellationState   = &data.tessellation,
+    .pViewportState       = &data.viewport,
+    .pRasterizationState  = &data.rasterization,
+    .pMultisampleState    = &data.multisample,
+    .pDepthStencilState   = &data.depth_stencil,
+    .pColorBlendState     = &data.color_blend,
+    .pDynamicState        = &data.dynamic_state_create_info,
+    .layout               = pipeline_layout,
+    .renderPass           = useDynamicRendering ? VK_NULL_HANDLE : desc.renderPass,
+    .subpass              = 0u,
+    .basePipelineHandle   = VK_NULL_HANDLE,
+    .basePipelineIndex    = -1,
+  };
+
+  if (useDynamicRendering) {
+    graphics_pipeline_create_info.pNext = &data.dynamic_rendering_create_info;
+  }
+
+  return graphics_pipeline_create_info;
+}
+
+// ----------------------------------------------------------------------------
+
 void RenderContext::create_graphics_pipelines(
   VkPipelineLayout pipeline_layout,
-  std::vector<VkGraphicsPipelineCreateInfo> const& _create_infos,
+  std::vector<GraphicsPipelineDescriptor_t> const& descs,
   std::vector<Pipeline> *out_pipelines
 ) const {
   LOG_CHECK( out_pipelines != nullptr && !out_pipelines->empty() );
   LOG_CHECK( pipeline_layout != VK_NULL_HANDLE );
-  LOG_CHECK( !_create_infos.empty() );
+  LOG_CHECK( !descs.empty() );
 
   /// When batching pipelines, most underlying data will not changes, so
   /// we could improve setupping by changing only those needed (like
   /// color_blend_attachments).
-  std::vector<GraphicsPipelineCreateInfoData_t> datas(_create_infos.size());
+  std::vector<GraphicsPipelineCreateInfoData_t> datas(descs.size());
 
-  std::vector<VkGraphicsPipelineCreateInfo> create_infos = _create_infos;
-  for (size_t i = 0; i < _create_infos.size(); ++i) {
+  std::vector<VkGraphicsPipelineCreateInfo> create_infos(descs.size());
+  for (size_t i = 0; i < descs.size(); ++i) {
+    create_infos[i] = create_graphics_pipeline_create_info(
+      datas[i],
+      pipeline_layout,
+      descs[i]
+    );
     create_infos[i].flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
     create_infos[i].basePipelineIndex = 0;
   }
-  if (!_create_infos.empty()) {
+  if (!create_infos.empty()) {
     create_infos[0].flags &= ~VK_PIPELINE_CREATE_DERIVATIVE_BIT;
     create_infos[0].flags |= VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
     create_infos[0].basePipelineIndex = -1;
   }
 
-  std::vector<VkPipeline> pipelines(_create_infos.size());
+  std::vector<VkPipeline> pipelines(create_infos.size());
   CHECK_VK(vkCreateGraphicsPipelines(
     device(),
     pipeline_cache_,
@@ -177,13 +504,17 @@ void RenderContext::create_graphics_pipelines(
     pipelines.data()
   ));
 
-  for (size_t i = 0; i < _create_infos.size(); ++i) {
+  for (size_t i = 0; i < create_infos.size(); ++i) {
     (*out_pipelines)[i] = Pipeline(
       pipeline_layout,
       pipelines[i],
       VK_PIPELINE_BIND_POINT_GRAPHICS
     );
-    vk_utils::SetDebugObjectName(device(), pipelines[i], "GraphicsPipeline::NoName");
+    vk_utils::SetDebugObjectName(
+      device(),
+      pipelines[i],
+      "GraphicsPipeline::NoName_" + std::to_string(i)
+    );
   }
 }
 
@@ -191,15 +522,19 @@ void RenderContext::create_graphics_pipelines(
 
 Pipeline RenderContext::create_graphics_pipeline(
   VkPipelineLayout pipeline_layout,
-  VkGraphicsPipelineCreateInfo const& create_info
+  GraphicsPipelineDescriptor_t const& desc
 ) const {
   LOG_CHECK( pipeline_layout != VK_NULL_HANDLE );
+
+  GraphicsPipelineCreateInfoData_t data{};
+  auto const create_info = create_graphics_pipeline_create_info(
+    data, pipeline_layout, desc
+  );
 
   VkPipeline pipeline{};
   CHECK_VK(vkCreateGraphicsPipelines(
     device(), pipeline_cache_, 1u, &create_info, nullptr, &pipeline
   ));
-
   return Pipeline(pipeline_layout, pipeline, VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
@@ -207,11 +542,11 @@ Pipeline RenderContext::create_graphics_pipeline(
 
 Pipeline RenderContext::create_graphics_pipeline(
   PipelineLayoutDescriptor_t const& layout_desc,
-  VkGraphicsPipelineCreateInfo const& create_info
+  GraphicsPipelineDescriptor_t const& desc
 ) const {
-  Pipeline pipeline = create_graphics_pipeline(
+  auto pipeline = create_graphics_pipeline(
     create_pipeline_layout(layout_desc),
-    create_info
+    desc
   );
   pipeline.use_internal_layout_ = true;
   return pipeline;
@@ -220,9 +555,12 @@ Pipeline RenderContext::create_graphics_pipeline(
 // ----------------------------------------------------------------------------
 
 Pipeline RenderContext::create_graphics_pipeline(
-  VkGraphicsPipelineCreateInfo const& create_info
+  GraphicsPipelineDescriptor_t const& desc
 ) const {
-  return create_graphics_pipeline(PipelineLayoutDescriptor_t(), create_info);
+  return create_graphics_pipeline(
+    PipelineLayoutDescriptor_t(),
+    desc
+  );
 }
 
 // ----------------------------------------------------------------------------

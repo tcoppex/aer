@@ -71,7 +71,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
   }
 
   static
-  scene::Mesh::AttributeLocationMap GetDefaultAttributeLocationMap() {
+  Geometry::AttributeLocationMap GetDefaultAttributeLocationMap() {
     return {
       { Geometry::AttributeType::Position, material_shader_interop::kAttribLocation_Position },
       { Geometry::AttributeType::Normal,   material_shader_interop::kAttribLocation_Normal },

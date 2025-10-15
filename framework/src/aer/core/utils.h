@@ -17,6 +17,7 @@
 #include <vector>
 #include <future>
 #include <functional>
+#include <bit>
 
 /* -------------------------------------------------------------------------- */
 
@@ -52,6 +53,10 @@ constexpr uint32_t Log2_u32(uint32_t x) {
     ++result;
   }
   return result;
+}
+
+constexpr uint32_t CountBits(uint32_t x) {
+  return std::popcount(x);
 }
 
 // --- template functions ---

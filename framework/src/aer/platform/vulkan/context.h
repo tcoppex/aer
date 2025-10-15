@@ -23,13 +23,14 @@ class Context {
  public:
   Context() = default;
 
+  [[nodiscard]]
   bool init(
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
     XRVulkanInterface *vulkan_xr
   );
 
-  void deinit();
+  void release();
 
   [[nodiscard]]
   VkInstance instance() const noexcept {
@@ -136,6 +137,7 @@ class Context {
     return write_buffer(dst_buffer, host_span.data(), bytesize);
   }
 
+  [[nodiscard]]
   backend::Image create_image(
     VkImageCreateInfo const& image_info,
     VkImageViewCreateInfo view_info,
@@ -147,7 +149,6 @@ class Context {
   void destroy_image(backend::Image &image) const {
     allocator_.destroy_image(image);
   }
-
 
   // --- Surface --
 
@@ -219,6 +220,26 @@ class Context {
   void release_shader_modules(
     std::vector<backend::ShaderModule> const& shaders
   ) const;
+
+  // --- Command Pool / Buffer ---
+
+  void reset_command_pool(
+    VkCommandPool command_pool
+  ) const noexcept;
+
+  void destroy_command_pool(
+    VkCommandPool command_pool
+  ) const noexcept;
+
+  void free_command_buffers(
+    VkCommandPool command_pool,
+    std::vector<VkCommandBuffer> const& command_buffers
+  ) const noexcept;
+
+  void free_command_buffer(
+    VkCommandPool command_pool,
+    VkCommandBuffer command_buffer
+  ) const noexcept;
 
   // --- Transient Command Encoder ---
 

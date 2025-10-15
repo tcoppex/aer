@@ -56,7 +56,7 @@ private:
       "simple.frag",
     })};
 
-    graphics_pipeline_ = renderer_.create_graphics_pipeline({
+    graphics_pipeline_ = context_.create_graphics_pipeline({
       .vertex = {
         .module = shaders[0u].module,
         .buffers = {
@@ -81,7 +81,6 @@ private:
         .module = shaders[1u].module,
         .targets = {
           {
-            .format = renderer_.color_format(),
             .writeMask = VK_COLOR_COMPONENT_R_BIT
                        | VK_COLOR_COMPONENT_G_BIT
                        | VK_COLOR_COMPONENT_B_BIT
@@ -91,7 +90,6 @@ private:
         },
       },
       .depthStencil = {
-        .format = renderer_.depth_stencil_format(),
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
         .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
@@ -107,13 +105,13 @@ private:
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(vertex_buffer_);
+    context_.destroyResources(
+      graphics_pipeline_,
+      vertex_buffer_
+    );
   }
 
-  void draw() final {
-    auto cmd = renderer_.begin_frame();
-
+  void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.begin_rendering();
     {
       pass.set_viewport_scissor(viewport_size_, false);
@@ -122,8 +120,6 @@ private:
       pass.draw(kVertices.size());
     }
     cmd.end_rendering();
-
-    renderer_.end_frame();
   }
 
   void onPointerUp(int x, int y, KeyCode_t button) final {

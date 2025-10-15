@@ -27,7 +27,7 @@ void RenderTargetFx::release() {
 
 // ----------------------------------------------------------------------------
 
-void RenderTargetFx::execute(CommandEncoder& cmd) const {
+void RenderTargetFx::execute(CommandEncoder const& cmd) const {
   if (!enabled()) { return; } //
 
   auto pass = cmd.begin_rendering(*render_target_);
@@ -57,6 +57,7 @@ GraphicsPipelineDescriptor_t RenderTargetFx::getGraphicsPipelineDescriptor(
   std::vector<backend::ShaderModule> const& shaders
 ) const {
    return {
+    // .offscreenSingleView = true,
     .vertex = {
       .module = shaders[0u].module,
     },
@@ -85,24 +86,8 @@ VkExtent2D RenderTargetFx::getRenderSurfaceSize() const {
 // ----------------------------------------------------------------------------
 
 void RenderTargetFx::createRenderTarget(VkExtent2D const dimension) {
-  VkClearColorValue const debug_clear_value{ { 0.99f, 0.12f, 0.89f, 0.0f } }; //
-
-#if 1
-  render_target_ = renderer_ptr_->create_default_render_target();
-#else
-  render_target_ = context_ptr_->create_render_target({
-    .colors = {
-      { .format = VK_FORMAT_R32G32B32A32_SFLOAT },
-    },
-    .depth_stencil = {
-      .format = VK_FORMAT_D24_UNORM_S8_UINT, //
-    },
-    .size = dimension,
-    // .sample_count = VK_SAMPLE_COUNT_1_BIT,
-  });
-#endif
-
-  render_target_->set_color_clear_value(debug_clear_value);
+  render_target_ = context_ptr_->create_default_render_target();
+  render_target_->set_color_clear_value({ 0.99f, 0.12f, 0.89f, 0.0f });
 }
 
 /* -------------------------------------------------------------------------- */

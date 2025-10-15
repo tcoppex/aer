@@ -263,7 +263,7 @@ bool OpenXRContext::completeSetup() {
 
 // ----------------------------------------------------------------------------
 
-void OpenXRContext::terminate() {
+void OpenXRContext::shutdown() {
   if (instance_ == XR_NULL_HANDLE) {
     return;
   }

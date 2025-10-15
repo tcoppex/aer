@@ -22,7 +22,7 @@ class Allocator {
 
   void init(VmaAllocatorCreateInfo alloc_create_info);
 
-  void deinit();
+  void release();
 
   // ----- Buffer -----
 

@@ -14,8 +14,8 @@ to fetch the project dependencies automatically.
 You can then easily fetch and build the project using those commands :
 
 ```bash
-git clone https://github.com/tcoppex/vk-playground
-cd vk-playground
+git clone https://github.com/tcoppex/aer
+cd aer
 cmake . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```

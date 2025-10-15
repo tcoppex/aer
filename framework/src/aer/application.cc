@@ -39,18 +39,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
     context_.clear_staging_buffers();
   }
 
-  if (xr_) {
-    LOGD("--- Start XR Session ---");
-    // xrStartSession();
-  }
-
   mainloop(app_data);
-
-  if (xr_) {
-    LOGD("--- End XR Session ---");
-    // xrEndSession();
-  }
-
   shutdown();
 
   return EXIT_SUCCESS;
@@ -76,8 +65,6 @@ void Application::draw_ui(CommandEncoder const& cmd) {
 // ----------------------------------------------------------------------------
 
 bool Application::presetup(AppData_t app_data) {
-  auto const app_name = "VkFramework::DefaultAppName"; //
-
   /* Singletons. */
   {
     Logger::Initialize();
@@ -102,7 +89,10 @@ bool Application::presetup(AppData_t app_data) {
   if (settings_.use_xr) {
     if (xr_ = std::make_unique<OpenXRContext>(); xr_) {
       user_data_.xr = xr_.get(); //
-      if (!xr_->init(wm_->xrPlatformInterface(), app_name, xrExtensions())) {
+      if (!xr_->init(wm_->xrPlatformInterface(),
+                     settings_.app_name,
+                     xrExtensions()))
+      {
         LOGE("XR initialization fails.");
         shutdown();
         return false;
@@ -112,7 +102,8 @@ bool Application::presetup(AppData_t app_data) {
   LOGD("OpenXR is {}.", xr_ ? "enabled" : "disabled");
 
   /* Vulkan context. */
-  if (!context_.init(app_name,
+  if (!context_.init(settings_.renderer,
+                     settings_.app_name,
                      wm_->vulkanInstanceExtensions(),
                      xr_ ? xr_->graphicsInterface() : nullptr))
   {
@@ -149,11 +140,7 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* Default Renderer. */
-  renderer_.init(
-    context_,
-    &swapchain_interface_,
-    settings_.renderer
-  );
+  renderer_.init(context_, &swapchain_interface_);
 
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {
@@ -244,12 +231,18 @@ void Application::mainloop(AppData_t app_data) {
     if (xr_->shouldStopRender()) {
       return false;
     }
-    // update_ui(); //
 
     if (xr_->isSessionRunning()) [[likely]] {
       xr_->processFrame(
-        [this]() { update(delta_time()); },
-        [this]() { draw(); }
+        [this]() {
+          update_ui();
+          update(delta_time());
+        },
+        [this]() {
+          auto const& cmd = renderer_.begin_frame();
+          draw(cmd);
+          renderer_.end_frame();
+        }
       );
     } else {
       std::this_thread::sleep_for(10ms);
@@ -264,7 +257,9 @@ void Application::mainloop(AppData_t app_data) {
     if (wm_->isActive()) [[likely]] {
       update_ui();
       update(delta_time());
-      draw();
+      auto const& cmd = renderer_.begin_frame();
+      draw(cmd);
+      renderer_.end_frame();
     } else {
       std::this_thread::sleep_for(10ms);
     }
@@ -290,39 +285,39 @@ bool Application::reset_swapchain() {
   context_.device_wait_idle();
   bool bSuccess = false;
 
-  if (!xr_) [[likely]] {
+  if (!xr_) {
     auto surface_creation = VK_SUCCESS;
 
     /* Release previous swapchain if any, and create the surface when needed. */
-    if (VK_NULL_HANDLE == surface_) [[unlikely]] {
-      // Initial surface creation.
-      surface_creation = CHECK_VK(
-        wm_->createWindowSurface(context_.instance(), &surface_)
-      );
-    } else {
+    if (VK_NULL_HANDLE != surface_) [[likely]] {
 #if defined(ANDROID)
       // On Android we use a new window, so we recreate everything.
       context_.destroy_surface(surface_);
-      swapchain_.deinit();
+      swapchain_.release();
       surface_creation = CHECK_VK(
         wm_->createWindowSurface(context_.instance(), &surface_)
       );
 #else
       // On Desktop we can recreate a new swapchain from the old one.
-      swapchain_.deinit(true);
+      swapchain_.release(Swapchain::kKeepPreviousSwapchain);
 #endif
+    } else {
+      // First surface creation.
+      surface_creation = CHECK_VK(
+        wm_->createWindowSurface(context_.instance(), &surface_)
+      );
     }
 
     // Recreate the Swapchain.
     if (VK_SUCCESS == surface_creation) {
-      swapchain_.init(context_, surface_);
-      bSuccess = true;
+      bSuccess = swapchain_.init(context_, surface_);
     }
   } else {
-    // [OpenXR bypass traditionnal Surface + Swapchain creation]
+    // [OpenXR bypass traditionnal Vulkan surface + swapchain creation]
     bSuccess = xr_->resetSwapchain();
   }
 
+  // Update the pointer to the underlying swapchain.
   swapchain_interface_ = xr_ ? xr_->swapchainInterface()
                              : &swapchain_
                              ;
@@ -346,20 +341,20 @@ void Application::shutdown() {
   }
 
   LOGD("> Renderer");
-  renderer_.deinit();
+  renderer_.release();
 
   if (xr_) {
     LOGD("> OpenXR");
-    xr_->terminate();
+    xr_->shutdown();
     xr_.reset();
   } else {
     LOGD("> Swapchain");
-    swapchain_.deinit();
+    swapchain_.release();
     context_.destroy_surface(surface_);
   }
 
-  LOGD("> Render Context");
-  context_.deinit();
+  LOGD("> Device Context");
+  context_.release();
 
   if (wm_) {
     LOGD("> Window Manager");

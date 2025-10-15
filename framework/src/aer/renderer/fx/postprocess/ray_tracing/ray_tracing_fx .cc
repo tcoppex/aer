@@ -5,7 +5,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-void RayTracingFx::execute(CommandEncoder& cmd) const {
+void RayTracingFx::execute(CommandEncoder const& cmd) const {
   cmd.bind_pipeline(pipeline_);
 
   // Bind descriptor sets.

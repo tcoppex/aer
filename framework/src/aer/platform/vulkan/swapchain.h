@@ -14,14 +14,15 @@ class Swapchain : public SwapchainInterface {
  public:
   static constexpr uint32_t kPreferredMaxImageCount{ 3u };
   static constexpr bool kUseVSync{ true };
+  static constexpr bool kKeepPreviousSwapchain{ true };
 
  public:
   Swapchain() = default;
   virtual ~Swapchain() = default;
 
-  void init(Context const& context, VkSurfaceKHR surface);
+  bool init(Context const& context, VkSurfaceKHR surface);
 
-  void deinit(bool keep_previous_swapchain = false);
+  void release(bool keep_previous_swapchain = false);
 
   [[nodiscard]]
   uint32_t swap_index() const noexcept {
