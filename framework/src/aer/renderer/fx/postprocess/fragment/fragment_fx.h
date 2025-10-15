@@ -18,7 +18,7 @@ class FragmentFx : public virtual GenericFx {
 
   void setBufferInputs(std::vector<backend::Buffer> const& inputs) override;
 
-  void execute(CommandEncoder& cmd) const override; //
+  void execute(CommandEncoder const& cmd) const override; //
 
  protected:
   // [deprecated]

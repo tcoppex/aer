@@ -79,7 +79,7 @@ class PostFxPipeline : public PostFxInterface {
     reset();
   }
 
-  void execute(CommandEncoder& cmd) const override {
+  void execute(CommandEncoder const& cmd) const override {
     for (auto fx : effects_) {
       fx->execute(cmd);
     }
@@ -202,7 +202,7 @@ class PassDataNoFx final : public PostFxInterface {
   void init(Renderer const& renderer) final {}
   void setup(VkExtent2D const dimension) final {}
   bool resize(VkExtent2D const dimension) final { return false; }
-  void execute(CommandEncoder& cmd) const final {}
+  void execute(CommandEncoder const& cmd) const final {}
   void setupUI() final {}
 
   void release() final {

@@ -38,7 +38,7 @@ class FxInterface {
     setBufferInputs({ input });
   }
 
-  virtual void execute(CommandEncoder& cmd) const = 0;
+  virtual void execute(CommandEncoder const& cmd) const = 0;
   // -----------------
 };
 

@@ -38,7 +38,7 @@ void FragmentFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
 
 // ----------------------------------------------------------------------------
 
-void FragmentFx::execute(CommandEncoder& cmd) const {
+void FragmentFx::execute(CommandEncoder const& cmd) const {
   auto pass = cmd.begin_rendering(); //
   {
     prepareDrawState(pass);

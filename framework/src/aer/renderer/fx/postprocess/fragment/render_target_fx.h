@@ -15,7 +15,7 @@ class RenderTargetFx : public FragmentFx
  public:
   void release() override;
 
-  void execute(CommandEncoder& cmd) const override; //
+  void execute(CommandEncoder const& cmd) const override; //
 
   bool resize(VkExtent2D const dimension) override;
 

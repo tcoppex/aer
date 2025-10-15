@@ -27,7 +27,7 @@ void RenderTargetFx::release() {
 
 // ----------------------------------------------------------------------------
 
-void RenderTargetFx::execute(CommandEncoder& cmd) const {
+void RenderTargetFx::execute(CommandEncoder const& cmd) const {
   if (!enabled()) { return; } //
 
   auto pass = cmd.begin_rendering(*render_target_);
