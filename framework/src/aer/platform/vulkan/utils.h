@@ -11,10 +11,13 @@
 /* -------------------------------------------------------------------------- */
 
 #ifdef NDEBUG
-# define CHECK_VK(res)  res
+# define CHECK_VK(res)  (res)
 #else
 # define CHECK_VK(res)  vk_utils::CheckVKResult(res, __FILE__, __LINE__, true)
 #endif
+
+#define CHECK_VK_RET(res) \
+  if (CHECK_VK(res) != VK_SUCCESS) { return false; }
 
 /* -------------------------------------------------------------------------- */
 
