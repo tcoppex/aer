@@ -45,8 +45,6 @@ class Renderer {
     backend::Image const& src_image
   ) const noexcept;
 
-
-  // -----------------------------------------------
   // --- GPUResources gltf objects ---
 
   [[nodiscard]]
@@ -64,7 +62,6 @@ class Renderer {
       return load_gltf(filename);
     });
   }
-  // -----------------------------------------------
 
   // --- Getters ---
 
@@ -74,35 +71,13 @@ class Renderer {
   }
 
   [[nodiscard]]
-  Skybox const& skybox() const noexcept {
-    return skybox_;
-  }
-
-  [[nodiscard]]
   Skybox& skybox() noexcept {
     return skybox_;
   }
 
-  // ------------------------------
-  [[nodiscard]]
-  VkFormat color_format() const noexcept {
-    return context_ptr_->default_color_format();
-  }
-
-  [[nodiscard]]
-  VkFormat depth_stencil_format() const noexcept {
-    return context_ptr_->default_depth_stencil_format();
-  }
-
-  [[nodiscard]]
-  VkSampleCountFlagBits sample_count() const noexcept {
-    return context_ptr_->default_sample_count();
-  }
-  // ------------------------------
-
   [[nodiscard]]
   SwapchainInterface& swapchain() const {
-    LOG_CHECK(swapchain_ptr_ != nullptr);
+    LOG_CHECK(swapchain_ptr_ && *swapchain_ptr_);
     return **swapchain_ptr_;
   }
 
@@ -118,7 +93,7 @@ class Renderer {
 
   [[nodiscard]]
   backend::RTInterface const& main_render_target() const noexcept {
-    return *frame_resource().main_rt;
+    return *(frame_resource().main_rt);
   }
 
   [[nodiscard]]
@@ -128,12 +103,11 @@ class Renderer {
 
   // --- Setters ---
 
-  void set_clear_color(vec4 const& color, uint32_t index = 0u) {
+  void set_clear_color(vec4 const& color) {
     for (auto & frame : frames_) {
-      frame.main_rt->set_color_clear_value(
-        {.float32 = { color.x, color.y, color.z, color.w }},
-        index
-      );
+      frame.main_rt->set_color_clear_value({
+        .float32 = { color.x, color.y, color.z, color.w }
+      });
     }
   }
 
@@ -163,21 +137,36 @@ class Renderer {
     return frames_[frame_index_];
   }
 
+  [[nodiscard]]
+  VkFormat color_format() const noexcept {
+    return context_ptr_->default_color_format();
+  }
+
+  [[nodiscard]]
+  VkFormat depth_stencil_format() const noexcept {
+    return context_ptr_->default_depth_stencil_format();
+  }
+
+  [[nodiscard]]
+  VkSampleCountFlagBits sample_count() const noexcept {
+    return context_ptr_->default_sample_count();
+  }
+
  private:
   /* Non owning References. */
   RenderContext* context_ptr_{};
   VkDevice device_{};
   SwapchainInterface** swapchain_ptr_{};
 
-  /* Timeline frame resources */
+  /* Timeline frame resources. */
   std::vector<FrameResources> frames_{};
   uint32_t frame_index_{};
 
+  /* Control whether the RT color should be blit to the swapchain or not. */
   bool enable_postprocess_{true};
 
-  // ----------
-
-  Skybox skybox_{}; //
+  /* Internal Effects. */
+  Skybox skybox_{};
 };
 
 /* -------------------------------------------------------------------------- */

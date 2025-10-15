@@ -221,6 +221,26 @@ class Context {
     std::vector<backend::ShaderModule> const& shaders
   ) const;
 
+  // --- Command Pool / Buffer ---
+
+  void reset_command_pool(
+    VkCommandPool command_pool
+  ) const noexcept;
+
+  void destroy_command_pool(
+    VkCommandPool command_pool
+  ) const noexcept;
+
+  void free_command_buffers(
+    VkCommandPool command_pool,
+    std::vector<VkCommandBuffer> const& command_buffers
+  ) const noexcept;
+
+  void free_command_buffer(
+    VkCommandPool command_pool,
+    VkCommandBuffer command_buffer
+  ) const noexcept;
+
   // --- Transient Command Encoder ---
 
   [[nodiscard]]

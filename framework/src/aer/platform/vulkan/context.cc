@@ -243,6 +243,41 @@ void Context::release_shader_modules(
 
 // ----------------------------------------------------------------------------
 
+void Context::reset_command_pool(VkCommandPool command_pool) const noexcept {
+  CHECK_VK( vkResetCommandPool(device_, command_pool, 0x0u) );
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::destroy_command_pool(VkCommandPool command_pool) const noexcept {
+  vkDestroyCommandPool(device_, command_pool, nullptr);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::free_command_buffers(
+  VkCommandPool command_pool,
+  std::vector<VkCommandBuffer> const& command_buffers
+) const noexcept {
+  vkFreeCommandBuffers(
+    device_,
+    command_pool,
+    static_cast<uint32_t>(command_buffers.size()),
+    command_buffers.data()
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::free_command_buffer(
+  VkCommandPool command_pool,
+  VkCommandBuffer command_buffer
+) const noexcept {
+  vkFreeCommandBuffers(device_, command_pool, 1u, &command_buffer);
+}
+
+// ----------------------------------------------------------------------------
+
 CommandEncoder Context::create_transient_command_encoder(
   Context::TargetQueue const& target_queue
 ) const {
@@ -282,7 +317,7 @@ void Context::finish_transient_command_encoder(
 
   VkCommandBufferSubmitInfo const cb_submit_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-    .commandBuffer = encoder.command_buffer_,
+    .commandBuffer = encoder.handle(),
   };
   VkSubmitInfo2 const submit_info_2{
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -299,8 +334,9 @@ void Context::finish_transient_command_encoder(
   CHECK_VK( vkWaitForFences(device_, 1u, &fence, VK_TRUE, UINT64_MAX) );
   vkDestroyFence(device_, fence, nullptr);
 
+  VkCommandBuffer command_buffers[] = { encoder.handle() };
   vkFreeCommandBuffers(
-    device_, transient_command_pools_[target_queue], 1u, &encoder.command_buffer_
+    device_, transient_command_pools_[target_queue], 1u, command_buffers
   );
 }
 

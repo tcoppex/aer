@@ -12,14 +12,12 @@ void Renderer::init(
   LOGD("-- Renderer --");
 
   context_ptr_ = &context;
-  device_ = context.device();
-  swapchain_ptr_ = swapchain_ptr; //
+  swapchain_ptr_ = swapchain_ptr;
 
   init_view_resources();
 
-  // Renderer internal effects.
+  LOGD(" > Internal Fx");
   {
-    LOGD(" > Internal Fx");
     skybox_.init(context);
   }
 }
@@ -29,20 +27,22 @@ void Renderer::init(
 void Renderer::init_view_resources() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
+  LOGD(" > Frames Resources");
+
   auto const frame_count = swapchain().imageCount();
   LOG_CHECK( frame_count > 0u );
-
-  LOGD(" > Frames Resources");
   frames_.resize(frame_count);
 
-  // Initialize per-frame command buffers.
+  /* Initialize per-frame command buffers. */
   VkCommandPoolCreateInfo const command_pool_create_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
     .queueFamilyIndex = context_ptr_->queue(Context::TargetQueue::Main).family_index,
   };
+
+  VkDevice const handle = context_ptr_->device();
   for (auto& frame : frames_) {
     CHECK_VK(vkCreateCommandPool(
-      device_, &command_pool_create_info, nullptr, &frame.command_pool
+      handle, &command_pool_create_info, nullptr, &frame.command_pool
     ));
     VkCommandBufferAllocateInfo const cb_alloc_info{
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -51,7 +51,7 @@ void Renderer::init_view_resources() {
       .commandBufferCount = 1u,
     };
     CHECK_VK(vkAllocateCommandBuffers(
-      device_, &cb_alloc_info, &frame.command_buffer
+      handle, &cb_alloc_info, &frame.command_buffer
     ));
   }
 
@@ -64,8 +64,8 @@ void Renderer::init_view_resources() {
 
 void Renderer::release_view_resources() {
   for (auto & frame : frames_) {
-    vkFreeCommandBuffers(device_, frame.command_pool, 1u, &frame.command_buffer);
-    vkDestroyCommandPool(device_, frame.command_pool, nullptr);
+    context_ptr_->free_command_buffer(frame.command_pool, frame.command_buffer);
+    context_ptr_->destroy_command_pool(frame.command_pool);
     frame.main_rt->release();
   }
 }
@@ -108,7 +108,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
         .size = surface_size,
         .array_size = layers,
         .sample_count = sample_count(),
-        .debug_prefix = std::string("Renderer::MainRT_" + std::to_string(i)),
+        .debug_prefix = "Renderer::MainRT_" + std::to_string(i),
       });
     }
   }
@@ -122,10 +122,11 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 // ----------------------------------------------------------------------------
 
 CommandEncoder& Renderer::begin_frame() {
-  LOG_CHECK( device_ != VK_NULL_HANDLE );
+  LOG_CHECK( context_ptr_ != nullptr );
 
-  // Handle swapchain resize.
+  /* Handle Swapchain resize detection. */
   {
+    // (suppose they use the same scale)
     auto const& A = swapchain().surfaceSize();
     auto const& B = surface_size();
     if (A.width != B.width || A.height != B.height) {
@@ -133,26 +134,28 @@ CommandEncoder& Renderer::begin_frame() {
     }
   }
 
-  // Acquire next availables image in the swapchain.
+  /* Acquire next availables image in the swapchain. */
   LOG_CHECK(swapchain_ptr_);
   if (!swapchain().acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
-  // Reset the frame command pool to record new command for this frame.
+  /* Reset the frame command pool to record new command for this frame. */
   auto &frame = frame_resource();
-  CHECK_VK( vkResetCommandPool(device_, frame.command_pool, 0u) );
+  context_ptr_->reset_command_pool(frame.command_pool);
 
-  // Reset the command buffer wrapper.
+  // -----------------------
+  /* Reset the command buffer wrapper. */
   frame.cmd = CommandEncoder(
     frame.command_buffer,
     static_cast<uint32_t>(Context::TargetQueue::Main),
-    device_, //
+    context_ptr_->device(),
     &context_ptr_->allocator(), //
     frame.main_rt.get()
   );
-  frame.cmd.begin();
+  // -----------------------
 
+  frame.cmd.begin();
   return frame.cmd;
 }
 
@@ -180,9 +183,6 @@ void Renderer::apply_postprocess() {
       layer_count
     );
 
-    // The issue may lie in the images barriers settings used.
-    // Also, OpenXR might not like a Present_src_khr layout..
-
     frame.cmd.blit_image_2d(
       src_img, src_layout,
       // -----------------------------
@@ -200,7 +200,7 @@ void Renderer::apply_postprocess() {
 void Renderer::end_frame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
-  // Transition the final image then blit to the swapchain frame.
+  /* Transition the final image then blit to the swapchain frame. */
   if (enable_postprocess_) {
     apply_postprocess();
   }
@@ -208,14 +208,14 @@ void Renderer::end_frame() {
   auto const& frame = frame_resource();
   frame.cmd.end();
 
-  // Submit the CommandBuffer to the main queue.
+  /* Submit the CommandBuffer to the main queue. */
   auto const& queue = context_ptr_->queue(Context::TargetQueue::Main).queue;
   if (!swapchain().submitFrame(queue, frame.cmd.handle())) {
     LOGV("{}: Invalid swapchain, skip that frame.", __FUNCTION__);
     return; 
   }
 
-  // Present the swapchain frame's image.
+  /* Present the swapchain frame's image. */
   swapchain().finishFrame(queue);
   frame_index_ = (frame_index_ + 1u) % swapchain().imageCount();
 }

@@ -27,7 +27,7 @@ class GenericCommandEncoder {
   GenericCommandEncoder(
     VkCommandBuffer command_buffer,
     uint32_t target_queue_index
-  ) : command_buffer_(command_buffer)
+  ) : handle_(command_buffer)
     , target_queue_index_{target_queue_index}
   {}
 
@@ -35,7 +35,7 @@ class GenericCommandEncoder {
 
   [[nodiscard]]
   VkCommandBuffer handle() const noexcept {
-    return command_buffer_;
+    return handle_;
   }
 
   [[nodiscard]]
@@ -47,7 +47,7 @@ class GenericCommandEncoder {
 
   void bind_pipeline(backend::PipelineInterface const& pipeline) const {
     currently_bound_pipeline_ = &pipeline;
-    vkCmdBindPipeline(command_buffer_, pipeline.bind_point(), pipeline.handle());
+    vkCmdBindPipeline(handle_, pipeline.bind_point(), pipeline.handle());
   }
 
   // --- Descriptor Sets ---
@@ -92,12 +92,12 @@ class GenericCommandEncoder {
         .size = static_cast<uint32_t>(sizeof(T)),
         .pValues = &value,
       };
-      vkCmdPushConstants2KHR(command_buffer_, &push_info);
+      vkCmdPushConstants2KHR(handle_, &push_info);
     }
     else
     {
       vkCmdPushConstants(
-        command_buffer_,
+        handle_,
         pipeline_layout,
         stage_flags,
         offset,
@@ -141,7 +141,7 @@ class GenericCommandEncoder {
     LOG_CHECK(y > 0u);
     LOG_CHECK(z > 0u);
 
-    vkCmdDispatch(command_buffer_,
+    vkCmdDispatch(handle_,
       vk_utils::GetKernelGridDim(x, tX),
       vk_utils::GetKernelGridDim(y, tY),
       vk_utils::GetKernelGridDim(z, tZ)
@@ -157,7 +157,7 @@ class GenericCommandEncoder {
     uint32_t depth = 1u
   ) const {
     vkCmdTraceRaysKHR(
-      command_buffer_,
+      handle_,
       &region.raygen,
       &region.miss,
       &region.hit,
@@ -169,7 +169,7 @@ class GenericCommandEncoder {
   }
 
  protected:
-  VkCommandBuffer command_buffer_{};
+  VkCommandBuffer handle_{};
   uint32_t target_queue_index_{};
 
  private:
@@ -271,7 +271,7 @@ class CommandEncoder : public GenericCommandEncoder {
       .imageExtent = extent,
     };
     vkCmdCopyBufferToImage(
-      command_buffer_, src.buffer, dst.image, image_layout, 1u, &copy
+      handle_, src.buffer, dst.image, image_layout, 1u, &copy
     );
   }
 
@@ -327,11 +327,11 @@ class CommandEncoder : public GenericCommandEncoder {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    CHECK_VK( vkBeginCommandBuffer(command_buffer_, &cb_begin_info) );
+    CHECK_VK( vkBeginCommandBuffer(handle_, &cb_begin_info) );
   }
 
   void end() const {
-    CHECK_VK( vkEndCommandBuffer(command_buffer_) );
+    CHECK_VK( vkEndCommandBuffer(handle_) );
   }
 
  protected:
@@ -392,12 +392,12 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   void set_primitive_topology(VkPrimitiveTopology const topology) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
-    vkCmdSetPrimitiveTopologyEXT(command_buffer_, topology);
+    vkCmdSetPrimitiveTopologyEXT(handle_, topology);
   }
 
   void set_vertex_input(VertexInputDescriptor const& vertex_input_descriptor) const {
     vkCmdSetVertexInputEXT(
-      command_buffer_,
+      handle_,
       static_cast<uint32_t>(vertex_input_descriptor.bindings.size()),
       vertex_input_descriptor.bindings.data(),
       static_cast<uint32_t>(vertex_input_descriptor.attributes.size()),
@@ -413,7 +413,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint64_t offset = 0u
   ) const {
     vkCmdBindVertexBuffers(
-      command_buffer_, binding, 1u, &buffer.buffer, &offset
+      handle_, binding, 1u, &buffer.buffer, &offset
     );
   }
 
@@ -425,7 +425,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
   ) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
     vkCmdBindVertexBuffers2(
-      command_buffer_, binding, 1u, &buffer.buffer, &offset, nullptr, &stride
+      handle_, binding, 1u, &buffer.buffer, &offset, nullptr, &stride
     );
   }
 
@@ -437,7 +437,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
   ) const {
     // VK_KHR_maintenance5 or VK_VERSION_1_4
     vkCmdBindIndexBuffer2KHR(
-      command_buffer_, buffer.buffer, offset, size, index_type
+      handle_, buffer.buffer, offset, size, index_type
     );
   }
 
@@ -449,7 +449,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t first_vertex = 0u,
     uint32_t first_instance = 0u
   ) const {
-    vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
+    vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
   void draw_indexed(
@@ -460,7 +460,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t first_instance = 0u
   ) const {
     vkCmdDrawIndexed(
-      command_buffer_,
+      handle_,
       index_count,
       instance_count,
       first_index,
