@@ -1,11 +1,9 @@
 /* -------------------------------------------------------------------------- */
 
-#include "aer/renderer/fx/skybox.h"
+#include "aer/renderer/renderer.h" //
 
-#include "aer/platform/vulkan/context.h"
-#include "aer/renderer/renderer.h"
 #include "aer/core/camera.h"
-
+#include "aer/renderer/fx/skybox.h"
 #include "aer/renderer/fx/postprocess/compute/compute_fx.h" //
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
 
@@ -102,7 +100,7 @@ void Skybox::init(Renderer& renderer) {
     })};
 
     /* Setup the graphics pipeline. */
-    graphics_pipeline_ = renderer.create_graphics_pipeline(pipeline_layout_, {
+    graphics_pipeline_ = context.create_graphics_pipeline(pipeline_layout_, {
       .vertex = {
         .module = shaders[0u].module,
         .buffers = cube_.pipeline_vertex_buffer_descriptors(),

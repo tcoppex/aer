@@ -125,23 +125,26 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_.descriptor_set = context_.create_descriptor_set(graphics_.descriptor_set_layout, {
+      graphics_.descriptor_set = context_.create_descriptor_set(
+        graphics_.descriptor_set_layout,
         {
-          .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
-          .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .buffers = { { uniform_buffer_.buffer } }
-        },
-        {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .buffers = { { point_grid_.vertex.buffer } }
-        },
-        {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .buffers = { { point_grid_.index.buffer } }
-        },
-      });
+          {
+            .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .buffers = { { uniform_buffer_.buffer } }
+          },
+          {
+            .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .buffers = { { point_grid_.vertex.buffer } }
+          },
+          {
+            .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .buffers = { { point_grid_.index.buffer } }
+          },
+        }
+      );
     }
 
     graphics_.pipeline_layout = context_.create_pipeline_layout({
@@ -162,45 +165,48 @@ class SampleApp final : public Application {
       })};
 
       /* Setup a pipeline with additive blend and no depth buffer. */
-      graphics_.pipeline = renderer_.create_graphics_pipeline(graphics_.pipeline_layout, {
-        .vertex = {
-          .module = shaders[0u].module,
-        },
-        .fragment = {
-          .module = shaders[1u].module,
-          .targets = {
-            {
-              .format = renderer_.color_format(),
-              .writeMask = VK_COLOR_COMPONENT_R_BIT
-                         | VK_COLOR_COMPONENT_G_BIT
-                         | VK_COLOR_COMPONENT_B_BIT
-                         | VK_COLOR_COMPONENT_A_BIT
-                         ,
-              .blend = {
-                .enable = VK_TRUE,
-                .color = {
-                  .operation = VK_BLEND_OP_ADD,
-                  .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                  .dstFactor = VK_BLEND_FACTOR_ONE,
-                },
-                .alpha =  {
-                  .operation = VK_BLEND_OP_ADD,
-                  .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                  .dstFactor = VK_BLEND_FACTOR_ONE,
-                },
-              }
-            }
+      graphics_.pipeline = context_.create_graphics_pipeline(
+        graphics_.pipeline_layout,
+        {
+          .vertex = {
+            .module = shaders[0u].module,
           },
-        },
-        .depthStencil = {
-          .format = renderer_.depth_stencil_format(), //
-        },
-        .primitive = {
-          .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-          /* We disable culling as we let the billboard particles face whatever direction. */
-          // .cullMode = VK_CULL_MODE_BACK_BIT,
-        },
-      });
+          .fragment = {
+            .module = shaders[1u].module,
+            .targets = {
+              {
+                .writeMask = VK_COLOR_COMPONENT_R_BIT
+                           | VK_COLOR_COMPONENT_G_BIT
+                           | VK_COLOR_COMPONENT_B_BIT
+                           | VK_COLOR_COMPONENT_A_BIT
+                           ,
+                .blend = {
+                  .enable = VK_TRUE,
+                  .color = {
+                    .operation = VK_BLEND_OP_ADD,
+                    .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                    .dstFactor = VK_BLEND_FACTOR_ONE,
+                  },
+                  .alpha =  {
+                    .operation = VK_BLEND_OP_ADD,
+                    .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                    .dstFactor = VK_BLEND_FACTOR_ONE,
+                  },
+                }
+              }
+            },
+          },
+          /* (we do not need a depthStencil buffer here) */
+          // .depthStencil = {
+          //   .format = context_.default_depth_stencil_format(),
+          // },
+          .primitive = {
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            /* We disable culling as we let the billboard particles face whatever direction. */
+            // .cullMode = VK_CULL_MODE_BACK_BIT,
+          },
+        }
+      );
 
       context_.release_shader_modules(shaders);
     }

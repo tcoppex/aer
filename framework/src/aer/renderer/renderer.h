@@ -15,28 +15,11 @@
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * Main entry point to render image to the swapchain and issue commands to the
- * graphic / present queue.
- *
- * -> Use 'begin_frame' / 'end_frame' when ready to submit command via the
- *    returned CommandEncoder object.
- *
- * -> 'create_render_target' can be used to create custom dynamic render target,
- *    'create_framebuffer' to create legacy rendering target.
- *
- **/
 class Renderer {
  public:
   static constexpr VkClearValue kDefaultColorClearValue{{
     .float32 = {1.0f, 0.25f, 0.75f, 1.0f}
   }};
-
-  struct Settings {
-    VkFormat color_format{VK_FORMAT_UNDEFINED};
-    VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
-    VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
-  };
 
  public:
   Renderer() = default;
@@ -44,77 +27,31 @@ class Renderer {
 
   void init(
     RenderContext& context,
-    SwapchainInterface** swapchain_ptr,
-    Settings const& settings
+    SwapchainInterface** swapchain_ptr
   );
 
   void release();
+
+  bool resize(uint32_t w, uint32_t h);
 
   [[nodiscard]]
   CommandEncoder& begin_frame();
 
   void end_frame();
 
-  [[nodiscard]]
-  RenderContext const& context() const noexcept {
-    return *context_ptr_;
-  }
+  /* Blit an image to the final color image, before the swapchain. */
+  void blit_color(
+    CommandEncoder const& cmd,
+    backend::Image const& src_image
+  ) const noexcept;
 
-  [[nodiscard]]
-  Skybox const& skybox() const noexcept {
-    return skybox_;
-  }
 
-  [[nodiscard]]
-  Skybox& skybox() noexcept {
-    return skybox_;
-  }
-
+  // -----------------------------------------------
   // --- Render Target (Dynamic Rendering) ---
 
   [[nodiscard]]
   std::unique_ptr<RenderTarget> create_default_render_target(
     uint32_t num_color_outputs = 1u
-  ) const;
-
-  // --- Graphics Pipelines ---
-
-  // those methods are specialization of those found in RenderContext
-  // to use internal color/depth buffer by default when unspecified.
-  // Ideally it should be remove from here altogether
-
-  [[nodiscard]]
-  VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
-    GraphicsPipelineCreateInfoData_t &data,
-    VkPipelineLayout pipeline_layout,
-    GraphicsPipelineDescriptor_t const& desc
-  ) const;
-
-  // Batch create graphics pipelines from a common layout.
-  void create_graphics_pipelines(
-    VkPipelineLayout pipeline_layout,
-    std::vector<GraphicsPipelineDescriptor_t> const& descs,
-    std::vector<Pipeline> *out_pipelines
-  ) const;
-
-  // Create a graphics pipeline with a pre-defined layout.
-  [[nodiscard]]
-  Pipeline create_graphics_pipeline(
-    VkPipelineLayout pipeline_layout,
-    GraphicsPipelineDescriptor_t const& desc
-  ) const;
-
-  // Create a graphics pipeline and a layout based on description.
-  [[nodiscard]]
-  Pipeline create_graphics_pipeline(
-    PipelineLayoutDescriptor_t const& layout_desc,
-    GraphicsPipelineDescriptor_t const& desc
-  ) const;
-
-  // Create a graphics pipeline with a default empty layout.
-  [[nodiscard]]
-  Pipeline create_graphics_pipeline(
-    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // --- GPUResources gltf objects ---
@@ -134,22 +71,39 @@ class Renderer {
       return load_gltf(filename);
     });
   }
+  // -----------------------------------------------
 
- public:
+  // --- Getters ---
+
+  [[nodiscard]]
+  RenderContext const& context() const noexcept {
+    return *context_ptr_;
+  }
+
+  [[nodiscard]]
+  Skybox const& skybox() const noexcept {
+    return skybox_;
+  }
+
+  [[nodiscard]]
+  Skybox& skybox() noexcept {
+    return skybox_;
+  }
+
   // ------------------------------
   [[nodiscard]]
   VkFormat color_format() const noexcept {
-    return settings_.color_format;
+    return context_ptr_->default_color_format();
   }
 
   [[nodiscard]]
   VkFormat depth_stencil_format() const noexcept {
-    return settings_.depth_stencil_format;
+    return context_ptr_->default_depth_stencil_format();
   }
 
   [[nodiscard]]
   VkSampleCountFlagBits sample_count() const noexcept {
-    return settings_.sample_count;
+    return context_ptr_->default_sample_count();
   }
   // ------------------------------
 
@@ -179,6 +133,8 @@ class Renderer {
     return main_render_target().surface_size(); //
   }
 
+  // --- Setters ---
+
   void set_clear_color(vec4 const& color, uint32_t index = 0u) {
     for (auto & frame : frames_) {
       frame.main_rt->set_color_clear_value(
@@ -187,14 +143,6 @@ class Renderer {
       );
     }
   }
-
-  bool resize(uint32_t w, uint32_t h);
-
-  /* Blit an image to the final color image, before the swapchain. */
-  void blit_color(
-    CommandEncoder const& cmd,
-    backend::Image const& src_image
-  ) const noexcept;
 
   void enable_postprocess(bool status) noexcept {
     enable_postprocess_ = status;
@@ -212,6 +160,8 @@ class Renderer {
 
   void release_view_resources();
 
+  void apply_postprocess();
+
   FrameResources& frame_resource() noexcept {
     return frames_[frame_index_];
   }
@@ -220,15 +170,11 @@ class Renderer {
     return frames_[frame_index_];
   }
 
-  void apply_postprocess();
-
  private:
   /* Non owning References. */
   RenderContext* context_ptr_{};
   VkDevice device_{};
   SwapchainInterface** swapchain_ptr_{};
-
-  Settings settings_{};
 
   /* Timeline frame resources */
   std::vector<FrameResources> frames_{};
@@ -238,7 +184,7 @@ class Renderer {
 
   // ----------
 
-  Skybox skybox_{};
+  Skybox skybox_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

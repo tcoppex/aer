@@ -169,7 +169,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = renderer_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
         .dynamicStates = {
           VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
           VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,

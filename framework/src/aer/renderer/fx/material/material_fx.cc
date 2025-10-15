@@ -37,7 +37,9 @@ void MaterialFx::createPipelines(std::vector<scene::MaterialStates> const& state
 
   // Batch create the pipelines.
   std::vector<Pipeline> pipelines(states.size());
-  renderer_ptr_->create_graphics_pipelines(pipeline_layout_, descs, &pipelines);
+  context_ptr_->create_graphics_pipelines(
+    pipeline_layout_, descs, &pipelines
+  );
 
   // Store them into the pipeline map.
   for (size_t i = 0; i < states.size(); ++i) {
@@ -133,7 +135,7 @@ GraphicsPipelineDescriptor_t MaterialFx::getGraphicsPipelineDescriptor(
       },
       .targets = {
         {
-          .format = renderer_ptr_->color_format(), //
+          // .format = context_ptr_->default_color_format(), //
         },
       },
     },

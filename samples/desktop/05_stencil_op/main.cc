@@ -169,22 +169,16 @@ class SampleApp final : public Application {
     /* Setup the pipelines. */
     {
       /* Pipeline descriptor "shared" between the stencil and the depth mask pipelines. */
-      GraphicsPipelineDescriptor_t mask_pipeline_descriptor{
+      auto mask_pipeline_descriptor = GraphicsPipelineDescriptor_t{
         .vertex = {
           .module = shaders[0u].module,
           .buffers = plane_.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
           .module = shaders[2u].module,
-          .targets = {
-            {
-              .format = renderer_.color_format(),
-              .writeMask = 0u,
-            }
-          },
+          .targets = { {.writeMask = 0u} },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_FALSE,
           .depthCompareOp = VK_COMPARE_OP_ALWAYS,
@@ -206,83 +200,89 @@ class SampleApp final : public Application {
       };
 
       /* Render inside the stencil buffer. */
-      pipelines_[PipelineID::StencilMask] = renderer_.create_graphics_pipeline(pipeline_layout_, mask_pipeline_descriptor);
+      pipelines_[PipelineID::StencilMask] = context_.create_graphics_pipeline(
+        pipeline_layout_, mask_pipeline_descriptor
+      );
 
       /* Render inside the portal using the stencil test and the instancing vertex shader. */
-      pipelines_[PipelineID::StencilTest] = renderer_.create_graphics_pipeline(pipeline_layout_, {
-        .vertex = {
-          .module = shaders[1u].module,
-          .buffers = torus_.pipeline_vertex_buffer_descriptors(),
-        },
-        .fragment = {
-          .module = shaders[2u].module,
-          .targets = {
-            {
-              .format = renderer_.color_format(),
-              .writeMask = VK_COLOR_COMPONENT_R_BIT
-                         | VK_COLOR_COMPONENT_G_BIT
-                         | VK_COLOR_COMPONENT_B_BIT
-                         | VK_COLOR_COMPONENT_A_BIT
-                         ,
-            }
+      pipelines_[PipelineID::StencilTest] = context_.create_graphics_pipeline(
+        pipeline_layout_,
+        {
+          .vertex = {
+            .module = shaders[1u].module,
+            .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
-        },
-        .depthStencil = {
-          .format = renderer_.depth_stencil_format(),
-          .depthTestEnable = VK_TRUE,
-          .depthWriteEnable = VK_TRUE,
-          .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-          .stencilTestEnable = VK_TRUE,
-          .stencilFront = {
-            .failOp = VK_STENCIL_OP_KEEP,
-            .passOp = VK_STENCIL_OP_KEEP,
-            .depthFailOp = VK_STENCIL_OP_KEEP,
-            .compareOp = VK_COMPARE_OP_EQUAL,
-            .compareMask = 0xFF,
-            .writeMask = 0xFF,
-            .reference = 1u,
+          .fragment = {
+            .module = shaders[2u].module,
+            .targets = {
+              {
+                .writeMask = VK_COLOR_COMPONENT_R_BIT
+                           | VK_COLOR_COMPONENT_G_BIT
+                           | VK_COLOR_COMPONENT_B_BIT
+                           | VK_COLOR_COMPONENT_A_BIT
+                           ,
+              }
+            },
           },
-        },
-        .primitive = {
-          .topology = torus_.vk_primitive_topology(),
-          .cullMode = VK_CULL_MODE_BACK_BIT,
+          .depthStencil = {
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+            .stencilTestEnable = VK_TRUE,
+            .stencilFront = {
+              .failOp = VK_STENCIL_OP_KEEP,
+              .passOp = VK_STENCIL_OP_KEEP,
+              .depthFailOp = VK_STENCIL_OP_KEEP,
+              .compareOp = VK_COMPARE_OP_EQUAL,
+              .compareMask = 0xFF,
+              .writeMask = 0xFF,
+              .reference = 1u,
+            },
+          },
+          .primitive = {
+            .topology = torus_.vk_primitive_topology(),
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+          }
         }
-      });
+      );
 
       /* Render in the depth buffer, to mask the portal once we've rendered into it. */
       mask_pipeline_descriptor.depthStencil.depthWriteEnable = VK_TRUE;
-      pipelines_[PipelineID::DepthMask] = renderer_.create_graphics_pipeline(pipeline_layout_, mask_pipeline_descriptor);
+      pipelines_[PipelineID::DepthMask] = context_.create_graphics_pipeline(
+        pipeline_layout_, mask_pipeline_descriptor
+      );
 
       /* Regular rendering pipeline, used outside the portal. Does not use the stencil buffer. */
-      pipelines_[PipelineID::Rendering] = renderer_.create_graphics_pipeline(pipeline_layout_, {
-        .vertex = {
-          .module = shaders[0u].module,
-          .buffers = torus_.pipeline_vertex_buffer_descriptors(),
-        },
-        .fragment = {
-          .module = shaders[2u].module,
-          .targets = {
-            {
-              .format = renderer_.color_format(),
-              .writeMask = VK_COLOR_COMPONENT_R_BIT
-                         | VK_COLOR_COMPONENT_G_BIT
-                         | VK_COLOR_COMPONENT_B_BIT
-                         | VK_COLOR_COMPONENT_A_BIT
-                         ,
-            }
+      pipelines_[PipelineID::Rendering] = context_.create_graphics_pipeline(
+        pipeline_layout_,
+        {
+          .vertex = {
+            .module = shaders[0u].module,
+            .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
-        },
-        .depthStencil = {
-          .format = renderer_.depth_stencil_format(),
-          .depthTestEnable = VK_TRUE,
-          .depthWriteEnable = VK_TRUE,
-          .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-        },
-        .primitive = {
-          .topology = torus_.vk_primitive_topology(),
-          .cullMode = VK_CULL_MODE_BACK_BIT,
+          .fragment = {
+            .module = shaders[2u].module,
+            .targets = {
+              {
+                .writeMask = VK_COLOR_COMPONENT_R_BIT
+                           | VK_COLOR_COMPONENT_G_BIT
+                           | VK_COLOR_COMPONENT_B_BIT
+                           | VK_COLOR_COMPONENT_A_BIT
+                           ,
+              }
+            },
+          },
+          .depthStencil = {
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+          },
+          .primitive = {
+            .topology = torus_.vk_primitive_topology(),
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+          }
         }
-      });
+      );
     }
 
     context_.release_shader_modules(shaders);

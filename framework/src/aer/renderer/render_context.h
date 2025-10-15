@@ -23,12 +23,20 @@ class RenderContext : public Context {
  public:
   static constexpr uint32_t kMaxDescriptorPoolSets{ 256u };
 
+  // Default graphics settings.
+  struct Settings {
+    VkFormat color_format{VK_FORMAT_UNDEFINED};
+    VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
+    VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+  };
+
  public:
   RenderContext() = default;
   ~RenderContext() = default;
 
   [[nodiscard]]
   bool init(
+    Settings const& settings,
     std::string_view app_name,
     std::vector<char const*> const& instance_extensions,
     XRVulkanInterface *vulkan_xr
@@ -78,17 +86,17 @@ class RenderContext : public Context {
 
   // --- Graphics Pipelines ---
 
-  // [[nodiscard]]
-  // VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
-  //   GraphicsPipelineCreateInfoData_t &data,
-  //   VkPipelineLayout pipeline_layout,
-  //   GraphicsPipelineDescriptor_t const& desc
-  // ) const;
+  [[nodiscard]]
+  VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
+    GraphicsPipelineCreateInfoData_t &data,
+    VkPipelineLayout pipeline_layout,
+    GraphicsPipelineDescriptor_t const& desc
+  ) const;
 
   // Batch create graphics pipelines from a common layout.
   void create_graphics_pipelines(
     VkPipelineLayout pipeline_layout,
-    std::vector<VkGraphicsPipelineCreateInfo> const& _create_infos,
+    std::vector<GraphicsPipelineDescriptor_t> const& descs,
     std::vector<Pipeline> *out_pipelines
   ) const;
 
@@ -96,21 +104,55 @@ class RenderContext : public Context {
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
     VkPipelineLayout pipeline_layout,
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline and a layout based on description.
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
     PipelineLayoutDescriptor_t const& layout_desc,
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline with a default empty layout.
   [[nodiscard]]
   Pipeline create_graphics_pipeline(
-    VkGraphicsPipelineCreateInfo const& create_info
+    GraphicsPipelineDescriptor_t const& desc
   ) const;
+
+  // // [[nodiscard]]
+  // // VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
+  // //   GraphicsPipelineCreateInfoData_t &data,
+  // //   VkPipelineLayout pipeline_layout,
+  // //   GraphicsPipelineDescriptor_t const& desc
+  // // ) const;
+
+  // // Batch create graphics pipelines from a common layout.
+  // void create_graphics_pipelines(
+  //   VkPipelineLayout pipeline_layout,
+  //   std::vector<VkGraphicsPipelineCreateInfo> const& _create_infos,
+  //   std::vector<Pipeline> *out_pipelines
+  // ) const;
+
+  // // Create a graphics pipeline with a pre-defined layout.
+  // [[nodiscard]]
+  // Pipeline create_graphics_pipeline(
+  //   VkPipelineLayout pipeline_layout,
+  //   VkGraphicsPipelineCreateInfo const& create_info
+  // ) const;
+
+  // // Create a graphics pipeline and a layout based on description.
+  // [[nodiscard]]
+  // Pipeline create_graphics_pipeline(
+  //   PipelineLayoutDescriptor_t const& layout_desc,
+  //   VkGraphicsPipelineCreateInfo const& create_info
+  // ) const;
+
+  // // Create a graphics pipeline with a default empty layout.
+  // [[nodiscard]]
+  // Pipeline create_graphics_pipeline(
+  //   VkGraphicsPipelineCreateInfo const& create_info
+  // ) const;
 
   // --- Compute Pipelines ---
 
@@ -190,6 +232,28 @@ class RenderContext : public Context {
     return sampler_pool_;
   }
 
+  // ------------------------------
+  [[nodiscard]]
+  VkFormat default_color_format() const noexcept {
+    return settings_.color_format;
+  }
+
+  [[nodiscard]]
+  VkFormat default_depth_stencil_format() const noexcept {
+    return settings_.depth_stencil_format;
+  }
+
+  [[nodiscard]]
+  VkSampleCountFlagBits default_sample_count() const noexcept {
+    return settings_.sample_count;
+  }
+
+  [[nodiscard]]
+  uint32_t default_view_mask() const noexcept {
+    return default_view_mask_;
+  }
+  // ------------------------------
+
  public:
   template <typename... VulkanHandles>
   void destroyResources(VulkanHandles... handles) const {
@@ -202,7 +266,11 @@ class RenderContext : public Context {
   void destroyResource(backend::Image & image) const         { destroy_image(image); }
 
  private:
+  Settings settings_{};
+
   VkPipelineCache pipeline_cache_{};
+  uint32_t default_view_mask_{};
+
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
 };

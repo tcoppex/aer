@@ -148,7 +148,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = renderer_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
         .vertex = {
           .module = shaders[0u].module,
           /* Get buffer descriptors compatible with the mesh vertex inputs.
@@ -161,7 +161,8 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_format(),
+              /* When specifying no format, the default one will be used. */
+              // .format = context_.default_color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -171,7 +172,8 @@ class SampleApp final : public Application {
           },
         },
         .depthStencil = {
-          .format = renderer_.depth_stencil_format(),
+          /* When specifying no format, the default one will be used. */
+          // .format = context_.default_depth_stencil_format(),
           .depthTestEnable = VK_TRUE,
           .depthWriteEnable = VK_TRUE,
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,

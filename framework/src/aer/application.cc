@@ -76,8 +76,6 @@ void Application::draw_ui(CommandEncoder const& cmd) {
 // ----------------------------------------------------------------------------
 
 bool Application::presetup(AppData_t app_data) {
-  auto const app_name = "VkFramework::DefaultAppName"; //
-
   /* Singletons. */
   {
     Logger::Initialize();
@@ -102,7 +100,10 @@ bool Application::presetup(AppData_t app_data) {
   if (settings_.use_xr) {
     if (xr_ = std::make_unique<OpenXRContext>(); xr_) {
       user_data_.xr = xr_.get(); //
-      if (!xr_->init(wm_->xrPlatformInterface(), app_name, xrExtensions())) {
+      if (!xr_->init(wm_->xrPlatformInterface(),
+                     settings_.app_name,
+                     xrExtensions()))
+      {
         LOGE("XR initialization fails.");
         shutdown();
         return false;
@@ -112,7 +113,8 @@ bool Application::presetup(AppData_t app_data) {
   LOGD("OpenXR is {}.", xr_ ? "enabled" : "disabled");
 
   /* Vulkan context. */
-  if (!context_.init(app_name,
+  if (!context_.init(settings_.renderer,
+                     settings_.app_name,
                      wm_->vulkanInstanceExtensions(),
                      xr_ ? xr_->graphicsInterface() : nullptr))
   {
@@ -149,11 +151,7 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* Default Renderer. */
-  renderer_.init(
-    context_,
-    &swapchain_interface_,
-    settings_.renderer
-  );
+  renderer_.init(context_, &swapchain_interface_);
 
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {

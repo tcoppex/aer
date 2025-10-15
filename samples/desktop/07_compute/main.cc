@@ -206,9 +206,9 @@ class SampleApp final : public Application {
         "calculate_dot_product.comp.glsl",
         "sort_indices.comp.glsl",
       })};
-
-      context_.create_compute_pipelines(pipeline_layout_, shaders, compute_pipelines_.data());
-
+      context_.create_compute_pipelines(
+        pipeline_layout_, shaders, compute_pipelines_.data()
+      );
       context_.release_shader_modules(shaders);
     }
 
@@ -219,7 +219,7 @@ class SampleApp final : public Application {
         "simple.frag.glsl",
       })};
 
-      graphics_pipeline_ = renderer_.create_graphics_pipeline(pipeline_layout_, {
+      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout_, {
         .vertex = {
           .module = shaders[0u].module,
         },
@@ -227,7 +227,6 @@ class SampleApp final : public Application {
           .module = shaders[1u].module,
           .targets = {
             {
-              .format = renderer_.color_format(),
               .writeMask = VK_COLOR_COMPONENT_R_BIT
                          | VK_COLOR_COMPONENT_G_BIT
                          | VK_COLOR_COMPONENT_B_BIT
@@ -249,9 +248,10 @@ class SampleApp final : public Application {
             }
           },
         },
-        .depthStencil = {
-          .format = renderer_.depth_stencil_format(), //
-        },
+        /* (we do not need a depthStencil buffer here) */
+        // .depthStencil = {
+        //   .format = context_.default_depth_stencil_format(),
+        // },
         .primitive = {
           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
           .cullMode = VK_CULL_MODE_BACK_BIT,

@@ -246,8 +246,10 @@ class SampleApp final : public Application {
     }
 
     // -------------------------------
+
     ray_tracing_fx_.init(renderer_);
     ray_tracing_fx_.setup(renderer_.surface_size());
+
     // -------------------------------
 
     /* Load a glTF Scene. */
