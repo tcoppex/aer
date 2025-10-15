@@ -146,7 +146,7 @@ if(TRUE)
   # ----
 
   target_include_directories(${target} PUBLIC ${OPENXR_INCLUDE_DIRS})
-  target_link_libraries(${target} PUBLIC ${OPENXR_LOADER_SHARED_LIBRARY})
+  target_link_libraries(${target} PRIVATE ${OPENXR_LOADER_SHARED_LIBRARY})
   target_compile_definitions(${target}
     PUBLIC
       USE_OPENXR=1 #!
