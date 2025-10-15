@@ -25,9 +25,9 @@ class Skybox {
  public:
   Skybox() = default;
 
-  void init(Renderer& renderer);
+  void init(Renderer& renderer); //
 
-  void release(Renderer const& renderer);
+  void release(RenderContext const& context);
 
   bool setup(std::string_view hdr_filename); //
 

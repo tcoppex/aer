@@ -135,16 +135,15 @@ void Skybox::init(Renderer& renderer) {
 
 // ----------------------------------------------------------------------------
 
-void Skybox::release(Renderer const& renderer) {
-  auto const& context = renderer.context();
-
-  context.destroy_image(specular_brdf_lut_);
-  context.destroy_pipeline(graphics_pipeline_);
-  context.destroy_pipeline_layout(pipeline_layout_);
-  context.destroy_descriptor_set_layout(descriptor_set_layout_);
-  context.destroy_buffer(index_buffer_);
-  context.destroy_buffer(vertex_buffer_);
-
+void Skybox::release(RenderContext const& context) {
+  context.destroyResources(
+    specular_brdf_lut_,
+    graphics_pipeline_,
+    pipeline_layout_,
+    descriptor_set_layout_,
+    index_buffer_,
+    vertex_buffer_
+  );
   envmap_.release();
 }
 
