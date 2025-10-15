@@ -302,12 +302,7 @@ bool Application::reset_swapchain() {
     auto surface_creation = VK_SUCCESS;
 
     /* Release previous swapchain if any, and create the surface when needed. */
-    if (VK_NULL_HANDLE == surface_) [[unlikely]] {
-      // Initial surface creation.
-      surface_creation = CHECK_VK(
-        wm_->createWindowSurface(context_.instance(), &surface_)
-      );
-    } else {
+    if (VK_NULL_HANDLE != surface_) [[likely]] {
 #if defined(ANDROID)
       // On Android we use a new window, so we recreate everything.
       context_.destroy_surface(surface_);
@@ -319,18 +314,23 @@ bool Application::reset_swapchain() {
       // On Desktop we can recreate a new swapchain from the old one.
       swapchain_.release(Swapchain::kKeepPreviousSwapchain);
 #endif
+    } else {
+      // First surface creation.
+      surface_creation = CHECK_VK(
+        wm_->createWindowSurface(context_.instance(), &surface_)
+      );
     }
 
     // Recreate the Swapchain.
     if (VK_SUCCESS == surface_creation) {
-      swapchain_.init(context_, surface_);
-      bSuccess = true;
+      bSuccess = swapchain_.init(context_, surface_);
     }
   } else {
     // [OpenXR bypass traditionnal Surface + Swapchain creation]
     bSuccess = xr_->resetSwapchain();
   }
 
+  // Update the pointer to the underlying swapchain.
   swapchain_interface_ = xr_ ? xr_->swapchainInterface()
                              : &swapchain_
                              ;

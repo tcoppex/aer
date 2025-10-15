@@ -20,7 +20,7 @@ class Swapchain : public SwapchainInterface {
   Swapchain() = default;
   virtual ~Swapchain() = default;
 
-  void init(Context const& context, VkSurfaceKHR surface);
+  bool init(Context const& context, VkSurfaceKHR surface);
 
   void release(bool keep_previous_swapchain = false);
 
