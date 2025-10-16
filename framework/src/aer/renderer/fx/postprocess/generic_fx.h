@@ -21,13 +21,15 @@ class GenericFx : public virtual FxInterface {
  protected:
   // virtual backend::ShadersMap createShaderModules() const = 0;
 
-  virtual DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const = 0;
+  virtual DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const = 0;
 
-  virtual std::vector<VkDescriptorSetLayout> getDescriptorSetLayouts() const {
-    return {descriptor_set_layout_};
+  [[nodiscard]]
+  virtual std::vector<VkDescriptorSetLayout> descriptor_set_layouts() const {
+    return { descriptor_set_layout_ };
   }
 
-  virtual std::vector<VkPushConstantRange> getPushConstantRanges() const {
+  [[nodiscard]]
+  virtual std::vector<VkPushConstantRange> push_constant_ranges() const {
     return {};
   }
 

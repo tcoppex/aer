@@ -181,7 +181,7 @@ bool WMAndroid::poll(AppData_t app_data) noexcept {
     struct android_poll_source* source{nullptr};
 
     bool const do_not_wait = app_data->destroyRequested
-                          || (isActive() && native_window)
+                          || (is_active() && native_window)
                           || (xr && xr->isSessionRunning()) // xxx
                           ;
 
@@ -213,7 +213,7 @@ void WMAndroid::close() noexcept {
 
 // ----------------------------------------------------------------------------
 
-std::vector<char const*> WMAndroid::vulkanInstanceExtensions() const noexcept {
+std::vector<char const*> WMAndroid::vk_instance_extensions() const noexcept {
   return {
     VK_KHR_SURFACE_EXTENSION_NAME,
     VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,

@@ -32,13 +32,13 @@ void Allocator::init(VmaAllocatorCreateInfo alloc_create_info) {
 // ----------------------------------------------------------------------------
 
 void Allocator::release() {
-  clear_staging_buffers();
+  clearStagingBuffers();
   vmaDestroyAllocator(handle_);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer Allocator::create_buffer(
+backend::Buffer Allocator::createBuffer(
   VkDeviceSize size,
   VkBufferUsageFlags2KHR usage,
   VmaMemoryUsage memory_usage,
@@ -93,7 +93,7 @@ backend::Buffer Allocator::create_buffer(
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer Allocator::create_staging_buffer(
+backend::Buffer Allocator::createStagingBuffer(
   size_t const bytesize,
   void const* host_data,
   size_t host_data_size
@@ -103,7 +103,7 @@ backend::Buffer Allocator::create_staging_buffer(
   // TODO : use a pool to reuse some staging buffer.
 
   // Create buffer.
-  backend::Buffer staging_buffer{create_buffer(
+  backend::Buffer staging_buffer{createBuffer(
     static_cast<VkDeviceSize>(bytesize),
     VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR,
     VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -111,7 +111,7 @@ backend::Buffer Allocator::create_staging_buffer(
   )};
   // Map host data to device.
   if (host_data != nullptr) {
-    write_buffer(
+    writeBuffer(
       staging_buffer,
       host_data,
       (host_data_size > 0u) ? host_data_size : bytesize
@@ -123,7 +123,7 @@ backend::Buffer Allocator::create_staging_buffer(
 
 // ----------------------------------------------------------------------------
 
-size_t Allocator::write_buffer(
+size_t Allocator::writeBuffer(
   backend::Buffer const& dst_buffer,
   size_t const dst_offset,
   void const* host_data,
@@ -147,16 +147,16 @@ size_t Allocator::write_buffer(
 
 // ----------------------------------------------------------------------------
 
-void Allocator::clear_staging_buffers() const {
+void Allocator::clearStagingBuffers() const {
   for (auto const& staging_buffer : staging_buffers_) {
-    destroy_buffer(staging_buffer);
+    destroyBuffer(staging_buffer);
   }
   staging_buffers_.clear();
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Image Allocator::create_image(
+backend::Image Allocator::createImage(
   VkImageCreateInfo const& image_info,
   VkImageViewCreateInfo view_info,
   VmaMemoryUsage memory_usage
@@ -190,7 +190,7 @@ backend::Image Allocator::create_image(
 
 // ----------------------------------------------------------------------------
 
-void Allocator::destroy_image(backend::Image &image) const {
+void Allocator::destroyImage(backend::Image &image) const {
   if (!image.valid()) {
     return;
   }

@@ -38,7 +38,7 @@ class SampleApp final : public Application {
   }
 
   bool setup() final {
-    wm_->setTitle("06 - Poussières d'Étoiles");
+    wm_->set_title("06 - Poussières d'Étoiles");
 
     renderer_.set_clear_color({ 0.02f, 0.03f, 0.12f, 1.0f });
 
@@ -61,9 +61,9 @@ class SampleApp final : public Application {
 
     /* Create device buffers. */
     {
-      auto cmd = context_.create_transient_command_encoder();
+      auto cmd = context_.createTransientCommandEncoder();
 
-      uniform_buffer_ = cmd.create_buffer_and_upload(
+      uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       );
@@ -75,17 +75,17 @@ class SampleApp final : public Application {
         auto &mesh = point_grid_;
         Geometry::MakePointListPlane(mesh.geo, 1.0f, 512u, 512u);
 
-        mesh.vertex = cmd.create_buffer_and_upload(
+        mesh.vertex = cmd.createBufferAndUpload(
           mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
-        mesh.index = cmd.create_buffer_and_upload(
+        mesh.index = cmd.createBufferAndUpload(
           mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         );
       }
 
-      context_.finish_transient_command_encoder(cmd);
+      context_.finishTransientCommandEncoder(cmd);
     }
 
     {
@@ -95,7 +95,7 @@ class SampleApp final : public Application {
         | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
       };
 
-      graphics_.descriptor_set_layout = context_.create_descriptor_set_layout({
+      graphics_.descriptor_set_layout = context_.createDescriptorSetLayout({
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -125,7 +125,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_.descriptor_set = context_.create_descriptor_set(
+      graphics_.descriptor_set = context_.createDescriptorSet(
         graphics_.descriptor_set_layout,
         {
           {
@@ -147,7 +147,7 @@ class SampleApp final : public Application {
       );
     }
 
-    graphics_.pipeline_layout = context_.create_pipeline_layout({
+    graphics_.pipeline_layout = context_.createPipelineLayout({
       .setLayouts = { graphics_.descriptor_set_layout },
       .pushConstantRanges = {
         {
@@ -159,13 +159,13 @@ class SampleApp final : public Application {
 
     /* Setup the graphics pipeline. */
     {
-      auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
         "simple.vert.glsl",
         "simple.frag.glsl",
       })};
 
       /* Setup a pipeline with additive blend and no depth buffer. */
-      graphics_.pipeline = context_.create_graphics_pipeline(
+      graphics_.pipeline = context_.createGraphicsPipeline(
         graphics_.pipeline_layout,
         {
           .vertex = {
@@ -208,7 +208,7 @@ class SampleApp final : public Application {
         }
       );
 
-      context_.release_shader_modules(shaders);
+      context_.releaseShaderModules(shaders);
     }
 
     return true;
@@ -233,17 +233,17 @@ class SampleApp final : public Application {
       )
     );
 
-    cmd.bind_descriptor_set(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+    cmd.bindDescriptorSet(graphics_.descriptor_set, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
 
     graphics_.push_constant.model.worldMatrix = world_matrix;
     graphics_.push_constant.time = frame_time();
-    cmd.push_constant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
+    cmd.pushConstant(graphics_.push_constant, graphics_.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT);
 
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_);
+      pass.setViewportScissor(viewport_size_);
 
-      pass.bind_pipeline(graphics_.pipeline);
+      pass.bindPipeline(graphics_.pipeline);
 
       /* For each particle vertex we output two triangles to form a quad,
        * so (2 * 3 = 6) vertices per points.
@@ -255,7 +255,7 @@ class SampleApp final : public Application {
        */
       pass.draw(6u, point_grid_.geo.vertex_count());
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

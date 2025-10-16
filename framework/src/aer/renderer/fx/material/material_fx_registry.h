@@ -30,7 +30,7 @@ class MaterialFxRegistry {
   );
 
   /* Push updated for all MaterialFx. */
-  void push_material_storage_buffers() const;
+  void pushMaterialStorageBuffers() const;
 
   /* Getters */
 

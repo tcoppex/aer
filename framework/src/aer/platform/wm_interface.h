@@ -28,33 +28,33 @@ struct WMInterface {
 
   virtual bool poll(AppData_t app_data) noexcept = 0;
 
-  virtual void setTitle(std::string_view title) const noexcept = 0;
+  virtual void set_title(std::string_view title) const noexcept = 0;
 
   virtual void close() noexcept = 0;
-
-  [[nodiscard]]
-  virtual uint32_t surfaceWidth() const noexcept = 0;
-
-  [[nodiscard]]
-  virtual uint32_t surfaceHeight() const noexcept = 0;
 
   [[nodiscard]]
   virtual void* handle() const noexcept = 0;
 
   [[nodiscard]]
-  virtual bool isActive() const noexcept {
+  virtual uint32_t surface_width() const noexcept = 0;
+
+  [[nodiscard]]
+  virtual uint32_t surface_height() const noexcept = 0;
+
+  [[nodiscard]]
+  virtual bool is_active() const noexcept {
     return true;
   }
 
   // --- OpenXR ---
 
   [[nodiscard]]
-  virtual XRPlatformInterface const& xrPlatformInterface() const noexcept = 0;
+  virtual XRPlatformInterface const& xr_platform_interface() const noexcept = 0;
 
   // --- Vulkan ---
 
   [[nodiscard]]
-  virtual std::vector<char const*> vulkanInstanceExtensions() const noexcept = 0;
+  virtual std::vector<char const*> vk_instance_extensions() const noexcept = 0;
 
   [[nodiscard]]
   virtual VkResult createWindowSurface(VkInstance instance, VkSurfaceKHR *surface) const noexcept = 0;

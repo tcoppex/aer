@@ -77,7 +77,7 @@ class BasicRayTracingFx : public RayTracingFx {
  protected:
   backend::ShadersMap createShaderModules() const final {
     auto create_modules{[&](std::vector<std::string_view> const& filenames) {
-      return context_ptr_->create_shader_modules(
+      return context_ptr_->createShaderModules(
         COMPILED_SHADERS_DIR,
         filenames
       );
@@ -150,7 +150,7 @@ class BasicRayTracingFx : public RayTracingFx {
     };
   }
 
-  std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+  std::vector<VkPushConstantRange> push_constant_ranges() const final {
     return {
       {
         .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
@@ -164,7 +164,7 @@ class BasicRayTracingFx : public RayTracingFx {
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) const override {
-    cmd.push_constant(
+    cmd.pushConstant(
       push_constant_,
       pipeline_layout_,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR
@@ -197,11 +197,11 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void const* getMaterialBufferData() const override {
+  void const* material_buffer_data() const override {
     return materials_.data();
   }
 
-  size_t getMaterialBufferSize() const override {
+  size_t material_buffer_size() const override {
     return !materials_.empty() ? materials_.size() * sizeof(materials_[0])
                                : 0
                                ;
@@ -225,7 +225,7 @@ class BasicRayTracingFx : public RayTracingFx {
 class SampleApp final : public Application {
  private:
   bool setup() final {
-    wm_->setTitle("11 - shining through");
+    wm_->set_title("11 - shining through");
 
     renderer_.set_clear_color({ 0.52f, 0.28f, 0.80f, 0.0f });
 
@@ -238,11 +238,11 @@ class SampleApp final : public Application {
         0.1f,
         100.0f
       );
-      camera_.setController(&arcball_controller_);
+      camera_.set_controller(&arcball_controller_);
 
-      arcball_controller_.setTarget(vec3f(0.0f, 1.0f, 0.0));
-      arcball_controller_.setView(0.0f, 0.0f);
-      arcball_controller_.setDolly(3.5f);
+      arcball_controller_.set_target(vec3f(0.0f, 1.0f, 0.0));
+      arcball_controller_.set_view(0.0f, 0.0f);
+      arcball_controller_.set_dolly(3.5f);
     }
 
     // -------------------------------
@@ -258,9 +258,9 @@ class SampleApp final : public Application {
     };
 
     if constexpr(true) {
-      future_scene_ = renderer_.async_load_gltf(gtlf_filename);
+      future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
     } else {
-      scene_ = renderer_.load_gltf(gtlf_filename);
+      scene_ = renderer_.loadGLTF(gtlf_filename);
     }
 
     return true;
@@ -288,24 +288,24 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    if (ray_tracing_fx_.enabled())
+    if (ray_tracing_fx_.is_enable())
     {
       // RAY TRACER
       ray_tracing_fx_.execute(cmd);
-      renderer_.blit_color(cmd, ray_tracing_fx_.getImageOutput());
+      renderer_.blitColor(cmd, ray_tracing_fx_.image_output());
     }
     else
     {
       // RASTERIZER
-      auto pass = cmd.begin_rendering();
+      auto pass = cmd.beginRendering();
       if (scene_) scene_->render(pass);
-      cmd.end_rendering();
+      cmd.endRendering();
     }
 
-    draw_ui(cmd);
+    drawUI(cmd);
   }
 
-  void build_ui() final {
+  void buildUI() final {
     ImGui::Begin("Settings");
     {
       ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);

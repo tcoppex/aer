@@ -14,7 +14,7 @@ void Renderer::init(
   context_ptr_ = &context;
   swapchain_ptr_ = swapchain_ptr;
 
-  init_view_resources();
+  initViewResources();
 
   LOGD(" > Internal Fx");
   {
@@ -24,12 +24,12 @@ void Renderer::init(
 
 // ----------------------------------------------------------------------------
 
-void Renderer::init_view_resources() {
+void Renderer::initViewResources() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
   LOGD(" > Frames Resources");
 
-  auto const frame_count = swapchain().imageCount();
+  auto const frame_count = swapchain().image_count();
   LOG_CHECK( frame_count > 0u );
   frames_.resize(frame_count);
 
@@ -56,16 +56,16 @@ void Renderer::init_view_resources() {
   }
 
   /* Setup per-frame image buffers. */
-  auto const dimension = swapchain().surfaceSize();
+  auto const dimension = swapchain().surface_size();
   resize(dimension.width, dimension.height);
 }
 
 // ----------------------------------------------------------------------------
 
-void Renderer::release_view_resources() {
+void Renderer::releaseViewResources() {
   for (auto & frame : frames_) {
-    context_ptr_->free_command_buffer(frame.command_pool, frame.command_buffer);
-    context_ptr_->destroy_command_pool(frame.command_pool);
+    context_ptr_->freeCommandBuffer(frame.command_pool, frame.command_buffer);
+    context_ptr_->destroyCommandPool(frame.command_pool);
     frame.main_rt->release();
   }
 }
@@ -77,7 +77,7 @@ void Renderer::release() {
     return;
   }
   skybox_.release(*context_ptr_);
-  release_view_resources();
+  releaseViewResources();
 }
 
 // ----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
   auto const surface_size = VkExtent2D{ w, h };
-  auto const layers = swapchain().imageArraySize();
+  auto const layers = swapchain().image_array_size();
 
   if (frames_[0].main_rt != nullptr) [[likely]] {
     for (auto &frame : frames_) {
@@ -97,7 +97,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   } else {
     for (size_t i = 0; i < frames_.size(); ++i) {
       auto &frame = frames_[i];
-      frame.main_rt = context_ptr_->create_render_target({
+      frame.main_rt = context_ptr_->createRenderTarget({
         .colors = {{
           .format = color_format(),
           .clear_value = kDefaultColorClearValue
@@ -121,13 +121,13 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 
 // ----------------------------------------------------------------------------
 
-CommandEncoder& Renderer::begin_frame() {
+CommandEncoder& Renderer::beginFrame() {
   LOG_CHECK( context_ptr_ != nullptr );
 
   /* Handle Swapchain resize detection. */
   {
     // (suppose they use the same scale)
-    auto const& A = swapchain().surfaceSize();
+    auto const& A = swapchain().surface_size();
     auto const& B = surface_size();
     if (A.width != B.width || A.height != B.height) {
       resize(A.width, A.height);
@@ -142,7 +142,7 @@ CommandEncoder& Renderer::begin_frame() {
 
   /* Reset the frame command pool to record new command for this frame. */
   auto &frame = frame_resource();
-  context_ptr_->reset_command_pool(frame.command_pool);
+  context_ptr_->resetCommandPool(frame.command_pool);
 
   // -----------------------
   /* Reset the command buffer wrapper. */
@@ -161,9 +161,9 @@ CommandEncoder& Renderer::begin_frame() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::apply_postprocess() {
+void Renderer::applyPostProcess() {
   auto const& frame = frame_resource();
-  auto const& dst_img = swapchain().currentImage();
+  auto const& dst_img = swapchain().current_image();
 
   // Blit Color to Swapchain.
   {
@@ -174,16 +174,16 @@ void Renderer::apply_postprocess() {
                           ;
 
     uint32_t const layer_count = src_rt.layer_count();
-    LOG_CHECK(layer_count == swapchain().imageArraySize());
+    LOG_CHECK(layer_count == swapchain().image_array_size());
 
-    frame.cmd.transition_images_layout(
+    frame.cmd.transitionImages(
       { src_img },
       VK_IMAGE_LAYOUT_UNDEFINED,
       src_layout,
       layer_count
     );
 
-    frame.cmd.blit_image_2d(
+    frame.cmd.blitImage2D(
       src_img, src_layout,
       // -----------------------------
       dst_img, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -197,12 +197,12 @@ void Renderer::apply_postprocess() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::end_frame() {
+void Renderer::endFrame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
   /* Transition the final image then blit to the swapchain frame. */
   if (enable_postprocess_) {
-    apply_postprocess();
+    applyPostProcess();
   }
 
   auto const& frame = frame_resource();
@@ -217,37 +217,37 @@ void Renderer::end_frame() {
 
   /* Present the swapchain frame's image. */
   swapchain().finishFrame(queue);
-  frame_index_ = (frame_index_ + 1u) % swapchain().imageCount();
+  frame_index_ = (frame_index_ + 1u) % swapchain().image_count();
 }
 
 // ----------------------------------------------------------------------------
 
-void Renderer::blit_color(
+void Renderer::blitColor(
   CommandEncoder const& cmd,
   backend::Image const& src_image
 ) const noexcept {
-  cmd.blit_image_2d(
+  cmd.blitImage2D(
     src_image,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
     main_render_target().resolve_attachment(),
     // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
     surface_size(),
-    swapchain().imageArraySize() //
+    swapchain().image_array_size() //
   );
 }
 
 // ----------------------------------------------------------------------------
 
-GLTFScene Renderer::load_gltf(
+GLTFScene Renderer::loadGLTF(
   std::string_view gltf_filename,
   scene::Mesh::AttributeLocationMap const& attribute_to_location
 ) {
   if (auto scene = std::make_shared<GPUResources>(*context_ptr_); scene) {
     scene->setup();
-    if (scene->load_file(gltf_filename)) {
-      scene->initialize_submesh_descriptors(attribute_to_location);
-      scene->upload_to_device();
+    if (scene->loadFile(gltf_filename)) {
+      scene->initializeSubmeshDescriptors(attribute_to_location);
+      scene->uploadToDevice();
       return scene;
     }
   }
@@ -256,8 +256,8 @@ GLTFScene Renderer::load_gltf(
 
 // ----------------------------------------------------------------------------
 
-GLTFScene Renderer::load_gltf(std::string_view gltf_filename) {
-  return load_gltf(
+GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
+  return loadGLTF(
     gltf_filename,
     VertexInternal_t::GetDefaultAttributeLocationMap()
   );

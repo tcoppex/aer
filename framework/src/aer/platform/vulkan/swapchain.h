@@ -50,12 +50,12 @@ class Swapchain : public SwapchainInterface {
   bool finishFrame(VkQueue queue) final;
 
   [[nodiscard]]
-  VkExtent2D surfaceSize() const noexcept final {
+  VkExtent2D surface_size() const noexcept final {
     return swapchain_create_info_.imageExtent;
   }
 
   [[nodiscard]]
-  uint32_t imageCount() const noexcept final {
+  uint32_t image_count() const noexcept final {
     return image_count_;
   }
 
@@ -64,23 +64,23 @@ class Swapchain : public SwapchainInterface {
     return images_[0u].format;
   }
 
-  uint32_t viewMask() const noexcept final {
+  uint32_t view_mask() const noexcept final {
     return 0;
   }
 
   [[nodiscard]]
-  backend::Image currentImage() const noexcept final {
+  backend::Image current_image() const noexcept final {
     return images_[acquired_image_index_];
   }
 
  private:
   [[nodiscard]]
-  VkSurfaceFormat2KHR select_surface_format(
+  VkSurfaceFormat2KHR selectSurfaceFormat(
     VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2
   ) const;
 
   [[nodiscard]]
-  VkPresentModeKHR select_present_mode(VkSurfaceKHR surface, bool use_vsync) const;
+  VkPresentModeKHR selectPresentMode(VkSurfaceKHR surface, bool use_vsync) const;
 
   [[nodiscard]]
   VkSemaphore wait_image_semaphore() const noexcept {

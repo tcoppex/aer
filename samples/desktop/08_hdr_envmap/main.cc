@@ -27,7 +27,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("08 - Es werde Licht");
+    wm_->set_title("08 - Es werde Licht");
 
     renderer_.set_clear_color({ 0.55f, 0.65f, 0.75f, 1.0f });
 
@@ -40,10 +40,10 @@ class SampleApp final : public Application {
         0.05f,
         750.0f
       );
-      camera_.setController(&arcball_controller_);
+      camera_.set_controller(&arcball_controller_);
 
-      arcball_controller_.setView(lina::kTwoPi/16.0f, lina::kTwoPi/8.0f);
-      arcball_controller_.setDolly(4.0f);
+      arcball_controller_.set_view(lina::kTwoPi/16.0f, lina::kTwoPi/8.0f);
+      arcball_controller_.set_dolly(4.0f);
 
       host_data_.scene = {
         .projectionMatrix = camera_.proj(),
@@ -52,18 +52,18 @@ class SampleApp final : public Application {
       /* Create and upload the uniform values directly. */
       if constexpr (true) {
         /* Using an internal transient command buffer. */
-        uniform_buffer_ = context_.transient_create_buffer(
+        uniform_buffer_ = context_.transientCreateBuffer(
           &host_data_, sizeof(host_data_),
           VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
         );
       } else {
         /* Or writing the data from the host via mapping operations. */
-        uniform_buffer_ = context_.create_buffer(
+        uniform_buffer_ = context_.createBuffer(
           sizeof(host_data_),
           VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
           VMA_MEMORY_USAGE_CPU_TO_GPU
         );
-        context_.write_buffer(uniform_buffer_, &host_data_, sizeof(host_data_));
+        context_.writeBuffer(uniform_buffer_, &host_data_, sizeof(host_data_));
       }
     }
 
@@ -80,7 +80,7 @@ class SampleApp final : public Application {
 
       /* Load the model directly on device, as we do not change the model's internal data
        * layout we need to specify how to map its attributes to the shader used. */
-      scene_ = renderer_.load_gltf(gltf_filename, {
+      scene_ = renderer_.loadGLTF(gltf_filename, {
         { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
         { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
         { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
@@ -91,11 +91,11 @@ class SampleApp final : public Application {
 
     /* Release the temporary staging buffers.
      * This is done automatically at the end of setup(). */
-    context_.clear_staging_buffers();
+    context_.clearStagingBuffers();
 
     /* Descriptor set. */
     {
-      descriptor_set_layout_ = context_.create_descriptor_set_layout({
+      descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -121,7 +121,7 @@ class SampleApp final : public Application {
         },
       });
 
-      descriptor_set_ = context_.create_descriptor_set(descriptor_set_layout_, {
+      descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -142,7 +142,7 @@ class SampleApp final : public Application {
     }
 
     /* Update the Sampler Atlas descriptor with the currently loaded textures. */
-    context_.update_descriptor_set(descriptor_set_, {
+    context_.updateDescriptorSet(descriptor_set_, {
       {
         .binding = shader_interop::kDescriptorSetBinding_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -150,14 +150,14 @@ class SampleApp final : public Application {
       }
     });
 
-    auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert.glsl",
       "simple.frag.glsl",
     })};
 
     /* Setup the graphics pipeline. */
     {
-      VkPipelineLayout const pipeline_layout = context_.create_pipeline_layout({
+      VkPipelineLayout const pipeline_layout = context_.createPipelineLayout({
         .setLayouts = { descriptor_set_layout_ },
         .pushConstantRanges = {
           {
@@ -169,7 +169,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .dynamicStates = {
           VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
           VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
@@ -200,7 +200,7 @@ class SampleApp final : public Application {
       });
     }
 
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
@@ -217,7 +217,7 @@ class SampleApp final : public Application {
 
   void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
     for (auto const& mesh : scene_->meshes) {
-      pass.set_primitive_topology(mesh->vk_primitive_topology());
+      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
       push_constant_.model.worldMatrix = linalg::mul(
         world_matrix,
         mesh->world_matrix()
@@ -225,7 +225,7 @@ class SampleApp final : public Application {
       for (auto const& submesh : mesh->submeshes) {
         auto material = scene_->material(*submesh.material_ref);
         push_constant_.model.albedo_texture_index = material.bindings.basecolor;
-        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
+        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
         pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
       }
     }
@@ -244,21 +244,21 @@ class SampleApp final : public Application {
       )
     };
 
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_);
+      pass.setViewportScissor(viewport_size_);
 
       /* First render the skybox. */
       renderer_.skybox().render(pass, camera_);
 
       /* Then the scene / model. */
-      pass.bind_pipeline(graphics_pipeline_);
+      pass.bindPipeline(graphics_pipeline_);
       {
-        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
         draw_model(pass, worldMatrix);
       }
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

@@ -25,7 +25,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("04 - خوراي ، كىشىلەر ماڭا دىققەت قىلىۋاتىدۇ");
+    wm_->set_title("04 - خوراي ، كىشىلەر ماڭا دىققەت قىلىۋاتىدۇ");
 
     renderer_.set_clear_color({ 0.94f, 0.93f, 0.94f, 1.0f});
 
@@ -50,7 +50,7 @@ class SampleApp final : public Application {
     Geometry::MakeCube(cube_);
 
     /* Map to bind vertex attributes with their shader input location. */
-    cube_.initialize_submesh_descriptors({
+    cube_.initializeSubmeshDescriptors({
       { Geometry::AttributeType::Position, shader_interop::kAttribLocation_Position },
       { Geometry::AttributeType::Texcoord, shader_interop::kAttribLocation_Texcoord },
       { Geometry::AttributeType::Normal, shader_interop::kAttribLocation_Normal },
@@ -58,41 +58,41 @@ class SampleApp final : public Application {
 
     /* Create Buffers & Image(s). */
     {
-      auto cmd = context_.create_transient_command_encoder();
+      auto cmd = context_.createTransientCommandEncoder();
 
-      uniform_buffer_ = cmd.create_buffer_and_upload(
+      uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       );
 
       /* Transfer the cube geometry (vertices attributes & indices) to the device. */
-      vertex_buffer_ = cmd.create_buffer_and_upload(
+      vertex_buffer_ = cmd.createBufferAndUpload(
         cube_.vertices(),
         VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
       );
-      index_buffer_ = cmd.create_buffer_and_upload(
+      index_buffer_ = cmd.createBufferAndUpload(
         cube_.indices(),
         VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
       );
 
       /* Load a texture using the current transient command encoder. */
-      if (std::string fn{ASSETS_DIR "textures/whynot.png"}; !context_.load_image_2d(cmd, fn, image_)) {
+      if (std::string fn{ASSETS_DIR "textures/whynot.png"}; !context_.loadImage2D(cmd, fn, image_)) {
         LOGW("The texture image '{}' could not be found.", fn);
       }
 
-      context_.finish_transient_command_encoder(cmd);
+      context_.finishTransientCommandEncoder(cmd);
     }
 
     /* Alternatively the texture could have been loaded directly using an
      * internal transient command encoder. */
-    // context_.load_image_2d(path_to_texture, image_);
+    // context_.loadImage2D(path_to_texture, image_);
 
     /* We don't need to keep the host data so we can clear them. */
     cube_.clear_indices_and_vertices();
 
     /* Descriptor set. */
     {
-      descriptor_set_layout_ = context_.create_descriptor_set_layout({
+      descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -111,7 +111,7 @@ class SampleApp final : public Application {
         },
       });
 
-      descriptor_set_ = context_.create_descriptor_set(descriptor_set_layout_, {
+      descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -131,14 +131,14 @@ class SampleApp final : public Application {
       });
     }
 
-    auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert.glsl",
       "simple.frag.glsl",
     })};
 
     /* Setup the graphics pipeline. */
     {
-      VkPipelineLayout const pipeline_layout = context_.create_pipeline_layout({
+      VkPipelineLayout const pipeline_layout = context_.createPipelineLayout({
         .setLayouts = { descriptor_set_layout_ },
         .pushConstantRanges = {
           {
@@ -148,7 +148,7 @@ class SampleApp final : public Application {
         },
       });
 
-      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout, {
+      graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .vertex = {
           .module = shaders[0u].module,
           /* Get buffer descriptors compatible with the mesh vertex inputs.
@@ -185,7 +185,7 @@ class SampleApp final : public Application {
       });
     }
 
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
@@ -215,23 +215,23 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_);
+      pass.setViewportScissor(viewport_size_);
 
-      pass.bind_pipeline(graphics_pipeline_);
+      pass.bindPipeline(graphics_pipeline_);
       {
-        pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
-        pass.bind_vertex_buffer(vertex_buffer_);
-        pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-        pass.draw_indexed(cube_.index_count());
+        pass.bindVertexBuffer(vertex_buffer_);
+        pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
+        pass.drawIndexed(cube_.index_count());
 
         // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
       }
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

@@ -23,15 +23,15 @@ struct GPUResources : scene::HostResources {
   ~GPUResources();
 
   /* Load a scene assets from disk to Host memory. */
-  bool load_file(std::string_view filename);
+  bool loadFile(std::string_view filename);
 
   /* Bind mesh attributes to pipeline locations. */
-  void initialize_submesh_descriptors(
+  void initializeSubmeshDescriptors(
     scene::Mesh::AttributeLocationMap const& attribute_to_location
   );
 
   /* Upload host resources to Device memory. */
-  void upload_to_device(
+  void uploadToDevice(
     bool const bReleaseHostDataOnUpload = kReleaseHostDataOnUpload
   );
 
@@ -56,7 +56,7 @@ struct GPUResources : scene::HostResources {
   void upload_images();
   void upload_buffers();
 
-  void update_frame_data(
+  void updateFrameData(
     Camera const& camera,
     VkExtent2D const& surface_size,
     float elapsed_time
@@ -73,7 +73,6 @@ struct GPUResources : scene::HostResources {
   backend::Buffer frame_ubo_{};
   backend::Buffer transforms_ssbo_{};
 
- protected:
   std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
   // -------------------------------

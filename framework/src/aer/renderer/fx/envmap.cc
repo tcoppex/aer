@@ -8,7 +8,7 @@
 void Envmap::init(RenderContext const& context) {
   context_ptr_ = &context;
 
-  irradiance_matrices_buffer_ = context.create_buffer(
+  irradiance_matrices_buffer_ = context.createBuffer(
     sizeof(shader_interop::envmap::SHMatrices),
       VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
@@ -54,16 +54,16 @@ void Envmap::init(RenderContext const& context) {
     view_info.format = image_info.format;
 
     image_info.extent = { kDiffuseResolution, kDiffuseResolution, 1u };
-    images_[ImageType::Diffuse] = context.create_image(image_info, view_info);
+    images_[ImageType::Diffuse] = context.createImage(image_info, view_info);
 
     image_info.extent = { kIrradianceResolution, kIrradianceResolution, 1u };
-    images_[ImageType::Irradiance] = context.create_image(image_info, view_info);
+    images_[ImageType::Irradiance] = context.createImage(image_info, view_info);
 
     image_info.extent = { kSpecularResolution, kSpecularResolution, 1u };
     image_info.mipLevels = kSpecularLevelCount;
     // view_info.subresourceRange.baseMipLevel = 2u;
     view_info.subresourceRange.levelCount = image_info.mipLevels;
-    images_[ImageType::Specular] = context.create_image(image_info, view_info);
+    images_[ImageType::Specular] = context.createImage(image_info, view_info);
   }
 
   /* Shared descriptor sets */
@@ -74,7 +74,7 @@ void Envmap::init(RenderContext const& context) {
       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
     };
 
-    descriptor_set_layout_ = context_ptr_->create_descriptor_set_layout({
+    descriptor_set_layout_ = context_ptr_->createDescriptorSetLayout({
       {
         .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -112,7 +112,7 @@ void Envmap::init(RenderContext const& context) {
       },
     });
 
-    descriptor_set_ = context_ptr_->create_descriptor_set(descriptor_set_layout_, {
+    descriptor_set_ = context_ptr_->createDescriptorSet(descriptor_set_layout_, {
       {
         .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImage,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -131,7 +131,7 @@ void Envmap::init(RenderContext const& context) {
     });
   }
 
-  pipeline_layout_ = context_ptr_->create_pipeline_layout({
+  pipeline_layout_ = context_ptr_->createPipelineLayout({
     .setLayouts = { descriptor_set_layout_ },
     .pushConstantRanges = {
       {
@@ -144,7 +144,7 @@ void Envmap::init(RenderContext const& context) {
 
   /* Create the compute pipelines. */
   {
-    auto shaders{context_ptr_->create_shader_modules(FRAMEWORK_COMPILED_SHADERS_DIR "envmap", {
+    auto shaders{context_ptr_->createShaderModules(FRAMEWORK_COMPILED_SHADERS_DIR "envmap", {
       "spherical_to_cubemap.comp.glsl",
       "irradiance_calculate_coeff.comp.glsl",
       "irradiance_reduce_step.comp.glsl",
@@ -153,7 +153,7 @@ void Envmap::init(RenderContext const& context) {
       "specular_convolution.comp.glsl",
     })};
     context_ptr_->create_compute_pipelines(pipeline_layout_, shaders, compute_pipelines_.data());
-    context_ptr_->release_shader_modules(shaders);
+    context_ptr_->releaseShaderModules(shaders);
   }
 
   /* internal sampler */
@@ -180,16 +180,16 @@ void Envmap::release() {
     return;
   }
 
-  context_ptr_->destroy_buffer(irradiance_matrices_buffer_);
+  context_ptr_->destroyBuffer(irradiance_matrices_buffer_);
   vkDestroySampler(context_ptr_->device(), sampler_, nullptr); //
   for (auto &image : images_) {
-    context_ptr_->destroy_image(image);
+    context_ptr_->destroyImage(image);
   }
   for (auto pipeline : compute_pipelines_) {
-    context_ptr_->destroy_pipeline(pipeline);
+    context_ptr_->destroyPipeline(pipeline);
   }
-  context_ptr_->destroy_pipeline_layout(pipeline_layout_);
-  context_ptr_->destroy_descriptor_set_layout(descriptor_set_layout_);
+  context_ptr_->destroyPipelineLayout(pipeline_layout_);
+  context_ptr_->destroyDescriptorSetLayout(descriptor_set_layout_);
 }
 
 // ----------------------------------------------------------------------------
@@ -200,7 +200,7 @@ bool Envmap::setup(std::string_view hdr_filename) {
     return false;
   }
 
-  context_ptr_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->updateDescriptorSet(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -225,11 +225,11 @@ bool Envmap::setup(std::string_view hdr_filename) {
 
 bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
   backend::Image spherical_envmap{};
-  if (!context_ptr_->load_image_2d(hdr_filename, spherical_envmap)) {
+  if (!context_ptr_->loadImage2D(hdr_filename, spherical_envmap)) {
     return false;
   }
 
-  context_ptr_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->updateDescriptorSet(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -246,9 +246,9 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
   auto const& diffuse = images_[ImageType::Diffuse];
 
   /* Transform the spherical texture into a cubemap. */
-  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Compute);
   {
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, //
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -257,12 +257,12 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
       }
     });
 
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::TransformSpherical]);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::TransformSpherical]);
     {
-      cmd.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       push_constant_.mapResolution = kDiffuseResolution; //
-      cmd.push_constant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch<
         shader_interop::envmap::kCompute_SphericalTransform_kernelSize_x,
@@ -270,7 +270,7 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
       >(push_constant_.mapResolution, push_constant_.mapResolution, 6u);
     }
 
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
         .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -279,9 +279,9 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
       }
     });
   }
-  context_ptr_->finish_transient_command_encoder(cmd);
+  context_ptr_->finishTransientCommandEncoder(cmd);
 
-  context_ptr_->destroy_image(spherical_envmap);
+  context_ptr_->destroyImage(spherical_envmap);
 
   return true;
 }
@@ -299,13 +299,13 @@ void Envmap::compute_irradiance_sh_coeff() {
 
   auto const& diffuse = images_[ImageType::Diffuse];
 
-  backend::Buffer sh_coefficient_buffer{context_ptr_->create_buffer(
+  backend::Buffer sh_coefficient_buffer{context_ptr_->createBuffer(
     bufferSize * sizeof(shader_interop::envmap::SHCoeff),
       VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
   )};
 
-  context_ptr_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->updateDescriptorSet(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_Sampler,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -326,15 +326,15 @@ void Envmap::compute_irradiance_sh_coeff() {
 
   // --------------------
 
-  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Compute);
   {
-    cmd.bind_descriptor_set(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
+    cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
     /* Compute Coefficient for each pixels of the cubemap faces. */
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::IrradianceSHCoeff]);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::IrradianceSHCoeff]);
     {
       push_constant_.mapResolution = kDiffuseResolution;
-      cmd.push_constant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
       cmd.dispatch<
         shader_interop::envmap::kCompute_IrradianceSHCoeff_kernelSize_x,
         shader_interop::envmap::kCompute_IrradianceSHCoeff_kernelSize_y
@@ -342,7 +342,7 @@ void Envmap::compute_irradiance_sh_coeff() {
     }
 
     /* Reduce the Spherical Harmonics coefficients buffer. */
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::ReduceSHCoeff]);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::ReduceSHCoeff]);
     uint32_t nelems = faceResolution;
     uint32_t buffer_binding = 0u;
     while (nelems > 1u) {
@@ -354,7 +354,7 @@ void Envmap::compute_irradiance_sh_coeff() {
       uint32_t const read_offset{ faceResolution * buffer_binding };
       uint32_t const write_offset{ faceResolution * (buffer_binding ^ 1u) };
 
-      cmd.pipeline_buffer_barriers({
+      cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -378,7 +378,7 @@ void Envmap::compute_irradiance_sh_coeff() {
       push_constant_.numElements = nelems;
       push_constant_.readOffset = read_offset;
       push_constant_.writeOffset = write_offset;
-      cmd.push_constant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch<reduceKernelSize>(nelems);
 
@@ -386,7 +386,7 @@ void Envmap::compute_irradiance_sh_coeff() {
       buffer_binding ^= 1u;
     }
 
-    cmd.pipeline_buffer_barriers({
+    cmd.pipelineBufferBarriers({
       {
         .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
@@ -399,11 +399,11 @@ void Envmap::compute_irradiance_sh_coeff() {
     });
 
     /* Transfer and transform the reduced SHCoeffs as irradiance matrices. */
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::IrradianceTransfer]);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::IrradianceTransfer]);
     {
       cmd.dispatch();
 
-      cmd.pipeline_buffer_barriers({
+      cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -416,9 +416,9 @@ void Envmap::compute_irradiance_sh_coeff() {
       });
     }
   }
-  context_ptr_->finish_transient_command_encoder(cmd);
+  context_ptr_->finishTransientCommandEncoder(cmd);
 
-  context_ptr_->destroy_buffer(sh_coefficient_buffer);
+  context_ptr_->destroyBuffer(sh_coefficient_buffer);
 }
 
 // ----------------------------------------------------------------------------
@@ -426,7 +426,7 @@ void Envmap::compute_irradiance_sh_coeff() {
 void Envmap::compute_irradiance() {
   auto const& irradiance = images_[ImageType::Irradiance];
 
-  context_ptr_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->updateDescriptorSet(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImage,
       .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -439,9 +439,9 @@ void Envmap::compute_irradiance() {
     }
   });
 
-  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Compute);
   {
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -450,12 +450,12 @@ void Envmap::compute_irradiance() {
       }
     });
 
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::Irradiance]);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::Irradiance]);
     {
-      cmd.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       push_constant_.mapResolution = kIrradianceResolution;
-      cmd.push_constant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch<
         shader_interop::envmap::kCompute_Irradiance_kernelSize_x,
@@ -463,7 +463,7 @@ void Envmap::compute_irradiance() {
       >(push_constant_.mapResolution, push_constant_.mapResolution, 6u);
     }
 
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
         .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
         .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -472,7 +472,7 @@ void Envmap::compute_irradiance() {
       }
     });
   }
-  context_ptr_->finish_transient_command_encoder(cmd);
+  context_ptr_->finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
@@ -512,7 +512,7 @@ void Envmap::compute_specular() {
     ));
   }
 
-  context_ptr_->update_descriptor_set(descriptor_set_, {
+  context_ptr_->updateDescriptorSet(descriptor_set_, {
     {
       .binding = shader_interop::envmap::kDescriptorSetBinding_StorageImageArray,
       .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -520,9 +520,9 @@ void Envmap::compute_specular() {
     }
   });
 
-  auto cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Compute);
   {
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
           .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
           .srcAccessMask = 0,
@@ -535,8 +535,8 @@ void Envmap::compute_specular() {
       }
     });
 
-    cmd.bind_pipeline(compute_pipelines_[ComputeStage::Specular]);
-    cmd.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
+    cmd.bindPipeline(compute_pipelines_[ComputeStage::Specular]);
+    cmd.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_COMPUTE_BIT);
     for (uint32_t level = 0u; level < kSpecularLevelCount; ++level) {
       float const roughness = static_cast<float>(level) * kInvMaxSpecularLevel;
 
@@ -544,7 +544,7 @@ void Envmap::compute_specular() {
       push_constant_.numSamples = kSpecularSampleCount;
       push_constant_.roughnessSquared = std::pow(roughness, 2.0f);
       push_constant_.mipLevel = level;
-      cmd.push_constant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch<
         shader_interop::envmap::kCompute_Specular_kernelSize_x,
@@ -553,7 +553,7 @@ void Envmap::compute_specular() {
       >(push_constant_.mapResolution, push_constant_.mapResolution, kFaceCount);
     }
 
-    cmd.pipeline_image_barriers({
+    cmd.pipelineImageBarriers({
       {
           .srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -566,7 +566,7 @@ void Envmap::compute_specular() {
       }
     });
   }
-  context_ptr_->finish_transient_command_encoder(cmd);
+  context_ptr_->finishTransientCommandEncoder(cmd);
 
   for (auto const& desc_image_info : desc_image_infos) {
     vkDestroyImageView(context_ptr_->device(), desc_image_info.imageView, nullptr);

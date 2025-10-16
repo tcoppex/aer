@@ -21,18 +21,18 @@ struct WMAndroid final : public WMInterface {
   [[nodiscard]]
   bool poll(AppData_t app_data) noexcept final;
 
-  void setTitle(std::string_view title) const noexcept final {}
+  void set_title(std::string_view title) const noexcept final {}
 
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surfaceWidth() const noexcept final {
+  uint32_t surface_width() const noexcept final {
     LOG_CHECK(surface_width_ > 0u);
     return surface_width_;
   }
 
   [[nodiscard]]
-  uint32_t surfaceHeight() const noexcept final {
+  uint32_t surface_height() const noexcept final {
     LOG_CHECK(surface_height_ > 0u);
     return surface_height_;
   }
@@ -43,17 +43,17 @@ struct WMAndroid final : public WMInterface {
   }
 
   [[nodiscard]]
-  bool isActive() const noexcept final {
+  bool is_active() const noexcept final {
     return visible && resumed;
   }
 
   [[nodiscard]]
-  XRPlatformInterface const& xrPlatformInterface() const noexcept final {
+  XRPlatformInterface const& xr_platform_interface() const noexcept final {
     return xr_android_;
   }
 
   [[nodiscard]]
-  std::vector<char const*> vulkanInstanceExtensions() const noexcept final;
+  std::vector<char const*> vk_instance_extensions() const noexcept final;
 
   [[nodiscard]]
   VkResult createWindowSurface(VkInstance instance, VkSurfaceKHR *surface) const noexcept final;

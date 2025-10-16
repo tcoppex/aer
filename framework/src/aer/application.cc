@@ -36,7 +36,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
       shutdown();
       return EXIT_FAILURE;
     }
-    context_.clear_staging_buffers();
+    context_.clearStagingBuffers();
   }
 
   mainloop(app_data);
@@ -54,7 +54,7 @@ float Application::elapsed_time() const noexcept {
 
 // ----------------------------------------------------------------------------
 
-void Application::draw_ui(CommandEncoder const& cmd) {
+void Application::drawUI(CommandEncoder const& cmd) {
   ui_->draw(
     cmd,
     renderer_.main_render_target().resolve_attachment().view,
@@ -89,7 +89,7 @@ bool Application::presetup(AppData_t app_data) {
   if (settings_.use_xr) {
     if (xr_ = std::make_unique<OpenXRContext>(); xr_) {
       user_data_.xr = xr_.get(); //
-      if (!xr_->init(wm_->xrPlatformInterface(),
+      if (!xr_->init(wm_->xr_platform_interface(),
                      settings_.app_name,
                      xrExtensions()))
       {
@@ -104,8 +104,8 @@ bool Application::presetup(AppData_t app_data) {
   /* Vulkan context. */
   if (!context_.init(settings_.renderer,
                      settings_.app_name,
-                     wm_->vulkanInstanceExtensions(),
-                     xr_ ? xr_->graphicsInterface() : nullptr))
+                     wm_->vk_instance_extensions(),
+                     xr_ ? xr_->graphics_interface() : nullptr))
   {
     LOGE("Vulkan context initialization fails");
     shutdown();
@@ -122,7 +122,7 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* Surface & Swapchain. */
-  if (!reset_swapchain()) {
+  if (!resetSwapchain()) {
     LOGE("Surface creation fails");
     shutdown();
     return false;
@@ -152,21 +152,21 @@ bool Application::presetup(AppData_t app_data) {
   // [~] Capture and handle surface resolution change.
   {
     auto on_resize = [this](uint32_t w, uint32_t h) {
-      context_.device_wait_idle();
+      context_.deviceWaitIdle();
       viewport_size_ = {
         .width = w,
         .height = h,
       };
       LOGV("> Surface resize (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
-      reset_swapchain();
+      resetSwapchain();
     };
     default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
     Events::Get().registerCallbacks(default_callbacks_.get());
 
     LOGI("> Retrieve original viewport size.");
     viewport_size_ = {
-      .width = wm_->surfaceWidth(),
-      .height = wm_->surfaceHeight(),
+      .width = wm_->surface_width(),
+      .height = wm_->surface_height(),
     };
     LOGI("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
   }
@@ -191,7 +191,7 @@ bool Application::presetup(AppData_t app_data) {
 
 // ----------------------------------------------------------------------------
 
-bool Application::next_frame(AppData_t app_data) {
+bool Application::nextFrame(AppData_t app_data) {
   Events::Get().prepareNextFrame();
 
   return wm_->poll(app_data)
@@ -203,7 +203,7 @@ bool Application::next_frame(AppData_t app_data) {
 
 // ----------------------------------------------------------------------------
 
-void Application::update_timer() noexcept {
+void Application::updateTimer() noexcept {
   auto const tick = elapsed_time();
   last_frame_time_ = frame_time_;
   frame_time_ = tick;
@@ -211,9 +211,9 @@ void Application::update_timer() noexcept {
 
 // ----------------------------------------------------------------------------
 
-void Application::update_ui() noexcept {
+void Application::updateUI() noexcept {
   ui_->beginFrame();
-  build_ui();
+  buildUI();
   ui_->endFrame();
 }
 
@@ -235,13 +235,13 @@ void Application::mainloop(AppData_t app_data) {
     if (xr_->isSessionRunning()) [[likely]] {
       xr_->processFrame(
         [this]() {
-          update_ui();
+          updateUI();
           update(delta_time());
         },
         [this]() {
-          auto const& cmd = renderer_.begin_frame();
+          auto const& cmd = renderer_.beginFrame();
           draw(cmd);
-          renderer_.end_frame();
+          renderer_.endFrame();
         }
       );
     } else {
@@ -254,12 +254,12 @@ void Application::mainloop(AppData_t app_data) {
   // Non XR
   // ----------------------
   frame_fn classicFrame{[this]() -> bool {
-    if (wm_->isActive()) [[likely]] {
-      update_ui();
+    if (wm_->is_active()) [[likely]] {
+      updateUI();
       update(delta_time());
-      auto const& cmd = renderer_.begin_frame();
+      auto const& cmd = renderer_.beginFrame();
       draw(cmd);
-      renderer_.end_frame();
+      renderer_.endFrame();
     } else {
       std::this_thread::sleep_for(10ms);
     }
@@ -269,8 +269,8 @@ void Application::mainloop(AppData_t app_data) {
   auto frame{xr_ ? xrFrame : classicFrame};
 
   LOGD("--- Mainloop ---");
-  while (next_frame(app_data)) {
-    update_timer();
+  while (nextFrame(app_data)) {
+    updateTimer();
     if (!frame()) {
       break;
     }
@@ -279,10 +279,10 @@ void Application::mainloop(AppData_t app_data) {
 
 // ----------------------------------------------------------------------------
 
-bool Application::reset_swapchain() {
+bool Application::resetSwapchain() {
   LOGD("[Reset the Swapchain]");
   
-  context_.device_wait_idle();
+  context_.deviceWaitIdle();
   bool bSuccess = false;
 
   if (!xr_) {
@@ -292,7 +292,7 @@ bool Application::reset_swapchain() {
     if (VK_NULL_HANDLE != surface_) [[likely]] {
 #if defined(ANDROID)
       // On Android we use a new window, so we recreate everything.
-      context_.destroy_surface(surface_);
+      context_.destroySurface(surface_);
       swapchain_.release();
       surface_creation = CHECK_VK(
         wm_->createWindowSurface(context_.instance(), &surface_)
@@ -318,7 +318,7 @@ bool Application::reset_swapchain() {
   }
 
   // Update the pointer to the underlying swapchain.
-  swapchain_interface_ = xr_ ? xr_->swapchainInterface()
+  swapchain_interface_ = xr_ ? xr_->swapchain_interface()
                              : &swapchain_
                              ;
   return bSuccess;
@@ -329,7 +329,7 @@ bool Application::reset_swapchain() {
 void Application::shutdown() {
   LOGD("--- Shutdown ---");
 
-  context_.device_wait_idle();
+  context_.deviceWaitIdle();
 
   LOGD("> Application");
   release();
@@ -350,7 +350,7 @@ void Application::shutdown() {
   } else {
     LOGD("> Swapchain");
     swapchain_.release();
-    context_.destroy_surface(surface_);
+    context_.destroySurface(surface_);
   }
 
   LOGD("> Device Context");

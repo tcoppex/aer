@@ -18,7 +18,7 @@ class Camera {
 
     virtual bool update(float dt) { return false; }
 
-    virtual void getViewMatrix(mat4 *m) = 0;
+    virtual void calculateViewMatrix(mat4 *m) = 0;
 
     virtual vec3 target() const = 0;
   };
@@ -94,7 +94,7 @@ class Camera {
   // Rebuild all matrices.
   void rebuild(bool bRetrieveView = true) {
     if (controller_ && bRetrieveView) {
-      controller_->getViewMatrix(&view_);
+      controller_->calculateViewMatrix(&view_);
     }
     world_    = linalg::inverse(view_); //
     viewproj_ = linalg::mul(proj_, view_);
@@ -103,7 +103,7 @@ class Camera {
     rebuilt_ = true;
   }
 
-  void setController(ViewController *controller) {
+  void set_controller(ViewController *controller) {
     controller_ = controller;
   }
 
@@ -142,7 +142,7 @@ class Camera {
     return linear_params_.y;
   }
 
-  vec4 const& linearizationParams() const {
+  vec4 const& linearization_params() const {
     return linear_params_;
   }
 
@@ -158,7 +158,7 @@ class Camera {
     return proj_;
   }
 
-  mat4 const& projInverse() const noexcept {
+  mat4 const& proj_inverse() const noexcept {
     return proj_inverse_;
   }
 
@@ -180,7 +180,7 @@ class Camera {
                        ;
   }
 
-  bool isOrtho() const noexcept {
+  bool is_ortho() const noexcept {
     return bUseOrtho_;
   }
 

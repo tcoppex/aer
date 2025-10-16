@@ -33,13 +33,13 @@ class SceneFx final : public RenderTargetFx {
   void setup(VkExtent2D const dimension) final {
     RenderTargetFx::setup(dimension);
 
-    uniform_buffer_ = context_ptr_->create_buffer(
+    uniform_buffer_ = context_ptr_->createBuffer(
       sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     );
 
-    context_ptr_->update_descriptor_set(descriptor_set_, {
+    context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
         .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
         .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -49,22 +49,22 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void release() final {
-    context_ptr_->destroy_buffer(uniform_buffer_);
+    context_ptr_->destroyBuffer(uniform_buffer_);
     scene_.reset();
     RenderTargetFx::release();
   }
 
  protected:
-  std::string getVertexShaderName() const final {
+  std::string vertex_shader_name() const final {
     return COMPILED_SHADERS_DIR "scene.vert.glsl";
   }
 
-  std::string getShaderName() const final {
+  std::string shader_name() const final {
     return COMPILED_SHADERS_DIR "scene.frag.glsl";
   }
 
   void createRenderTarget(VkExtent2D const dimension) final {
-    render_target_ = context_ptr_->create_render_target({
+    render_target_ = context_ptr_->createRenderTarget({
       .colors = {
         {
           .format = VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -81,7 +81,7 @@ class SceneFx final : public RenderTargetFx {
     });
   }
 
-  DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const final {
+  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const final {
     return {
       {
         .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
@@ -102,7 +102,7 @@ class SceneFx final : public RenderTargetFx {
     };
   }
 
-  std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+  std::vector<VkPushConstantRange> push_constant_ranges() const final {
     return {
       {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -114,10 +114,10 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) const final {
-    cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.pushConstant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
   }
 
-  GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(std::vector<backend::ShaderModule> const& shaders) const final {
+  GraphicsPipelineDescriptor_t graphics_pipeline_descriptor(std::vector<backend::ShaderModule> const& shaders) const final {
     return {
       .dynamicStates = {
         VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
@@ -150,7 +150,7 @@ class SceneFx final : public RenderTargetFx {
   void draw(RenderPassEncoder const& pass) const final {
     uint32_t instance_index = 0u;
     for (auto const& mesh : scene_->meshes) {
-      pass.set_primitive_topology(mesh->vk_primitive_topology());
+      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
 
       push_constant_.model.worldMatrix = linalg::mul(
         world_matrix_,
@@ -175,7 +175,7 @@ class SceneFx final : public RenderTargetFx {
     scene_ = model;
 
     /* Update the Sampler Atlas descriptor with the currently loaded textures. */
-    context_ptr_->update_descriptor_set(descriptor_set_, {
+    context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
         .binding = shader_interop::kDescriptorSetBinding_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -201,7 +201,7 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void updateUniforms() {
-    context_ptr_->transient_upload_buffer(
+    context_ptr_->transientUploadBuffer(
       &host_data_, sizeof(host_data_), uniform_buffer_
     );
   }
@@ -225,7 +225,7 @@ class SceneFx final : public RenderTargetFx {
 class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
  public:
   class ToonComposition final : public RenderTargetFx {
-    std::string getShaderName() const final {
+    std::string shader_name() const final {
       return COMPILED_SHADERS_DIR "toon.frag.glsl";
     }
   };
@@ -269,7 +269,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("09 - una riga alla volta");
+    wm_->set_title("09 - una riga alla volta");
 
     /* Setup the ArcBall camera. */
     {
@@ -280,10 +280,10 @@ class SampleApp final : public Application {
         0.01f,
         500.0f
       );
-      camera_.setController(&arcball_controller_);
+      camera_.set_controller(&arcball_controller_);
 
-      arcball_controller_.setView(lina::kTwoPi/16.0f, lina::kTwoPi/8.0f, false);
-      arcball_controller_.setDolly(4.0f, false);
+      arcball_controller_.set_view(lina::kTwoPi/16.0f, lina::kTwoPi/8.0f, false);
+      arcball_controller_.set_dolly(4.0f, false);
     }
 
     /* Load a glTF Scene. */
@@ -291,7 +291,7 @@ class SampleApp final : public Application {
       "DamagedHelmet.glb"
     };
 
-    auto gltf_scene = renderer_.load_gltf(gltf_filename, {
+    auto gltf_scene = renderer_.loadGLTF(gltf_filename, {
       { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
       { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
       { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
@@ -335,13 +335,13 @@ class SampleApp final : public Application {
     toon_pipeline_.execute(cmd);
 
     /* Blit the result directly to the current swapchain image. */
-    renderer_.blit_color(cmd, toon_pipeline_.getImageOutput());
+    renderer_.blitColor(cmd, toon_pipeline_.image_output());
 
     /* Draw UI on top. */
-    draw_ui(cmd);
+    drawUI(cmd);
   }
 
-  void build_ui() final {
+  void buildUI() final {
     ImGui::Begin("Settings");
     {
       ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);

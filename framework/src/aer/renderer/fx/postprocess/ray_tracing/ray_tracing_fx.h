@@ -21,8 +21,8 @@ class RayTracingFx : public PostGenericFx {
 
  public:
   void release() override {
-    context_ptr_->destroy_buffer(material_storage_buffer_);
-    context_ptr_->destroy_buffer(sbt_storage_buffer_);
+    context_ptr_->destroyBuffer(material_storage_buffer_);
+    context_ptr_->destroyBuffer(sbt_storage_buffer_);
     releaseOutputImagesAndBuffers();
     GenericFx::release();
   }
@@ -30,7 +30,7 @@ class RayTracingFx : public PostGenericFx {
   void setup(VkExtent2D const dimension) override {
     PostGenericFx::setup(dimension);
     
-    context_ptr_->update_descriptor_set(descriptor_set_, {
+    context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
         .binding = kDescriptorSetBinding_ImageOutput,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -51,22 +51,22 @@ class RayTracingFx : public PostGenericFx {
     std::vector<scene::MaterialProxy> const& proxy_materials
   ) {
     buildMaterials(proxy_materials);
-    if (size_t bufferSize = getMaterialBufferSize(); bufferSize > 0) {
+    if (size_t bufferSize = material_buffer_size(); bufferSize > 0) {
       // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = context_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->createBuffer(
         bufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY
       );
 
-      context_ptr_->transient_upload_buffer(
-        getMaterialBufferData(),
+      context_ptr_->transientUploadBuffer(
+        material_buffer_data(),
         bufferSize,
         material_storage_buffer_
       );
 
-      context_ptr_->update_descriptor_set(descriptor_set_, {
+      context_ptr_->updateDescriptorSet(descriptor_set_, {
         {
           .binding = kDescriptorSetBinding_MaterialSBO,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -83,30 +83,30 @@ class RayTracingFx : public PostGenericFx {
  public:
   bool resize(VkExtent2D const dimension) override;
 
-  backend::Image getImageOutput(uint32_t index = 0u) const final {
+  backend::Image image_output(uint32_t index = 0u) const final {
     return out_images_[index];
   }
 
-  std::vector<backend::Image> /*const&*/ getImageOutputs() const final {
+  std::vector<backend::Image> /*const&*/ image_outputs() const final {
     return out_images_;
   }
 
-  backend::Buffer getBufferOutput(uint32_t index = 0u) const final {
+  backend::Buffer buffer_output(uint32_t index = 0u) const final {
     return out_buffers_[index];
   }
 
-  std::vector<backend::Buffer> /*const&*/ getBufferOutputs() const final {
+  std::vector<backend::Buffer> /*const&*/ buffer_outputs() const final {
     return out_buffers_;
   }
 
-  void setImageInputs(std::vector<backend::Image> const& inputs) override {} //
+  void set_image_inputs(std::vector<backend::Image> const& inputs) override {} //
 
-  void setBufferInputs(std::vector<backend::Buffer> const& inputs) override {} //
+  void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override {} //
 
  protected:
   virtual void resetMemoryBarriers();
 
-  DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const override {
+  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const override {
     return {
       {
         .binding = kDescriptorSetBinding_ImageOutput, //
@@ -127,7 +127,7 @@ class RayTracingFx : public PostGenericFx {
     };
   }
 
-  std::vector<VkDescriptorSetLayout> getDescriptorSetLayouts() const override {
+  std::vector<VkDescriptorSetLayout> descriptor_set_layouts() const override {
     auto const& DSR = context_ptr_->descriptor_set_registry();
     return {
       descriptor_set_layout_,
@@ -147,12 +147,12 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void releaseOutputImagesAndBuffers() {
     for (auto &image : out_images_) {
-      context_ptr_->destroy_image(image);
+      context_ptr_->destroyImage(image);
     }
     out_images_.clear();
 
     for (auto &buffer : out_buffers_) {
-      context_ptr_->destroy_buffer(buffer);
+      context_ptr_->destroyBuffer(buffer);
     }
     out_buffers_.clear();
   }
@@ -162,11 +162,11 @@ class RayTracingFx : public PostGenericFx {
   virtual void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) {
   }
 
-  virtual void const* getMaterialBufferData() const {
+  virtual void const* material_buffer_data() const {
     return nullptr;
   }
 
-  virtual size_t getMaterialBufferSize() const {
+  virtual size_t material_buffer_size() const {
     return 0;
   }
   // ----------------------------

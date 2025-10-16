@@ -6,7 +6,7 @@
 /* -------------------------------------------------------------------------- */
 
 void RayTracingFx::execute(CommandEncoder const& cmd) const {
-  cmd.bind_pipeline(pipeline_);
+  cmd.bindPipeline(pipeline_);
 
   // Bind descriptor sets.
   {
@@ -18,28 +18,28 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
       | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
     };
 
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       descriptor_set_,
       pipeline_layout_,
       stage_flags,
       material_shader_interop::kDescriptorSet_Internal
     );
 
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
       pipeline_layout_,
       stage_flags,
       material_shader_interop::kDescriptorSet_Frame
     );
 
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
       pipeline_layout_,
       stage_flags,
       material_shader_interop::kDescriptorSet_Scene
     );
 
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       DSR.descriptor(DescriptorSetRegistry::Type::RayTracing).set,
       pipeline_layout_,
       stage_flags,
@@ -49,13 +49,13 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
 
   pushConstant(cmd);
 
-  cmd.pipeline_image_barriers(barriers_.images_start);
-  // cmd.pipeline_image_barriers(barriers_.buffers_start);
+  cmd.pipelineImageBarriers(barriers_.images_start);
+  // cmd.pipelineImageBarriers(barriers_.buffers_start);
 
-  cmd.trace_rays(region_, dimension_.width, dimension_.height);
+  cmd.traceRays(region_, dimension_.width, dimension_.height);
 
-  // cmd.pipeline_image_barriers(barriers_.buffers_end);
-  cmd.pipeline_image_barriers(barriers_.images_end);
+  // cmd.pipelineImageBarriers(barriers_.buffers_end);
+  cmd.pipelineImageBarriers(barriers_.images_end);
 }
 
 // ----------------------------------------------------------------------------
@@ -76,7 +76,7 @@ bool RayTracingFx::resize(VkExtent2D const dimension) {
   releaseOutputImagesAndBuffers(); //
   // --------------------------------------
   out_images_ = {
-    context_ptr_->create_image_2d(
+    context_ptr_->createImage2D(
       dimension_.width, dimension_.height,
       VK_FORMAT_R16G16B16A16_SFLOAT, // (for accumulation)
         VK_IMAGE_USAGE_SAMPLED_BIT
@@ -157,14 +157,14 @@ void RayTracingFx::createPipeline() {
 
   auto pipeline_desc = pipelineDescriptor(shaders_map);
 
-  pipeline_ = context_ptr_->create_raytracing_pipeline(
+  pipeline_ = context_ptr_->createRayTracingPipeline(
     pipeline_layout_,
     pipeline_desc
   );
 
   for (auto const& [_, shaders] : shaders_map) {
     for (auto const& shader : shaders) {
-      context_ptr_->release_shader_module(shader);
+      context_ptr_->releaseShaderModule(shader);
     }
   }
 
@@ -222,7 +222,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
   size_t const sbt_buffersize = offsetCallable + sizeCallable;
 
-  sbt_storage_buffer_ = context_ptr_->create_buffer(
+  sbt_storage_buffer_ = context_ptr_->createBuffer(
     sbt_buffersize,
       VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -232,12 +232,12 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
     VMA_MEMORY_USAGE_CPU_TO_GPU
   );
 
-  auto staging_buffer = context_ptr_->create_staging_buffer(sbt_buffersize);
+  auto staging_buffer = context_ptr_->createStagingBuffer(sbt_buffersize);
 
   // Map staging and fill regions with shader handles
   {
     void* mapped{};
-    context_ptr_->map_memory(staging_buffer, &mapped);
+    context_ptr_->mapMemory(staging_buffer, &mapped);
 
     uint8_t* pData = reinterpret_cast<uint8_t*>(mapped);
 
@@ -266,13 +266,13 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
 
     copyHandles(groupOffset, numCallable, offsetCallable);
 
-    context_ptr_->unmap_memory(staging_buffer);
+    context_ptr_->unmapMemory(staging_buffer);
   }
 
-  context_ptr_->transient_copy_buffer(
+  context_ptr_->transientCopyBuffer(
     staging_buffer, sbt_storage_buffer_, sbt_buffersize
   );
-  context_ptr_->device_wait_idle();
+  context_ptr_->deviceWaitIdle();
 
   auto getRegion = [&](size_t offset, size_t size) -> VkStridedDeviceAddressRegionKHR {
     VkBufferDeviceAddressInfo addrInfo{

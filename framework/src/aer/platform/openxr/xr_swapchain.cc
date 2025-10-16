@@ -4,15 +4,17 @@
 /* -------------------------------------------------------------------------- */
 
 bool OpenXRSwapchain::acquireNextImage() {
-  XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+  XrSwapchainImageAcquireInfo acquire_info{
+    XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO
+  };
   CHECK_XR_RET(xrAcquireSwapchainImage(
-    handle, &acquire_info, &current_image_index
+    handle_, &acquire_info, &current_image_index_
   ));
   XrSwapchainImageWaitInfo wait_info{
     .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
     .timeout = XR_INFINITE_DURATION,
   };
-  CHECK_XR_RET(xrWaitSwapchainImage(handle, &wait_info));
+  CHECK_XR_RET(xrWaitSwapchainImage(handle_, &wait_info));
   return true;
 }
 
@@ -35,7 +37,7 @@ bool OpenXRSwapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer)
 
 bool OpenXRSwapchain::finishFrame(VkQueue queue) {
   XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-  CHECK_XR_RET(xrReleaseSwapchainImage(handle, &releaseInfo));
+  CHECK_XR_RET(xrReleaseSwapchainImage(handle_, &releaseInfo));
   return true;
 }
 
@@ -48,19 +50,19 @@ bool OpenXRSwapchain::create(
 ) {
   LOG_CHECK( xr_graphics != nullptr );
 
-  create_info = info;
+  create_info_ = info;
   xr_graphics_ = xr_graphics;
 
   // Create the swapchain object.
-  CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle))
+  CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle_))
 
   // Retrieve swapchain images.
-  CHECK_XR(xrEnumerateSwapchainImages(handle, 0, &image_count, nullptr));
-  std::vector<XrSwapchainImageVulkanKHR> base_images(image_count, {
+  CHECK_XR(xrEnumerateSwapchainImages(handle_, 0, &image_count_, nullptr));
+  std::vector<XrSwapchainImageVulkanKHR> base_images(image_count_, {
     .type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR
   });
   CHECK_XR(xrEnumerateSwapchainImages(
-    handle, image_count, &image_count,
+    handle_, image_count_, &image_count_,
     reinterpret_cast<XrSwapchainImageBaseHeader*>(base_images.data())
   ));
 
@@ -88,7 +90,7 @@ bool OpenXRSwapchain::create(
       .layerCount = info.arraySize,
     }
   };
-  xr_graphics->allocateSwapchainImage(base_images, view_info, images);
+  xr_graphics->allocateSwapchainImage(base_images, view_info, images_);
 
   return true;
 }
@@ -100,12 +102,12 @@ void OpenXRSwapchain::destroy() {
     return;
   }
 
-  xr_graphics_->releaseSwapchainImage(images);
-  images.clear();
+  xr_graphics_->releaseSwapchainImage(images_);
+  images_.clear();
 
-  if (handle != XR_NULL_HANDLE) {
-    xrDestroySwapchain(handle);
-    handle = XR_NULL_HANDLE;
+  if (handle_ != XR_NULL_HANDLE) {
+    xrDestroySwapchain(handle_);
+    handle_ = XR_NULL_HANDLE;
   }
 }
 

@@ -58,7 +58,7 @@ class Skybox {
   }
 
  private:
-  void compute_specular_brdf_lut();
+  void computeSpecularBRDFLookup();
 
  private:
   using PushConstant_t = shader_interop::skybox::PushConstant;

@@ -46,23 +46,29 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("02 - танцующий треугольник");
+    wm_->set_title("02 - танцующий треугольник");
 
     renderer_.set_clear_color({0.60f, 0.65f, 0.55f, 1.0f});
 
     /* Setup the device vertex buffer. */
     {
-      auto cmd = context_.create_transient_command_encoder();
-
-      vertex_buffer_ = cmd.create_buffer_and_upload(
+      /* For simple setup, we can use the helper method transientCreateBuffer,
+       * which will handle the command buffer internally to upload host data. */
+      vertex_buffer_ = context_.transientCreateBuffer(
         kVertices,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
 
-      context_.finish_transient_command_encoder(cmd);
+      //// Similar to :
+      // auto cmd = context_.createTransientCommandEncoder();
+      // vertex_buffer_ = cmd.createBufferAndUpload(
+      //   kVertices,
+      //   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+      // );
+      // context_.finishTransientCommandEncoder(cmd);
     }
 
-    auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert.glsl",
       "simple.frag.glsl",
     })};
@@ -70,9 +76,9 @@ class SampleApp final : public Application {
     /* Setup the graphics pipeline. */
     {
       /**
-       * When two parameters are specified to 'create_graphics_pipeline' the first
+       * When two parameters are specified to 'createGraphicsPipeline' the first
        * one is either the layout descriptor, in that case the layout is destroyed internally
-       * alongside the pipeline when destroy_pipeline is called, or the VkDesciptorLayout
+       * alongside the pipeline when destroyPipeline is called, or the VkDesciptorLayout
        * object, in which case it must be destroyed by the user.
        * */
       PipelineLayoutDescriptor_t const layout_desc{
@@ -84,7 +90,7 @@ class SampleApp final : public Application {
         },
       };
 
-      graphics_pipeline_ = context_.create_graphics_pipeline(
+      graphics_pipeline_ = context_.createGraphicsPipeline(
         layout_desc,
         {
           .vertex = {
@@ -137,14 +143,14 @@ class SampleApp final : public Application {
         }
       );
     }
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(vertex_buffer_);
+    context_.destroyPipeline(graphics_pipeline_);
+    context_.destroyBuffer(vertex_buffer_);
   }
 
   void draw(CommandEncoder const& cmd) final {
@@ -163,24 +169,24 @@ class SampleApp final : public Application {
 
     /* By specifying the pipeline layout to target, we can push constants
      * before the actual pipeline is bound. */
-    cmd.push_constant(tick * 1.4f, graphics_pipeline_.layout());
+    cmd.pushConstant(tick * 1.4f, graphics_pipeline_.layout());
 
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.bind_pipeline(graphics_pipeline_);
-      pass.bind_vertex_buffer(vertex_buffer_);
+      pass.bindPipeline(graphics_pipeline_);
+      pass.bindVertexBuffer(vertex_buffer_);
 
       // Left-side.
       {
         /* Set viewport-scissor using a VkExtent2D (with no offset). */
-        pass.set_viewport_scissor(half_screen, kFlipScreenVertically);
+        pass.setViewportScissor(half_screen, kFlipScreenVertically);
         pass.draw(kVertices.size());
       }
 
       // Right-side.
       {
         /* Set viewport-scissor using a VkRect2D (with offset). */
-        pass.set_viewport_scissor(right_side, !kFlipScreenVertically);
+        pass.setViewportScissor(right_side, !kFlipScreenVertically);
 
         /**
          * If no pipeline layout is specified, the pass encoder will take the
@@ -188,11 +194,11 @@ class SampleApp final : public Application {
          *
          * This is only possible using a non const RenderPassEncoder.
          **/
-        pass.push_constant(tick * 4.0f);
+        pass.pushConstant(tick * 4.0f);
         pass.draw(kVertices.size());
       }
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

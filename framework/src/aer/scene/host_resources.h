@@ -40,7 +40,7 @@ struct HostResources {
 
   void setup();
 
-  bool load_file(std::string_view filename);
+  bool loadFile(std::string_view filename);
 
   MaterialProxy const& material(MaterialRef const& ref) const {
     return material_proxies[ref.proxy_index];

@@ -45,29 +45,29 @@ class GenericCommandEncoder {
 
   // --- Pipeline ---
 
-  void bind_pipeline(backend::PipelineInterface const& pipeline) const {
+  void bindPipeline(backend::PipelineInterface const& pipeline) const {
     currently_bound_pipeline_ = &pipeline;
     vkCmdBindPipeline(handle_, pipeline.bind_point(), pipeline.handle());
   }
 
   // --- Descriptor Sets ---
 
-  void bind_descriptor_set(
+  void bindDescriptorSet(
     VkDescriptorSet descriptor_set,
     VkPipelineLayout pipeline_layout,
     VkShaderStageFlags stage_flags,
     uint32_t first_set = 0u
   ) const;
 
-  void bind_descriptor_set(
+  void bindDescriptorSet(
     VkDescriptorSet descriptor_set,
     VkShaderStageFlags stage_flags
   ) const {
     LOG_CHECK( nullptr != currently_bound_pipeline_ );
-    bind_descriptor_set(descriptor_set, currently_bound_pipeline_->layout(), stage_flags);
+    bindDescriptorSet(descriptor_set, currently_bound_pipeline_->layout(), stage_flags);
   }
 
-  void push_descriptor_set(
+  void pushDescriptorSet(
     backend::PipelineInterface const& pipeline,
     uint32_t set,
     std::vector<DescriptorSetWriteEntry> const& entries
@@ -76,7 +76,7 @@ class GenericCommandEncoder {
   // --- Push Constants ---
 
   template<typename T> requires (!SpanConvertible<T>)
-  void push_constant(
+  void pushConstant(
     T const& value,
     VkPipelineLayout const pipeline_layout,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
@@ -108,30 +108,30 @@ class GenericCommandEncoder {
   }
 
   template<typename T> requires (!SpanConvertible<T>)
-  void push_constant(
+  void pushConstant(
     T const& value,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
     uint32_t const offset = 0u
   ) const {
     LOG_CHECK(nullptr != currently_bound_pipeline_);
-    push_constant(value, currently_bound_pipeline_->layout(), stage_flags, offset);
+    pushConstant(value, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
   template<typename T> requires (SpanConvertible<T>)
-  void push_constants(
+  void pushConstants(
     T const& values,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
     uint32_t const offset = 0u
   ) const {
     LOG_CHECK(nullptr != currently_bound_pipeline_);
-    push_constants(values, currently_bound_pipeline_->layout(), stage_flags, offset);
+    pushConstants(values, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
   // --- Pipeline Barrier ---
 
-  void pipeline_buffer_barriers(std::vector<VkBufferMemoryBarrier2> barriers) const;
+  void pipelineBufferBarriers(std::vector<VkBufferMemoryBarrier2> barriers) const;
 
-  void pipeline_image_barriers(std::vector<VkImageMemoryBarrier2> barriers) const;
+  void pipelineImageBarriers(std::vector<VkImageMemoryBarrier2> barriers) const;
 
   // --- Compute ---
 
@@ -150,7 +150,7 @@ class GenericCommandEncoder {
 
   // --- Ray Tracing ---
 
-  void trace_rays(
+  void traceRays(
     backend::RayTracingAddressRegion const& region,
     uint32_t width,
     uint32_t height,
@@ -187,13 +187,13 @@ class CommandEncoder : public GenericCommandEncoder {
 
   // --- Buffers ---
 
-  void copy_buffer(
+  void copyBuffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     std::vector<VkBufferCopy> const& regions
   ) const;
 
-  size_t copy_buffer(
+  size_t copyBuffer(
     backend::Buffer const& src,
     size_t src_offset,
     backend::Buffer const& dst,
@@ -201,15 +201,15 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t size
   ) const;
 
-  size_t copy_buffer(
+  size_t copyBuffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t size
   ) const {
-    return copy_buffer(src, 0, dst, 0, size);
+    return copyBuffer(src, 0, dst, 0, size);
   }
 
-  void transfer_host_to_device(
+  void transferHostToDevice(
     void const* host_data,
     size_t const host_data_size,
     backend::Buffer const& device_buffer,
@@ -217,7 +217,7 @@ class CommandEncoder : public GenericCommandEncoder {
   ) const;
 
   [[nodiscard]]
-  backend::Buffer create_buffer_and_upload(
+  backend::Buffer createBufferAndUpload(
     void const* host_data,
     size_t const host_data_size,
     VkBufferUsageFlags2KHR const usage,
@@ -227,7 +227,7 @@ class CommandEncoder : public GenericCommandEncoder {
 
   template<typename T> requires (SpanConvertible<T>)
   [[nodiscard]]
-  backend::Buffer create_buffer_and_upload(
+  backend::Buffer createBufferAndUpload(
     T const& host_data,
     VkBufferUsageFlags2KHR const usage = {},
     size_t const device_buffer_offset = 0u,
@@ -237,21 +237,21 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t const bytesize{
       sizeof(typename decltype(host_span)::element_type) * host_span.size()
     };
-    return create_buffer_and_upload(
+    return createBufferAndUpload(
       host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
     );
   }
 
   // --- Images ---
 
-  void transition_images_layout(
+  void transitionImages(
     std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
     VkImageLayout const dst_layout,
     uint32_t layer_count = 1u
   ) const;
 
-  void copy_buffer_to_image(
+  void copyBufferToImage(
     backend::Buffer const& src,
     backend::Image const& dst,
     VkExtent3D extent,
@@ -275,7 +275,7 @@ class CommandEncoder : public GenericCommandEncoder {
     );
   }
 
-  void blit_image_2d(
+  void blitImage2D(
     backend::Image const& src,
     VkImageLayout src_layout,
     backend::Image const& dst,
@@ -289,22 +289,22 @@ class CommandEncoder : public GenericCommandEncoder {
   /* Dynamic rendering. */
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering(RenderPassDescriptor const& desc) const;
+  RenderPassEncoder beginRendering(RenderPassDescriptor const& desc) const;
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering(backend::RTInterface const& render_target) const;
+  RenderPassEncoder beginRendering(backend::RTInterface const& render_target) const;
 
   [[nodiscard]]
-  RenderPassEncoder begin_rendering() const;
+  RenderPassEncoder beginRendering() const;
 
-  void end_rendering() const;
+  void endRendering() const;
 
   /* Legacy rendering. */
 
   [[nodiscard]]
-  RenderPassEncoder begin_render_pass(backend::RPInterface const& render_pass) const;
+  RenderPassEncoder beginRenderPass(backend::RPInterface const& render_pass) const;
 
-  void end_render_pass() const;
+  void endRenderPass() const;
 
  protected:
   CommandEncoder() = default;
@@ -363,7 +363,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   // --- Dynamic States ---
 
-  void set_viewport(
+  void setViewport(
     float x,
     float y,
     float width,
@@ -371,31 +371,31 @@ class RenderPassEncoder : public GenericCommandEncoder {
     bool flip_y = kDefaultViewportFlipY
   ) const;
 
-  void set_scissor(
+  void setScissor(
     int32_t x,
     int32_t y,
     uint32_t width,
     uint32_t height
   ) const;
 
-  void set_viewport_scissor(
+  void setViewportScissor(
     VkRect2D const rect,
     bool flip_y = kDefaultViewportFlipY
   ) const;
 
-  void set_viewport_scissor(
+  void setViewportScissor(
     VkExtent2D const extent,
     bool flip_y = kDefaultViewportFlipY
   ) const {
-    set_viewport_scissor({{0, 0}, extent}, flip_y);
+    setViewportScissor({{0, 0}, extent}, flip_y);
   }
 
-  void set_primitive_topology(VkPrimitiveTopology const topology) const {
+  void setPrimitiveTopology(VkPrimitiveTopology const topology) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
     vkCmdSetPrimitiveTopologyEXT(handle_, topology);
   }
 
-  void set_vertex_input(VertexInputDescriptor const& vertex_input_descriptor) const {
+  void setVertexInput(VertexInputDescriptor const& vertex_input_descriptor) const {
     vkCmdSetVertexInputEXT(
       handle_,
       static_cast<uint32_t>(vertex_input_descriptor.bindings.size()),
@@ -407,7 +407,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   // --- Buffer binding ---
 
-  void bind_vertex_buffer(
+  void bindVertexBuffer(
     backend::Buffer const& buffer,
     uint32_t binding = 0u,
     uint64_t offset = 0u
@@ -417,7 +417,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     );
   }
 
-  void bind_vertex_buffer(
+  void bindVertexBuffer(
     backend::Buffer const& buffer,
     uint32_t binding,
     uint64_t offset,
@@ -429,7 +429,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     );
   }
 
-  void bind_index_buffer(
+  void bindIndexBuffer(
     backend::Buffer const& buffer,
     VkIndexType const index_type = VK_INDEX_TYPE_UINT32,
     VkDeviceSize const offset = 0u,
@@ -452,7 +452,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
-  void draw_indexed(
+  void drawIndexed(
     uint32_t index_count,
     uint32_t instance_count = 1u,
     uint32_t first_index = 0u,

@@ -10,7 +10,7 @@ void ComputeFx::release() {
 
 // ----------------------------------------------------------------------------
 
-void ComputeFx::setImageInputs(std::vector<backend::Image> const& inputs) {
+void ComputeFx::set_image_inputs(std::vector<backend::Image> const& inputs) {
   DescriptorSetWriteEntry write_entry{
     .binding = kDefaultStorageImageBindingInput,
     .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -21,12 +21,12 @@ void ComputeFx::setImageInputs(std::vector<backend::Image> const& inputs) {
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     });
   }
-  context_ptr_->update_descriptor_set(descriptor_set_, { write_entry });
+  context_ptr_->updateDescriptorSet(descriptor_set_, { write_entry });
 }
 
 // ----------------------------------------------------------------------------
 
-void ComputeFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
+void ComputeFx::set_buffer_inputs(std::vector<backend::Buffer> const& inputs) {
   DescriptorSetWriteEntry write_entry{
     .binding = kDefaultStorageBufferBindingInput,
     .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -38,22 +38,22 @@ void ComputeFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
       .range = VK_WHOLE_SIZE,
     });
   }
-  context_ptr_->update_descriptor_set(descriptor_set_, { write_entry });
+  context_ptr_->updateDescriptorSet(descriptor_set_, { write_entry });
 }
 
 // ----------------------------------------------------------------------------
 
 void ComputeFx::execute(CommandEncoder const& cmd) const {
-  if (!enabled()) {
+  if (!is_enable()) {
     return;
   }
 
-  cmd.transition_images_layout(
+  cmd.transitionImages(
     images_, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL
   );
 
-  cmd.bind_pipeline(pipeline_);
-  cmd.bind_descriptor_set(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
+  cmd.bindPipeline(pipeline_);
+  cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
   pushConstant(cmd);
 
   // -------------------------
@@ -75,7 +75,7 @@ void ComputeFx::execute(CommandEncoder const& cmd) const {
     for (size_t i = 0u; i < images_.size(); ++i) {
       image_barriers[i].image = images_[i].image;
     }
-    cmd.pipeline_image_barriers(image_barriers);
+    cmd.pipelineImageBarriers(image_barriers);
   }
 
   if (!buffers_.empty()) {
@@ -93,7 +93,7 @@ void ComputeFx::execute(CommandEncoder const& cmd) const {
     for (size_t i = 0u; i < buffers_.size(); ++i) {
       buffer_barriers[i].buffer = buffers_[i].buffer;
     }
-    cmd.pipeline_buffer_barriers(buffer_barriers);
+    cmd.pipelineBufferBarriers(buffer_barriers);
   }
 }
 
@@ -101,19 +101,19 @@ void ComputeFx::execute(CommandEncoder const& cmd) const {
 
 void ComputeFx::releaseImagesAndBuffers() {
   for (auto &image : images_) {
-    context_ptr_->destroy_image(image);
+    context_ptr_->destroyImage(image);
   }
   for (auto &buffer : buffers_) {
-    context_ptr_->destroy_buffer(buffer);
+    context_ptr_->destroyBuffer(buffer);
   }
 }
 
 // ----------------------------------------------------------------------------
 
 void ComputeFx::createPipeline() {
-  auto cs_shader{context_ptr_->create_shader_module( getShaderName() )};
-  pipeline_ = context_ptr_->create_compute_pipeline(pipeline_layout_, cs_shader);
-  context_ptr_->release_shader_modules({ cs_shader });
+  auto cs_shader{context_ptr_->createShaderModule( shader_name() )};
+  pipeline_ = context_ptr_->createComputePipeline(pipeline_layout_, cs_shader);
+  context_ptr_->releaseShaderModules({ cs_shader });
 }
 
 /* -------------------------------------------------------------------------- */

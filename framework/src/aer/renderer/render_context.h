@@ -47,25 +47,25 @@ class RenderContext : public Context {
   // --- Render Target (Dynamic Rendering) ---
 
   [[nodiscard]]
-  std::unique_ptr<RenderTarget> create_render_target() const;
+  std::unique_ptr<RenderTarget> createRenderTarget() const;
 
   [[nodiscard]]
-  std::unique_ptr<RenderTarget> create_render_target(
+  std::unique_ptr<RenderTarget> createRenderTarget(
     RenderTarget::Descriptor const& desc
   ) const;
 
   [[nodiscard]]
-  std::unique_ptr<RenderTarget> create_default_render_target() const;
+  std::unique_ptr<RenderTarget> createDefaultRenderTarget() const;
 
   // --- Framebuffer (Legacy Rendering) ---
 
   [[nodiscard]]
-  std::unique_ptr<Framebuffer> create_framebuffer(
+  std::unique_ptr<Framebuffer> createFramebuffer(
     SwapchainInterface const& swapchain
   ) const;
 
   [[nodiscard]]
-  std::unique_ptr<Framebuffer> create_framebuffer(
+  std::unique_ptr<Framebuffer> createFramebuffer(
     SwapchainInterface const& swapchain,
     Framebuffer::Descriptor_t const& desc
   ) const;
@@ -73,31 +73,31 @@ class RenderContext : public Context {
   // --- Pipeline Layout ---
 
   [[nodiscard]]
-  VkPipelineLayout create_pipeline_layout(
+  VkPipelineLayout createPipelineLayout(
     PipelineLayoutDescriptor_t const& params
   ) const;
 
-  void destroy_pipeline_layout(
+  void destroyPipelineLayout(
     VkPipelineLayout layout
   ) const;
 
   // --- Pipelines ---
 
-  void destroy_pipeline(
+  void destroyPipeline(
     Pipeline const& pipeline
   ) const;
 
   // --- Graphics Pipelines ---
 
   [[nodiscard]]
-  VkGraphicsPipelineCreateInfo create_graphics_pipeline_create_info(
+  VkGraphicsPipelineCreateInfo buildGraphicsPipelineCreateInfo(
     GraphicsPipelineCreateInfoData_t &data,
     VkPipelineLayout pipeline_layout,
     GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Batch create graphics pipelines from a common layout.
-  void create_graphics_pipelines(
+  void createGraphicsPipelines(
     VkPipelineLayout pipeline_layout,
     std::vector<GraphicsPipelineDescriptor_t> const& descs,
     std::vector<Pipeline> *out_pipelines
@@ -105,21 +105,21 @@ class RenderContext : public Context {
 
   // Create a graphics pipeline with a pre-defined layout.
   [[nodiscard]]
-  Pipeline create_graphics_pipeline(
+  Pipeline createGraphicsPipeline(
     VkPipelineLayout pipeline_layout,
     GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline and a layout based on description.
   [[nodiscard]]
-  Pipeline create_graphics_pipeline(
+  Pipeline createGraphicsPipeline(
     PipelineLayoutDescriptor_t const& layout_desc,
     GraphicsPipelineDescriptor_t const& desc
   ) const;
 
   // Create a graphics pipeline with a default empty layout.
   [[nodiscard]]
-  Pipeline create_graphics_pipeline(
+  Pipeline createGraphicsPipeline(
     GraphicsPipelineDescriptor_t const& desc
   ) const;
 
@@ -132,7 +132,7 @@ class RenderContext : public Context {
   ) const;
 
   [[nodiscard]]
-  Pipeline create_compute_pipeline(
+  Pipeline createComputePipeline(
     VkPipelineLayout pipeline_layout,
     backend::ShaderModule const& module
   ) const;
@@ -140,7 +140,7 @@ class RenderContext : public Context {
   // --- Ray Tracing Pipelines ---
 
   [[nodiscard]]
-  Pipeline create_raytracing_pipeline(
+  Pipeline createRayTracingPipeline(
     VkPipelineLayout pipeline_layout,
     RayTracingPipelineDescriptor_t const& desc
   ) const;
@@ -153,18 +153,18 @@ class RenderContext : public Context {
   }
 
   [[nodiscard]]
-  VkDescriptorSetLayout create_descriptor_set_layout(
+  VkDescriptorSetLayout createDescriptorSetLayout(
     DescriptorSetLayoutParamsBuffer const& params,
     VkDescriptorSetLayoutCreateFlags flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
   ) const;
 
-  void destroy_descriptor_set_layout(VkDescriptorSetLayout& layout) const;
+  void destroyDescriptorSetLayout(VkDescriptorSetLayout& layout) const;
 
   [[nodiscard]]
-  VkDescriptorSet create_descriptor_set(VkDescriptorSetLayout const layout) const;
+  VkDescriptorSet createDescriptorSet(VkDescriptorSetLayout const layout) const;
 
   [[nodiscard]]
-  VkDescriptorSet create_descriptor_set(
+  VkDescriptorSet createDescriptorSet(
     VkDescriptorSetLayout const layout,
     std::vector<DescriptorSetWriteEntry> const& entries
   ) const;
@@ -172,14 +172,14 @@ class RenderContext : public Context {
   // --- Texture ---
 
   [[nodiscard]]
-  bool load_image_2d(
+  bool loadImage2D(
     CommandEncoder const& cmd,
     std::string_view filename,
     backend::Image& image
   ) const;
 
   [[nodiscard]]
-  bool load_image_2d(
+  bool loadImage2D(
     std::string_view filename,
     backend::Image& image
   ) const;
@@ -237,11 +237,11 @@ class RenderContext : public Context {
   void destroyResources(VulkanHandles... handles) const {
     (destroyResource(handles), ...);
   }
-  void destroyResource(VkDescriptorSetLayout h) const        { destroy_descriptor_set_layout(h); }
-  void destroyResource(VkPipelineLayout h) const             { destroy_pipeline_layout(h); }
-  void destroyResource(Pipeline const& h) const              { destroy_pipeline(h); }
-  void destroyResource(backend::Buffer const& buffer) const  { destroy_buffer(buffer); }
-  void destroyResource(backend::Image & image) const         { destroy_image(image); }
+  void destroyResource(VkDescriptorSetLayout h) const        { destroyDescriptorSetLayout(h); }
+  void destroyResource(VkPipelineLayout h) const             { destroyPipelineLayout(h); }
+  void destroyResource(Pipeline const& h) const              { destroyPipeline(h); }
+  void destroyResource(backend::Buffer const& buffer) const  { destroyBuffer(buffer); }
+  void destroyResource(backend::Image & image) const         { destroyImage(image); }
 
  private:
   Settings settings_{};

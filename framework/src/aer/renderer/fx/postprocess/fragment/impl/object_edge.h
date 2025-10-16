@@ -20,7 +20,7 @@ class ObjectEdge final : public RenderTargetFx {
   }
 
  private:
-  std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+  std::vector<VkPushConstantRange> push_constant_ranges() const final {
     return {
       {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -30,10 +30,10 @@ class ObjectEdge final : public RenderTargetFx {
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) const final {
-    cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.pushConstant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_FRAGMENT_BIT);
   }
 
-  std::string getShaderName() const final {
+  std::string shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "postprocess/object_edge.frag.glsl";
   }
 

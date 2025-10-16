@@ -33,7 +33,7 @@ struct Mesh : Geometry {
   Mesh() = default;
 
   /* Bind mesh attributes to pipeline attributes location. */
-  void initialize_submesh_descriptors(
+  void initializeSubmeshDescriptors(
     AttributeLocationMap const& attribute_to_location
   );
 

@@ -87,50 +87,57 @@ class OpenXRContext {
   // -- Public instance getters / helpers --
 
   [[nodiscard]]
-  XrSpace baseSpace() const {
+  XrSpace base_space() const {
     return spaces_[base_space_index_];
   }
 
   [[nodiscard]]
-  xrutils::SpaceLocationVelocity_t spaceLocationVelocity(XrSpace space, XrTime time) const {
-    return xrutils::SpaceLocationVelocity(space, baseSpace(), time);
+  xrutils::SpaceLocationVelocity_t spaceLocationVelocity(
+    XrSpace space,
+    XrTime time
+  ) const {
+    return xrutils::SpaceLocationVelocity(space, base_space(), time);
   }
 
   [[nodiscard]]
-  XrSpaceLocation spaceLocation(XrSpace space, XrTime time) const {
+  XrSpaceLocation spaceLocation(
+    XrSpace space,
+    XrTime time
+  ) const {
     return spaceLocationVelocity(space, time).first;
   }
 
   [[nodiscard]]
-  XrSpaceVelocity spaceVelocity(XrSpace space, XrTime time) const {
+  XrSpaceVelocity spaceVelocity(
+    XrSpace space,
+    XrTime time
+  ) const {
     return spaceLocationVelocity(space, time).second;
   }
 
   [[nodiscard]]
-  XRVulkanInterface* graphicsInterface() noexcept {
+  XRVulkanInterface* graphics_interface() noexcept {
     return graphics_.get(); //
   }
 
   [[nodiscard]]
-  SwapchainInterface* swapchainInterface() noexcept {
+  SwapchainInterface* swapchain_interface() noexcept {
     return &swapchain_;
   }
 
   [[nodiscard]]
-  XRFrameData_t const& frameData() const noexcept {
+  XRFrameData_t const& frame_data() const noexcept {
     return frameData_;
   }
 
   [[nodiscard]]
-  XRControlState_t::Frame const& frameControlState() const noexcept {
+  XRControlState_t::Frame const& frame_control_state() const noexcept {
     return controls_.frame;
   }
 
  public:
-  //------------------
   void beginFrame();
   void endFrame();
-  //------------------
 
  private:
   [[nodiscard]]

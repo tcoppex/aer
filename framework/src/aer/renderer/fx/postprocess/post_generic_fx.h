@@ -16,12 +16,12 @@ class PostGenericFx : public virtual GenericFx
   }
 
  public:
-  bool enabled() const {
+  bool is_enable() const {
     return enabled_;
   }
 
-  void setEnabled(bool enabled) {
-    enabled_ = enabled;
+  void enable(bool status) {
+    enabled_ = status;
   }
 
   bool enabled_{false};

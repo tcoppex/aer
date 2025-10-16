@@ -3,7 +3,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-void FragmentFx::setImageInputs(std::vector<backend::Image> const& inputs) {
+void FragmentFx::set_image_inputs(std::vector<backend::Image> const& inputs) {
   DescriptorSetWriteEntry write_entry{
     .binding = 0u,
     .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -15,12 +15,12 @@ void FragmentFx::setImageInputs(std::vector<backend::Image> const& inputs) {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     });
   }
-  context_ptr_->update_descriptor_set(descriptor_set_, { write_entry });
+  context_ptr_->updateDescriptorSet(descriptor_set_, { write_entry });
 }
 
 // ----------------------------------------------------------------------------
 
-void FragmentFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
+void FragmentFx::set_buffer_inputs(std::vector<backend::Buffer> const& inputs) {
   DescriptorSetWriteEntry write_entry{
     .binding = 1u,
     .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -32,38 +32,38 @@ void FragmentFx::setBufferInputs(std::vector<backend::Buffer> const& inputs) {
       .range = VK_WHOLE_SIZE,
     });
   }
-  context_ptr_->update_descriptor_set(descriptor_set_, { write_entry });
+  context_ptr_->updateDescriptorSet(descriptor_set_, { write_entry });
 }
 
 // ----------------------------------------------------------------------------
 
 void FragmentFx::execute(CommandEncoder const& cmd) const {
-  auto pass = cmd.begin_rendering(); //
+  auto pass = cmd.beginRendering(); //
   {
     prepareDrawState(pass);
     pushConstant(pass); //
     draw(pass);
   }
-  cmd.end_rendering();
+  cmd.endRendering();
 }
 
 // ----------------------------------------------------------------------------
 
 void FragmentFx::createPipeline() {
-  auto shaders{context_ptr_->create_shader_modules({
-    getVertexShaderName(),
-    getShaderName()
+  auto shaders{context_ptr_->createShaderModules({
+    vertex_shader_name(),
+    shader_name()
   })};
-  pipeline_ = context_ptr_->create_graphics_pipeline(
+  pipeline_ = context_ptr_->createGraphicsPipeline(
     pipeline_layout_,
-    getGraphicsPipelineDescriptor(shaders)
+    graphics_pipeline_descriptor(shaders)
   );
-  context_ptr_->release_shader_modules(shaders);
+  context_ptr_->releaseShaderModules(shaders);
 }
 
 // ----------------------------------------------------------------------------
 
-DescriptorSetLayoutParamsBuffer FragmentFx::getDescriptorSetLayoutParams() const {
+DescriptorSetLayoutParamsBuffer FragmentFx::descriptor_set_layout_params() const {
   return {
     {
       .binding = kDefaultCombinedImageSamplerBinding,
@@ -85,14 +85,14 @@ DescriptorSetLayoutParamsBuffer FragmentFx::getDescriptorSetLayoutParams() const
 // ----------------------------------------------------------------------------
 
 void FragmentFx::prepareDrawState(RenderPassEncoder const& pass) const {
-  pass.bind_pipeline(pipeline_);
-  pass.bind_descriptor_set(
+  pass.bindPipeline(pipeline_);
+  pass.bindDescriptorSet(
     descriptor_set_,
     pipeline_layout_,
       VK_SHADER_STAGE_VERTEX_BIT
     | VK_SHADER_STAGE_FRAGMENT_BIT
   );
-  pass.set_viewport_scissor(getRenderSurfaceSize()); //
+  pass.setViewportScissor(surface_size()); //
 }
 
 /* -------------------------------------------------------------------------- */

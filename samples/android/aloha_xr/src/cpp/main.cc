@@ -42,12 +42,12 @@ class SampleApp final : public Application {
   bool setup() final {
     renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 1.0f));
 
-    vertex_buffer_ = context_.transient_create_buffer(
+    vertex_buffer_ = context_.transientCreateBuffer(
       kVertices,
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
 
-    uniform_buffer_ = context_.create_buffer(
+    uniform_buffer_ = context_.createBuffer(
       2u * sizeof(shader_interop::UniformCameraData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
       VMA_MEMORY_USAGE_CPU_TO_GPU
@@ -57,7 +57,7 @@ class SampleApp final : public Application {
     {
       uint32_t const kDescSetUniformBinding = 0u;
 
-      descriptor_set_layout_ = context_.create_descriptor_set_layout({{
+      descriptor_set_layout_ = context_.createDescriptorSetLayout({{
         .binding = kDescSetUniformBinding,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 2u,
@@ -68,19 +68,19 @@ class SampleApp final : public Application {
                       ,
       }});
 
-      descriptor_set_ = context_.create_descriptor_set(descriptor_set_layout_, {{
+      descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {{
         .binding = kDescSetUniformBinding,
         .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .buffers = { { uniform_buffer_.buffer } }
       }});
     }
 
-    auto const shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto const shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert",
       "simple.frag",
     })};
 
-    pipeline_layout_ = context_.create_pipeline_layout({
+    pipeline_layout_ = context_.createPipelineLayout({
       .setLayouts = { descriptor_set_layout_ },
       .pushConstantRanges = {
         {
@@ -89,7 +89,7 @@ class SampleApp final : public Application {
         }
       },
     });
-    graphics_pipeline_ = context_.create_graphics_pipeline(
+    graphics_pipeline_ = context_.createGraphicsPipeline(
       pipeline_layout_,
       {
         .vertex = {
@@ -135,7 +135,7 @@ class SampleApp final : public Application {
       }
     );
 
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
@@ -155,7 +155,7 @@ class SampleApp final : public Application {
       return;
     }
 
-    auto const& frame = xr_->frameData();
+    auto const& frame = xr_->frame_data();
 
     // Update uniform buffer for both eyes.
     std::vector<shader_interop::UniformCameraData> camera_data{
@@ -168,13 +168,13 @@ class SampleApp final : public Application {
         .viewMatrix = frame.viewMatrices[1]
       },
     };
-    context_.write_buffer(uniform_buffer_, camera_data);
+    context_.writeBuffer(uniform_buffer_, camera_data);
 
     // Handle controllers inputs.
     float z_angle_delta{};
     float z_depth_delta{};
     {
-      auto const& input = xr_->frameControlState();
+      auto const& input = xr_->frame_control_state();
       if (input.button_a || input.button_x) {
         space_id_ = static_cast<XRSpaceId>(
           (space_id_ == 0u) ? frame.spaceMatrices.size() - 1u : space_id_ - 1
@@ -210,16 +210,16 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.bind_pipeline(graphics_pipeline_);
+      pass.bindPipeline(graphics_pipeline_);
 
-      pass.bind_descriptor_set(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-      pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
-      pass.bind_vertex_buffer(vertex_buffer_);
+      pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.bindVertexBuffer(vertex_buffer_);
       pass.draw(kVertices.size());
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

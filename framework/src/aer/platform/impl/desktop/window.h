@@ -23,17 +23,17 @@ class Window : public WMInterface {
   [[nodiscard]]
   bool poll(AppData_t app_data) noexcept final;
 
-  void setTitle(std::string_view title) const noexcept final;
+  void set_title(std::string_view title) const noexcept final;
 
   void close() noexcept final;
 
   [[nodiscard]]
-  uint32_t surfaceWidth() const noexcept final {
+  uint32_t surface_width() const noexcept final {
     return surface_w_;
   }
 
   [[nodiscard]]
-  uint32_t surfaceHeight() const noexcept final {
+  uint32_t surface_height() const noexcept final {
     return surface_h_;
   }
 
@@ -43,15 +43,15 @@ class Window : public WMInterface {
   }
 
   [[nodiscard]]
-  bool isActive() const noexcept final;
+  bool is_active() const noexcept final;
 
   [[nodiscard]]
-  XRPlatformInterface const& xrPlatformInterface() const noexcept final {
+  XRPlatformInterface const& xr_platform_interface() const noexcept final {
     return xr_desktop_;
   }
 
   [[nodiscard]]
-  std::vector<char const*> vulkanInstanceExtensions() const noexcept final;
+  std::vector<char const*> vk_instance_extensions() const noexcept final;
 
   [[nodiscard]]
   VkResult createWindowSurface(VkInstance instance, VkSurfaceKHR *surface) const noexcept final;

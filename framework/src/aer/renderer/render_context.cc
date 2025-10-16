@@ -79,16 +79,16 @@ void RenderContext::release() {
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<RenderTarget> RenderContext::create_render_target() const {
+std::unique_ptr<RenderTarget> RenderContext::createRenderTarget() const {
   return std::unique_ptr<RenderTarget>(new RenderTarget(*this));
 }
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<RenderTarget> RenderContext::create_render_target(
+std::unique_ptr<RenderTarget> RenderContext::createRenderTarget(
   RenderTarget::Descriptor const& desc
 ) const {
-  if (auto rt = create_render_target(); rt) {
+  if (auto rt = createRenderTarget(); rt) {
     rt->setup(desc);
     return rt;
   }
@@ -97,7 +97,7 @@ std::unique_ptr<RenderTarget> RenderContext::create_render_target(
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<RenderTarget> RenderContext::create_default_render_target() const {
+std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
   auto desc = RenderTarget::Descriptor{
     .colors = {
       {
@@ -116,12 +116,12 @@ std::unique_ptr<RenderTarget> RenderContext::create_default_render_target() cons
   if (default_view_mask_ > 1) {
     desc.array_size = utils::CountBits(default_view_mask_);
   }
-  return create_render_target(desc);
+  return createRenderTarget(desc);
 }
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<Framebuffer> RenderContext::create_framebuffer(
+std::unique_ptr<Framebuffer> RenderContext::createFramebuffer(
   SwapchainInterface const& swapchain
 ) const {
   return std::unique_ptr<Framebuffer>(new Framebuffer(*this, swapchain));
@@ -129,11 +129,11 @@ std::unique_ptr<Framebuffer> RenderContext::create_framebuffer(
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<Framebuffer> RenderContext::create_framebuffer(
+std::unique_ptr<Framebuffer> RenderContext::createFramebuffer(
   SwapchainInterface const& swapchain,
   Framebuffer::Descriptor_t const& desc
 ) const {
-  if (auto framebuffer = create_framebuffer(swapchain); framebuffer) {
+  if (auto framebuffer = createFramebuffer(swapchain); framebuffer) {
     framebuffer->setup(desc);
     return framebuffer;
   }
@@ -142,18 +142,18 @@ std::unique_ptr<Framebuffer> RenderContext::create_framebuffer(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::destroy_pipeline_layout(VkPipelineLayout layout) const {
+void RenderContext::destroyPipelineLayout(VkPipelineLayout layout) const {
   vkDestroyPipelineLayout(device(), layout, nullptr);
 }
 
 // ----------------------------------------------------------------------------
 
-VkPipelineLayout RenderContext::create_pipeline_layout(
+VkPipelineLayout RenderContext::createPipelineLayout(
   PipelineLayoutDescriptor_t const& params
 ) const {
   for (size_t i = 1u; i < params.pushConstantRanges.size(); ++i) {
     if (params.pushConstantRanges[i].offset == 0u) {
-      LOGW("[Warning] 'create_pipeline_layout' has constant ranges with no offsets.");
+      LOGW("[Warning] 'createPipelineLayout' has constant ranges with no offsets.");
       break;
     }
   }
@@ -177,7 +177,7 @@ VkPipelineLayout RenderContext::create_pipeline_layout(
 
 // ----------------------------------------------------------------------------
 
-VkGraphicsPipelineCreateInfo RenderContext::create_graphics_pipeline_create_info(
+VkGraphicsPipelineCreateInfo RenderContext::buildGraphicsPipelineCreateInfo(
   GraphicsPipelineCreateInfoData_t &data,
   VkPipelineLayout pipeline_layout,
   GraphicsPipelineDescriptor_t const& desc
@@ -464,7 +464,7 @@ VkGraphicsPipelineCreateInfo RenderContext::create_graphics_pipeline_create_info
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::create_graphics_pipelines(
+void RenderContext::createGraphicsPipelines(
   VkPipelineLayout pipeline_layout,
   std::vector<GraphicsPipelineDescriptor_t> const& descs,
   std::vector<Pipeline> *out_pipelines
@@ -480,7 +480,7 @@ void RenderContext::create_graphics_pipelines(
 
   std::vector<VkGraphicsPipelineCreateInfo> create_infos(descs.size());
   for (size_t i = 0; i < descs.size(); ++i) {
-    create_infos[i] = create_graphics_pipeline_create_info(
+    create_infos[i] = buildGraphicsPipelineCreateInfo(
       datas[i],
       pipeline_layout,
       descs[i]
@@ -520,14 +520,14 @@ void RenderContext::create_graphics_pipelines(
 
 // ----------------------------------------------------------------------------
 
-Pipeline RenderContext::create_graphics_pipeline(
+Pipeline RenderContext::createGraphicsPipeline(
   VkPipelineLayout pipeline_layout,
   GraphicsPipelineDescriptor_t const& desc
 ) const {
   LOG_CHECK( pipeline_layout != VK_NULL_HANDLE );
 
   GraphicsPipelineCreateInfoData_t data{};
-  auto const create_info = create_graphics_pipeline_create_info(
+  auto const create_info = buildGraphicsPipelineCreateInfo(
     data, pipeline_layout, desc
   );
 
@@ -540,12 +540,12 @@ Pipeline RenderContext::create_graphics_pipeline(
 
 // ----------------------------------------------------------------------------
 
-Pipeline RenderContext::create_graphics_pipeline(
+Pipeline RenderContext::createGraphicsPipeline(
   PipelineLayoutDescriptor_t const& layout_desc,
   GraphicsPipelineDescriptor_t const& desc
 ) const {
-  auto pipeline = create_graphics_pipeline(
-    create_pipeline_layout(layout_desc),
+  auto pipeline = createGraphicsPipeline(
+    createPipelineLayout(layout_desc),
     desc
   );
   pipeline.use_internal_layout_ = true;
@@ -554,10 +554,10 @@ Pipeline RenderContext::create_graphics_pipeline(
 
 // ----------------------------------------------------------------------------
 
-Pipeline RenderContext::create_graphics_pipeline(
+Pipeline RenderContext::createGraphicsPipeline(
   GraphicsPipelineDescriptor_t const& desc
 ) const {
-  return create_graphics_pipeline(
+  return createGraphicsPipeline(
     PipelineLayoutDescriptor_t(),
     desc
   );
@@ -603,7 +603,7 @@ void RenderContext::create_compute_pipelines(
 
 // ----------------------------------------------------------------------------
 
-Pipeline RenderContext::create_compute_pipeline(
+Pipeline RenderContext::createComputePipeline(
   VkPipelineLayout pipeline_layout,
   backend::ShaderModule const& module
 ) const {
@@ -614,7 +614,7 @@ Pipeline RenderContext::create_compute_pipeline(
 
 // ----------------------------------------------------------------------------
 
-Pipeline RenderContext::create_raytracing_pipeline(
+Pipeline RenderContext::createRayTracingPipeline(
   VkPipelineLayout pipeline_layout,
   RayTracingPipelineDescriptor_t const& desc
 ) const {
@@ -745,16 +745,16 @@ Pipeline RenderContext::create_raytracing_pipeline(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::destroy_pipeline(Pipeline const& pipeline) const {
+void RenderContext::destroyPipeline(Pipeline const& pipeline) const {
   vkDestroyPipeline(device(), pipeline.handle(), nullptr);
   if (pipeline.use_internal_layout_) {
-    destroy_pipeline_layout(pipeline.layout());
+    destroyPipelineLayout(pipeline.layout());
   }
 }
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSetLayout RenderContext::create_descriptor_set_layout(
+VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
   DescriptorSetLayoutParamsBuffer const& params,
   VkDescriptorSetLayoutCreateFlags flags
 ) const {
@@ -763,7 +763,7 @@ VkDescriptorSetLayout RenderContext::create_descriptor_set_layout(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::destroy_descriptor_set_layout(
+void RenderContext::destroyDescriptorSetLayout(
   VkDescriptorSetLayout &layout
 ) const {
   descriptor_set_registry_.destroy_layout(layout);
@@ -771,26 +771,26 @@ void RenderContext::destroy_descriptor_set_layout(
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSet RenderContext::create_descriptor_set(
+VkDescriptorSet RenderContext::createDescriptorSet(
   VkDescriptorSetLayout const layout
 ) const {
-  return descriptor_set_registry_.allocate_descriptor_set(layout);
+  return descriptor_set_registry_.allocateDescriptorSet(layout);
 }
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSet RenderContext::create_descriptor_set(
+VkDescriptorSet RenderContext::createDescriptorSet(
   VkDescriptorSetLayout const layout,
   std::vector<DescriptorSetWriteEntry> const& entries
 ) const {
-  auto const descriptor_set{ create_descriptor_set(layout) };
-  update_descriptor_set(descriptor_set, entries);
+  auto const descriptor_set{ createDescriptorSet(layout) };
+  updateDescriptorSet(descriptor_set, entries);
   return descriptor_set;
 }
 
 // ----------------------------------------------------------------------------
 
-bool RenderContext::load_image_2d(
+bool RenderContext::loadImage2D(
   CommandEncoder const& cmd,
   std::string_view filename,
   backend::Image &image
@@ -829,7 +829,7 @@ bool RenderContext::load_image_2d(
   };
   uint32_t const layer_count = 1u;
 
-  image = create_image_2d(
+  image = createImage2D(
     extent.width,
     extent.height,
     format,
@@ -843,22 +843,22 @@ bool RenderContext::load_image_2d(
   size_t const bytesize{
     kForcedChannelCount * extent.width * extent.height * comp_bytesize
   };
-  auto staging_buffer = create_staging_buffer(bytesize, data); //
+  auto staging_buffer = createStagingBuffer(bytesize, data); //
   stbi_image_free(data);
 
   /* Transfer staging device buffer to image memory. */
   {
     VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       { image },
       VK_IMAGE_LAYOUT_UNDEFINED,
       transfer_layout,
       layer_count
     );
 
-    cmd.copy_buffer_to_image(staging_buffer, image, extent, transfer_layout);
+    cmd.copyBufferToImage(staging_buffer, image, extent, transfer_layout);
 
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       { image },
       transfer_layout,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -871,27 +871,27 @@ bool RenderContext::load_image_2d(
 
 // ----------------------------------------------------------------------------
 
-bool RenderContext::load_image_2d(
+bool RenderContext::loadImage2D(
   std::string_view filename,
   backend::Image& image
 ) const {
-  auto cmd = create_transient_command_encoder();
-  bool result = load_image_2d(cmd, filename, image);
-  finish_transient_command_encoder(cmd);
+  auto cmd = createTransientCommandEncoder();
+  bool result = loadImage2D(cmd, filename, image);
+  finishTransientCommandEncoder(cmd);
   return result;
 }
 
 // ----------------------------------------------------------------------------
 
-// GLTFScene RenderContext::load_gltf(
+// GLTFScene RenderContext::loadGLTF(
 //   std::string_view gltf_filename,
 //   scene::Mesh::AttributeLocationMap const& attribute_to_location
 // ) {
 //   if (auto scene = std::make_shared<GPUResources>(*this); scene) {
 //     scene->setup();
-//     if (scene->load_file(gltf_filename)) {
-//       scene->initialize_submesh_descriptors(attribute_to_location);
-//       scene->upload_to_device();
+//     if (scene->loadFile(gltf_filename)) {
+//       scene->initializeSubmeshDescriptors(attribute_to_location);
+//       scene->uploadToDevice();
 //       return scene;
 //     }
 //   }
@@ -901,7 +901,7 @@ bool RenderContext::load_image_2d(
 
 // // ----------------------------------------------------------------------------
 
-// GLTFScene RenderContext::load_gltf(std::string_view gltf_filename) {
+// GLTFScene RenderContext::loadGLTF(std::string_view gltf_filename) {
 //   // -----------------------
 //   // -----------------------
 //   // [temporary, this should be set elsewhere ideally]
@@ -915,7 +915,7 @@ bool RenderContext::load_image_2d(
 //   };
 //   // -----------------------
 //   // -----------------------
-//   return load_gltf(gltf_filename, kDefaultFxPipelineAttributeLocationMap);
+//   return loadGLTF(gltf_filename, kDefaultFxPipelineAttributeLocationMap);
 // }
 
 /* -------------------------------------------------------------------------- */

@@ -35,12 +35,12 @@ class Renderer {
   bool resize(uint32_t w, uint32_t h);
 
   [[nodiscard]]
-  CommandEncoder& begin_frame();
+  CommandEncoder& beginFrame();
 
-  void end_frame();
+  void endFrame();
 
   /* Blit an image to the final color image, before the swapchain. */
-  void blit_color(
+  void blitColor(
     CommandEncoder const& cmd,
     backend::Image const& src_image
   ) const noexcept;
@@ -48,18 +48,18 @@ class Renderer {
   // --- GPUResources gltf objects ---
 
   [[nodiscard]]
-  GLTFScene load_gltf(
+  GLTFScene loadGLTF(
     std::string_view gltf_filename,
     scene::Mesh::AttributeLocationMap const& attribute_to_location
   );
 
   [[nodiscard]]
-  GLTFScene load_gltf(std::string_view gltf_filename);
+  GLTFScene loadGLTF(std::string_view gltf_filename);
 
   [[nodiscard]]
-  std::future<GLTFScene> async_load_gltf(std::string const& filename) {
+  std::future<GLTFScene> asyncLoadGLTF(std::string const& filename) {
     return utils::RunTaskGeneric<GLTFScene>([this, filename] {
-      return load_gltf(filename);
+      return loadGLTF(filename);
     });
   }
 
@@ -83,12 +83,12 @@ class Renderer {
 
   [[nodiscard]]
   uint32_t swapchain_image_count() const {
-    return swapchain().imageCount();
+    return swapchain().image_count();
   }
 
   [[nodiscard]]
   backend::Image swapchain_image() const {
-    return swapchain().currentImage();
+    return swapchain().current_image();
   }
 
   [[nodiscard]]
@@ -123,11 +123,11 @@ class Renderer {
     std::unique_ptr<RenderTarget> main_rt{};
   };
 
-  void init_view_resources();
+  void initViewResources();
 
-  void release_view_resources();
+  void releaseViewResources();
 
-  void apply_postprocess();
+  void applyPostProcess();
 
   FrameResources& frame_resource() noexcept {
     return frames_[frame_index_];

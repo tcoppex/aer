@@ -144,7 +144,7 @@ void UIController::draw(
   VkImageView image_view,
   VkExtent2D surface_size
 ) {
-  auto pass = cmd.begin_rendering({
+  auto pass = cmd.beginRendering({
     .colorAttachments = {
       {
         .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
@@ -157,7 +157,7 @@ void UIController::draw(
     .renderArea = {{0, 0}, surface_size},
   });
   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), pass.handle());
-  cmd.end_rendering();
+  cmd.endRendering();
 }
 
 // ----------------------------------------------------------------------------

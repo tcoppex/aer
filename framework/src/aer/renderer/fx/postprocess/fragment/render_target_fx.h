@@ -17,32 +17,40 @@ class RenderTargetFx : public FragmentFx
 
   void execute(CommandEncoder const& cmd) const override; //
 
+  [[nodiscard]]
   bool resize(VkExtent2D const dimension) override;
 
-  backend::Image getImageOutput(uint32_t index = 0u) const override;
+  [[nodiscard]]
+  backend::Image image_output(uint32_t index = 0u) const override;
 
-  virtual std::vector<backend::Image> getImageOutputs() const override;
+  [[nodiscard]]
+  virtual std::vector<backend::Image> image_outputs() const override;
 
-  backend::Buffer getBufferOutput(uint32_t index = 0u) const override {
+  [[nodiscard]]
+  backend::Buffer buffer_output(uint32_t index = 0u) const override {
     return {};
   }
 
-  std::vector<backend::Buffer> getBufferOutputs() const override {
+  [[nodiscard]]
+  std::vector<backend::Buffer> buffer_outputs() const override {
     return {};
   }
 
  protected:
   virtual void createRenderTarget(VkExtent2D const dimension);
 
-  std::string getVertexShaderName() const override {
+  [[nodiscard]]
+  std::string vertex_shader_name() const override {
     return GetMapScreenVertexShaderName();
   }
 
-  GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(
+  [[nodiscard]]
+  GraphicsPipelineDescriptor_t graphics_pipeline_descriptor(
     std::vector<backend::ShaderModule> const& shaders
   ) const override;
 
-  VkExtent2D getRenderSurfaceSize() const override;
+  [[nodiscard]]
+  VkExtent2D surface_size() const override;
 
   void draw(RenderPassEncoder const& pass) const override {
     pass.draw(3u);

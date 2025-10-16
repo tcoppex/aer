@@ -27,36 +27,36 @@ class Allocator {
   // ----- Buffer -----
 
   [[nodiscard]]
-  backend::Buffer create_buffer(
+  backend::Buffer createBuffer(
     VkDeviceSize const size,
     VkBufferUsageFlags2KHR const usage,   // !! require maintenance5 !!
     VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     VmaAllocationCreateFlags const flags = {}
   ) const;
 
-  void destroy_buffer(backend::Buffer const& buffer) const {
+  void destroyBuffer(backend::Buffer const& buffer) const {
     vmaDestroyBuffer(handle_, buffer.buffer, buffer.allocation);
   }
 
   [[nodiscard]]
-  backend::Buffer create_staging_buffer(
+  backend::Buffer createStagingBuffer(
     size_t const bytesize = kDefaultStagingBufferSize,
     void const* host_data = nullptr,
     size_t host_data_size = 0u
   ) const;
 
-  void clear_staging_buffers() const;
+  void clearStagingBuffers() const;
 
-  void map_memory(backend::Buffer const& buffer, void **data) const {
+  void mapMemory(backend::Buffer const& buffer, void **data) const {
     CHECK_VK( vmaMapMemory(handle_, buffer.allocation, data) );
   }
 
-  void unmap_memory(backend::Buffer const& buffer) const {
+  void unmapMemory(backend::Buffer const& buffer) const {
     vmaUnmapMemory(handle_, buffer.allocation);
   }
 
   /* Alias to map & copy host data to a device buffer. */
-  size_t write_buffer(
+  size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     size_t const dst_offset,
     void const* host_data,
@@ -64,24 +64,24 @@ class Allocator {
     size_t const bytesize
   ) const;
 
-  size_t write_buffer(
+  size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     void const* host_data,
     size_t const bytesize
   ) const {
-    return write_buffer(dst_buffer, 0u, host_data, 0u, bytesize);
+    return writeBuffer(dst_buffer, 0u, host_data, 0u, bytesize);
   }
 
   // ----- Image -----
 
   /* Create an image with view with identical format. */
-  backend::Image create_image(
+  backend::Image createImage(
     VkImageCreateInfo const& image_info,
     VkImageViewCreateInfo view_info,
     VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_GPU_ONLY
   ) const;
 
-  void destroy_image(backend::Image &image) const;
+  void destroyImage(backend::Image &image) const;
 
  private:
   VkDevice device_{};

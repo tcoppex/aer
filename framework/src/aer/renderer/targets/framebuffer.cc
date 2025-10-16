@@ -27,7 +27,7 @@ void Framebuffer::resize(VkExtent2D const dimension) {
 
   // Color(s).
   for (auto& color : outputs_[BufferName::Color]) {
-    color = context_ptr_->create_image_2d(
+    color = context_ptr_->createImage2D(
       dimension.width,
       dimension.height,
       desc_.color_desc.format,
@@ -35,7 +35,7 @@ void Framebuffer::resize(VkExtent2D const dimension) {
       | RenderTarget::kDefaultColorImageUsageFlags //
     );
   }
-  context_ptr_->transition_images_layout(
+  context_ptr_->transitionImages(
     outputs_[BufferName::Color],
     desc_.color_desc.initialLayout,
     desc_.color_desc.finalLayout,
@@ -45,7 +45,7 @@ void Framebuffer::resize(VkExtent2D const dimension) {
   // DepthStencil(s).
   if (use_depth_stencil_) {
     for (auto& depth_stencil : outputs_[BufferName::DepthStencil]) {
-      depth_stencil = context_ptr_->create_image_2d(
+      depth_stencil = context_ptr_->createImage2D(
         dimension.width,
         dimension.height,
         desc_.depth_stencil_format,
@@ -94,10 +94,10 @@ void Framebuffer::release_buffers() {
     framebuffer = VK_NULL_HANDLE;
   }
   for (auto& color : outputs_[BufferName::Color]) {
-    context_ptr_->destroy_image(color);
+    context_ptr_->destroyImage(color);
   }
   for (auto& depth_stencil : outputs_[BufferName::DepthStencil]) {
-    context_ptr_->destroy_image(depth_stencil);
+    context_ptr_->destroyImage(depth_stencil);
   }
 }
 
@@ -111,7 +111,7 @@ void Framebuffer::setup(Descriptor_t const& desc) {
 
   /* Resize the buffers depending weither we wanna sync to the current swap index. */
   uint32_t const image_swap_count{
-    desc_.match_swapchain_output_count ? swapchain_ptr_->imageCount() : 1u
+    desc_.match_swapchain_output_count ? swapchain_ptr_->image_count() : 1u
   };
   framebuffers_.resize(image_swap_count);
   for (auto& output : outputs_) {

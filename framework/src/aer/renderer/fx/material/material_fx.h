@@ -38,28 +38,30 @@ class MaterialFx {
   }
 
  protected:
-  virtual std::string getVertexShaderName() const = 0;
+  virtual std::string vertex_shader_name() const = 0;
 
-  virtual std::string getShaderName() const = 0;
+  virtual std::string shader_name() const = 0;
 
+  [[nodiscard]]
   virtual backend::ShaderMap createShaderModules() const;
 
-  virtual DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const {
+  virtual DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const {
     return {};
   }
 
-  virtual std::vector<VkPushConstantRange> getPushConstantRanges() const {
+  virtual std::vector<VkPushConstantRange> push_constant_ranges() const {
     return {};
   }
 
   virtual void createPipelineLayout();
 
   virtual void createDescriptorSets() {
-    descriptor_set_ = context_ptr_->create_descriptor_set(descriptor_set_layout_); //
+    descriptor_set_ = context_ptr_->createDescriptorSet(descriptor_set_layout_); //
   }
 
  protected:
-  virtual GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(
+  [[nodiscard]]
+  virtual GraphicsPipelineDescriptor_t graphics_pipeline_descriptor(
     backend::ShaderMap const& shaders,
     scene::MaterialStates const& states
   ) const;
@@ -69,9 +71,9 @@ class MaterialFx {
 
   // -- mesh instance push constants --
 
-  virtual void setTransformIndex(uint32_t index) = 0;
-  virtual void setMaterialIndex(uint32_t index) = 0;
-  virtual void setInstanceIndex(uint32_t index) = 0;
+  virtual void set_transform_index(uint32_t index) = 0;
+  virtual void set_material_index(uint32_t index) = 0;
+  virtual void set_instance_index(uint32_t index) = 0;
 
   // -- material utils --
 
@@ -108,7 +110,7 @@ class TMaterialFx : public MaterialFx {
   }
 
   void release() override {
-    context_ptr_->destroy_buffer(material_storage_buffer_);
+    context_ptr_->destroyBuffer(material_storage_buffer_);
     MaterialFx::release();
   }
 
@@ -126,13 +128,13 @@ class TMaterialFx : public MaterialFx {
 
     // ------------------------------
     if constexpr (kEditMode) {
-      context_ptr_->write_buffer(
+      context_ptr_->writeBuffer(
         material_storage_buffer_,
         materials_.data(),
         materials_.size() * sizeof(ShaderMaterial)
       );
     } else {
-      context_ptr_->transient_upload_buffer(
+      context_ptr_->transientUploadBuffer(
         materials_.data(),
         materials_.size() * sizeof(ShaderMaterial),
         material_storage_buffer_
@@ -154,7 +156,7 @@ class TMaterialFx : public MaterialFx {
 
     if constexpr (kEditMode) {
       // Setup the SSBO for frequent host-device mapping (slower).
-      material_storage_buffer_ = context_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->createBuffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -163,7 +165,7 @@ class TMaterialFx : public MaterialFx {
       );
     } else {
       // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = context_ptr_->create_buffer(
+      material_storage_buffer_ = context_ptr_->createBuffer(
         buffersize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
