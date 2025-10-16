@@ -191,8 +191,6 @@ class SampleApp final : public Application {
         /**
          * If no pipeline layout is specified, the pass encoder will take the
          * one from the currently bound pipeline, when available.
-         *
-         * This is only possible using a non const RenderPassEncoder.
          **/
         pass.pushConstant(tick * 4.0f);
         pass.draw(kVertices.size());
@@ -205,8 +203,6 @@ class SampleApp final : public Application {
   backend::Buffer vertex_buffer_{};
   Pipeline graphics_pipeline_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 
