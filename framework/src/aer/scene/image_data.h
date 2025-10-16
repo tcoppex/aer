@@ -118,15 +118,14 @@ struct ImageData {
  public:
   int32_t width{};
   int32_t height{};
-  int32_t channels{}; //
-
-  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels_{nullptr, stbi_image_free}; //
+  int32_t channels{};
 
  private:
   bool retrieveImageInfo(stbi_uc const *buffer_data, int buffer_size) {
     return 0 < stbi_info_from_memory(buffer_data, buffer_size, &width, &height, &channels);
   }
 
+  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels_{nullptr, stbi_image_free}; //
   std::future<bool> async_result_;
 };
 

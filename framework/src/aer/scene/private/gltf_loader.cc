@@ -43,7 +43,11 @@ scene::MaterialStates GetMaterialStates(cgltf_material const& mat) {
 
 // ----------------------------------------------------------------------------
 
-bool DecompressDracoPrimitive(cgltf_primitive const& prim, std::vector<VertexInternal_t>& vertices, std::vector<uint32_t>& indices) {
+bool DecompressDracoPrimitive(
+  cgltf_primitive const& prim,
+  std::vector<VertexInternal_t>& vertices,
+  std::vector<uint32_t>& indices
+) {
   if (!prim.has_draco_mesh_compression) {
     LOGE("Error: Primitive does not have draco compression.");
     return false;
@@ -154,7 +158,10 @@ bool DecompressDracoPrimitive(cgltf_primitive const& prim, std::vector<VertexInt
 
 // ----------------------------------------------------------------------------
 
-void ExtractPrimitiveVertices(cgltf_primitive const& prim, std::vector<VertexInternal_t>& vertices) {
+void ExtractPrimitiveVertices(
+  cgltf_primitive const& prim,
+  std::vector<VertexInternal_t>& vertices
+) {
   uint32_t const vertex_count = prim.attributes[0].data->count;
   vertices.resize(vertex_count);
 
@@ -349,7 +356,9 @@ PointerToIndexMap_t ExtractMaterials(
     cgltf_material const& mat = data->materials[mat_id];
     auto const& pbr_mr = mat.pbr_metallic_roughness;
 
-    auto const material_model{GetMaterialModel(mat)};
+    auto const material_model{
+      GetMaterialModel(mat)
+    };
 
     if (scene::MaterialModel::Unknown == material_model) {
       LOGW("[GLTF] Material {} has unsupported material type.", uint32_t(mat_id));
@@ -362,7 +371,9 @@ PointerToIndexMap_t ExtractMaterials(
         .normal     = get_texture(mat.normal_texture,     bindings.normal),
         .occlusion  = get_texture(mat.occlusion_texture,  bindings.occlusion),
         .emissive   = get_texture(mat.emissive_texture,   bindings.emissive),
-        .roughness_metallic = get_texture(pbr_mr.metallic_roughness_texture, bindings.roughness_metallic),
+        .roughness_metallic = get_texture(
+          pbr_mr.metallic_roughness_texture, bindings.roughness_metallic
+        ),
       },
       .alpha_cutoff = mat.alpha_cutoff,
       .double_sided = static_cast<bool>(mat.double_sided),

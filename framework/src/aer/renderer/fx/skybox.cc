@@ -159,7 +159,12 @@ bool Skybox::setup(std::string_view hdr_filename) {
 // ----------------------------------------------------------------------------
 
 void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
-  mat4 view{ camera.view() };
+  if (!is_valid()) {
+    LOGW("Trying to render a non setup skybox.");
+    return;
+  }
+
+  auto view = camera.view();
   view[3] = vec4(vec3(0.0f), view[3].w);
 
   PushConstant_t push_constant{};

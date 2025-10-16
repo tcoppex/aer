@@ -196,14 +196,13 @@ class Camera {
   uint32_t height_{};
   vec4 linear_params_{};
 
-  mat4 view_{};
-  mat4 world_{};
   mat4 proj_{};
   mat4 proj_inverse_{};
+  mat4 view_{};
+  mat4 world_{};      //< aka 'view_inverse'
   mat4 viewproj_{};
 
   bool bUseOrtho_{};
-
   bool need_rebuild_{true};
   bool rebuilt_{false};
 };

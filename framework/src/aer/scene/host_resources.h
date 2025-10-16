@@ -24,7 +24,7 @@ using ResourceMap = std::unordered_map<std::string, std::unique_ptr<T>>;
 
 struct HostResources {
  public:
-  // Use Async to extract internal GLTF assets & load images.
+  // Use threads to extract internal GLTF assets & load images asynchronously.
   static bool constexpr kUseAsyncLoad{true};
 
   // Force all loaded meshes to match VertexInternal_t structure.
@@ -40,8 +40,10 @@ struct HostResources {
 
   void setup();
 
+  [[nodiscard]]
   bool loadFile(std::string_view filename);
 
+  [[nodiscard]]
   MaterialProxy const& material(MaterialRef const& ref) const {
     return material_proxies[ref.proxy_index];
   }
@@ -66,7 +68,7 @@ struct HostResources {
   uint32_t total_image_size{0u};
 
  protected:
-  void reset_internal_descriptors();
+  void resetInternalDescriptors();
 
   MaterialProxy::TextureBinding default_texture_binding_{};
 };

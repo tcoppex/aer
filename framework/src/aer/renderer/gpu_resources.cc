@@ -14,6 +14,9 @@ using namespace scene;
 GPUResources::GPUResources(RenderContext const& context)
   : context_(context)
 {
+  material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
+  material_fx_registry_->init(context_);
+
   // ---------------------------------------
   rt_scene_ = std::make_unique<RayTracingScene>();
   rt_scene_->init(context_);
@@ -25,14 +28,6 @@ GPUResources::GPUResources(RenderContext const& context)
 GPUResources::~GPUResources() {
   context_.deviceWaitIdle();
 
-  if (material_fx_registry_) {
-    material_fx_registry_->release();
-  }
-
-  // ---------------------------------------
-  rt_scene_.reset();
-  // ---------------------------------------
-
   for (auto& img : device_images) {
     context_.destroyImage(img);
   }
@@ -40,6 +35,13 @@ GPUResources::~GPUResources() {
   context_.destroyBuffer(frame_ubo_);
   context_.destroyBuffer(index_buffer);
   context_.destroyBuffer(vertex_buffer);
+
+  // ---------------------------------------
+  rt_scene_.reset();
+  // ---------------------------------------
+
+  material_fx_registry_->release();
+  material_fx_registry_.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -49,8 +51,7 @@ bool GPUResources::loadFile(std::string_view filename) {
     return false;
   }
 
-  material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
-  material_fx_registry_->init(context_);
+  /* Build the registry from the materials found in the model. */
   material_fx_registry_->setup(material_proxies, material_refs);
 
   return true;
@@ -115,7 +116,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     DSR.update_frame_ubo(frame_ubo_);
 
     if (total_image_size > 0) {
-      DSR.update_scene_textures(descriptor_image_infos());
+      DSR.update_scene_textures(buildDescriptorImageInfos());
     }
 
     DSR.update_scene_transforms(transforms_ssbo_);
@@ -127,7 +128,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
   }
 
-  /* Clear host data once uploaded */
+  /* Clear host data once uploaded. */
   if (bReleaseHostDataOnUpload) {
     host_images.clear();
     host_images.shrink_to_fit();
@@ -139,7 +140,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
 
 // ----------------------------------------------------------------------------
 
-std::vector<VkDescriptorImageInfo> GPUResources::descriptor_image_infos() const {
+std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() const {
   std::vector<VkDescriptorImageInfo> image_infos{};
 
   if (textures.empty()) {
@@ -267,7 +268,6 @@ void GPUResources::render(RenderPassEncoder const& pass) {
       auto [fx, states] = hashpair;
 
       // Bind pipeline & descriptor set.
-      // auto const& states = submeshes[0]->material_ref->states;
       fx->prepareDrawState(pass, states);
 
       // Draw submeshes.
@@ -517,7 +517,7 @@ void GPUResources::updateFrameData(
     .viewMatrix = camera.view(),
     .invViewMatrix = camera.world(),
     .viewProjMatrix = camera.viewproj(),
-    .cameraPos_Time = vec4(camera.position(), elapsed_time),
+    .cameraPos_Time = vec4(camera.position(), elapsed_time), //
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = frame_index_++,
     .renderer_states = 0b11111111111111111111111111111111, // XXX

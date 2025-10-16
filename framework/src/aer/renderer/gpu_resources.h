@@ -36,7 +36,7 @@ struct GPUResources : scene::HostResources {
   );
 
   /* Construct the image info buffer for the scene textures descriptor set. */
-  std::vector<VkDescriptorImageInfo> descriptor_image_infos() const;
+  std::vector<VkDescriptorImageInfo> buildDescriptorImageInfos() const;
 
   /* Update relevant resources before rendering (eg. shared uniform buffers). */
   void update(

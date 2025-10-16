@@ -179,7 +179,7 @@ class SceneFx final : public RenderTargetFx {
       {
         .binding = shader_interop::kDescriptorSetBinding_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .images = scene_->descriptor_image_infos()
+        .images = scene_->buildDescriptorImageInfos()
       }
     });
   }
