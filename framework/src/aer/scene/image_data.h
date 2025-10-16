@@ -60,7 +60,7 @@ struct ImageData {
         data[index+3] = a;
       }
     }
-    pixels.reset(data);
+    pixels_.reset(data);
   }
 
   bool load(stbi_uc const* buffer_data, uint32_t const buffer_size) {
@@ -73,16 +73,16 @@ struct ImageData {
       kDefaultNumChannels
     );
     if (pixels_data) {
-      pixels.reset(pixels_data);
+      pixels_.reset(pixels_data);
     }
     return nullptr != pixels_data;
   }
 
   void release() {
-    pixels.reset();
+    pixels_.reset();
   }
 
-  std::future<bool> loadAsyncFuture(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+  std::future<bool> asyncLoadFuture(stbi_uc const* buffer_data, uint32_t const buffer_size) {
     if (retrieveImageInfo(buffer_data, buffer_size)) {
       return utils::RunTaskGeneric<bool>([this, buffer_data, buffer_size] {
         return load(buffer_data, buffer_size);
@@ -91,7 +91,7 @@ struct ImageData {
     return {};
   }
 
-  void loadAsync(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+  void asyncLoad(stbi_uc const* buffer_data, uint32_t const buffer_size) {
     if (retrieveImageInfo(buffer_data, buffer_size)) {
       async_result_ = utils::RunTaskGeneric<bool>([this, buffer_data, buffer_size] {
         return load(buffer_data, buffer_size);
@@ -99,19 +99,19 @@ struct ImageData {
     }
   }
 
-  bool getLoadAsyncResult() {
+  bool async_load_result() {
     return async_result_.valid() ? async_result_.get() : false;
   }
 
-  uint8_t const* getPixels() const {
-    return pixels.get();
+  uint8_t const* pixels() {
+    return (pixels_ || (async_load_result() && pixels_)) ? pixels_.get() : nullptr;
   }
 
-  uint8_t const* getPixels() {
-    return (pixels || (getLoadAsyncResult() && pixels)) ? pixels.get() : nullptr;
+  uint8_t const* pixels() const {
+    return pixels_.get();
   }
 
-  uint32_t getBytesize() const {
+  uint32_t bytesize() const {
     return static_cast<uint32_t>(kDefaultNumChannels * width * height);
   }
 
@@ -120,7 +120,7 @@ struct ImageData {
   int32_t height{};
   int32_t channels{}; //
 
-  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels{nullptr, stbi_image_free}; //
+  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels_{nullptr, stbi_image_free}; //
 
  private:
   bool retrieveImageInfo(stbi_uc const *buffer_data, int buffer_size) {

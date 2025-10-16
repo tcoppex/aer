@@ -199,7 +199,7 @@ bool HostResources::loadFile(std::string_view filename) {
 
     /* Wait for the host images to finish loading before using them. */
     for (auto & host_image : host_images) {
-      host_image.getLoadAsyncResult();
+      host_image.async_load_result();
     }
   }
 
@@ -253,7 +253,7 @@ void HostResources::reset_internal_descriptors() {
   }
 
   for (auto const& host_image : host_images) {
-    total_image_size += host_image.getBytesize();
+    total_image_size += host_image.bytesize();
   }
 }
 

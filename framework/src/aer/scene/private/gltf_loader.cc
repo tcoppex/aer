@@ -284,9 +284,9 @@ PointerToIndexMap_t ExtractImages(
       reinterpret_cast<stbi_uc const*>(buffer_view->buffer->data) + buffer_view->offset
     };
 
-    /* Image tasks should be retrieved outside this function via 'image->getLoadAsyncResult()' */
+    /* Image tasks should be retrieved outside this function via 'image->async_load_result()' */
     images.emplace_back();
-    images.back().loadAsync(buffer_data, buffer_view->size);
+    images.back().asyncLoad(buffer_data, buffer_view->size);
 
     uint32_t const image_index = index_offset + static_cast<uint32_t>(image_id);
     image_indices.try_emplace(&gl_image, image_index);

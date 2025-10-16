@@ -327,9 +327,9 @@ void GPUResources::uploadImages() {
     ));
 
     /* Upload image to staging buffer */
-    auto const img_bytesize = host_image.getBytesize();
+    auto const img_bytesize = host_image.bytesize();
     context_.writeBuffer(
-      staging_buffer, staging_offset, host_image.getPixels(), 0u, img_bytesize
+      staging_buffer, staging_offset, host_image.pixels(), 0u, img_bytesize
     );
     copies.push_back({
       .bufferOffset = staging_offset,
