@@ -83,6 +83,9 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
   ShaderMaterial convertMaterialProxy(scene::MaterialProxy const& proxy) const final {
     return {
       .diffuse_factor = proxy.pbr_mr.basecolor_factor,
+      .diffuse_texture_id = proxy.bindings.basecolor,
+      .alpha_cutoff = proxy.alpha_cutoff,
+      // .double_sided = proxy.double_sided,
     };
   }
 

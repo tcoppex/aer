@@ -27,7 +27,9 @@ layout(scalar, push_constant) uniform PushConstant_ {
 // ----------------------------------------------------------------------------
 
 layout(location = kAttribLocation_Position) in vec3 inPosition;
+layout(location = kAttribLocation_Texcoord) in vec3 inTexcoord;
 layout(location = 0) out vec3 vPositionWS;
+layout(location = 1) out vec2 vTexcoord;
 
 // ----------------------------------------------------------------------------
 
@@ -38,6 +40,7 @@ void main() {
 
   gl_Position = uFrame.viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
+  vTexcoord   = inTexcoord.xy;
 }
 
 // ----------------------------------------------------------------------------
