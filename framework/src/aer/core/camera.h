@@ -46,7 +46,7 @@ class Camera {
   }
 
   /* Create a perspective projection matrix. */
-  void setPerspective(float fov, uint32_t w, uint32_t h, float znear, float zfar) {
+  void makePerspective(float fov, uint32_t w, uint32_t h, float znear, float zfar) {
     assert( fov > 0.0f );
     assert( (w > 0) && (h > 0) );
     assert( (zfar - znear) > 0.0f );
@@ -66,17 +66,17 @@ class Camera {
     linear_params_ = vec4( znear, zfar, A, - znear * A);
   }
 
-  void setPerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
-    setPerspective( fov, resolution.x, resolution.y, znear, zfar);
+  void makePerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
+    makePerspective( fov, resolution.x, resolution.y, znear, zfar);
   }
 
   /* Create a default perspective projection camera. */
-  void setDefault() {
-    setPerspective( kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar);
+  void makeDefault() {
+    makePerspective( kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar);
   }
 
-  void setDefault(ivec2 const& resolution) {
-    setPerspective( kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
+  void makeDefault(ivec2 const& resolution) {
+    makePerspective( kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
   }
 
   // Update controller and rebuild all matrices.

@@ -93,12 +93,12 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
 
   /* Transfer Textures */
   if (total_image_size > 0) {
-    upload_images();
+    uploadImages();
   }
 
   /* Transfer Buffers */
   if (vertex_buffer_size > 0) {
-    upload_buffers();
+    uploadBuffers();
 
     // ---------------------------------------
     /* Build the Raytracing acceleration structures. */
@@ -297,7 +297,7 @@ void GPUResources::set_ray_tracing_fx(RayTracingFx* fx) {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::upload_images() {
+void GPUResources::uploadImages() {
   LOG_CHECK( total_image_size > 0 );
 
   /* Create a staging buffer. */
@@ -374,7 +374,7 @@ void GPUResources::upload_images() {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::upload_buffers() {
+void GPUResources::uploadBuffers() {
   LOG_CHECK(vertex_buffer_size > 0);
 
   VkBufferUsageFlags extra_flags{};

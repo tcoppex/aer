@@ -53,8 +53,8 @@ struct GPUResources : scene::HostResources {
   // -------------------------------
 
  private:
-  void upload_images();
-  void upload_buffers();
+  void uploadImages();
+  void uploadBuffers();
 
   void updateFrameData(
     Camera const& camera,
