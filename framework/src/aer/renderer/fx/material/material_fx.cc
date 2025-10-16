@@ -14,10 +14,10 @@ void MaterialFx::init(RenderContext const& context) {
 void MaterialFx::release() {
   if (pipeline_layout_ != VK_NULL_HANDLE) {
     for (auto [_, pipeline] : pipelines_) {
-      context_ptr_->destroy_pipeline(pipeline);
+      context_ptr_->destroyPipeline(pipeline);
     }
-    context_ptr_->destroy_pipeline_layout(pipeline_layout_); //
-    context_ptr_->destroy_descriptor_set_layout(descriptor_set_layout_);
+    context_ptr_->destroyPipelineLayout(pipeline_layout_); //
+    context_ptr_->destroyDescriptorSetLayout(descriptor_set_layout_);
     pipeline_layout_ = VK_NULL_HANDLE;
   }
 }
@@ -31,12 +31,12 @@ void MaterialFx::createPipelines(std::vector<scene::MaterialStates> const& state
   std::vector<GraphicsPipelineDescriptor_t> descs{};
   descs.reserve(states.size());
   for (auto const& s : states) {
-    descs.push_back( getGraphicsPipelineDescriptor(shaders, s) );
+    descs.push_back( graphics_pipeline_descriptor(shaders, s) );
   }
 
   // Batch create the pipelines.
   std::vector<Pipeline> pipelines(states.size());
-  context_ptr_->create_graphics_pipelines(
+  context_ptr_->createGraphicsPipelines(
     pipeline_layout_, descs, &pipelines
   );
 
@@ -46,7 +46,7 @@ void MaterialFx::createPipelines(std::vector<scene::MaterialStates> const& state
   }
 
   for (auto const& [_, shader] : shaders) {
-    context_ptr_->release_shader_module(shader);
+    context_ptr_->releaseShaderModule(shader);
   }
 }
 
@@ -58,7 +58,7 @@ void MaterialFx::prepareDrawState(
 ) {
   LOG_CHECK(pipelines_.contains(states));
 
-  pass.bind_pipeline(pipelines_[states]);
+  pass.bindPipeline(pipelines_[states]);
 
   // ----------------------------
   auto const& DSR = context_ptr_->descriptor_set_registry();
@@ -67,21 +67,21 @@ void MaterialFx::prepareDrawState(
     | VK_SHADER_STAGE_FRAGMENT_BIT
   };
 
-  pass.bind_descriptor_set(
+  pass.bindDescriptorSet(
     descriptor_set_,
     pipeline_layout_,
     stage_flags,
     material_shader_interop::kDescriptorSet_Internal
   );
 
-  pass.bind_descriptor_set(
+  pass.bindDescriptorSet(
     DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
     pipeline_layout_,
     stage_flags,
     material_shader_interop::kDescriptorSet_Frame
   );
 
-  pass.bind_descriptor_set(
+  pass.bindDescriptorSet(
     DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
     pipeline_layout_,
     stage_flags,
@@ -95,24 +95,24 @@ void MaterialFx::prepareDrawState(
 void MaterialFx::createPipelineLayout() {
   LOG_CHECK(context_ptr_);
 
-  descriptor_set_layout_ = context_ptr_->create_descriptor_set_layout(
-    getDescriptorSetLayoutParams()
+  descriptor_set_layout_ = context_ptr_->createDescriptorSetLayout(
+    descriptor_set_layout_params()
   );
 
   auto const& DSR = context_ptr_->descriptor_set_registry();
-  pipeline_layout_ = context_ptr_->create_pipeline_layout({
+  pipeline_layout_ = context_ptr_->createPipelineLayout({
     .setLayouts = {
       descriptor_set_layout_,
       DSR.descriptor(DescriptorSetRegistry::Type::Frame).layout,
       DSR.descriptor(DescriptorSetRegistry::Type::Scene).layout,
     },
-    .pushConstantRanges = getPushConstantRanges()
+    .pushConstantRanges = push_constant_ranges()
   });
 }
 
 // ----------------------------------------------------------------------------
 
-GraphicsPipelineDescriptor_t MaterialFx::getGraphicsPipelineDescriptor(
+GraphicsPipelineDescriptor_t MaterialFx::graphics_pipeline_descriptor(
   backend::ShaderMap const& shaders,
   scene::MaterialStates const& states
 ) const {
@@ -174,11 +174,11 @@ backend::ShaderMap MaterialFx::createShaderModules() const {
   return {
     {
       backend::ShaderStage::Vertex,
-      context_ptr_->create_shader_module(getVertexShaderName())
+      context_ptr_->createShaderModule(vertex_shader_name())
     },
     {
       backend::ShaderStage::Fragment,
-      context_ptr_->create_shader_module(getShaderName())
+      context_ptr_->createShaderModule(shader_name())
     },
   };
 }

@@ -26,9 +26,9 @@ class SampleApp final : public Application {
     backend::Buffer index;
 
     void draw(RenderPassEncoder const& pass, uint32_t instance_count = 1u) const {
-      pass.bind_vertex_buffer(vertex);
-      pass.bind_index_buffer(index, vk_index_type());
-      pass.draw_indexed(index_count(), instance_count);
+      pass.bindVertexBuffer(vertex);
+      pass.bindIndexBuffer(index, vk_index_type());
+      pass.drawIndexed(index_count(), instance_count);
     }
   };
 
@@ -46,7 +46,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("05 - přemýšlet s portály");
+    wm_->set_title("05 - přemýšlet s portály");
 
     renderer_.set_clear_color({ 0.108f, 0.108f, 0.108f, 1.0f});
 
@@ -69,9 +69,9 @@ class SampleApp final : public Application {
 
     /* Create Uniform, Vertices, and Indices Buffers. */
     {
-      auto cmd = context_.create_transient_command_encoder();
+      auto cmd = context_.createTransientCommandEncoder();
 
-      uniform_buffer_ = cmd.create_buffer_and_upload(
+      uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       );
@@ -89,13 +89,13 @@ class SampleApp final : public Application {
         Geometry::MakePlane(mesh, kPortalSize);
 
         /* Initialize the descriptors used to bind vertex inputs. */
-        mesh.initialize_submesh_descriptors(attrib_location_map);
+        mesh.initializeSubmeshDescriptors(attrib_location_map);
 
-        mesh.vertex = cmd.create_buffer_and_upload(
+        mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
-        mesh.index = cmd.create_buffer_and_upload(
+        mesh.index = cmd.createBufferAndUpload(
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
@@ -109,25 +109,25 @@ class SampleApp final : public Application {
         float const r = 0.5f * kPortalSize;
         Geometry::MakeTorus2(mesh, r, r * lina::kSqrtTwo, 48u, 32u);
 
-        mesh.initialize_submesh_descriptors(attrib_location_map);
+        mesh.initializeSubmeshDescriptors(attrib_location_map);
 
-        mesh.vertex = cmd.create_buffer_and_upload(
+        mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
           VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
         );
-        mesh.index = cmd.create_buffer_and_upload(
+        mesh.index = cmd.createBufferAndUpload(
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
         mesh.clear_indices_and_vertices();
       }
 
-      context_.finish_transient_command_encoder(cmd);
+      context_.finishTransientCommandEncoder(cmd);
     }
 
     /* Descriptor set. */
     {
-      descriptor_set_layout_ = context_.create_descriptor_set_layout({
+      descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -140,7 +140,7 @@ class SampleApp final : public Application {
         },
       });
 
-      descriptor_set_ = context_.create_descriptor_set(descriptor_set_layout_, {
+      descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -150,7 +150,7 @@ class SampleApp final : public Application {
     }
 
     /* Create a Pipeline Layout to be shared. */
-    pipeline_layout_ = context_.create_pipeline_layout({
+    pipeline_layout_ = context_.createPipelineLayout({
       .setLayouts = { descriptor_set_layout_ },
       .pushConstantRanges = {
         {
@@ -160,7 +160,7 @@ class SampleApp final : public Application {
       },
     });
 
-    auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert.glsl",
       "instanced.vert.glsl",
       "simple.frag.glsl",
@@ -200,12 +200,12 @@ class SampleApp final : public Application {
       };
 
       /* Render inside the stencil buffer. */
-      pipelines_[PipelineID::StencilMask] = context_.create_graphics_pipeline(
+      pipelines_[PipelineID::StencilMask] = context_.createGraphicsPipeline(
         pipeline_layout_, mask_pipeline_descriptor
       );
 
       /* Render inside the portal using the stencil test and the instancing vertex shader. */
-      pipelines_[PipelineID::StencilTest] = context_.create_graphics_pipeline(
+      pipelines_[PipelineID::StencilTest] = context_.createGraphicsPipeline(
         pipeline_layout_,
         {
           .vertex = {
@@ -248,12 +248,12 @@ class SampleApp final : public Application {
 
       /* Render in the depth buffer, to mask the portal once we've rendered into it. */
       mask_pipeline_descriptor.depthStencil.depthWriteEnable = VK_TRUE;
-      pipelines_[PipelineID::DepthMask] = context_.create_graphics_pipeline(
+      pipelines_[PipelineID::DepthMask] = context_.createGraphicsPipeline(
         pipeline_layout_, mask_pipeline_descriptor
       );
 
       /* Regular rendering pipeline, used outside the portal. Does not use the stencil buffer. */
-      pipelines_[PipelineID::Rendering] = context_.create_graphics_pipeline(
+      pipelines_[PipelineID::Rendering] = context_.createGraphicsPipeline(
         pipeline_layout_,
         {
           .vertex = {
@@ -285,14 +285,14 @@ class SampleApp final : public Application {
       );
     }
 
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
 
   void release() final {
     for (auto const& pipeline : pipelines_) {
-      context_.destroy_pipeline(pipeline);
+      context_.destroyPipeline(pipeline);
     }
     context_.destroyResources(
       descriptor_set_layout_,
@@ -317,34 +317,34 @@ class SampleApp final : public Application {
     );
 
     /* As the pipeline shared the same layout, we can bind them just once directly. */
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT
     );
 
     /* All objects but the last one use the same world matrix. */
     push_constant_.model.worldMatrix = portal_world_matrix;
-    cmd.push_constant(
+    cmd.pushConstant(
       push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT
     );
 
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_);
+      pass.setViewportScissor(viewport_size_);
 
       // Draw the portal mask into the stencil buffer.
-      pass.bind_pipeline(pipelines_[PipelineID::StencilMask]);
+      pass.bindPipeline(pipelines_[PipelineID::StencilMask]);
       plane_.draw(pass);
 
       // Draw instanced rings when passing the stencil test.
-      pass.bind_pipeline(pipelines_[PipelineID::StencilTest]);
+      pass.bindPipeline(pipelines_[PipelineID::StencilTest]);
       torus_.draw(pass, 256u);
 
       // Draw the portal mask into the depth buffer.
-      pass.bind_pipeline(pipelines_[PipelineID::DepthMask]);
+      pass.bindPipeline(pipelines_[PipelineID::DepthMask]);
       plane_.draw(pass);
 
       // Draw regular objects 'outside' the portal.
-      pass.bind_pipeline(pipelines_[PipelineID::Rendering]);
+      pass.bindPipeline(pipelines_[PipelineID::Rendering]);
       {
         // Portal frame.
         torus_.draw(pass);
@@ -354,11 +354,11 @@ class SampleApp final : public Application {
           linalg::scaling_matrix(vec3(3.0)),
           lina::rotation_matrix_z(-0.32f * tick)
         );
-        pass.push_constant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
         torus_.draw(pass);
       }
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

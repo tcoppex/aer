@@ -23,21 +23,19 @@ class FxInterface {
 
   virtual void setupUI() = 0;
 
-  // -----------------
-
-  virtual void setImageInputs(std::vector<backend::Image> const& inputs) = 0;
-
-  virtual void setImageInput(backend::Image const& input) {
-    setImageInputs({ input });
-  }
-
-  virtual void setBufferInputs(std::vector<backend::Buffer> const& inputs) = 0;
-
-  virtual void setBufferInput(backend::Buffer const& input) {
-    setBufferInputs({ input });
-  }
-
   virtual void execute(CommandEncoder const& cmd) const = 0;
+
+  virtual void set_image_inputs(std::vector<backend::Image> const& inputs) = 0;
+
+  virtual void set_image_input(backend::Image const& input) {
+    set_image_inputs({ input });
+  }
+
+  virtual void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) = 0;
+
+  virtual void set_buffer_input(backend::Buffer const& input) {
+    set_buffer_inputs({ input });
+  }
 };
 
 /* -------------------------------------------------------------------------- */

@@ -12,10 +12,10 @@ bool Context::init(
   CHECK_VK(volkInitialize());
 
   vulkan_xr_ = vulkan_xr;
-  init_instance(app_name, instance_extensions);
-  select_gpu();
+  initInstance(app_name, instance_extensions);
+  selectGPU();
 
-  if (!init_device()) {
+  if (!initDevice()) {
     return false;
   }
 
@@ -29,9 +29,9 @@ bool Context::init(
       auto const target = static_cast<TargetQueue>(i);
       command_pool_create_info.queueFamilyIndex = queue(target).family_index;
       CHECK_VK(vkCreateCommandPool(
-        device_, &command_pool_create_info, nullptr, &transient_command_pools_[target]
+        handle_, &command_pool_create_info, nullptr, &transient_command_pools_[target]
       ));
-      set_debug_object_name(transient_command_pools_[target],
+      setDebugObjectName(transient_command_pools_[target],
         "Context::TransientCommandPool::" + std::to_string(i)
       );
     }
@@ -39,7 +39,7 @@ bool Context::init(
 
   allocator_.init({
     .physicalDevice = gpu_,
-    .device = device_,
+    .device = handle_,
     .instance = instance_,
   });
 
@@ -51,13 +51,13 @@ bool Context::init(
 // ----------------------------------------------------------------------------
 
 void Context::release() {
-  vkDeviceWaitIdle(device_);
+  vkDeviceWaitIdle(handle_);
 
   allocator_.release();
   for (auto &pool : transient_command_pools_) {
-    vkDestroyCommandPool(device_, pool, nullptr); //
+    vkDestroyCommandPool(handle_, pool, nullptr); //
   }
-  vkDestroyDevice(device_, nullptr);
+  vkDestroyDevice(handle_, nullptr);
 
   vkDestroyDebugUtilsMessengerEXT(instance_, debug_utils_messenger_, nullptr);
   vkDestroyInstance(instance_, nullptr);
@@ -100,7 +100,7 @@ VkSampleCountFlagBits Context::max_sample_count() const noexcept {
 
 // ----------------------------------------------------------------------------
 
-backend::Image Context::create_image_2d(
+backend::Image Context::createImage2D(
   uint32_t width,
   uint32_t height,
   uint32_t array_layers,
@@ -171,9 +171,9 @@ backend::Image Context::create_image_2d(
     },
   };
 
-  auto image = allocator_.create_image(image_info, view_info);
+  auto image = allocator_.createImage(image_info, view_info);
 
-  set_debug_object_name(
+  setDebugObjectName(
     image.image,
     std::string(debug_name.empty() ? "Image2d::NoName" : debug_name)
   );
@@ -183,13 +183,13 @@ backend::Image Context::create_image_2d(
 
 // ----------------------------------------------------------------------------
 
-backend::ShaderModule Context::create_shader_module(
+backend::ShaderModule Context::createShaderModule(
   std::string_view directory,
   std::string_view shader_name
 ) const {
   return {
     .module = vk_utils::CreateShaderModule(
-      device_,
+      handle_,
       directory.data(),
       shader_name.data()
     ),
@@ -199,68 +199,68 @@ backend::ShaderModule Context::create_shader_module(
 
 // ----------------------------------------------------------------------------
 
-std::vector<backend::ShaderModule> Context::create_shader_modules(
+std::vector<backend::ShaderModule> Context::createShaderModules(
   std::string_view directory, 
   std::vector<std::string_view> const& shader_names
 ) const {
   std::vector<backend::ShaderModule> shaders{};
   shaders.reserve(shader_names.size());
   for (auto name : shader_names) {
-    shaders.push_back(create_shader_module(directory, name));
+    shaders.push_back(createShaderModule(directory, name));
   }
   return shaders;
 }
 
 // ----------------------------------------------------------------------------
 
-backend::ShaderModule Context::create_shader_module(std::string_view filepath) const {
-  return create_shader_module("", filepath); //
+backend::ShaderModule Context::createShaderModule(std::string_view filepath) const {
+  return createShaderModule("", filepath); //
 }
 
 // ----------------------------------------------------------------------------
 
-std::vector<backend::ShaderModule> Context::create_shader_modules(
+std::vector<backend::ShaderModule> Context::createShaderModules(
   std::vector<std::string_view> const& filepaths
 ) const {
-  return create_shader_modules("", filepaths); //
+  return createShaderModules("", filepaths); //
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::release_shader_module(backend::ShaderModule const& shader) const {
-  vkDestroyShaderModule(device_, shader.module, nullptr);
+void Context::releaseShaderModule(backend::ShaderModule const& shader) const {
+  vkDestroyShaderModule(handle_, shader.module, nullptr);
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::release_shader_modules(
+void Context::releaseShaderModules(
   std::vector<backend::ShaderModule> const& shaders
 ) const {
   for (auto const& shader : shaders) {
-    vkDestroyShaderModule(device_, shader.module, nullptr);
+    vkDestroyShaderModule(handle_, shader.module, nullptr);
   }
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::reset_command_pool(VkCommandPool command_pool) const noexcept {
-  CHECK_VK( vkResetCommandPool(device_, command_pool, 0x0u) );
+void Context::resetCommandPool(VkCommandPool command_pool) const noexcept {
+  CHECK_VK( vkResetCommandPool(handle_, command_pool, 0x0u) );
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::destroy_command_pool(VkCommandPool command_pool) const noexcept {
-  vkDestroyCommandPool(device_, command_pool, nullptr);
+void Context::destroyCommandPool(VkCommandPool command_pool) const noexcept {
+  vkDestroyCommandPool(handle_, command_pool, nullptr);
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::free_command_buffers(
+void Context::freeCommandBuffers(
   VkCommandPool command_pool,
   std::vector<VkCommandBuffer> const& command_buffers
 ) const noexcept {
   vkFreeCommandBuffers(
-    device_,
+    handle_,
     command_pool,
     static_cast<uint32_t>(command_buffers.size()),
     command_buffers.data()
@@ -269,16 +269,16 @@ void Context::free_command_buffers(
 
 // ----------------------------------------------------------------------------
 
-void Context::free_command_buffer(
+void Context::freeCommandBuffer(
   VkCommandPool command_pool,
   VkCommandBuffer command_buffer
 ) const noexcept {
-  vkFreeCommandBuffers(device_, command_pool, 1u, &command_buffer);
+  vkFreeCommandBuffers(handle_, command_pool, 1u, &command_buffer);
 }
 
 // ----------------------------------------------------------------------------
 
-CommandEncoder Context::create_transient_command_encoder(
+CommandEncoder Context::createTransientCommandEncoder(
   Context::TargetQueue const& target_queue
 ) const {
   VkCommandBuffer cmd{};
@@ -288,12 +288,12 @@ CommandEncoder Context::create_transient_command_encoder(
     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
     .commandBufferCount = 1u,
   };
-  CHECK_VK(vkAllocateCommandBuffers(device_, &alloc_info, &cmd));
+  CHECK_VK(vkAllocateCommandBuffers(handle_, &alloc_info, &cmd));
 
   auto encoder = CommandEncoder(
     cmd,
     static_cast<uint32_t>(target_queue),
-    device_,
+    handle_,
     &allocator_, //
     nullptr // (no render target for transient command buffer)
   );
@@ -304,7 +304,7 @@ CommandEncoder Context::create_transient_command_encoder(
 
 // ----------------------------------------------------------------------------
 
-void Context::finish_transient_command_encoder(
+void Context::finishTransientCommandEncoder(
   CommandEncoder const& encoder
 ) const {
   encoder.end();
@@ -313,7 +313,7 @@ void Context::finish_transient_command_encoder(
     .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
   };
   VkFence fence;
-  CHECK_VK( vkCreateFence(device_, &fence_info, nullptr, &fence) );
+  CHECK_VK( vkCreateFence(handle_, &fence_info, nullptr, &fence) );
 
   VkCommandBufferSubmitInfo const cb_submit_info{
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -331,78 +331,78 @@ void Context::finish_transient_command_encoder(
 
   CHECK_VK( vkQueueSubmit2(queue(target_queue).queue, 1u, &submit_info_2, fence) );
 
-  CHECK_VK( vkWaitForFences(device_, 1u, &fence, VK_TRUE, UINT64_MAX) );
-  vkDestroyFence(device_, fence, nullptr);
+  CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, UINT64_MAX) );
+  vkDestroyFence(handle_, fence, nullptr);
 
   VkCommandBuffer command_buffers[] = { encoder.handle() };
   vkFreeCommandBuffers(
-    device_, transient_command_pools_[target_queue], 1u, command_buffers
+    handle_, transient_command_pools_[target_queue], 1u, command_buffers
   );
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::transition_images_layout(
+void Context::transitionImages(
   std::vector<backend::Image> const& images,
   VkImageLayout const src_layout,
   VkImageLayout const dst_layout,
   uint32_t layer_count
 ) const {
-  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
-  cmd.transition_images_layout(images, src_layout, dst_layout, layer_count);
-  finish_transient_command_encoder(cmd);
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  cmd.transitionImages(images, src_layout, dst_layout, layer_count);
+  finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer Context::transient_create_buffer(
+backend::Buffer Context::transientCreateBuffer(
   void const* host_data,
   size_t host_data_size,
   VkBufferUsageFlags2KHR usage,
   size_t device_buffer_offset,
   size_t device_buffer_size
 ) const {
-  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
-  auto buffer = cmd.create_buffer_and_upload(
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  auto buffer = cmd.createBufferAndUpload(
     host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
   );
-  finish_transient_command_encoder(cmd);
+  finishTransientCommandEncoder(cmd);
   return buffer;
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::transient_upload_buffer(
+void Context::transientUploadBuffer(
   void const* host_data,
   size_t const host_data_size,
   backend::Buffer const& device_buffer,
   size_t const device_buffer_offset
 ) const {
-  auto cmd = create_transient_command_encoder(TargetQueue::Transfer);
-  cmd.transfer_host_to_device(
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  cmd.transferHostToDevice(
     host_data,
     host_data_size,
     device_buffer,
     device_buffer_offset
   );
-  finish_transient_command_encoder(cmd);
+  finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::transient_copy_buffer(
+void Context::transientCopyBuffer(
   backend::Buffer const& src,
   backend::Buffer const& dst,
   size_t const buffersize
 ) const {
-  auto cmd = create_transient_command_encoder(Context::TargetQueue::Transfer);
-  cmd.copy_buffer(src, dst, buffersize);
-  finish_transient_command_encoder(cmd);
+  auto cmd = createTransientCommandEncoder(Context::TargetQueue::Transfer);
+  cmd.copyBuffer(src, dst, buffersize);
+  finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-void Context::update_descriptor_set(
+void Context::updateDescriptorSet(
   VkDescriptorSet const& descriptor_set,
   std::vector<DescriptorSetWriteEntry> const& entries
 ) const {
@@ -414,7 +414,7 @@ void Context::update_descriptor_set(
   vk_utils::TransformDescriptorSetWriteEntries(descriptor_set, entries, result);
 
   vkUpdateDescriptorSets(
-    device_,
+    handle_,
     static_cast<uint32_t>(result.write_descriptor_sets.size()),
     result.write_descriptor_sets.data(),
     0u,
@@ -425,7 +425,7 @@ void Context::update_descriptor_set(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void Context::init_instance(
+void Context::initInstance(
   std::string_view app_name,
   std::vector<char const*> const& instance_extensions
 ) {
@@ -555,7 +555,7 @@ void Context::init_instance(
 
 // ----------------------------------------------------------------------------
 
-void Context::select_gpu() {
+void Context::selectGPU() {
   if (vulkan_xr_) {
     vulkan_xr_->getGraphicsDevice(&gpu_);
   } else {
@@ -615,7 +615,7 @@ void Context::select_gpu() {
 
 // ----------------------------------------------------------------------------
 
-bool Context::init_device() {
+bool Context::initDevice() {
   /* Retrieve availables device extensions. */
   uint32_t extension_count{0u};
   CHECK_VK(vkEnumerateDeviceExtensionProperties(
@@ -853,16 +853,16 @@ bool Context::init_device() {
 
   if (vulkan_xr_) {
     CHECK_VK(vulkan_xr_->createVulkanDevice(
-      gpu_, &device_info, nullptr, &device_
+      gpu_, &device_info, nullptr, &handle_
     ));
   } else {
     CHECK_VK(vkCreateDevice(
-      gpu_, &device_info, nullptr, &device_
+      gpu_, &device_info, nullptr, &handle_
     ));
   }
 
   /* Load device extensions. */
-  volkLoadDevice(device_);
+  volkLoadDevice(handle_);
 
   /* Use aliases without suffixes. */
   {
@@ -879,7 +879,7 @@ bool Context::init_device() {
   for (auto& pair : queues) {
     auto *queue = pair.first;
     vkGetDeviceQueue(
-      device_, queue->family_index, queue->queue_index, &queue->queue
+      handle_, queue->family_index, queue->queue_index, &queue->queue
     );
   }
   if (vulkan_xr_) {
@@ -894,9 +894,9 @@ bool Context::init_device() {
   }
   LOGD(" ");
 
-  set_debug_object_name(queues_[TargetQueue::Main].queue,     "Queue::Main");
-  set_debug_object_name(queues_[TargetQueue::Transfer].queue, "Queue::Transfer");
-  set_debug_object_name(queues_[TargetQueue::Compute].queue,  "Queue::Compute");
+  setDebugObjectName(queues_[TargetQueue::Main].queue,     "Queue::Main");
+  setDebugObjectName(queues_[TargetQueue::Transfer].queue, "Queue::Transfer");
+  setDebugObjectName(queues_[TargetQueue::Compute].queue,  "Queue::Compute");
 #endif
 
   return true;

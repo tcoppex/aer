@@ -38,7 +38,7 @@ class ArcBallController : public Camera::ViewController {
               double const mouseY,
               double const wheelDelta);
 
-  void getViewMatrix(mat4 *m) final;
+  void calculateViewMatrix(mat4 *m) final;
 
   double yaw() const {
     return yaw_;
@@ -60,12 +60,12 @@ class ArcBallController : public Camera::ViewController {
     return static_cast<float>(pitch());
   }
 
-  void setYaw(double const value, bool const bSmooth = kDefaultSmoothTransition) {
+  void set_yaw(double const value, bool const bSmooth = kDefaultSmoothTransition) {
     yaw2_ = value;
     yaw_  = (!bSmooth) ? value : yaw_; 
   }
 
-  void setPitch(double const value, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
+  void set_pitch(double const value, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
     // use the minimal angle to target.
     double const v1{ value - kAngleModulo };
     double const v2{ value + kAngleModulo };
@@ -78,7 +78,7 @@ class ArcBallController : public Camera::ViewController {
     pitch_  = (!bSmooth) ? v : pitch_;
   }
 
-  void setDolly(double const value, bool const bSmooth = kDefaultSmoothTransition) {
+  void set_dolly(double const value, bool const bSmooth = kDefaultSmoothTransition) {
     dolly2_ = value;
     if (!bSmooth) {
       dolly_ = dolly2_;
@@ -91,15 +91,15 @@ class ArcBallController : public Camera::ViewController {
     return -target_; // 
   }
 
-  void setTarget(vec3 const& target, bool const bSmooth = kDefaultSmoothTransition) {
+  void set_target(vec3 const& target, bool const bSmooth = kDefaultSmoothTransition) {
     target2_ = -target;
     if (!bSmooth) {
       target_ = target2_;
     }
   }
 
-  void moveTarget(vec3 const& v, bool const bSmooth = kDefaultSmoothTransition) {
-    setTarget(v - target2_, bSmooth);
+  void move_target(vec3 const& v, bool const bSmooth = kDefaultSmoothTransition) {
+    set_target(v - target2_, bSmooth);
   }
   //---------------
 
@@ -108,12 +108,12 @@ class ArcBallController : public Camera::ViewController {
     target2_ = vec3(0.0);
   }
 
-  void setView(double const rx, double const ry, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
-    setYaw(rx, bSmooth);
-    setPitch(ry, bSmooth, bFastTarget);
+  void set_view(double const rx, double const ry, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
+    set_yaw(rx, bSmooth);
+    set_pitch(ry, bSmooth, bFastTarget);
   }
 
-  bool isSideView() const {
+  bool is_side_view() const {
     return bSideViewSet_;
   }
 

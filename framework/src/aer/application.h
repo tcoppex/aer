@@ -47,7 +47,9 @@ class Application : public EventCallbacks
     return {};
   }
 
-  virtual void build_ui() {}
+  virtual void buildUI() {}
+
+  void drawUI(CommandEncoder const& cmd);
 
   virtual void update(float const dt) {}
 
@@ -67,22 +69,20 @@ class Application : public EventCallbacks
     return frame_time_ - last_frame_time_;
   }
 
-  void draw_ui(CommandEncoder const& cmd);
-
  private:
   [[nodiscard]]
   bool presetup(AppData_t app_data);
 
   [[nodiscard]]
-  bool next_frame(AppData_t app_data);
+  bool nextFrame(AppData_t app_data);
 
-  void update_timer() noexcept;
+  void updateTimer() noexcept;
 
-  void update_ui() noexcept;
+  void updateUI() noexcept;
 
   void mainloop(AppData_t app_data);
 
-  bool reset_swapchain();
+  bool resetSwapchain();
 
   void shutdown();
 

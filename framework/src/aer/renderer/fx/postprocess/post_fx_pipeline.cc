@@ -18,7 +18,7 @@ void PostFxPipeline::setupDependencies() {
   LOG_CHECK( context_ptr_ != nullptr );
   LOG_CHECK( !effects_.empty() );
 
-  context_ptr_->device_wait_idle();
+  context_ptr_->deviceWaitIdle();
 
   for (size_t i = 0; i < effects_.size(); ++i) {
     auto& fx = effects_[i];
@@ -29,9 +29,9 @@ void PostFxPipeline::setupDependencies() {
       input_images.reserve(dep.images.size());
       for (auto const& [image_fx, index] : dep.images) {
         // LOGD("fx {}, image {} {}", i, index, image_fx->name());
-        input_images.push_back(image_fx->getImageOutput(index));
+        input_images.push_back(image_fx->image_output(index));
       }
-      fx->setImageInputs(std::move(input_images));
+      fx->set_image_inputs(std::move(input_images));
     }
 
     if (!dep.buffers.empty()) {
@@ -39,9 +39,9 @@ void PostFxPipeline::setupDependencies() {
       input_buffers.reserve(dep.buffers.size());
       for (auto const& [buffer_fx, index] : dep.buffers) {
         // LOGD("fx {}, buffer {} {}", i, index, buffer_fx->name());
-        input_buffers.push_back(buffer_fx->getBufferOutput(index));
+        input_buffers.push_back(buffer_fx->buffer_output(index));
       }
-      fx->setBufferInputs(std::move(input_buffers));
+      fx->set_buffer_inputs(std::move(input_buffers));
     }
   }
 }

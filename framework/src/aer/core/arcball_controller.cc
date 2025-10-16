@@ -36,49 +36,49 @@ bool ArcBallController::update(float dt) {
     // "Default" view.
     case '0': //GLFW_KEY_0:
       resetTarget();
-      setView(pi / 16.0, pi / 8.0, kSmoothTransition, kFastTarget);
-      setDolly(6.0, kSmoothTransition);
+      set_view(pi / 16.0, pi / 8.0, kSmoothTransition, kFastTarget);
+      set_dolly(6.0, kSmoothTransition);
     break;
 
     // Side axis views.
     case '1': //GLFW_KEY_1:
-      setView(0.0, 0.0, kSmoothTransition, kFastTarget);
+      set_view(0.0, 0.0, kSmoothTransition, kFastTarget);
       //resetTarget();
       bSideViewSet_ = true;
     break;
 
     case '3': //GLFW_KEY_3:
-      setView(0.0, -half_pi, kSmoothTransition, kFastTarget);
+      set_view(0.0, -half_pi, kSmoothTransition, kFastTarget);
       //resetTarget();
       bSideViewSet_ = true;
     break;
 
     case '7': //GLFW_KEY_7:
-      setView(half_pi, 0.0, kSmoothTransition, kFastTarget);
+      set_view(half_pi, 0.0, kSmoothTransition, kFastTarget);
       //resetTarget();
       bSideViewSet_ = true;
     break;
 
     // Quick axis rotations.
     case '2': //GLFW_KEY_2:
-      setView(rx - rshift, ry, kSmoothTransition, kFastTarget);
+      set_view(rx - rshift, ry, kSmoothTransition, kFastTarget);
     break;
 
     case '4': //GLFW_KEY_4:
-      setView(rx, ry + rshift, kSmoothTransition, kFastTarget);
+      set_view(rx, ry + rshift, kSmoothTransition, kFastTarget);
     break;
 
     case '6': //GLFW_KEY_6:
-      setView(rx, ry - rshift, kSmoothTransition, kFastTarget);
+      set_view(rx, ry - rshift, kSmoothTransition, kFastTarget);
     break;
 
     case '8': //GLFW_KEY_8:
-      setView(rx + rshift, ry, kSmoothTransition, kFastTarget);
+      set_view(rx + rshift, ry, kSmoothTransition, kFastTarget);
     break;
 
     // Reverse Y-axis view.
     case '9': //GLFW_KEY_9:
-      setView(rx, ry + pi, kSmoothTransition, !kFastTarget);
+      set_view(rx, ry + pi, kSmoothTransition, !kFastTarget);
     break;
 
     default:
@@ -121,7 +121,7 @@ bool ArcBallController::update(
 
 // ----------------------------------------------------------------------------
 
-void ArcBallController::getViewMatrix(mat4 *m) {
+void ArcBallController::calculateViewMatrix(mat4 *m) {
   static_assert( sizeof(mat4) == (16u * sizeof(float)) );
 
 #if ABC_USE_CUSTOM_TARGET

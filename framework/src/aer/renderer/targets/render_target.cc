@@ -23,12 +23,12 @@ void RenderTarget::setup(Descriptor const& desc) {
 void RenderTarget::release() {
   LOG_CHECK(context_ptr_ != nullptr);
 
-  context_ptr_->destroy_image(depth_stencil_);
+  context_ptr_->destroyImage(depth_stencil_);
   for(auto& resolve : resolves_) {
-    context_ptr_->destroy_image(resolve);
+    context_ptr_->destroyImage(resolve);
   }
   for(auto& color : colors_) {
-    context_ptr_->destroy_image(color);
+    context_ptr_->destroyImage(color);
   }
 }
 
@@ -52,7 +52,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
                                 : kDefaultColorImageUsageFlags
                                 ;
   for (size_t i = 0; i < colors_.size(); ++i) {
-    colors_[i] = context_ptr_->create_image_2d(
+    colors_[i] = context_ptr_->createImage2D(
       surface_size_.width,
       surface_size_.height,
       desc_.array_size,
@@ -68,7 +68,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
   if (use_msaa()) {
     LOG_CHECK(resolves_.size() == colors_.size());
     for (size_t i = 0; i < resolves_.size(); ++i) {
-      resolves_[i] = context_ptr_->create_image_2d(
+      resolves_[i] = context_ptr_->createImage2D(
         surface_size_.width,
         surface_size_.height,
         desc_.array_size,
@@ -81,7 +81,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
     }
   }
 
-  context_ptr_->transition_images_layout(
+  context_ptr_->transitionImages(
     use_msaa() ? resolves_ : colors_,
     VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -93,7 +93,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
     auto depthStencilUsage = use_msaa() ? VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT
                                         : VK_IMAGE_USAGE_SAMPLED_BIT
                                         ;
-    depth_stencil_ = context_ptr_->create_image_2d(
+    depth_stencil_ = context_ptr_->createImage2D(
       surface_size_.width,
       surface_size_.height,
       desc_.array_size,

@@ -18,7 +18,7 @@ void Skybox::init(RenderContext& context) {
   envmap_.init(context);
 
   /* Precalculate the BRDF LUT. */
-  compute_specular_brdf_lut();
+  computeSpecularBRDFLookup();
 
   /* Internal sampler */
   sampler_LinearClampMipMap_ = sampler_pool.get({
@@ -36,28 +36,28 @@ void Skybox::init(RenderContext& context) {
   {
     Geometry::MakeCube(cube_);
 
-    cube_.initialize_submesh_descriptors({
+    cube_.initializeSubmeshDescriptors({
       { Geometry::AttributeType::Position, shader_interop::skybox::kAttribLocation_Position },
     });
 
-    auto cmd = context.create_transient_command_encoder();
+    auto cmd = context.createTransientCommandEncoder();
 
-    vertex_buffer_ = cmd.create_buffer_and_upload(
+    vertex_buffer_ = cmd.createBufferAndUpload(
       cube_.vertices(),
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
-    index_buffer_ = cmd.create_buffer_and_upload(
+    index_buffer_ = cmd.createBufferAndUpload(
       cube_.indices(),
       VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
     );
 
-    context.finish_transient_command_encoder(cmd);
+    context.finishTransientCommandEncoder(cmd);
     cube_.clear_indices_and_vertices();
   }
 
   /* Descriptor sets */
   {
-    descriptor_set_layout_ = context.create_descriptor_set_layout({
+    descriptor_set_layout_ = context.createDescriptorSetLayout({
       {
         .binding = shader_interop::skybox::kDescriptorSetBinding_Skybox_Sampler,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -66,7 +66,7 @@ void Skybox::init(RenderContext& context) {
       },
     });
 
-    descriptor_set_ = context.create_descriptor_set(descriptor_set_layout_, {
+    descriptor_set_ = context.createDescriptorSet(descriptor_set_layout_, {
       {
         .binding = shader_interop::skybox::kDescriptorSetBinding_Skybox_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -81,7 +81,7 @@ void Skybox::init(RenderContext& context) {
     });
   }
 
-  pipeline_layout_ = context.create_pipeline_layout({
+  pipeline_layout_ = context.createPipelineLayout({
     .setLayouts = { descriptor_set_layout_ },
     .pushConstantRanges = {
       {
@@ -95,13 +95,13 @@ void Skybox::init(RenderContext& context) {
 
   /* Create the render pipeline */
   {
-    auto shaders{context.create_shader_modules(FRAMEWORK_COMPILED_SHADERS_DIR "skybox/", {
+    auto shaders{context.createShaderModules(FRAMEWORK_COMPILED_SHADERS_DIR "skybox/", {
       "skybox.vert.glsl",
       "skybox.frag.glsl",
     })};
 
     /* Setup the graphics pipeline. */
-    graphics_pipeline_ = context.create_graphics_pipeline(pipeline_layout_, {
+    graphics_pipeline_ = context.createGraphicsPipeline(pipeline_layout_, {
       .vertex = {
         .module = shaders[0u].module,
         .buffers = cube_.pipeline_vertex_buffer_descriptors(),
@@ -128,7 +128,7 @@ void Skybox::init(RenderContext& context) {
       }
     });
 
-    context.release_shader_modules(shaders);
+    context.releaseShaderModules(shaders);
   }
 }
 
@@ -166,29 +166,29 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
   push_constant.viewProjectionMatrix = linalg::mul(camera.proj(), view);
   push_constant.hdrIntensity = 1.0f;
 
-  pass.bind_pipeline(graphics_pipeline_);
+  pass.bindPipeline(graphics_pipeline_);
   {
-    pass.bind_descriptor_set(
+    pass.bindDescriptorSet(
       descriptor_set_,
         VK_SHADER_STAGE_VERTEX_BIT
       | VK_SHADER_STAGE_FRAGMENT_BIT
     );
 
-    pass.push_constant(
+    pass.pushConstant(
       push_constant,
         VK_SHADER_STAGE_VERTEX_BIT
       | VK_SHADER_STAGE_FRAGMENT_BIT
     );
 
-    pass.bind_vertex_buffer(vertex_buffer_);
-    pass.bind_index_buffer(index_buffer_, cube_.vk_index_type());
-    pass.draw_indexed(cube_.index_count());
+    pass.bindVertexBuffer(vertex_buffer_);
+    pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
+    pass.drawIndexed(cube_.index_count());
   }
 }
 
 // ----------------------------------------------------------------------------
 
-void Skybox::compute_specular_brdf_lut() {
+void Skybox::computeSpecularBRDFLookup() {
   class IntegrateBRDF final : public ComputeFx {
     const uint32_t kNumSamples{ 1024u };
 
@@ -204,7 +204,7 @@ void Skybox::compute_specular_brdf_lut() {
       push_constant_.mapResolution = dimension.width;
 
       images_ = {
-        context_ptr_->create_image_2d(
+        context_ptr_->createImage2D(
           push_constant_.mapResolution,
           push_constant_.mapResolution,
           VK_FORMAT_R16G16_SFLOAT,
@@ -220,7 +220,7 @@ void Skybox::compute_specular_brdf_lut() {
     void setup(VkExtent2D const dimension) final {
       ComputeFx::setup(dimension);
 
-      context_ptr_->update_descriptor_set(descriptor_set_, {
+      context_ptr_->updateDescriptorSet(descriptor_set_, {
         {
           .binding = kDefaultStorageImageBindingOutput,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -232,11 +232,11 @@ void Skybox::compute_specular_brdf_lut() {
       });
     }
 
-    std::string getShaderName() const final {
+    std::string shader_name() const final {
       return FRAMEWORK_COMPILED_SHADERS_DIR "skybox/integrate_brdf.comp.glsl";
     }
 
-    std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+    std::vector<VkPushConstantRange> push_constant_ranges() const final {
       return {
         {
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -246,7 +246,7 @@ void Skybox::compute_specular_brdf_lut() {
     }
 
     void pushConstant(GenericCommandEncoder const &cmd) const final {
-      cmd.push_constant(
+      cmd.pushConstant(
         push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
       );
     }
@@ -260,13 +260,13 @@ void Skybox::compute_specular_brdf_lut() {
   brdf_pipeline.init(*context_ptr_);
   brdf_pipeline.setup({ kBRDFLutResolution, kBRDFLutResolution });
 
-  auto const& cmd = context_ptr_->create_transient_command_encoder(Context::TargetQueue::Compute);
+  auto const& cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Compute);
   {
     brdf_pipeline.execute(cmd);
   }
-  context_ptr_->finish_transient_command_encoder(cmd);
+  context_ptr_->finishTransientCommandEncoder(cmd);
 
-  specular_brdf_lut_ = brdf_pipeline.getImageOutput();
+  specular_brdf_lut_ = brdf_pipeline.image_output();
   brdf_pipeline.release();
 
   // [TODO] Calculate mip-maps.

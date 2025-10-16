@@ -50,7 +50,7 @@ bool IsPoseActive(XrSession session, XrAction action, XrPath subaction_path = XR
 
 bool HasButtonSwitched(XrSession session, XrAction action, XrPath subaction_path = XR_NULL_PATH, bool to = true);
 
-SpaceLocationVelocity_t SpaceLocationVelocity(XrSpace space, XrSpace baseSpace, XrTime time);
+SpaceLocationVelocity_t SpaceLocationVelocity(XrSpace space, XrSpace base_space, XrTime time);
 
 bool IsSpaceLocationValid(XrSpaceLocation spaceLocation);
 

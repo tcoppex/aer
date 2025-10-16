@@ -37,9 +37,9 @@ class ComputeFx : public PostGenericFx {
 
   // --- Setters ---
 
-  void setImageInputs(std::vector<backend::Image> const& inputs) override;
+  void set_image_inputs(std::vector<backend::Image> const& inputs) override;
 
-  void setBufferInputs(std::vector<backend::Buffer> const& inputs) override;
+  void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override;
 
   // TODO
   // void setImageOutputs(std::vector<backend::Image> const& inputs) override;
@@ -47,21 +47,21 @@ class ComputeFx : public PostGenericFx {
 
   // --- Getters ---
 
-  backend::Image getImageOutput(uint32_t index = 0u) const override {
+  backend::Image image_output(uint32_t index = 0u) const override {
     LOG_CHECK(index < images_.size());
     return images_[index];
   }
 
-  std::vector<backend::Image> getImageOutputs() const override {
+  std::vector<backend::Image> image_outputs() const override {
     return images_;
   }
 
-  backend::Buffer getBufferOutput(uint32_t index = 0u) const override {
+  backend::Buffer buffer_output(uint32_t index = 0u) const override {
     LOG_CHECK(index < buffers_.size());
     return buffers_[index];
   }
 
-  std::vector<backend::Buffer> getBufferOutputs() const override {
+  std::vector<backend::Buffer> buffer_outputs() const override {
     return buffers_;
   }
 
@@ -69,9 +69,9 @@ class ComputeFx : public PostGenericFx {
   virtual void releaseImagesAndBuffers();
   
   // [deprecated]
-  virtual std::string getShaderName() const = 0; //
+  virtual std::string shader_name() const = 0; //
 
-  DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const override {
+  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const override {
     return {
       // INPUTS
       {

@@ -45,7 +45,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("07 - Nouvelles Vagues");
+    wm_->set_title("07 - Nouvelles Vagues");
 
     renderer_.set_clear_color({ 0.95f, 0.85f, 0.83f, 1.0f });
 
@@ -68,9 +68,9 @@ class SampleApp final : public Application {
 
     /* Device buffers with initial data. */
     {
-      auto cmd = context_.create_transient_command_encoder();
+      auto cmd = context_.createTransientCommandEncoder();
 
-      uniform_buffer_ = cmd.create_buffer_and_upload(
+      uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       );
@@ -87,24 +87,24 @@ class SampleApp final : public Application {
         Geometry::MakePointListPlane(mesh.geo, 16.0f, kPointGridSize, kPointGridSize);
 
         vertex_buffer_bytesize_ = mesh.geo.vertices_bytesize();
-        mesh.vertex = cmd.create_buffer_and_upload(
+        mesh.vertex = cmd.createBufferAndUpload(
           mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
           vertex_buffer_bytesize_, 2u * vertex_buffer_bytesize_
         );
 
         index_buffer_bytesize_ = mesh.geo.indices_bytesize();
-        mesh.index = cmd.create_buffer_and_upload(
+        mesh.index = cmd.createBufferAndUpload(
           mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
           0u, 2u * index_buffer_bytesize_
         );
       }
 
-      context_.finish_transient_command_encoder(cmd);
+      context_.finishTransientCommandEncoder(cmd);
 
       /* Buffer used to store the dot product of particles toward the view direction. */
-      dot_product_buffer_ = context_.create_buffer(
+      dot_product_buffer_ = context_.createBuffer(
         point_grid_.geo.vertex_count() * sizeof(float),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY
@@ -119,7 +119,7 @@ class SampleApp final : public Application {
         | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
       };
 
-      descriptor_set_layout_ = context_.create_descriptor_set_layout({
+      descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -157,7 +157,7 @@ class SampleApp final : public Application {
         },
       });
 
-      descriptor_set_ = context_.create_descriptor_set(descriptor_set_layout_, {
+      descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
           .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
           .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -182,7 +182,7 @@ class SampleApp final : public Application {
     }
 
     /* Create a shared pipeline layout. */
-    pipeline_layout_ = context_.create_pipeline_layout({
+    pipeline_layout_ = context_.createPipelineLayout({
       .setLayouts = { descriptor_set_layout_ },
       .pushConstantRanges = {
         {
@@ -200,7 +200,7 @@ class SampleApp final : public Application {
 
     /* Create the compute pipelines. */
     {
-      auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR "sort/", {
+      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR "sort/", {
         "simulation.comp.glsl",
         "fill_indices.comp.glsl",
         "calculate_dot_product.comp.glsl",
@@ -209,17 +209,17 @@ class SampleApp final : public Application {
       context_.create_compute_pipelines(
         pipeline_layout_, shaders, compute_pipelines_.data()
       );
-      context_.release_shader_modules(shaders);
+      context_.releaseShaderModules(shaders);
     }
 
     /* Create the graphics pipeline. */
     {
-      auto shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
         "simple.vert.glsl",
         "simple.frag.glsl",
       })};
 
-      graphics_pipeline_ = context_.create_graphics_pipeline(pipeline_layout_, {
+      graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
         .vertex = {
           .module = shaders[0u].module,
         },
@@ -258,7 +258,7 @@ class SampleApp final : public Application {
         },
       });
 
-      context_.release_shader_modules(shaders);
+      context_.releaseShaderModules(shaders);
     }
 
     return true;
@@ -266,7 +266,7 @@ class SampleApp final : public Application {
 
   void release() final {
     for (auto pipeline : compute_pipelines_) {
-      context_.destroy_pipeline(pipeline);
+      context_.destroyPipeline(pipeline);
     }
     context_.destroyResources(
       graphics_pipeline_,
@@ -288,7 +288,7 @@ class SampleApp final : public Application {
     );
 
     /* Bind the shared descriptor set. */
-    cmd.bind_descriptor_set(
+    cmd.bindDescriptorSet(
       descriptor_set_,
       pipeline_layout_,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
@@ -302,7 +302,7 @@ class SampleApp final : public Application {
       push_constant_.compute.time = frame_time();
       push_constant_.compute.numElems = nelems;
 
-      cmd.push_constant(
+      cmd.pushConstant(
         push_constant_.compute,
         pipeline_layout_,
         VK_SHADER_STAGE_COMPUTE_BIT,
@@ -310,14 +310,14 @@ class SampleApp final : public Application {
       );
 
       /// 1) Simulate a simple particle system (Wave simulations).
-      cmd.bind_pipeline(compute_pipelines_.at(Compute_Simulation));
+      cmd.bindPipeline(compute_pipelines_.at(Compute_Simulation));
       cmd.dispatch<shader_interop::kCompute_Simulation_kernelSize_x>(nelems);
 
       /// 2) Fill the first part of the indices buffer with continuous indices.
-      cmd.bind_pipeline(compute_pipelines_.at(Compute_FillIndices));
+      cmd.bindPipeline(compute_pipelines_.at(Compute_FillIndices));
       cmd.dispatch<shader_interop::kCompute_FillIndex_kernelSize_x>(nelems);
 
-      cmd.pipeline_buffer_barriers({
+      cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
@@ -328,10 +328,10 @@ class SampleApp final : public Application {
       });
 
       /// 3) Compute the particles dot products against the camera view direction.
-      cmd.bind_pipeline(compute_pipelines_.at(Compute_DotProduct));
+      cmd.bindPipeline(compute_pipelines_.at(Compute_DotProduct));
       cmd.dispatch<shader_interop::kCompute_DotProduct_kernelSize_x>(nelems);
 
-      cmd.pipeline_buffer_barriers({
+      cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -350,7 +350,7 @@ class SampleApp final : public Application {
 
 
       /// 2) Sort indices via their dot products using a bitonic sort.
-      cmd.bind_pipeline(compute_pipelines_.at(Compute_SortIndices));
+      cmd.bindPipeline(compute_pipelines_.at(Compute_SortIndices));
       {
         uint32_t const index_buffer_offset = point_grid_.geo.index_count();
         uint32_t index_buffer_binding = 0u;
@@ -374,7 +374,7 @@ class SampleApp final : public Application {
             push_constant_.compute.writeOffset = write_offset;
             push_constant_.compute.blockWidth = block_width;
             push_constant_.compute.maxBlockWidth = max_block_width;
-            cmd.push_constant(
+            cmd.pushConstant(
               push_constant_.compute,
               pipeline_layout_,
               VK_SHADER_STAGE_COMPUTE_BIT,
@@ -383,7 +383,7 @@ class SampleApp final : public Application {
 
             cmd.dispatch<shader_interop::kCompute_SortIndex_kernelSize_x>(nelems / 2u);
 
-            cmd.pipeline_buffer_barriers({
+            cmd.pipelineBufferBarriers({
               {
                 .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                 .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
@@ -409,7 +409,7 @@ class SampleApp final : public Application {
         }
       }
 
-      cmd.pipeline_buffer_barriers({
+      cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
@@ -421,14 +421,14 @@ class SampleApp final : public Application {
     }
 
     /* Rendering */
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_);
+      pass.setViewportScissor(viewport_size_);
 
-      pass.bind_pipeline(graphics_pipeline_);
+      pass.bindPipeline(graphics_pipeline_);
 
       push_constant_.graphics.model.worldMatrix = world_matrix;
-      pass.push_constant(
+      pass.pushConstant(
         push_constant_.graphics,
         VK_SHADER_STAGE_VERTEX_BIT,
         offsetof(shader_interop::PushConstant, graphics)
@@ -436,7 +436,7 @@ class SampleApp final : public Application {
 
       pass.draw(4u, point_grid_.geo.vertex_count());
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

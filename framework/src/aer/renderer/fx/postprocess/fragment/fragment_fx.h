@@ -14,27 +14,28 @@ class FragmentFx : public virtual GenericFx {
   static constexpr uint32_t kDefaultStorageBufferDescriptorCount{ 4u };
 
  public:
-  void setImageInputs(std::vector<backend::Image> const& inputs) override;
+  void set_image_inputs(std::vector<backend::Image> const& inputs) override;
 
-  void setBufferInputs(std::vector<backend::Buffer> const& inputs) override;
+  void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override;
 
   void execute(CommandEncoder const& cmd) const override;
 
  protected:
   void createPipeline() override;
 
-  DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const override;
+  [[nodiscard]]
+  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const override;
 
  protected:
-  virtual std::string getVertexShaderName() const = 0;
+  virtual std::string vertex_shader_name() const = 0;
 
-  virtual std::string getShaderName() const = 0;
+  virtual std::string shader_name() const = 0;
 
-  virtual GraphicsPipelineDescriptor_t getGraphicsPipelineDescriptor(
+  virtual GraphicsPipelineDescriptor_t graphics_pipeline_descriptor(
     std::vector<backend::ShaderModule> const& shaders
   ) const = 0;
 
-  virtual VkExtent2D getRenderSurfaceSize() const = 0;
+  virtual VkExtent2D surface_size() const = 0;
 
   virtual void prepareDrawState(RenderPassEncoder const& pass) const;
 

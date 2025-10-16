@@ -23,7 +23,7 @@ GPUResources::GPUResources(RenderContext const& context)
 // ----------------------------------------------------------------------------
 
 GPUResources::~GPUResources() {
-  context_.device_wait_idle();
+  context_.deviceWaitIdle();
 
   if (material_fx_registry_) {
     material_fx_registry_->release();
@@ -34,18 +34,18 @@ GPUResources::~GPUResources() {
   // ---------------------------------------
 
   for (auto& img : device_images) {
-    context_.destroy_image(img);
+    context_.destroyImage(img);
   }
-  context_.destroy_buffer(transforms_ssbo_);
-  context_.destroy_buffer(frame_ubo_);
-  context_.destroy_buffer(index_buffer);
-  context_.destroy_buffer(vertex_buffer);
+  context_.destroyBuffer(transforms_ssbo_);
+  context_.destroyBuffer(frame_ubo_);
+  context_.destroyBuffer(index_buffer);
+  context_.destroyBuffer(vertex_buffer);
 }
 
 // ----------------------------------------------------------------------------
 
-bool GPUResources::load_file(std::string_view filename) {
-  if (!HostResources::load_file(filename)) {
+bool GPUResources::loadFile(std::string_view filename) {
+  if (!HostResources::loadFile(filename)) {
     return false;
   }
 
@@ -58,11 +58,11 @@ bool GPUResources::load_file(std::string_view filename) {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::initialize_submesh_descriptors(
+void GPUResources::initializeSubmeshDescriptors(
   Mesh::AttributeLocationMap const& attribute_to_location
 ) {
   for (auto& mesh : meshes) {
-    mesh->initialize_submesh_descriptors(attribute_to_location);
+    mesh->initializeSubmeshDescriptors(attribute_to_location);
   }
 
   // --------------------
@@ -76,12 +76,12 @@ void GPUResources::initialize_submesh_descriptors(
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::upload_to_device(bool const bReleaseHostDataOnUpload) {
+void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
   /* Transfer Materials */
-  material_fx_registry_->push_material_storage_buffers();
+  material_fx_registry_->pushMaterialStorageBuffers();
 
   /* Create the shared Frame UBO */
-  frame_ubo_ = context_.create_buffer(
+  frame_ubo_ = context_.createBuffer(
     sizeof(FrameData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
     | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -166,9 +166,9 @@ void GPUResources::update(
   VkExtent2D const& surface_size,
   float elapsed_time
 ) {
-  update_frame_data(camera, surface_size, elapsed_time);
+  updateFrameData(camera, surface_size, elapsed_time);
 
-  if (ray_tracing_fx_ && ray_tracing_fx_->enabled()) {
+  if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
   }
 
@@ -256,7 +256,7 @@ void GPUResources::update(
 void GPUResources::render(RenderPassEncoder const& pass) {
   LOG_CHECK( material_fx_registry_ != nullptr );
 
-  if (ray_tracing_fx_ && ray_tracing_fx_->enabled()) {
+  if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
   }
 
@@ -275,12 +275,12 @@ void GPUResources::render(RenderPassEncoder const& pass) {
         auto mesh = submesh->parent;
 
         // Submesh's pushConstants.
-        fx->setTransformIndex(mesh->transform_index);
-        fx->setMaterialIndex(submesh->material_ref->material_index);
-        fx->setInstanceIndex(instance_index++); //
+        fx->set_transform_index(mesh->transform_index);
+        fx->set_material_index(submesh->material_ref->material_index);
+        fx->set_instance_index(instance_index++); //
         fx->pushConstant(pass);
 
-        pass.set_primitive_topology(mesh->vk_primitive_topology());
+        pass.setPrimitiveTopology(mesh->vk_primitive_topology());
         pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer); //
       }
     }
@@ -302,7 +302,7 @@ void GPUResources::upload_images() {
 
   /* Create a staging buffer. */
   backend::Buffer staging_buffer{
-    context_.create_staging_buffer( total_image_size ) //
+    context_.createStagingBuffer( total_image_size ) //
   };
 
   device_images.reserve(host_images.size()); //
@@ -318,7 +318,7 @@ void GPUResources::upload_images() {
       .height = static_cast<uint32_t>(host_image.height),
       .depth = 1u,
     };
-    device_images.push_back(context_.create_image_2d(
+    device_images.push_back(context_.createImage2D(
       extent.width,
       extent.height,
       VK_FORMAT_R8G8B8A8_UNORM, //
@@ -328,7 +328,7 @@ void GPUResources::upload_images() {
 
     /* Upload image to staging buffer */
     auto const img_bytesize = host_image.getBytesize();
-    context_.write_buffer(
+    context_.writeBuffer(
       staging_buffer, staging_offset, host_image.getPixels(), 0u, img_bytesize
     );
     copies.push_back({
@@ -342,11 +342,11 @@ void GPUResources::upload_images() {
     staging_offset += img_bytesize;
   }
 
-  auto cmd = context_.create_transient_command_encoder(Context::TargetQueue::Transfer);
+  auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Transfer);
   {
     VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
 
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       device_images,
       VK_IMAGE_LAYOUT_UNDEFINED,
       transfer_layout,
@@ -362,14 +362,14 @@ void GPUResources::upload_images() {
         &copies[i]
       );
     }
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       device_images,
       transfer_layout,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       layer_count
     );
   }
-  context_.finish_transient_command_encoder(cmd);
+  context_.finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
@@ -392,7 +392,7 @@ void GPUResources::upload_buffers() {
   // ---------------------------------------
 
   /* Allocate device buffers for meshes & their transforms. */
-  vertex_buffer = context_.create_buffer(
+  vertex_buffer = context_.createBuffer(
     vertex_buffer_size,
       VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
@@ -402,7 +402,7 @@ void GPUResources::upload_buffers() {
   );
 
   if (index_buffer_size > 0) {
-    index_buffer = context_.create_buffer(
+    index_buffer = context_.createBuffer(
       index_buffer_size,
         VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
       | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
@@ -416,7 +416,7 @@ void GPUResources::upload_buffers() {
   size_t const transforms_buffer_size{ transforms.size() * sizeof(transforms[0]) };
   {
     // We assume most meshes would be static, so with unfrequent updates.
-    transforms_ssbo_ = context_.create_buffer(
+    transforms_ssbo_ = context_.createBuffer(
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -426,7 +426,7 @@ void GPUResources::upload_buffers() {
   }
 
   /* Copy host mesh data to the staging buffer. */
-  auto staging_buffer = context_.create_staging_buffer(
+  auto staging_buffer = context_.createStagingBuffer(
     vertex_buffer_size + index_buffer_size + transforms_buffer_size
   );
   {
@@ -435,7 +435,7 @@ void GPUResources::upload_buffers() {
 
     // Transfer the attributes & indices by ranges.
     std::byte* device_data{};
-    context_.map_memory(staging_buffer, (void**)&device_data);
+    context_.mapMemory(staging_buffer, (void**)&device_data);
     for (auto const& mesh : meshes) {
       auto const& vertices = mesh->vertices();
       memcpy(device_data + vertex_offset, vertices.data(), vertices.size());
@@ -455,21 +455,21 @@ void GPUResources::upload_buffers() {
       transforms_buffer_size
     );
 
-    context_.unmap_memory(staging_buffer);
+    context_.unmapMemory(staging_buffer);
   }
 
   /* Copy device data from staging buffers to their respective buffers. */
-  auto cmd = context_.create_transient_command_encoder(Context::TargetQueue::Transfer);
+  auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Transfer);
   {
     size_t src_offset{0lu};
 
-    src_offset = cmd.copy_buffer(staging_buffer, src_offset, vertex_buffer, 0u, vertex_buffer_size);
+    src_offset = cmd.copyBuffer(staging_buffer, src_offset, vertex_buffer, 0u, vertex_buffer_size);
 
     if (index_buffer_size > 0) {
-      src_offset = cmd.copy_buffer(staging_buffer, src_offset, index_buffer, 0u, index_buffer_size);
+      src_offset = cmd.copyBuffer(staging_buffer, src_offset, index_buffer, 0u, index_buffer_size);
     }
 
-    src_offset = cmd.copy_buffer(staging_buffer, src_offset, transforms_ssbo_, 0u, transforms_buffer_size);
+    src_offset = cmd.copyBuffer(staging_buffer, src_offset, transforms_ssbo_, 0u, transforms_buffer_size);
 
     std::vector<VkBufferMemoryBarrier2> barriers{
       {
@@ -499,21 +499,21 @@ void GPUResources::upload_buffers() {
         .size = index_buffer_size,
       });
     }
-    cmd.pipeline_buffer_barriers(barriers);
+    cmd.pipelineBufferBarriers(barriers);
   }
-  context_.finish_transient_command_encoder(cmd);
+  context_.finishTransientCommandEncoder(cmd);
 }
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::update_frame_data(
+void GPUResources::updateFrameData(
   Camera const& camera,
   VkExtent2D const& surface_size,
   float elapsed_time
 ) {
   FrameData frame_data{
     .projectionMatrix = camera.proj(),
-    .invProjectionMatrix = camera.projInverse(),
+    .invProjectionMatrix = camera.proj_inverse(),
     .viewMatrix = camera.view(),
     .invViewMatrix = camera.world(),
     .viewProjMatrix = camera.viewproj(),
@@ -526,8 +526,8 @@ void GPUResources::update_frame_data(
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
 
-  // [A write_buffer could be more efficient here.]
-  context_.transient_upload_buffer(
+  // [A writeBuffer could be more efficient here.]
+  context_.transientUploadBuffer(
     &frame_data, sizeof(frame_data), frame_ubo_
   );
 }

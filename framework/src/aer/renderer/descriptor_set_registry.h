@@ -62,7 +62,7 @@ class DescriptorSetRegistry {
   void destroy_layout(VkDescriptorSetLayout &layout) const;
 
   [[nodiscard]]
-  VkDescriptorSet allocate_descriptor_set(
+  VkDescriptorSet allocateDescriptorSet(
     VkDescriptorSetLayout const layout
   ) const;
 

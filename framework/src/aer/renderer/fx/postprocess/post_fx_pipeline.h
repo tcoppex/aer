@@ -86,32 +86,32 @@ class PostFxPipeline : public PostFxInterface {
     }
   }
 
-  void setImageInputs(std::vector<backend::Image> const& inputs) override {
+  void set_image_inputs(std::vector<backend::Image> const& inputs) override {
     LOG_CHECK(!effects_.empty());
-    effects_.front()->setImageInputs(inputs);
+    effects_.front()->set_image_inputs(inputs);
   }
 
-  void setBufferInputs(std::vector<backend::Buffer> const& inputs) override {
+  void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override {
     LOG_CHECK(!effects_.empty());
-    effects_.front()->setBufferInputs(inputs);
+    effects_.front()->set_buffer_inputs(inputs);
   }
 
-  backend::Image getImageOutput(uint32_t index = 0u) const override {
+  backend::Image image_output(uint32_t index = 0u) const override {
     LOG_CHECK(!effects_.empty());
-    return effects_.back()->getImageOutput(index);
+    return effects_.back()->image_output(index);
   }
 
-  std::vector<backend::Image> getImageOutputs() const override {
+  std::vector<backend::Image> image_outputs() const override {
     LOG_CHECK(!effects_.empty());
-    return effects_.back()->getImageOutputs();
+    return effects_.back()->image_outputs();
   }
 
-  backend::Buffer getBufferOutput(uint32_t index) const override {
-    return effects_.back()->getBufferOutput(index);
+  backend::Buffer buffer_output(uint32_t index) const override {
+    return effects_.back()->buffer_output(index);
   }
 
-  std::vector<backend::Buffer> getBufferOutputs() const override {
-    return effects_.back()->getBufferOutputs();
+  std::vector<backend::Buffer> buffer_outputs() const override {
+    return effects_.back()->buffer_outputs();
   }
 
   void setupUI() override {
@@ -123,7 +123,7 @@ class PostFxPipeline : public PostFxInterface {
  protected:
   static
   PostFxDependencies GetOutputDependencies(std::shared_ptr<PostFxPipeline> fx) {
-    PostFxDependencies dep = fx->getDefaultOutputDependencies();
+    auto dep = fx->default_output_dependencies();
     for (auto& img : dep.images) {
       img.fx = fx;
     }
@@ -134,7 +134,7 @@ class PostFxPipeline : public PostFxInterface {
   }
 
   // Format of the pipeline output, usually just an image.
-  virtual PostFxDependencies getDefaultOutputDependencies() const {
+  virtual PostFxDependencies default_output_dependencies() const {
     return { .images = { {.index = 0u} } };
   }
 
@@ -162,14 +162,14 @@ class TPostFxPipeline : public PostFxPipeline {
   void reset() override {
     PostFxPipeline::reset();
     add<E>();
-    setEntryDependencies(entry_dependencies_);
+    set_entry_dependencies(entry_dependencies_);
   }
 
   virtual std::shared_ptr<E> getEntryFx() {
     return get<E>(0u);
   }
 
-  void setEntryDependencies(PostFxDependencies const& dependencies) {
+  void set_entry_dependencies(PostFxDependencies const& dependencies) {
     dependencies_[0u] = dependencies;
     entry_dependencies_ = dependencies;
   }
@@ -179,7 +179,7 @@ class TPostFxPipeline : public PostFxPipeline {
   std::shared_ptr<T> add(PostFxDependencies const& dependencies = {}) {
     auto fx = PostFxPipeline::add<T>(dependencies);
     if constexpr (DerivedFrom<T, PostFxPipeline>) {
-      fx->setEntryDependencies(dependencies);
+      fx->set_entry_dependencies(dependencies);
     }
     return fx;
   }
@@ -214,29 +214,29 @@ class PassDataNoFx final : public PostFxInterface {
     buffers_.clear();
   }
 
-  void setImageInputs(std::vector<backend::Image> const& inputs) final {
+  void set_image_inputs(std::vector<backend::Image> const& inputs) final {
     images_ = inputs;
   }
 
-  void setBufferInputs(std::vector<backend::Buffer> const& inputs) final {
+  void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) final {
     buffers_ = inputs;
   }
 
-  backend::Image getImageOutput(uint32_t index = 0u) const override {
+  backend::Image image_output(uint32_t index = 0u) const override {
     LOG_CHECK(index < images_.size());
     return images_[index];
   }
 
-  std::vector<backend::Image> /*const&*/ getImageOutputs() const override {
+  std::vector<backend::Image> /*const&*/ image_outputs() const override {
     return images_;
   }
 
-  backend::Buffer getBufferOutput(uint32_t index = 0u) const override {
+  backend::Buffer buffer_output(uint32_t index = 0u) const override {
     LOG_CHECK(index < buffers_.size());
     return buffers_[index];
   }
 
-  std::vector<backend::Buffer> /*const&*/ getBufferOutputs() const final {
+  std::vector<backend::Buffer> /*const&*/ buffer_outputs() const final {
     return buffers_;
   }
 

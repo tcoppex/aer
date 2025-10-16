@@ -5,7 +5,7 @@
 
 namespace scene {
 
-void Mesh::initialize_submesh_descriptors(
+void Mesh::initializeSubmeshDescriptors(
   AttributeLocationMap const& attribute_to_location
 ) {
   LOG_CHECK( primitive_count() > 0 );

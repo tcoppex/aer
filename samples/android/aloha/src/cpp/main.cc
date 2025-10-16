@@ -47,16 +47,16 @@ private:
   bool setup() final {
     renderer_.set_clear_color(vec4(0.75f, 0.15f, 0.30f, 1.0f));
 
-    vertex_buffer_ = context_.transient_create_buffer(
+    vertex_buffer_ = context_.transientCreateBuffer(
       kVertices, VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
     );
 
-    auto const shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto const shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert",
       "simple.frag",
     })};
 
-    graphics_pipeline_ = context_.create_graphics_pipeline({
+    graphics_pipeline_ = context_.createGraphicsPipeline({
       .vertex = {
         .module = shaders[0u].module,
         .buffers = {
@@ -99,7 +99,7 @@ private:
       }
     });
 
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
@@ -112,14 +112,14 @@ private:
   }
 
   void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
-      pass.set_viewport_scissor(viewport_size_, false);
-      pass.bind_pipeline(graphics_pipeline_);
-      pass.bind_vertex_buffer(vertex_buffer_);
+      pass.setViewportScissor(viewport_size_, false);
+      pass.bindPipeline(graphics_pipeline_);
+      pass.bindVertexBuffer(vertex_buffer_);
       pass.draw(kVertices.size());
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
   void onPointerUp(int x, int y, KeyCode_t button) final {

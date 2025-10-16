@@ -80,13 +80,13 @@ bool HasButtonSwitched(XrSession session, XrAction action, XrPath subaction_path
       ;
 }
 
-SpaceLocationVelocity_t SpaceLocationVelocity(XrSpace space, XrSpace baseSpace, XrTime time) {
+SpaceLocationVelocity_t SpaceLocationVelocity(XrSpace space, XrSpace base_space, XrTime time) {
   XrSpaceVelocity vel{XR_TYPE_SPACE_VELOCITY};
   XrSpaceLocation loc{
     .type = XR_TYPE_SPACE_LOCATION,
     .next = &vel,
   };
-  CHECK_XR(xrLocateSpace(space, baseSpace, time, &loc));
+  CHECK_XR(xrLocateSpace(space, base_space, time, &loc));
   loc.next = nullptr; // (empty invalid pointer)
   return std::make_pair(loc, vel);
 }

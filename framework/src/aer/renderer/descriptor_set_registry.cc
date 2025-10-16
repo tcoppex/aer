@@ -82,7 +82,7 @@ void DescriptorSetRegistry::destroy_layout(VkDescriptorSetLayout &layout) const 
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSet DescriptorSetRegistry::allocate_descriptor_set(
+VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
   VkDescriptorSetLayout const layout
 ) const {
   VkDescriptorSetAllocateInfo const alloc_info{
@@ -99,7 +99,7 @@ VkDescriptorSet DescriptorSetRegistry::allocate_descriptor_set(
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::update_frame_ubo(backend::Buffer const& buffer) const {
-  context_ptr_->update_descriptor_set(
+  context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Frame].set,
   {{
     .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
@@ -111,7 +111,7 @@ void DescriptorSetRegistry::update_frame_ubo(backend::Buffer const& buffer) cons
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::update_scene_transforms(backend::Buffer const& buffer) const {
-  context_ptr_->update_descriptor_set(
+  context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
   {{
     .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
@@ -123,7 +123,7 @@ void DescriptorSetRegistry::update_scene_transforms(backend::Buffer const& buffe
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::update_scene_textures(std::vector<VkDescriptorImageInfo> image_infos) const {
-  context_ptr_->update_descriptor_set(
+  context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
@@ -138,7 +138,7 @@ void DescriptorSetRegistry::update_scene_textures(std::vector<VkDescriptorImageI
 void DescriptorSetRegistry::update_scene_ibl(Skybox const& skybox) const {
   auto const& ibl_sampler = skybox.sampler(); // ClampToEdge Linear MipMap
 
-  context_ptr_->update_descriptor_set(
+  context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
     {
       {
@@ -181,7 +181,7 @@ void DescriptorSetRegistry::update_scene_ibl(Skybox const& skybox) const {
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::update_ray_tracing_scene(RayTracingSceneInterface const* rt_scene) const {
-  context_ptr_->update_descriptor_set(
+  context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::RayTracing].set,
     {
       {
@@ -352,7 +352,7 @@ void DescriptorSetRegistry::create_main_set(
   VkDescriptorSetLayout const layout = create_layout(layout_params, layout_flags);
   sets_[type] = {
     .index = static_cast<uint32_t>(type),
-    .set = allocate_descriptor_set(layout),
+    .set = allocateDescriptorSet(layout),
     .layout = layout,
   };
 

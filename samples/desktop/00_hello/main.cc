@@ -17,7 +17,7 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("00 - アカシ コンピュータ システム");
+    wm_->set_title("00 - アカシ コンピュータ システム");
     return true;
   }
 
@@ -30,20 +30,20 @@ class SampleApp final : public Application {
     /**
      * Dynamic rendering directly to the swapchain.
      *
-     * With no argument specified to 'begin_rendering' (accepting both a RTInterface or
+     * With no argument specified to 'beginRendering' (accepting both a RTInterface or
      * a RenderPassDescriptor), the command will use the default renderer
      * internal RTInterface.
      *
      * When a RTInterface is used, there is no need to manually transition the
      * image layouts before and after rendering. It will automatically be
-     * ready to be drawn after 'begin_rendering' and ready to be presented after
-     * 'end_rendering'.
+     * ready to be drawn after 'beginRendering' and ready to be presented after
+     * 'endRendering'.
      **/
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
       /* Do something. */
     }
-    cmd.end_rendering();
+    cmd.endRendering();
 
 #else /* Alternative with more controls */
 
@@ -54,16 +54,16 @@ class SampleApp final : public Application {
     auto const& current_swapchain_image{ renderer_.swapchain_image() };
 
     /**
-     * When a RenderPassDescriptor is passed to 'begin_rendering' we need
+     * When a RenderPassDescriptor is passed to 'beginRendering' we need
      * to transition the images layout manually to the correct attachment.
      **/
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       { current_swapchain_image },
       VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
 
-    auto pass = cmd.begin_rendering({
+    auto pass = cmd.beginRendering({
       .colorAttachments = {
         {
           .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
@@ -79,12 +79,12 @@ class SampleApp final : public Application {
     {
       /* Do something. */
     }
-    cmd.end_rendering();
+    cmd.endRendering();
 
     /* The image layout must be changed manually before being submitted to
      * the Present queue by 'end_frame'.
      */
-    cmd.transition_images_layout(
+    cmd.transitionImages(
       { current_swapchain_image },
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR

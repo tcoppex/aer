@@ -28,32 +28,32 @@ void RenderTargetFx::release() {
 // ----------------------------------------------------------------------------
 
 void RenderTargetFx::execute(CommandEncoder const& cmd) const {
-  if (!enabled()) { return; } //
+  if (!is_enable()) { return; } //
 
-  auto pass = cmd.begin_rendering(*render_target_);
+  auto pass = cmd.beginRendering(*render_target_);
   // -----------------------------
   prepareDrawState(pass);
   pushConstant(pass); //
   draw(pass); //
   // -----------------------------
-  cmd.end_rendering();
+  cmd.endRendering();
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Image RenderTargetFx::getImageOutput(uint32_t index) const {
+backend::Image RenderTargetFx::image_output(uint32_t index) const {
   return render_target_->color_attachment(index); //
 }
 
 // ----------------------------------------------------------------------------
 
-std::vector<backend::Image> RenderTargetFx::getImageOutputs() const {
+std::vector<backend::Image> RenderTargetFx::image_outputs() const {
   return render_target_->color_attachments();
 }
 
 // ----------------------------------------------------------------------------
 
-GraphicsPipelineDescriptor_t RenderTargetFx::getGraphicsPipelineDescriptor(
+GraphicsPipelineDescriptor_t RenderTargetFx::graphics_pipeline_descriptor(
   std::vector<backend::ShaderModule> const& shaders
 ) const {
    return {
@@ -79,14 +79,14 @@ GraphicsPipelineDescriptor_t RenderTargetFx::getGraphicsPipelineDescriptor(
 
 // ----------------------------------------------------------------------------
 
-VkExtent2D RenderTargetFx::getRenderSurfaceSize() const {
+VkExtent2D RenderTargetFx::surface_size() const {
   return render_target_->surface_size();
 }
 
 // ----------------------------------------------------------------------------
 
 void RenderTargetFx::createRenderTarget(VkExtent2D const dimension) {
-  render_target_ = context_ptr_->create_default_render_target();
+  render_target_ = context_ptr_->createDefaultRenderTarget();
   render_target_->set_color_clear_value({ 0.99f, 0.12f, 0.89f, 0.0f });
 }
 

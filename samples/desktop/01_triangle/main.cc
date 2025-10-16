@@ -8,7 +8,7 @@
 //        - Transient command buffer,
 //        - RenderPassEncoder commands:
 //            * Dynamic Viewport / Scissor states,
-//            * bind_pipeline / bind_vertex_buffer / draw.
+//            * bindPipeline / bindVertexBuffer / draw.
 //
 //
 /* -------------------------------------------------------------------------- */
@@ -42,8 +42,9 @@ class SampleApp final : public Application {
 
  private:
   bool setup() final {
-    wm_->setTitle("01 - さんかくのセレナーデ");
+    wm_->set_title("01 - さんかくのセレナーデ");
 
+    /* Setters / Getters are written in snake_case, commands in camelCase. */
     renderer_.set_clear_color({0.25f, 0.25f, 0.25f, 1.0f});
 
     /* Create a device storage buffer, then upload vertices host data to it.
@@ -52,21 +53,21 @@ class SampleApp final : public Application {
      * buffer.
      **/
     {
-      auto cmd = context_.create_transient_command_encoder();
+      auto cmd = context_.createTransientCommandEncoder();
 
-      vertex_buffer_ = cmd.create_buffer_and_upload(kVertices,
+      vertex_buffer_ = cmd.createBufferAndUpload(kVertices,
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
 
       /* Submit the command to the graphics queue. */
-      context_.finish_transient_command_encoder(cmd);
+      context_.finishTransientCommandEncoder(cmd);
     }
 
     /* Load the precompiled shader modules (the '.spv' prefix is omitted). */
-    auto const shaders{context_.create_shader_modules(COMPILED_SHADERS_DIR, {
+    auto const shaders = context_.createShaderModules(COMPILED_SHADERS_DIR, {
       "simple.vert.glsl",
       "simple.frag.glsl",
-    })};
+    });
 
     /* Setup the graphics pipeline.
      *
@@ -74,7 +75,7 @@ class SampleApp final : public Application {
      * and will be destroy alongside the pipeline.
      * If one is provided the destruction is let to the user.
      **/
-    graphics_pipeline_ = context_.create_graphics_pipeline({
+    graphics_pipeline_ = context_.createGraphicsPipeline({
       .vertex = {
         .module = shaders[0u].module,
         .buffers = {
@@ -120,23 +121,23 @@ class SampleApp final : public Application {
     });
 
     /* Release the shader modules. */
-    context_.release_shader_modules(shaders);
+    context_.releaseShaderModules(shaders);
 
     return true;
   }
 
   void release() final {
-    context_.destroy_pipeline(graphics_pipeline_);
-    context_.destroy_buffer(vertex_buffer_);
+    context_.destroyPipeline(graphics_pipeline_);
+    context_.destroyBuffer(vertex_buffer_);
   }
 
   void draw(CommandEncoder const& cmd) final {
     /**
-     * 'begin_rendering' (dynamic_rendering) or 'begin_render_pass' (legacy rendering)
+     * 'beginRendering' (dynamic_rendering) or 'beginRenderPass' (legacy rendering)
      * returns a RenderPassEncoder, which is a specialized CommandEncoder to specify
      * rendering operations to a specific output (here the swapchain directly).
      **/
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
       /**
        * Set the viewport and scissor.
@@ -149,13 +150,13 @@ class SampleApp final : public Application {
        * As dynamic states are not bound to a pipeline they can be set whenever
        * during rendering before the draw command.
        **/
-      pass.set_viewport_scissor(viewport_size_, false);
+      pass.setViewportScissor(viewport_size_, false);
 
-      pass.bind_pipeline(graphics_pipeline_);
-      pass.bind_vertex_buffer(vertex_buffer_);
+      pass.bindPipeline(graphics_pipeline_);
+      pass.bindVertexBuffer(vertex_buffer_);
       pass.draw(kVertices.size());
     }
-    cmd.end_rendering();
+    cmd.endRendering();
   }
 
  private:

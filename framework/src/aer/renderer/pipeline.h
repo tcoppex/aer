@@ -149,7 +149,7 @@ struct GraphicsPipelineDescriptor_t {
     std::string entryPoint{};
     SpecializationConstants specializationConstants{};
     std::vector<Target> targets{};
-    // uint32_t viewMask{}; //
+    // uint32_t viewMask; //
   } fragment{};
 
   struct DepthStencil {

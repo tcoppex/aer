@@ -37,7 +37,7 @@ void HostResources::setup() {
 
 // ----------------------------------------------------------------------------
 
-bool HostResources::load_file(std::string_view filename) {
+bool HostResources::loadFile(std::string_view filename) {
   auto const basename{ utils::ExtractBasename(filename) };
   auto const ext{ utils::ExtractExtension(filename) };
 

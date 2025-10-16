@@ -66,7 +66,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
     LOGD("image count : {}", image_count_);
 
     /* Select best swap surface format and present mode. */
-    auto const surface_format = select_surface_format(&surface_info2).surfaceFormat;
+    auto const surface_format = selectSurfaceFormat(&surface_info2).surfaceFormat;
 
     swapchain_create_info_ = VkSwapchainCreateInfoKHR{
       .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -86,7 +86,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
       .pQueueFamilyIndices = nullptr,
       .preTransform     = surface_capabilities.currentTransform,
       .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-      .presentMode      = select_present_mode(surface, kUseVSync),
+      .presentMode      = selectPresentMode(surface, kUseVSync),
       .clipped          = VK_TRUE,
       .oldSwapchain     = VK_NULL_HANDLE,
     };
@@ -125,7 +125,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   CHECK_VK_RET(vkCreateSwapchainKHR(
     device_, &swapchain_create_info_, nullptr, &handle_
   ));
-  context.set_debug_object_name(handle_, "Swapchain");
+  context.setDebugObjectName(handle_, "Swapchain");
 
   /* Create the swapchain resources (Views + Semaphores). */
   std::vector<VkImage> images(image_count_);
@@ -173,27 +173,27 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 
 #if !defined(NDEBUG)
     auto const s_index = std::to_string(i);
-    context.set_debug_object_name(buffer.image,
+    context.setDebugObjectName(buffer.image,
       "Swapchain::Image::" + s_index
     );
-    context.set_debug_object_name(buffer.view,
+    context.setDebugObjectName(buffer.view,
       "Swapchain::ImageView::" + s_index
     );
-    context.set_debug_object_name(sync.wait_image_semaphore,
+    context.setDebugObjectName(sync.wait_image_semaphore,
       "Swapchain::Semaphore::WaitImage::" + s_index
     );
-    context.set_debug_object_name(sync.signal_present_semaphore,
+    context.setDebugObjectName(sync.signal_present_semaphore,
       "Swapchain::Semaphore::SignalPresent::" + s_index
     );
 #endif
   }
 
   /* When using timeline semaphore, we need to transition images layout to present. */
-  context.transition_images_layout(
+  context.transitionImages(
     images_,
     VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    imageArraySize()
+    image_array_size()
   );
   need_rebuild_ = false;
 
@@ -274,7 +274,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
 
   // Next frame index to start when this one completed.
   uint64_t *signal_index = timeline_signal_index_ptr();
-  *signal_index += static_cast<uint64_t>(imageCount());
+  *signal_index += static_cast<uint64_t>(image_count());
 
   // Semaphore(s) to wait for:
   //    - Image available.
@@ -351,7 +351,7 @@ bool Swapchain::finishFrame(VkQueue queue) {
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-VkSurfaceFormat2KHR Swapchain::select_surface_format(
+VkSurfaceFormat2KHR Swapchain::selectSurfaceFormat(
   VkPhysicalDeviceSurfaceInfo2KHR const* surface_info2
 ) const {
   LOG_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR);
@@ -410,7 +410,7 @@ VkSurfaceFormat2KHR Swapchain::select_surface_format(
 
 // ----------------------------------------------------------------------------
 
-VkPresentModeKHR Swapchain::select_present_mode(VkSurfaceKHR surface, bool use_vsync) const {
+VkPresentModeKHR Swapchain::selectPresentMode(VkSurfaceKHR surface, bool use_vsync) const {
   if (use_vsync) {
     return VK_PRESENT_MODE_FIFO_KHR;
   }

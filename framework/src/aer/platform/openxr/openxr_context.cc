@@ -167,7 +167,7 @@ bool OpenXRContext::resetSwapchain() {
   LOG_CHECK(XR_NULL_HANDLE != instance_);
   LOG_CHECK(XR_NULL_HANDLE != session_);
 
-  if (swapchain_.handle != VK_NULL_HANDLE) {
+  if (swapchain_.handle() != VK_NULL_HANDLE) {
     swapchain_.destroy();
   }
 
@@ -247,7 +247,7 @@ bool OpenXRContext::resetSwapchain() {
 
 bool OpenXRContext::completeSetup() {
   LOG_CHECK(XR_NULL_HANDLE != session_);
-  LOG_CHECK(XR_NULL_HANDLE != swapchain_.handle);
+  LOG_CHECK(XR_NULL_HANDLE != swapchain_.handle());
 
   // Default controllers.
   if (!initControllers()) [[unlikely]] {
@@ -386,7 +386,7 @@ void OpenXRContext::beginFrame() {
       .type = XR_TYPE_VIEW_LOCATE_INFO,
       .viewConfigurationType = kViewConfigurationType,
       .displayTime = frameState.predictedDisplayTime,
-      .space = baseSpace(), //
+      .space = base_space(), //
     };
     uint32_t const viewCapacityInput{static_cast<uint32_t>(views_.size())};
     uint32_t viewCountOutput{};
@@ -490,7 +490,7 @@ void OpenXRContext::processFrame(
                       | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT
                       | XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT
                       ,
-          .space      = baseSpace(), //
+          .space      = base_space(), //
           .viewCount  = kNumEyes,
           .views      = layer_projection_views_.data()
         };
@@ -525,7 +525,7 @@ void OpenXRContext::renderProjectionLayer(XRRenderFunc_t const& render_cb) {
       .pose = view.pose,
       .fov = view.fov,
       .subImage = {
-        .swapchain = swapchain_.handle,
+        .swapchain = swapchain_.handle(),
         .imageRect = swapchain_.rect(),
         .imageArrayIndex = view_id,
       }

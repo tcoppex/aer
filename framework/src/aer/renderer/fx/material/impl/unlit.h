@@ -18,7 +18,7 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
     void setup() final {
     TMaterialFx<unlit_shader_interop::Material>::setup();
 
-    context_ptr_->update_descriptor_set(descriptor_set_, {
+    context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
         .binding = unlit_shader_interop::kDescriptorSet_Internal_MaterialSBO,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -28,28 +28,28 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
   }
 
  public:
-  void setTransformIndex(uint32_t index) final {
+  void set_transform_index(uint32_t index) final {
     push_constant_.transform_index = index;
   }
 
-  void setMaterialIndex(uint32_t index) final {
+  void set_material_index(uint32_t index) final {
     push_constant_.material_index = index;
   }
 
-  void setInstanceIndex(uint32_t index) final {
+  void set_instance_index(uint32_t index) final {
     push_constant_.instance_index = index;
   }
 
  private:
-  std::string getShaderName() const final {
+  std::string shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "material/unlit/scene.frag.glsl";
   }
 
-  std::string getVertexShaderName() const final {
+  std::string vertex_shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "material/unlit/scene.vert.glsl";
   }
 
-  DescriptorSetLayoutParamsBuffer getDescriptorSetLayoutParams() const final {
+  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const final {
     return {
       {
         .binding = unlit_shader_interop::kDescriptorSet_Internal_MaterialSBO,
@@ -64,7 +64,7 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
     };
   }
 
-  std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+  std::vector<VkPushConstantRange> push_constant_ranges() const final {
     return {
       {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -76,7 +76,7 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) final {
-    cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.pushConstant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
   }
 
  private:

@@ -15,7 +15,7 @@
 class SampleApp final : public Application {
  private:
   bool setup() final {
-    wm_->setTitle("10 - kavalkada materia");
+    wm_->set_title("10 - kavalkada materia");
 
     renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 0.0f });
     renderer_.skybox().setup(ASSETS_DIR "textures/"
@@ -31,11 +31,11 @@ class SampleApp final : public Application {
         0.01f,
         500.0f
       );
-      camera_.setController(&arcball_controller_);
+      camera_.set_controller(&arcball_controller_);
 
-      arcball_controller_.setTarget(vec3(-1.25f, 0.75f, 0.0f));
-      arcball_controller_.setView(lina::kPi/16.0f, lina::kPi/6.0f);
-      arcball_controller_.setDolly(5.0f);
+      arcball_controller_.set_target(vec3(-1.25f, 0.75f, 0.0f));
+      arcball_controller_.set_view(lina::kPi/16.0f, lina::kPi/6.0f);
+      arcball_controller_.set_dolly(5.0f);
     }
 
     /* Load a glTF Scene. */
@@ -44,15 +44,15 @@ class SampleApp final : public Application {
     };
 
     if constexpr(true) {
-      future_scene_ = renderer_.async_load_gltf(gtlf_filename);
+      future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
     } else {
-      scene_ = renderer_.load_gltf(gtlf_filename);
+      scene_ = renderer_.loadGLTF(gtlf_filename);
     }
 
     return true;
   }
 
-  void build_ui() final {
+  void buildUI() final {
     ImGui::Begin("Settings");
     {
       ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
@@ -78,7 +78,7 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.begin_rendering();
+    auto pass = cmd.beginRendering();
     {
       // SKYBOX.
       if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
@@ -90,10 +90,10 @@ class SampleApp final : public Application {
         scene_->render(pass);
       }
     }
-    cmd.end_rendering();
+    cmd.endRendering();
 
     // UI.
-    draw_ui(cmd);
+    drawUI(cmd);
   }
 
  private:

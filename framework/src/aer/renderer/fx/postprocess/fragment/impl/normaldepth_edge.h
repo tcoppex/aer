@@ -11,8 +11,8 @@ class NormalDepthEdge final : public RenderTargetFx {
  public:
   // [tmp]
   void setInputs(backend::Image const& data_image, backend::Buffer const& depth_minmax_buffer) {
-    setImageInput(data_image);
-    setBufferInput(depth_minmax_buffer);
+    set_image_input(data_image);
+    set_buffer_input(depth_minmax_buffer);
   }
 
   void setNormalThreshold(float value) {
@@ -33,7 +33,7 @@ class NormalDepthEdge final : public RenderTargetFx {
   }
 
  private:
-  std::vector<VkPushConstantRange> getPushConstantRanges() const final {
+  std::vector<VkPushConstantRange> push_constant_ranges() const final {
     return {
       {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -43,10 +43,10 @@ class NormalDepthEdge final : public RenderTargetFx {
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) const final {
-    cmd.push_constant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.pushConstant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_FRAGMENT_BIT);
   }
 
-  std::string getShaderName() const final {
+  std::string shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "postprocess/normaldepth_edge.frag.glsl";
   }
 

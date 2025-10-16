@@ -19,28 +19,28 @@ struct OpenXRSwapchain : public SwapchainInterface {
 
   bool finishFrame(VkQueue queue) final;
 
-  VkExtent2D surfaceSize() const noexcept final {
+  VkExtent2D surface_size() const noexcept final {
     return {
-      .width = create_info.width,
-      .height = create_info.height,
+      .width = create_info_.width,
+      .height = create_info_.height,
     };
   }
 
-  uint32_t imageCount() const noexcept final {
-    return image_count;
+  uint32_t image_count() const noexcept final {
+    return image_count_;
   }
 
   VkFormat format() const noexcept final {
-    return (VkFormat)create_info.format;
+    return (VkFormat)create_info_.format;
   }
 
-  uint32_t viewMask() const noexcept final {
-    LOG_CHECK(create_info.arraySize > 1u);
+  uint32_t view_mask() const noexcept final {
+    LOG_CHECK(create_info_.arraySize > 1u);
     return 0b11;
   }
 
-  backend::Image currentImage() const noexcept final {
-    return images[current_image_index];
+  backend::Image current_image() const noexcept final {
+    return images_[current_image_index_];
   }
 
  public:
@@ -55,8 +55,8 @@ struct OpenXRSwapchain : public SwapchainInterface {
   [[nodiscard]]
   XrExtent2Di extent() const noexcept {
     return {
-      .width = static_cast<int32_t>(create_info.width),
-      .height = static_cast<int32_t>(create_info.height)
+      .width = static_cast<int32_t>(create_info_.width),
+      .height = static_cast<int32_t>(create_info_.height)
     };
   }
 
@@ -68,14 +68,18 @@ struct OpenXRSwapchain : public SwapchainInterface {
     };
   }
 
- public:
-  XrSwapchainCreateInfo create_info{};
-  XrSwapchain handle{XR_NULL_HANDLE};
-  std::vector<backend::Image> images{};
-  uint32_t image_count{};
-  uint32_t current_image_index{};
+  [[nodiscard]]
+  XrSwapchain handle() const noexcept {
+    return handle_;
+  }
 
  private:
+  XrSwapchainCreateInfo create_info_{};
+  XrSwapchain handle_{XR_NULL_HANDLE};
+  std::vector<backend::Image> images_{};
+  uint32_t image_count_{};
+  uint32_t current_image_index_{};
+
   XRVulkanInterface *xr_graphics_{};
 };
 

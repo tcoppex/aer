@@ -190,7 +190,7 @@ bool Window::poll(AppData_t app_data) noexcept {
 
 // ----------------------------------------------------------------------------
 
-void Window::setTitle(std::string_view title) const noexcept {
+void Window::set_title(std::string_view title) const noexcept {
   glfwSetWindowTitle(window_, title.data());
 }
 
@@ -202,13 +202,13 @@ void Window::close() noexcept {
 
 // ----------------------------------------------------------------------------
 
-bool Window::isActive() const noexcept {
+bool Window::is_active() const noexcept {
   return glfwGetWindowAttrib(window_, GLFW_ICONIFIED) == GLFW_FALSE;
 }
 
 // ----------------------------------------------------------------------------
 
-std::vector<char const*> Window::vulkanInstanceExtensions() const noexcept {
+std::vector<char const*> Window::vk_instance_extensions() const noexcept {
   uint32_t extension_count;
   auto extensions = glfwGetRequiredInstanceExtensions(&extension_count);
 
