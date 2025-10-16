@@ -51,6 +51,16 @@ bool GPUResources::loadFile(std::string_view filename) {
     return false;
   }
 
+  /* Force a specific material model when requested. */
+  {
+    auto const material_model = context_.default_material_model();
+    if (material_model != scene::MaterialModel::Unknown) {
+      for (auto const& material_ref : material_refs) {
+        material_ref->model = material_model;
+      }
+    }
+  }
+
   /* Build the registry from the materials found in the model. */
   material_fx_registry_->setup(material_proxies, material_refs);
 

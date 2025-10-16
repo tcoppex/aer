@@ -12,6 +12,8 @@
 #include "aer/renderer/sampler_pool.h"
 #include "aer/renderer/descriptor_set_registry.h" //
 
+#include "aer/scene/material.h" // ~ (for scene::MaterialModel)
+
 class SwapchainInterface;
 
 /* -------------------------------------------------------------------------- */
@@ -28,6 +30,7 @@ class RenderContext : public Context {
     VkFormat color_format{VK_FORMAT_UNDEFINED};
     VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
     VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+    scene::MaterialModel material_model{scene::MaterialModel::Unknown};
   };
 
  public:
@@ -216,6 +219,11 @@ class RenderContext : public Context {
   [[nodiscard]]
   VkSampleCountFlagBits default_sample_count() const noexcept {
     return settings_.sample_count;
+  }
+
+  [[nodiscard]]
+  scene::MaterialModel default_material_model() const noexcept {
+    return settings_.material_model;
   }
 
   [[nodiscard]]
