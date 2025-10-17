@@ -172,12 +172,8 @@ std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() con
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::update(
-  Camera const& camera,
-  VkExtent2D const& surface_size,
-  float elapsed_time
-) {
-  updateFrameData(camera, surface_size, elapsed_time);
+void GPUResources::update(Camera const& camera, float elapsed_time) {
+  updateFrameData(camera, elapsed_time);
 
   if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
@@ -518,10 +514,14 @@ void GPUResources::uploadBuffers() {
 
 void GPUResources::updateFrameData(
   Camera const& camera,
-  VkExtent2D const& surface_size,
   float elapsed_time
 ) {
-  FrameData frame_data{
+  /* Current surface size provided by the Renderer to the RenderContext,
+   * in the future this might need tweaking if we use scaling. */
+  auto const& surface_size = context_.default_surface_size();
+
+  // [rework to account for multiview]
+  auto const frame_data = FrameData{
     .projectionMatrix = camera.proj(),
     .invProjectionMatrix = camera.proj_inverse(),
     .viewMatrix = camera.view(),
@@ -532,7 +532,6 @@ void GPUResources::updateFrameData(
     .frame = frame_index_++,
     .renderer_states = 0b11111111111111111111111111111111, // XXX
   };
-
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
 

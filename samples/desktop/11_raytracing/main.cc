@@ -282,7 +282,7 @@ class SampleApp final : public Application {
     }
 
     if (scene_) {
-      scene_->update(camera_, renderer_.surface_size(), elapsed_time());
+      scene_->update(camera_, elapsed_time());
     }
   }
 
