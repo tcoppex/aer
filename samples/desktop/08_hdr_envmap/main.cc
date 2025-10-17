@@ -4,6 +4,9 @@
 //
 //  Where we use a HDR envmap to illuminate a 3D model.
 //
+//  Show how to load and display a glTF object manually, redefining the pipeline
+//  (see sample_10 for how to use the internal renderer system directly).
+//
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"

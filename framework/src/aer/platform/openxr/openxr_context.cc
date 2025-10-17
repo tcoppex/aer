@@ -45,8 +45,12 @@ void SetActionNames(
   char dst_localized[XR_MAX_LOCALIZED_ACTION_NAME_SIZE],
   std::string const& src
 ) {
-  CopyStringWithSafety(dst, src, XR_MAX_ACTION_NAME_SIZE - 1);
-  CopyStringWithSafety(dst_localized, LocalizeString(src), XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1);
+  CopyStringWithSafety(
+    dst, src, XR_MAX_ACTION_NAME_SIZE - 1
+  );
+  CopyStringWithSafety(
+    dst_localized, LocalizeString(src), XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1
+  );
 }
 
 XrPosef PoseIdentity() {
