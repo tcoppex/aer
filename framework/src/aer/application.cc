@@ -214,6 +214,10 @@ void Application::updateTimer() noexcept {
 void Application::updateInternal() noexcept {
   auto const dt = delta_time();
 
+  if (!swapchain_interface_->is_valid()) {
+    resetSwapchain();
+  }
+
   /* User Interface. */
   if (ui_) {
     ui_->beginFrame();

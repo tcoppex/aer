@@ -260,7 +260,7 @@ bool Swapchain::acquireNextImage() {
   );
   need_rebuild_ = IsSwapchainInvalid(acquire_result, __FUNCTION__);
 
-  return isValid();
+  return is_valid();
 }
 
 // ----------------------------------------------------------------------------
@@ -322,7 +322,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
   };
   CHECK_VK( vkQueueSubmit2(queue, 1u, &submit_info_2, nullptr) );
 
-  return isValid();
+  return is_valid();
 }
 
 // ----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ bool Swapchain::finishFrame(VkQueue queue) {
 
   swap_index_ = (swap_index_ + 1u) % image_count_;
 
-  return isValid();
+  return is_valid();
 }
 
 // ----------------------------------------------------------------------------

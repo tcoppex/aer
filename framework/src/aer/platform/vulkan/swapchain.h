@@ -35,7 +35,7 @@ class Swapchain : public SwapchainInterface {
   }
 
   [[nodiscard]]
-  bool isValid() const noexcept {
+  bool is_valid() const noexcept final {
     return need_rebuild_ == false;
   }
 
