@@ -128,8 +128,9 @@ struct XRFrameData {
   double predictedDisplayTime{};
   bool shouldRender{};
 
-  mat4f const& space_matrix(XRSpaceId space_id) const noexcept {
-    return *spaceMatrices[space_id];
+  mat4f space_matrix(XRSpaceId space_id) const {
+    auto *m = spaceMatrices[space_id];
+    return  (m != nullptr) ? *m : linalg::identity;
   }
 };
 
