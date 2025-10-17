@@ -74,6 +74,24 @@ struct ImageData {
     );
     if (pixels_data) {
       pixels_.reset(pixels_data);
+      comp_bytesize_ = 1u;
+    }
+    return nullptr != pixels_data;
+  }
+
+  bool loadf(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+    auto pixels_data = reinterpret_cast<stbi_uc*>(stbi_loadf_from_memory(
+      buffer_data,
+      static_cast<int32_t>(buffer_size),
+      &width,
+      &height,
+      &channels,
+      kDefaultNumChannels
+    ));
+
+    if (pixels_data) {
+      pixels_.reset(pixels_data);
+      comp_bytesize_ = 4u;
     }
     return nullptr != pixels_data;
   }
@@ -112,7 +130,7 @@ struct ImageData {
   }
 
   uint32_t bytesize() const {
-    return static_cast<uint32_t>(kDefaultNumChannels * width * height);
+    return static_cast<uint32_t>(kDefaultNumChannels * width * height * comp_bytesize_);
   }
 
  public:
@@ -127,6 +145,7 @@ struct ImageData {
 
   std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels_{nullptr, stbi_image_free}; //
   std::future<bool> async_result_;
+  uint32_t comp_bytesize_{1u};
 };
 
 /* -------------------------------------------------------------------------- */
