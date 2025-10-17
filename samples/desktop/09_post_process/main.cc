@@ -231,24 +231,24 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
 
  public:
   void init(RenderContext const& context) final {
-    auto entry_fx = getEntryFx();
+    auto const& color_depth = entry_fx();
 
     auto depth_minmax = add<fx::compute::DepthMinMax>({
-      .images = { {entry_fx, 1u} }
+      .images = { {color_depth, 1u} }
     });
 
     auto normaldepth_edge = add<fx::frag::NormalDepthEdge>({
-      .images = { {entry_fx, 1u} },
+      .images = { {color_depth, 1u} },
       .buffers = { {depth_minmax, 0u} }
     });
 
     auto object_edge = add<fx::frag::ObjectEdge>({
-      .images = { {entry_fx, 1u} },
+      .images = { {color_depth, 1u} },
     });
 
     auto toon = add<ToonComposition>({
       .images = {
-        {entry_fx, 0u},
+        {color_depth, 0u},
         {normaldepth_edge, 0u},
         {object_edge, 0u}
       },
@@ -264,7 +264,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
 class SampleApp final : public Application {
  public:
   SampleApp() = default;
-  ~SampleApp() {}
+  ~SampleApp() = default;
 
  private:
   bool setup() final {
@@ -300,7 +300,7 @@ class SampleApp final : public Application {
     toon_pipeline_.init(context_);
     toon_pipeline_.setup(renderer_.surface_size()); //
 
-    if (auto sceneFx = toon_pipeline_.getEntryFx(); sceneFx) {
+    if (auto sceneFx = toon_pipeline_.entry_fx(); sceneFx) {
       sceneFx->setModel(gltf_scene);
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
@@ -321,7 +321,7 @@ class SampleApp final : public Application {
       )
     };
 
-    auto sceneFx = toon_pipeline_.getEntryFx();
+    auto sceneFx = toon_pipeline_.entry_fx();
     sceneFx->setCameraPosition(camera_.position());
     sceneFx->setViewMatrix(camera_.view());
     sceneFx->setWorldMatrix(world_matrix);

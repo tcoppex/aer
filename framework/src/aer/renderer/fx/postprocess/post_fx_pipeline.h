@@ -165,7 +165,7 @@ class TPostFxPipeline : public PostFxPipeline {
     set_entry_dependencies(entry_dependencies_);
   }
 
-  virtual std::shared_ptr<E> getEntryFx() {
+  virtual std::shared_ptr<E> entry_fx() {
     return get<E>(0u);
   }
 
