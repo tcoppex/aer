@@ -38,22 +38,38 @@ const uint kDescriptorSet_RayTracing_TLAS           = 0;
 const uint kDescriptorSet_RayTracing_InstanceSBO    = 1;
 
 // ----------------------------------------------------------------------------
+// -- Utility structs & constants --
 
-const uint kRendererState_IrradianceBit = 0x1 << 0; //
-
-// ----------------------------------------------------------------------------
-
-struct FrameData {
+// [hacky] the order *must* match the Camera::Transform struct.
+struct CameraTransform {
   mat4 projectionMatrix;
   mat4 invProjectionMatrix;
   mat4 viewMatrix;
   mat4 invViewMatrix;
   mat4 viewProjMatrix;
-  vec4 cameraPos_Time;   // xyz = camera, w = time
+};
+
+const uint kRendererState_IrradianceBit = 0x1 << 0;
+
+// ----------------------------------------------------------------------------
+// -- Uniform Buffer(s) --
+
+struct FrameData {
+  CameraTransform camera[2];
+  mat4 default_world_matrix;
+  vec4 cameraPos_Time;   // xxx
   vec2 resolution;
   uint frame;
-  uint renderer_states; //
+  uint renderer_states; // (wip)
 };
+
+#ifndef __cplusplus
+#extension GL_EXT_multiview : require
+#define GetFrameCamera(FrameData) FrameData.camera[gl_ViewIndex]
+#endif
+
+// ----------------------------------------------------------------------------
+// -- Storage Buffer(s) --
 
 struct TransformSBO {
   mat4 worldMatrix;
@@ -61,4 +77,4 @@ struct TransformSBO {
 
 // ----------------------------------------------------------------------------
 
-#endif
+#endif // SHADERS_SCENE_INTEROP_H_

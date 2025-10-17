@@ -121,17 +121,21 @@ struct XRControlState_t {
 
 // ----------------------------------------------------------------------------
 
-struct XRFrameData_t {
+struct XRFrameData {
   std::array<mat4f, XRSide::kNumSide> viewMatrices{};
   std::array<mat4f, XRSide::kNumSide> projMatrices{};
   std::array<mat4f const*, XRSpaceId::kNumSpaceId> spaceMatrices{}; //
   double predictedDisplayTime{};
   bool shouldRender{};
+
+  mat4f const& space_matrix(XRSpaceId space_id) const noexcept {
+    return *spaceMatrices[space_id];
+  }
 };
 
 // ----------------------------------------------------------------------------
 
-// struct XRFrameView_t {
+// struct XRFrameView {
 //   uint32_t viewId{};
 //   struct {
 //     mat4f view{};
@@ -145,7 +149,7 @@ struct XRFrameData_t {
 
 // ----------------------------------------------------------------------------
 
-using XRUpdateFunc_t = std::function<void(/*XRFrameData_t const&*/)>;
+using XRUpdateFunc_t = std::function<void(/*XRFrameData const&*/)>;
 using XRRenderFunc_t = std::function<void(/*XRFrameView_t const&*/)>;
 
 /* -------------------------------------------------------------------------- */

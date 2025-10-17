@@ -35,10 +35,12 @@ layout(location = 1) out vec2 vTexcoord;
 
 void main() {
   TransformSBO transform = transforms[nonuniformEXT(pushConstant.transform_index)];
-  mat4 worldMatrix = transform.worldMatrix;
+  mat4 worldMatrix = uFrame.default_world_matrix
+                   * transform.worldMatrix
+                   ;
   vec4 worldPos = worldMatrix * vec4(inPosition, 1.0);
 
-  gl_Position = uFrame.viewProjMatrix * worldPos;
+  gl_Position = GetFrameCamera(uFrame).viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
   vTexcoord   = inTexcoord.xy;
 }

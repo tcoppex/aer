@@ -38,7 +38,7 @@ class ArcBallController : public Camera::ViewController {
               double const mouseY,
               double const wheelDelta);
 
-  void calculateViewMatrix(mat4 *m) final;
+  void calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) final;
 
   double yaw() const {
     return yaw_;

@@ -3,9 +3,8 @@
 #include "aer/core/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/fx/material/material_fx.h"
-
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h" //
-#include "aer/shaders/material/interop.h" //
+#include "aer/scene/vertex_internal.h" // for material_shader_interop::FrameData
 
 using namespace scene;
 
@@ -93,7 +92,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
 
   /* Create the shared Frame UBO */
   frame_ubo_ = context_.createBuffer(
-    sizeof(FrameData),
+    sizeof(material_shader_interop::FrameData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
     | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     ,
@@ -520,22 +519,28 @@ void GPUResources::updateFrameData(
    * in the future this might need tweaking if we use scaling. */
   auto const& surface_size = context_.default_surface_size();
 
-  // [rework to account for multiview]
-  auto const frame_data = FrameData{
-    .projectionMatrix = camera.proj(),
-    .invProjectionMatrix = camera.proj_inverse(),
-    .viewMatrix = camera.view(),
-    .invViewMatrix = camera.world(),
-    .viewProjMatrix = camera.viewproj(),
+  auto frame_data = material_shader_interop::FrameData{
+    .default_world_matrix = context_.default_world_matrix(),
     .cameraPos_Time = vec4(camera.position(), elapsed_time), //
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = frame_index_++,
     .renderer_states = 0b11111111111111111111111111111111, // XXX
   };
+  /*
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
+  */
 
-  // [A writeBuffer could be more efficient here.]
+  /* Copy the multiview CameraTransform. */
+  {
+    auto const& src = camera.transforms();
+    auto& dst = frame_data.camera;
+
+    static_assert(std::is_trivially_copyable_v<Camera::Transform>);
+    std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
+  }
+
+  // [Using writeBuffer() could be more efficient here.]
   context_.transientUploadBuffer(
     &frame_data, sizeof(frame_data), frame_ubo_
   );

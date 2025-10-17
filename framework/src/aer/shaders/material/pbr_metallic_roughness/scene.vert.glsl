@@ -40,13 +40,15 @@ layout(location = 3) out vec2 vTexcoord;
 
 void main() {
   TransformSBO transform = transforms[nonuniformEXT(pushConstant.transform_index)];
-  mat4 worldMatrix = transform.worldMatrix;
+  mat4 worldMatrix = uFrame.default_world_matrix
+                   * transform.worldMatrix
+                   ;
   mat3 normalMatrix = mat3(worldMatrix);
   vec4 worldPos = worldMatrix * vec4(inPosition, 1.0);
 
   // -------
 
-  gl_Position = uFrame.viewProjMatrix * worldPos;
+  gl_Position = GetFrameCamera(uFrame).viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
   vNormalWS   = normalize(normalMatrix * inNormal);
   vTangentWS  = vec4(normalize(normalMatrix * inTangent.xyz), inTangent.w);

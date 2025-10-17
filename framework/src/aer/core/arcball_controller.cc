@@ -121,7 +121,7 @@ bool ArcBallController::update(
 
 // ----------------------------------------------------------------------------
 
-void ArcBallController::calculateViewMatrix(mat4 *m) {
+void ArcBallController::calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) {
   static_assert( sizeof(mat4) == (16u * sizeof(float)) );
 
 #if ABC_USE_CUSTOM_TARGET

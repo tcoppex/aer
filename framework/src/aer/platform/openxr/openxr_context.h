@@ -4,10 +4,10 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/core/common.h"
+#include "aer/core/camera.h"
 
 #include "aer/platform/openxr/xr_common.h"
 #include "aer/platform/openxr/xr_utils.h"
-
 #include "aer/platform/openxr/xr_platform_interface.h"
 #include "aer/platform/openxr/xr_vulkan_interface.h" //
 #include "aer/platform/openxr/xr_swapchain.h"
@@ -57,7 +57,7 @@ class OpenXRContext {
   bool resetSwapchain();
 
   [[nodiscard]]
-  bool completeSetup();
+  bool completeSetup(Camera &camera);
 
   void shutdown();
 
@@ -126,18 +126,14 @@ class OpenXRContext {
   }
 
   [[nodiscard]]
-  XRFrameData_t const& frame_data() const noexcept {
-    return frameData_;
+  XRFrameData const& frame_data() const noexcept {
+    return frame_data_;
   }
 
   [[nodiscard]]
   XRControlState_t::Frame const& frame_control_state() const noexcept {
     return controls_.frame;
   }
-
- public:
-  void beginFrame();
-  void endFrame();
 
  private:
   [[nodiscard]]
@@ -148,6 +144,10 @@ class OpenXRContext {
   void handleSessionStateChangedEvent(
     XrEventDataSessionStateChanged const& sessionStateChanged
   );
+
+  void beginFrame();
+
+  void endFrame();
 
   void handleControls();
 
@@ -191,8 +191,38 @@ class OpenXRContext {
   // -----
 
   XRControlState_t controls_{};
-  XRFrameData_t frameData_{}; //
-  bool shouldRender_{};
+  XRFrameData frame_data_{}; //
+
+  Camera *camera_ptr_{};
+
+  bool should_render_{};
+
+  struct ViewController final : Camera::ViewController {
+    ViewController(XRFrameData const& frame_data)
+      : frame_data_{frame_data}
+    {}
+    virtual ~ViewController() = default;
+
+    bool update(float dt) final {
+      return true;
+    }
+
+    void calculateViewMatrix(mat4 *view_matrix, uint32_t view_id) final {
+      *view_matrix = frame_data_.viewMatrices[view_id];
+    }
+
+    uint32_t view_count() const noexcept final {
+      return 2u;
+    }
+
+    vec3 target() const final {
+      LOGW("OpenXR::ViewController::target not implemented");
+      return vec3(); //
+    }
+
+   private:
+    XRFrameData const& frame_data_;
+  } view_controller_{frame_data_};
 };
 
 /* -------------------------------------------------------------------------- */

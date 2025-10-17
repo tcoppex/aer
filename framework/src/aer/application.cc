@@ -132,7 +132,7 @@ bool Application::presetup(AppData_t app_data) {
 
   // Complete OpenXR setup (Controllers & Spaces).
   if (xr_) {
-    if (!xr_->completeSetup()) {
+    if (!xr_->completeSetup(camera_)) {
       LOGE("OpenXR initialization completion fails.");
       shutdown();
       return false;
@@ -221,8 +221,15 @@ void Application::updateInternal() noexcept {
     ui_->endFrame();
   }
 
+  /* Set default space on OpenXR */
+  if (xr_) {
+    auto const& xr_frame_data = xr_->frame_data();
+    auto const& xr_default_space = xr_frame_data.space_matrix(XRSpaceId::Local);
+    context_.set_default_world_matrix(xr_default_space);
+  }
+
   /* Camera. */
-  camera_.update(dt); //
+  camera_.update(dt);
 
   /* Application. */
   update(dt);

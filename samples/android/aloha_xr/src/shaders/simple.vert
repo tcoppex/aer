@@ -9,7 +9,6 @@
 
 // ----------------------------------------------------------------------------
 
-
 layout(scalar, set = 0, binding = 0) uniform UBO_ {
   UniformCameraData uCamera[2];
 };

@@ -236,8 +236,16 @@ class RenderContext : public Context {
     return default_surface_size_;
   }
 
+  mat4f const& default_world_matrix() const noexcept {
+    return default_world_matrix_;
+  }
+
   void set_default_surface_size(VkExtent2D const& surface_size) noexcept {
     default_surface_size_ = surface_size;
+  }
+
+  void set_default_world_matrix(mat4f const& matrix) noexcept {
+    default_world_matrix_ = matrix;
   }
 
  public:
@@ -260,6 +268,8 @@ class RenderContext : public Context {
 
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
+
+  mat4f default_world_matrix_{linalg::identity};
 };
 
 /* -------------------------------------------------------------------------- */

@@ -1,14 +1,17 @@
 #version 460
+
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_debug_printf : enable
 
-// ----------------------------------------------------------------------------
-
-#include "../interop.h"
+// [hacky] As extension GL_EXT_multiview is not supported on raygen we must
+//         override a builtin variable to access the correct uniform buffer
+//         camera via the macro GetFrameCamera.
+#define gl_ViewIndex 0u
 
 #include <material/interop.h>
 #include <shared/random.glsl>
+
+#include "../interop.h"
 
 // ----------------------------------------------------------------------------
 
@@ -71,7 +74,8 @@ void main() {
   uvec3 seed_params = uvec3(gl_LaunchIDEXT.xy, pushConstant.accumulation_frame_count);
   payload.rngState = xxhash32(seed_params);
 
-  const vec4 origin = uFrame.invViewMatrix * vec4(0, 0, 0, 1);
+  const CameraTransform camera = GetFrameCamera(uFrame);
+  const vec4 origin = camera.invViewMatrix * vec4(0, 0, 0, 1);
 
   const int numSamples = pushConstant.num_samples;
   const int maxDepth = 16; //
@@ -80,8 +84,8 @@ void main() {
   for (int s = 0; s < numSamples; s++)
   {
     vec2 jitter = pushConstant.jitter_factor * (rand2f(payload.rngState) - 0.5) * sampleSize;
-    vec4 target = uFrame.invProjectionMatrix * vec4(ndc + jitter, 0, 1);
-    vec4 direction = uFrame.invViewMatrix * normalize(vec4(target.xyz, 0));
+    vec4 target = camera.invProjectionMatrix * vec4(ndc + jitter, 0, 1);
+    vec4 direction = camera.invViewMatrix * normalize(vec4(target.xyz, 0));
 
     float tmin = 1e-3;
     float tmax = 1e32;
