@@ -73,7 +73,7 @@ void Skybox::init(RenderContext& context) {
         .images = {
           {
             .sampler = sampler_LinearClampMipMap_, //
-            .imageView = envmap_.get_image(Envmap::ImageType::Diffuse).view,
+            .imageView = envmap_.image(Envmap::ImageType::Diffuse).view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           }
         }
