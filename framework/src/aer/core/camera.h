@@ -22,6 +22,14 @@ class Camera {
 
     virtual vec3 target() const = 0;
   };
+
+  struct Data {
+    mat4 projection{};
+    mat4 projection_inverse{};
+    mat4 view{linalg::translation_matrix(vec3(0.0f, 0.0f, -1.0f))};
+    mat4 world{}; // view_inverse
+    mat4 view_projection{};
+  };
   
  public:
   Camera()
@@ -30,9 +38,7 @@ class Camera {
     , width_(0u)
     , height_(0u)
     , linear_params_{0.0f, 0.0f, 0.0f, 0.0f}
-  {
-    view_ = linalg::translation_matrix(vec3(0.0f, 0.0f, -1.0f));
-  }
+  {}
 
   Camera(ViewController *controller) 
     : Camera()
@@ -55,28 +61,34 @@ class Camera {
     width_  = w;
     height_ = h;
 
+    auto const ratio = static_cast<float>(width_) / static_cast<float>(height_);
+
     // Projection matrix.
-    float const ratio = static_cast<float>(width_) / static_cast<float>(height_);
-    proj_ = linalg::perspective_matrix(fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one);
-    proj_inverse_ = linalg::inverse(proj_);
-    use_ortho_ = false;
+    matrices_.projection = linalg::perspective_matrix(
+      fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one
+    );
+    matrices_.projection_inverse = linalg::inverse(matrices_.projection);
 
     // Linearization parameters.
     float const A  = zfar / (zfar - znear);
     linear_params_ = vec4( znear, zfar, A, - znear * A);
+
+    use_ortho_ = false;
   }
 
   void makePerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
-    makePerspective( fov, resolution.x, resolution.y, znear, zfar);
+    makePerspective(fov, resolution.x, resolution.y, znear, zfar);
   }
 
   /* Create a default perspective projection camera. */
   void makeDefault() {
-    makePerspective( kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar);
+    makePerspective(
+      kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar
+    );
   }
 
   void makeDefault(ivec2 const& resolution) {
-    makePerspective( kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
+    makePerspective(kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
   }
 
   // Update controller and rebuild all matrices.
@@ -94,10 +106,10 @@ class Camera {
   // Rebuild all matrices.
   void rebuild(bool bRetrieveView = true) {
     if (controller_ && bRetrieveView) {
-      controller_->calculateViewMatrix(&view_);
+      controller_->calculateViewMatrix(&matrices_.view);
     }
-    world_    = linalg::inverse(view_); //
-    viewproj_ = linalg::mul(proj_, view_);
+    matrices_.world = linalg::inverse(matrices_.view); //
+    matrices_.view_projection = linalg::mul(matrices_.projection, matrices_.view);
 
     need_rebuild_ = false;
     rebuilt_ = true;
@@ -110,81 +122,100 @@ class Camera {
  public:
   /* --- Getters --- */
 
-  ViewController* controller() {
+  [[nodiscard]]
+  ViewController* controller() noexcept {
     return controller_;
   }
 
-  ViewController const* controller() const {
+  [[nodiscard]]
+  ViewController const* controller() const noexcept {
     return controller_;
   }
 
+  [[nodiscard]]
   float fov() const noexcept {
     return fov_;
   }
 
+  [[nodiscard]]
   int32_t width() const noexcept {
     return width_;
   }
 
+  [[nodiscard]]
   int32_t height() const noexcept {
     return height_;
   }
 
+  [[nodiscard]]
   float aspect() const {
     return static_cast<float>(width_) / static_cast<float>(height_);
   }
 
+  [[nodiscard]]
   float znear() const noexcept {
     return linear_params_.x;
   }
 
+  [[nodiscard]]
   float zfar() const noexcept {
     return linear_params_.y;
   }
 
-  vec4 const& linearization_params() const {
+  [[nodiscard]]
+  vec4 const& linearization_params() const noexcept {
     return linear_params_;
   }
 
-  mat4 const& view() const noexcept {
-    return view_;
-  }
-
-  mat4 const& world() const noexcept {
-    return world_;
-  }
-
+  [[nodiscard]]
   mat4 const& proj() const noexcept {
-    return proj_;
+    return matrices_.projection;
   }
 
+  [[nodiscard]]
   mat4 const& proj_inverse() const noexcept {
-    return proj_inverse_;
+    return matrices_.projection_inverse;
   }
 
+  [[nodiscard]]
+  mat4 const& view() const noexcept {
+    return matrices_.view;
+  }
+
+  [[nodiscard]]
+  mat4 const& world() const noexcept {
+    return matrices_.world;
+  }
+
+  [[nodiscard]]
   mat4 const& viewproj() const noexcept {
-    return viewproj_;
+    return matrices_.view_projection;
   }
 
+  [[nodiscard]]
   vec3 position() const noexcept {
-    return lina::to_vec3(world_[3]); //
+    return lina::to_vec3(world()[3]); //
   }
 
+  [[nodiscard]]
   vec3 direction() const noexcept {
-    return linalg::normalize(-lina::to_vec3(world_[2])); //
+    return linalg::normalize(-lina::to_vec3(world()[2])); //
   }
 
+  [[nodiscard]]
   vec3 target() const noexcept {
     return controller_ ? controller_->target()
                        : position() + 3.0f * direction() //
                        ;
   }
 
+  [[nodiscard]]
   bool is_ortho() const noexcept {
     return use_ortho_;
   }
 
-  bool rebuilt() const {
+  [[nodiscard]]
+  bool rebuilt() const noexcept {
     return rebuilt_;
   }
 
@@ -196,11 +227,7 @@ class Camera {
   uint32_t height_{};
   vec4 linear_params_{};
 
-  mat4 proj_{};
-  mat4 proj_inverse_{};
-  mat4 view_{};
-  mat4 world_{};      //< aka 'view_inverse'
-  mat4 viewproj_{};
+  Data matrices_{};
 
   bool use_ortho_{};
   bool need_rebuild_{true};
