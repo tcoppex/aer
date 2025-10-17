@@ -1,4 +1,4 @@
-//  lina.h - v0.4.0
+//  lina.h - v0.5.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -128,9 +128,13 @@ template<class T, int M, int N> constexpr T const* ptr(linalg::mat<T, M, N> cons
 
 template<class T> constexpr linalg::vec<T, 2> to_vec2(linalg::vec<T, 3> const& v) { return {v.x,v.y}; }
 template<class T> constexpr linalg::vec<T, 3> to_vec3(linalg::vec<T, 4> const& v) { return {v.x,v.y,v.z}; }
+template<class T> constexpr linalg::vec<T, 4> to_vec4(linalg::vec<T, 3> const& v, T x = 0) { return {v.x,v.y,v.z,x}; }
 
 template<class T> constexpr linalg::mat<T, 3, 3> to_mat3(linalg::mat<T, 4, 4> const& v) { return {to_vec3(v.x),to_vec3(v.y),to_vec3(v.z)}; }
 template<class T> constexpr linalg::mat<T, 3, 4> to_mat3x4(linalg::mat<T, 4, 4> const& v) { return {to_vec3(v.x),to_vec3(v.y),to_vec3(v.z), to_vec3(v.w)}; }
+template<class T> constexpr linalg::mat<T, 4, 4> to_mat4(linalg::mat<T, 3, 3> const& v) { return {to_vec4(v.x),to_vec4(v.y),to_vec4(v.z), {0, 0, 0, 1}}; }
+
+template<class T> constexpr linalg::mat<T, 4, 4> remove_translation(linalg::mat<T, 4, 4> const& v) { return {v.x,v.y,v.z, {0, 0, 0, 1}}; }
 
 template<class T> constexpr linalg::vec<T, 4> qidentity() { return {0,0,0,1}; }
 
