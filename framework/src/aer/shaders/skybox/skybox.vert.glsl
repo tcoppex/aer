@@ -1,6 +1,7 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_multiview : require
 
 // ----------------------------------------------------------------------------
 
@@ -19,7 +20,9 @@ layout(push_constant, scalar) uniform PushConstant_ {
 // ----------------------------------------------------------------------------
 
 void main() {
-  const vec4 clip_pos = pushConstant.viewProjectionMatrix * vec4(inPosition, 1.0);
+  const vec4 clip_pos = pushConstant.mvpMatrix[gl_ViewIndex]
+                      * vec4(inPosition, 1.0)
+                      ;
 
   // Use the box object coordinates in [-1, 1] as texture coordinates.
   outView = normalize(2.0f * inPosition);

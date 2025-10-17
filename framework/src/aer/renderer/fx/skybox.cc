@@ -164,11 +164,22 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
     return;
   }
 
-  auto view = camera.view();
-  view[3] = vec4(vec3(0.0f), view[3].w);
-
   PushConstant_t push_constant{};
-  push_constant.viewProjectionMatrix = linalg::mul(camera.proj(), view);
+
+  std::array<mat4f, 2u> views{
+    camera.view(0u),
+    camera.view(1u)
+  };
+  views[0][3] = vec4(vec3(0.0f), views[0][3].w);
+  views[1][3] = vec4(vec3(0.0f), views[1][3].w);
+
+  auto const& world_matrix = context_ptr_->default_world_matrix();
+  push_constant.mvpMatrix[0] = linalg::mul(
+    linalg::mul(camera.proj(0), views[0]), world_matrix
+  );
+  push_constant.mvpMatrix[1] = linalg::mul(
+    linalg::mul(camera.proj(1), views[1]), world_matrix
+  );
   push_constant.hdrIntensity = 1.0f;
 
   pass.bindPipeline(graphics_pipeline_);

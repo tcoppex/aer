@@ -226,8 +226,8 @@ class Camera {
   // -------------------------------
 
   [[nodiscard]]
-  mat4 const& proj() const noexcept {
-    return transforms_[0].projection; // XXX
+  mat4 const& proj(uint32_t view_id = 0u) const {
+    return transforms_[view_id].projection;
   }
 
   // [[nodiscard]]
@@ -236,8 +236,8 @@ class Camera {
   // }
 
   [[nodiscard]]
-  mat4 const& view() const noexcept {
-    return transforms_[0].view;  // XXX
+  mat4 const& view(uint32_t view_id = 0u) const {
+    return transforms_[view_id].view;
   }
 
   // [[nodiscard]]
