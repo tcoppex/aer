@@ -59,7 +59,7 @@ class Camera {
     float const ratio = static_cast<float>(width_) / static_cast<float>(height_);
     proj_ = linalg::perspective_matrix(fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one);
     proj_inverse_ = linalg::inverse(proj_);
-    bUseOrtho_ = false;
+    use_ortho_ = false;
 
     // Linearization parameters.
     float const A  = zfar / (zfar - znear);
@@ -176,12 +176,12 @@ class Camera {
 
   vec3 target() const noexcept {
     return controller_ ? controller_->target()
-                       : position() + 3.0f*direction() //
+                       : position() + 3.0f * direction() //
                        ;
   }
 
   bool is_ortho() const noexcept {
-    return bUseOrtho_;
+    return use_ortho_;
   }
 
   bool rebuilt() const {
@@ -202,7 +202,7 @@ class Camera {
   mat4 world_{};      //< aka 'view_inverse'
   mat4 viewproj_{};
 
-  bool bUseOrtho_{};
+  bool use_ortho_{};
   bool need_rebuild_{true};
   bool rebuilt_{false};
 };

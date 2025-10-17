@@ -151,10 +151,6 @@ class SampleApp final : public Application {
   }
 
   void update(float dt) final {
-    if (!xr_) {
-      return;
-    }
-
     auto const& frame = xr_->frame_data();
 
     // Update uniform buffer for both eyes.
