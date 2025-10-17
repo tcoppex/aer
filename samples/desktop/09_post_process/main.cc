@@ -7,7 +7,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
 #include "aer/renderer/fx/postprocess/compute/impl/depth_minmax.h"
@@ -315,8 +314,6 @@ class SampleApp final : public Application {
   }
 
   void update(float const dt) final {
-    camera_.update(dt);
-
     mat4 const world_matrix{
       lina::rotation_matrix_axis(
         vec3(-0.25f, 1.0f, -0.15f),
@@ -355,7 +352,6 @@ class SampleApp final : public Application {
   }
 
  private:
-  Camera camera_{};
   ArcBallController arcball_controller_{};
   ToonFxPipeline toon_pipeline_{};
 };

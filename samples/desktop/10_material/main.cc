@@ -7,7 +7,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 
 /* -------------------------------------------------------------------------- */
@@ -66,8 +65,6 @@ class SampleApp final : public Application {
   }
 
   void update(float const dt) final {
-    camera_.update(dt);
-
     if (future_scene_.valid()
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
@@ -97,9 +94,7 @@ class SampleApp final : public Application {
   }
 
  private:
-  Camera camera_{};
   ArcBallController arcball_controller_{};
-
   std::future<GLTFScene> future_scene_{};
   GLTFScene scene_{};
 };

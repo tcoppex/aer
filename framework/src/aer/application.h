@@ -7,13 +7,14 @@
 using namespace std::chrono_literals;
 
 #include "aer/settings.h"
+
 #include "aer/core/common.h"
+#include "aer/core/camera.h"
 #include "aer/core/event_callbacks.h"
 
 #include "aer/platform/common.h"
 #include "aer/platform/wm_interface.h"
 #include "aer/platform/ui_controller.h"
-
 #include "aer/platform/swapchain_interface.h"
 #include "aer/platform/vulkan/swapchain.h" //
 
@@ -78,7 +79,7 @@ class Application : public EventCallbacks
 
   void updateTimer() noexcept;
 
-  void updateUI() noexcept;
+  void updateInternal() noexcept;
 
   void mainloop(AppData_t app_data);
 
@@ -95,6 +96,7 @@ class Application : public EventCallbacks
   Renderer renderer_{};
 
   VkExtent2D viewport_size_{}; // (to be removed)
+  Camera camera_{};
 
  private:
   AppSettings settings_{};

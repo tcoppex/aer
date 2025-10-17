@@ -7,8 +7,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 
 namespace shader_interop {
@@ -31,8 +29,10 @@ class SampleApp final : public Application {
 
     renderer_.set_clear_color({ 0.55f, 0.65f, 0.75f, 1.0f });
 
-    /* Setup the ArcBall camera. */
+    /* Setup the camera. */
     {
+      /* We use the internal camera_ object, on which we give an ArcBallController
+       * to be able to move it with input events. */
       camera_.makePerspective(
         lina::radians(60.0f),
         viewport_size_.width,
@@ -232,8 +232,10 @@ class SampleApp final : public Application {
   }
 
   void update(float const dt) final {
-    camera_.update( dt );
-    push_constant_.viewMatrix = camera_.view();
+    /* We can check if the camera has changed between frame. */
+    if (camera_.rebuilt()) {
+      push_constant_.viewMatrix = camera_.view();
+    }
   }
 
   void draw(CommandEncoder const& cmd) final {
@@ -268,16 +270,11 @@ class SampleApp final : public Application {
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};
   shader_interop::PushConstant push_constant_{};
-
   Pipeline graphics_pipeline_{};
 
-  Camera camera_{};
   ArcBallController arcball_controller_{};
-
   GLTFScene scene_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 

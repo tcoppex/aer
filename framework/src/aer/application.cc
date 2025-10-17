@@ -211,10 +211,21 @@ void Application::updateTimer() noexcept {
 
 // ----------------------------------------------------------------------------
 
-void Application::updateUI() noexcept {
-  ui_->beginFrame();
-  buildUI();
-  ui_->endFrame();
+void Application::updateInternal() noexcept {
+  auto const dt = delta_time();
+
+  /* User Interface. */
+  if (ui_) {
+    ui_->beginFrame();
+    buildUI();
+    ui_->endFrame();
+  }
+
+  /* Camera. */
+  camera_.update(dt); //
+
+  /* Application. */
+  update(dt);
 }
 
 // ----------------------------------------------------------------------------
@@ -235,8 +246,7 @@ void Application::mainloop(AppData_t app_data) {
     if (xr_->isSessionRunning()) [[likely]] {
       xr_->processFrame(
         [this]() {
-          updateUI();
-          update(delta_time());
+          updateInternal();
         },
         [this]() {
           auto const& cmd = renderer_.beginFrame();
@@ -255,8 +265,7 @@ void Application::mainloop(AppData_t app_data) {
   // ----------------------
   frame_fn classicFrame{[this]() -> bool {
     if (wm_->is_active()) [[likely]] {
-      updateUI();
-      update(delta_time());
+      updateInternal();
       auto const& cmd = renderer_.beginFrame();
       draw(cmd);
       renderer_.endFrame();
