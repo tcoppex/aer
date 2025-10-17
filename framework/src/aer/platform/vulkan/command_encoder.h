@@ -435,10 +435,16 @@ class RenderPassEncoder : public GenericCommandEncoder {
     VkDeviceSize const offset = 0u,
     VkDeviceSize const size = VK_WHOLE_SIZE
   ) const {
-    // VK_KHR_maintenance5 or VK_VERSION_1_4
-    vkCmdBindIndexBuffer2KHR(
-      handle_, buffer.buffer, offset, size, index_type
-    );
+    if (vkCmdBindIndexBuffer2KHR) {
+      // VK_KHR_maintenance5 or VK_VERSION_1_4
+      vkCmdBindIndexBuffer2KHR(
+        handle_, buffer.buffer, offset, size, index_type
+      );
+    } else {
+      vkCmdBindIndexBuffer(
+        handle_, buffer.buffer, offset, index_type
+      );
+    }
   }
 
   // --- Draw ---
