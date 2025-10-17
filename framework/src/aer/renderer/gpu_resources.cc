@@ -530,10 +530,10 @@ void GPUResources::updateFrameData(
     .frame = frame_index_++,
     .renderer_states = 0b11111111111111111111111111111111, // XXX
   };
-  /*
+  
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
-  */
+
 
   /* Copy the multiview CameraTransform. */
   {

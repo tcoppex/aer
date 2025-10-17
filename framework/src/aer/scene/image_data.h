@@ -40,12 +40,6 @@ struct ImageData {
  public:
   ImageData() = default;
 
-  ImageData(stbi_uc const* buffer_data, uint32_t const buffer_size)
-    : ImageData()
-  {
-    load(buffer_data, buffer_size);
-  }
-
   ImageData(uint8_t r, uint8_t g, uint8_t b, uint8_t a, int32_t _width = 1, int32_t _height = 1) {
     width = _width;
     height = _height;
