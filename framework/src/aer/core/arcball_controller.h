@@ -20,10 +20,10 @@ class ArcBallController : public Camera::ViewController {
   ArcBallController()
     : last_mouse_x_(0.0),
       last_mouse_y_(0.0),
-      yaw_(0.0),
-      yaw2_(0.0),
       pitch_(0.0),
       pitch2_(0.0),
+      yaw_(0.0),
+      yaw2_(0.0),
       dolly_(kDefaultDollyZ),
       dolly2_(dolly_)
   {}
@@ -40,45 +40,67 @@ class ArcBallController : public Camera::ViewController {
 
   void calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) final;
 
-  double yaw() const {
+  [[nodiscard]]
+  double yaw() const noexcept {
     return yaw_;
   }
 
-  double pitch() const {
+  [[nodiscard]]
+  double pitch() const noexcept {
     return pitch_;
   }
 
-  double dolly() const {
+  [[nodiscard]]
+  double dolly() const noexcept {
     return dolly_;
   }
 
-  float yawf() const {
-    return static_cast<float>(yaw());
-  }
-
-  float pitchf() const {
+  [[nodiscard]]
+  float pitchf() const noexcept {
     return static_cast<float>(pitch());
   }
 
-  void set_yaw(double const value, bool const bSmooth = kDefaultSmoothTransition) {
-    yaw2_ = value;
-    yaw_  = (!bSmooth) ? value : yaw_; 
+  [[nodiscard]]
+  float yawf() const noexcept {
+    return static_cast<float>(yaw());
   }
 
-  void set_pitch(double const value, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
+  [[nodiscard]]
+  bool is_side_view() const noexcept {
+    return bSideViewSet_;
+  }
+
+  void set_pitch(
+    double value,
+    bool bSmooth = kDefaultSmoothTransition,
+    bool bFastTarget = kDefaultFastestPitchAngle
+  ) {
     // use the minimal angle to target.
     double const v1{ value - kAngleModulo };
     double const v2{ value + kAngleModulo };
     double const d0{ std::abs(pitch_ - value) };
     double const d1{ std::abs(pitch_ - v1) };
     double const d2{ std::abs(pitch_ - v2) };
-    double const v{ (((d0 < d1) && (d0 < d2)) || !bFastTarget) ? value : (d1 < d2) ? v1 : v2 };
+    double const v{
+      (((d0 < d1) && (d0 < d2)) || !bFastTarget) ? value : (d1 < d2) ? v1 : v2
+    };
 
     pitch2_ = v;
     pitch_  = (!bSmooth) ? v : pitch_;
   }
 
-  void set_dolly(double const value, bool const bSmooth = kDefaultSmoothTransition) {
+  void set_yaw(
+    double value,
+    bool bSmooth = kDefaultSmoothTransition
+  ) {
+    yaw2_ = value;
+    yaw_  = (!bSmooth) ? value : yaw_;
+  }
+
+  void set_dolly(
+    double value,
+    bool bSmooth = kDefaultSmoothTransition
+  ) {
     dolly2_ = value;
     if (!bSmooth) {
       dolly_ = dolly2_;
@@ -87,18 +109,25 @@ class ArcBallController : public Camera::ViewController {
 
   //---------------
   // [ target is inversed internally, so we change the sign to compensate externally.. fixme]
+  [[nodiscard]]
   vec3 target() const final {
     return -target_; // 
   }
 
-  void set_target(vec3 const& target, bool const bSmooth = kDefaultSmoothTransition) {
+  void set_target(
+    vec3 const& target,
+    bool bSmooth = kDefaultSmoothTransition
+  ) {
     target2_ = -target;
     if (!bSmooth) {
       target_ = target2_;
     }
   }
 
-  void move_target(vec3 const& v, bool const bSmooth = kDefaultSmoothTransition) {
+  void move_target(
+    vec3 const& v,
+    bool bSmooth = kDefaultSmoothTransition
+  ) {
     set_target(v - target2_, bSmooth);
   }
   //---------------
@@ -108,13 +137,14 @@ class ArcBallController : public Camera::ViewController {
     target2_ = vec3(0.0);
   }
 
-  void set_view(double const rx, double const ry, bool const bSmooth = kDefaultSmoothTransition, bool const bFastTarget = kDefaultFastestPitchAngle) {
-    set_yaw(rx, bSmooth);
-    set_pitch(ry, bSmooth, bFastTarget);
-  }
-
-  bool is_side_view() const {
-    return bSideViewSet_;
+  void set_view(
+    double pitch,
+    double yaw,
+    bool bSmooth = kDefaultSmoothTransition,
+    bool bFastTarget = kDefaultFastestPitchAngle
+  ) {
+    set_pitch(pitch, bSmooth, bFastTarget);
+    set_yaw(yaw, bSmooth);
   }
 
  private:
@@ -157,8 +187,8 @@ class ArcBallController : public Camera::ViewController {
 
   double last_mouse_x_;
   double last_mouse_y_;
-  double yaw_, yaw2_;
   double pitch_, pitch2_;
+  double yaw_, yaw2_;
   double dolly_, dolly2_;
 
 // -------------

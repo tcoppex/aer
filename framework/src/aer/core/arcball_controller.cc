@@ -11,7 +11,8 @@ bool ArcBallController::update(float dt) {
     e.mouseMoved(),
     e.buttonDown(2) || e.keyDown(342),  //   e.bMiddleMouse || e.bLeftAlt,
     e.buttonDown(1) || e.keyDown(340),  //   e.bRightMouse || e.bLeftShift,
-    (double)e.mouseX(), (double)e.mouseY(),
+    (double)e.mouseX(),
+    (double)e.mouseY(),
     (double)e.wheelDelta()
   );
 
@@ -107,8 +108,8 @@ bool ArcBallController::update(
   smoothTransition(deltatime);
 
   bool is_dirty = (bMoving && (btnTranslate || btnRotate))
-    || !lina::almost_equal<float>(yaw_, yaw2_, 0.01f)
     || !lina::almost_equal<float>(pitch_, pitch2_, 0.01f)
+    || !lina::almost_equal<float>(yaw_, yaw2_, 0.01f)
     || !lina::almost_equal<float>(dolly_, dolly2_, 0.01f)
     || !lina::almost_equal(target_, target2_, 0.0001f)
     ;
@@ -132,18 +133,15 @@ void ArcBallController::calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) {
 
   auto const Tpan = linalg::translation_matrix(target_);
 
-  auto const Rx = lina::rotation_matrix_x(yawf());
-  auto const Ry = lina::rotation_matrix_y(pitchf());
+  auto const Rx = lina::rotation_matrix_x(pitchf());
+  auto const Ry = lina::rotation_matrix_y(yawf());
 
   Rmatrix_ = linalg::mul(Rx, Ry);
 
-  mat4 view{
-    linalg::mul(
-      linalg::mul(Tdolly, Rmatrix_),
-      Tpan
-    )
-  };
-  memcpy(lina::ptr(*m), lina::ptr(view), sizeof view);
+  *m = linalg::mul(
+    linalg::mul(Tdolly, Rmatrix_),
+    Tpan
+  );
 
 #else
   // This matrix will always orbit around the space center.
@@ -200,8 +198,8 @@ void ArcBallController::eventMouseMoved(
   }
 
   if (btnRotate) {
-    pitch2_ += dv_x * kMouseRAcceleration; //
-    yaw2_ += dv_y * kMouseRAcceleration; //
+    pitch2_ += dv_y * kMouseRAcceleration; //
+    yaw2_ += dv_x * kMouseRAcceleration; //
     bSideViewSet_ = false;
   }
 
