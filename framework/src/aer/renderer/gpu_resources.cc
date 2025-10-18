@@ -278,16 +278,20 @@ void GPUResources::render(RenderPassEncoder const& pass) {
       // Draw submeshes.
       for (auto submesh : submeshes) {
         auto mesh = submesh->parent;
+        auto const& matref = *(submesh->material_ref);
+        auto const& proxy = material_proxy(matref);
 
         // Submesh's pushConstants.
         fx->set_transform_index(mesh->transform_index);
-        fx->set_material_index(submesh->material_ref->material_index);
+        fx->set_material_index(matref.material_index);
         fx->set_instance_index(instance_index++); //
         fx->pushConstant(pass);
 
         pass.setPrimitiveTopology(mesh->vk_primitive_topology());
+        pass.setCullMode(proxy.double_sided ? VK_CULL_MODE_NONE
+                                            : VK_CULL_MODE_BACK_BIT);
 
-        pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer); //
+        pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer);
       }
     }
   }

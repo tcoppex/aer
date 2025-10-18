@@ -123,6 +123,7 @@ GraphicsPipelineDescriptor_t MaterialFx::graphics_pipeline_descriptor(
     .dynamicStates = {
       VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
       VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+      VK_DYNAMIC_STATE_CULL_MODE_EXT,
     },
     .vertex = {
       .module = shaders.at(backend::ShaderStage::Vertex).module,
@@ -134,7 +135,7 @@ GraphicsPipelineDescriptor_t MaterialFx::graphics_pipeline_descriptor(
       },
       .targets = {
         {
-          // .format = context_ptr_->default_color_format(), //
+          .format = context_ptr_->default_color_format(),
         },
       },
     },
@@ -143,9 +144,6 @@ GraphicsPipelineDescriptor_t MaterialFx::graphics_pipeline_descriptor(
       .depthWriteEnable = VK_TRUE,
       .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
     },
-    .primitive = {
-      .cullMode = VK_CULL_MODE_BACK_BIT,
-    }
   };
   if (states.alpha_mode == scene::MaterialStates::AlphaMode::Mask) {
     desc.fragment.specializationConstants[0] = { 0u, VK_TRUE };
