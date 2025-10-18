@@ -392,10 +392,18 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   void setPrimitiveTopology(VkPrimitiveTopology const topology) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
+    LOG_CHECK(vkCmdSetPrimitiveTopologyEXT);
     vkCmdSetPrimitiveTopologyEXT(handle_, topology);
   }
 
+  void setCullMode(VkCullModeFlags cull_mode) const {
+    // Provided by VK_EXT_extended_dynamic_state, VK_EXT_shader_object
+    LOG_CHECK(vkCmdSetCullModeEXT);
+    vkCmdSetCullModeEXT(handle_, cull_mode);
+  }
+
   void setVertexInput(VertexInputDescriptor const& vertex_input_descriptor) const {
+    LOG_CHECK(vkCmdSetVertexInputEXT);
     vkCmdSetVertexInputEXT(
       handle_,
       static_cast<uint32_t>(vertex_input_descriptor.bindings.size()),
