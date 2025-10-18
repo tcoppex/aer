@@ -11,11 +11,11 @@ bool IsSwapchainInvalid(VkResult const result, std::string_view msg) {
       return false;
 
     case VK_SUBOPTIMAL_KHR:
-      LOGW("The current swapchain is suboptimal ({}).", msg);
+      LOGV("The current swapchain is suboptimal ({}).", msg);
       return false;
 
     case VK_ERROR_OUT_OF_DATE_KHR:
-      LOGW("[TODO] The swapchain need to be rebuilt ({}).", msg);
+      LOGV("The swapchain need to be rebuilt ({}).", msg);
       return true;
 
     default:
@@ -203,7 +203,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 // ----------------------------------------------------------------------------
 
 void Swapchain::release(bool keep_previous_swapchain) {
-  LOGD("Destroy swapchain resources,{} keep previous handle.",
+  LOGV("Destroy swapchain resources,{} keep previous handle.",
     keep_previous_swapchain ? "" : " don't"
   );
 

@@ -157,8 +157,8 @@ class SceneFx final : public RenderTargetFx {
       );
 
       for (auto const& submesh : mesh->submeshes) {
-        auto material = scene_->material(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = material.bindings.basecolor;
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
         push_constant_.model.material_index = submesh.material_ref->material_index;
         push_constant_.model.instance_index = instance_index++;
         pushConstant(pass);

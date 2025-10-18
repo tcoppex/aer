@@ -44,7 +44,7 @@ struct HostResources {
   bool loadFile(std::string_view filename);
 
   [[nodiscard]]
-  MaterialProxy const& material(MaterialRef const& ref) const {
+  MaterialProxy const& material_proxy(MaterialRef const& ref) const {
     return material_proxies[ref.proxy_index];
   }
 

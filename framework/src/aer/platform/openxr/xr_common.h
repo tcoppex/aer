@@ -136,22 +136,8 @@ struct XRFrameData {
 
 // ----------------------------------------------------------------------------
 
-// struct XRFrameView {
-//   uint32_t viewId{};
-//   struct {
-//     mat4f view{};
-//     mat4f proj{};
-//     mat4f viewProj{};
-//   } transform;
-//   std::array<int32_t, 4u> viewport{0, 0, 0, 0};
-//   XRImageHandle_t colorImage{};
-//   XRImageHandle_t depthStencilImage{};
-// };
-
-// ----------------------------------------------------------------------------
-
-using XRUpdateFunc_t = std::function<void(/*XRFrameData const&*/)>;
-using XRRenderFunc_t = std::function<void(/*XRFrameView_t const&*/)>;
+using XRUpdateFunc_t = std::function<void()>;
+using XRRenderFunc_t = std::function<void()>;
 
 /* -------------------------------------------------------------------------- */
 

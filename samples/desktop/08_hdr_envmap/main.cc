@@ -226,8 +226,8 @@ class SampleApp final : public Application {
         mesh->world_matrix()
       );
       for (auto const& submesh : mesh->submeshes) {
-        auto material = scene_->material(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = material.bindings.basecolor;
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
         pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
         pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
       }
