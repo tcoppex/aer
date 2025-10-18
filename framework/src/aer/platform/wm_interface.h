@@ -14,6 +14,7 @@ struct WMInterface {
   struct Settings {
     uint32_t width{};
     uint32_t height{};
+    bool resizeable{};
   };
 
  public:

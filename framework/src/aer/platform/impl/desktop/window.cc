@@ -124,7 +124,7 @@ bool Window::init(Settings const& settings, AppData_t app_data) {
   }
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, settings.resizeable ? GLFW_TRUE : GLFW_FALSE);
 
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();
   {
