@@ -51,6 +51,37 @@ mat3 rotationZ(float radians) {
 
 // ----------------------------------------------------------------------------
 
+mat3 calculate_reorient_matrix(vec3 u, vec3 v) {
+  u = normalize(u);
+  v = normalize(v);
+
+  // Handle opposite directions.
+  const float dp = dot(u, v);
+  if (dp < -0.9999)
+  {
+    // Pick any orthogonal vector.
+    const vec3 ortho = abs(u.x) > 0.1 ? vec3(0,1,0) : vec3(1,0,0);
+    const vec3 axis = normalize(cross(u, ortho));
+    float x = axis.x, y = axis.y, z = axis.z;
+    return mat3(
+      -1.0 + 2.0*x*x,  2.0*x*y,        2.0*x*z,
+       2.0*x*y,       -1.0 + 2.0*y*y,  2.0*y*z,
+       2.0*x*z,        2.0*y*z,       -1.0 + 2.0*z*z
+    );
+  }
+
+  // Rodrigues' rotation formula.
+  const vec3 c = cross(u, v);
+  const mat3 M = mat3(
+      0,   -c.z,    c.y,
+    c.z,      0,   -c.x,
+   -c.y,    c.x,      0
+  );
+  return mat3(1.0) + M + M * M * ((1.0 - dp) / dot(c, c));
+}
+
+// ----------------------------------------------------------------------------
+
 mat3 basis_from_view(in vec3 z_axis) {
   // Check Y & Z are not colinears.
   vec3 y_axis = abs(z_axis.y) < (1.0 - Epsilon()) ? vec3(0.0, 1.0, 0.0)
