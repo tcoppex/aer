@@ -185,11 +185,14 @@ class ArcBallController : public Camera::ViewController {
   static bool constexpr kDefaultSmoothTransition  = false;
   static bool constexpr kDefaultFastestPitchAngle = true;
 
-  double last_mouse_x_;
-  double last_mouse_y_;
-  double pitch_, pitch2_;
-  double yaw_, yaw2_;
-  double dolly_, dolly2_;
+  double last_mouse_x_{};
+  double last_mouse_y_{};
+  double pitch_{};
+  double pitch2_{};
+  double yaw_{};
+  double yaw2_{};
+  double dolly_{};
+  double dolly2_{};
 
 // -------------
   vec3 target_{}; //

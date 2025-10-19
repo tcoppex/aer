@@ -22,8 +22,8 @@ bool ArcBallController::update(float dt) {
   auto const pi       { M_PI };
   auto const half_pi  { pi / 2 };
   auto const rshift   { half_pi / 4 };
-  auto const rx       { yaw2_ };
-  auto const ry       { pitch2_ };
+  auto const rx       { pitch2_ };
+  auto const ry       { yaw2_ };
 
   // Check that the last char was entered with the keypad.
   // [Should be rewritten to test true keysym against GLFW_KEY_KP_*]
