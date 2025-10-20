@@ -125,6 +125,14 @@ class Context {
     return allocator_.writeBuffer(dst_buffer, host_data, bytesize);
   }
 
+  template<typename T> requires (!SpanConvertible<T>)
+  size_t writeBuffer(
+    backend::Buffer const& dst_buffer,
+    T const& host_data
+  ) const {
+    return writeBuffer(dst_buffer, &host_data, sizeof(host_data));
+  }
+
   template<typename T> requires (SpanConvertible<T>)
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
