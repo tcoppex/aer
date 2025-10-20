@@ -33,6 +33,7 @@ struct Mesh : Geometry {
   Mesh() = default;
 
   /* Bind mesh attributes to pipeline attributes location. */
+  // xx this make a mesh tighly bound to a pipeline, or at least its vertex input desc.
   void initializeSubmeshDescriptors(
     AttributeLocationMap const& attribute_to_location
   );
@@ -51,6 +52,7 @@ struct Mesh : Geometry {
   void set_resources_ptr(HostResources const* R);
 
   /* Return the mesh world transform. */
+  [[nodiscard]]
   mat4 const& world_matrix() const; //
 
  public:
@@ -61,16 +63,25 @@ struct Mesh : Geometry {
   HostResources const* resources_ptr_{};
   BufferInfo buffer_info_{};
 
+
   /* ------- Renderer specifics ------- */
 
  public:
+  [[nodiscard]]
   PipelineVertexBufferDescriptors pipeline_vertex_buffer_descriptors() const;
+
+  [[nodiscard]]
   VkIndexType vk_index_type() const;
+
+  [[nodiscard]]
   VkPrimitiveTopology vk_primitive_topology() const;
+
+  [[nodiscard]]
   VkFormat vk_format(AttributeType const attrib_type) const;
 
  private:
-  VertexInputDescriptor create_vertex_input_descriptors(
+  [[nodiscard]]
+  VertexInputDescriptor createVertexInputDescriptors(
     AttributeOffsetMap const& attribute_to_offset,
     AttributeLocationMap const& attribute_to_location
   ) const;

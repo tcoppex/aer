@@ -19,7 +19,10 @@ void Mesh::initializeSubmeshDescriptors(
     auto& submesh{ submeshes[i] };
 
     submesh.draw_descriptor = {
-      .vertexInput = create_vertex_input_descriptors(prim.bufferOffsets, attribute_to_location),
+      .vertexInput = createVertexInputDescriptors(
+        prim.bufferOffsets,
+        attribute_to_location
+      ),
       .indexType = vk_index_type(),
       .indexOffset = buffer_info_.index_offset + prim.indexOffset, //
       .vertexOffset = buffer_info_.vertex_offset + prim.bufferOffsets.at(AttributeType::Position), //
@@ -75,6 +78,9 @@ VkPrimitiveTopology Mesh::vk_primitive_topology() const {
     case Topology::TriangleList:
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
+    case Topology::LineStrip:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+
     default:
     case Topology::PointList:
       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
@@ -126,7 +132,7 @@ VkFormat Mesh::vk_format(AttributeType const attrib_type) const {
 
 // ----------------------------------------------------------------------------
 
-VertexInputDescriptor Mesh::create_vertex_input_descriptors(
+VertexInputDescriptor Mesh::createVertexInputDescriptors(
   AttributeOffsetMap const& attribute_to_offset,
   AttributeLocationMap const& attribute_to_location
 ) const {
