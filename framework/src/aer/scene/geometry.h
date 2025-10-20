@@ -23,6 +23,7 @@ class Geometry {
  public:
   enum class Topology {
     PointList,
+    LineStrip,
     TriangleList,
     TriangleStrip,
     kCount,
