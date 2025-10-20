@@ -52,7 +52,7 @@ void Skybox::init(RenderContext& context) {
     );
 
     context.finishTransientCommandEncoder(cmd);
-    cube_.clear_indices_and_vertices();
+    cube_.clearIndicesAndVertices();
   }
 
   /* Descriptor sets */

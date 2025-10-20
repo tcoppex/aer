@@ -79,7 +79,7 @@ void GPUResources::initializeSubmeshDescriptors(
   // [~] When we expect Tangent we force recalculate them.
   //     Resulting indices might be incorrect.
   if (attribute_to_location.contains(Geometry::AttributeType::Tangent)) {
-    // for (auto& mesh : meshes) { mesh->recalculate_tangents(); } //
+    // for (auto& mesh : meshes) { mesh->recalculateTangents(); } //
   }
   // --------------------
 }
@@ -142,7 +142,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     host_images.clear();
     host_images.shrink_to_fit();
     for (auto const& mesh : meshes) {
-      mesh->clear_indices_and_vertices(); //
+      mesh->clearIndicesAndVertices(); //
     }
   }
 }

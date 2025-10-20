@@ -88,7 +88,7 @@ class SampleApp final : public Application {
     // context_.loadImage2D(path_to_texture, image_);
 
     /* We don't need to keep the host data so we can clear them. */
-    cube_.clear_indices_and_vertices();
+    cube_.clearIndicesAndVertices();
 
     /* Descriptor set. */
     {

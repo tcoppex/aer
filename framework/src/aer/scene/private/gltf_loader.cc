@@ -549,7 +549,7 @@ void ExtractMeshes(
           if (prim.indices) {
             mesh->set_index_format(Geometry::IndexFormat::U32);
             primitive.indexCount = static_cast<uint32_t>(indices.size());
-            primitive.indexOffset = mesh->add_indices_data(std::as_bytes(std::span(indices)));
+            primitive.indexOffset = mesh->addIndicesData(std::as_bytes(std::span(indices)));
           }
         } else {
           // Attributes.
@@ -597,12 +597,12 @@ void ExtractMeshes(
                   indices_u32.push_back(val);
                 }
                 mesh->set_index_format(Geometry::IndexFormat::U32);
-                primitive.indexOffset = mesh->add_indices_data(
+                primitive.indexOffset = mesh->addIndicesData(
                   std::as_bytes(std::span(indices_u32))
                 );
               } else {
                 mesh->set_index_format(index_format);
-                primitive.indexOffset = mesh->add_indices_data(std::span(src, total_size));
+                primitive.indexOffset = mesh->addIndicesData(std::span(src, total_size));
               }
             } else {
               LOGD("index format unsupported.");
@@ -611,7 +611,7 @@ void ExtractMeshes(
         }
 
         /* Add the primitive interleaved attributes to the mesh, and retrieve its internal offset. */
-        attribs_buffer_offset = mesh->add_vertices_data(std::as_bytes(std::span(vertices)));
+        attribs_buffer_offset = mesh->addVerticesData(std::as_bytes(std::span(vertices)));
         primitive.vertexCount = static_cast<uint32_t>(vertices.size());
         primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(attribs_buffer_offset);
 
@@ -622,7 +622,7 @@ void ExtractMeshes(
           mesh->submeshes[prim_index].material_ref = material_refs[ material_index ].get();
         }
 
-        mesh->add_primitive(primitive);
+        mesh->addPrimitive(primitive);
       }
     } else {
       /* Utility function. */
@@ -645,7 +645,7 @@ void ExtractMeshes(
 
           if (auto type = ConvertAttributeType(attribute); type != Geometry::AttributeType::kUnknown) {
             size_t const accessorOffset{ isAccessorOffsetFlat(accessor) ? 0u : accessor->offset };
-            mesh->add_attribute(type, {
+            mesh->addAttribute(type, {
               .format = ConvertAttributeFormat(accessor),
               .offset = static_cast<uint32_t>(accessorOffset),
               .stride = static_cast<uint32_t>(accessor->stride),
@@ -678,7 +678,7 @@ void ExtractMeshes(
 
             uint64_t bufferOffset{};
             if (isAccessorOffsetFlat(accessor)) {
-              bufferOffset = mesh->add_vertices_data(std::span<const std::byte>(
+              bufferOffset = mesh->addVerticesData(std::span<const std::byte>(
                   reinterpret_cast<const std::byte*>(buffer_view->buffer->data), buffer_view->size
                 ).subspan(buffer_view->offset + accessor->offset)
               );
@@ -700,7 +700,7 @@ void ExtractMeshes(
             mesh->set_index_format(index_format);
 
             primitive.indexCount = accessor->count;
-            primitive.indexOffset = mesh->add_indices_data(std::span<const std::byte>(
+            primitive.indexOffset = mesh->addIndicesData(std::span<const std::byte>(
                 reinterpret_cast<const std::byte*>(buffer->data),
                 buffer_view->size
               ).subspan(buffer_view->offset + accessor->offset)
@@ -715,7 +715,7 @@ void ExtractMeshes(
           mesh->submeshes[prim_index].material_ref = material_refs[ material_index ].get();
         }
 
-        mesh->add_primitive(primitive);
+        mesh->addPrimitive(primitive);
       }
     }
 

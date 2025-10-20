@@ -86,9 +86,9 @@ void Geometry::MakeCube(Geometry &geo, float size) {
   geo.set_index_format(IndexFormat::U16);
   geo.set_topology(Topology::TriangleList);
 
-  geo.add_indices_data(std::as_bytes(std::span(trilistIndices)));
+  geo.addIndicesData(std::as_bytes(std::span(trilistIndices)));
 
-  geo.add_primitive({
+  geo.addPrimitive({
     .vertexCount = static_cast<uint32_t>(vertexAttributesIndices.size()),
     .indexCount = static_cast<uint32_t>(trilistIndices.size()),
     .bufferOffsets = {
@@ -191,7 +191,7 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
   geo.set_index_format(IndexFormat::U32);
   geo.set_topology(Topology::TriangleStrip);
 
-  geo.add_primitive({
+  geo.addPrimitive({
     .vertexCount = vertex_count,
     .indexCount = index_count,
     .bufferOffsets = {
@@ -228,8 +228,8 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
     },
   };
 
-  geo.add_vertices_data(std::as_bytes(std::span(vertices)));
-  geo.add_indices_data(std::as_bytes(std::span(indices)));
+  geo.addVerticesData(std::as_bytes(std::span(vertices)));
+  geo.addIndicesData(std::as_bytes(std::span(indices)));
 }
 
 // ----------------------------------------------------------------------------
@@ -336,7 +336,7 @@ void Geometry::MakeSphere(Geometry &geo, float radius, uint32_t resx, uint32_t r
   geo.set_index_format(IndexFormat::U32);
   geo.set_topology(Topology::TriangleStrip);
 
-  geo.add_primitive({
+  geo.addPrimitive({
     .vertexCount = vertex_count,
     .indexCount = index_count,
     .bufferOffsets = {
@@ -373,8 +373,8 @@ void Geometry::MakeSphere(Geometry &geo, float radius, uint32_t resx, uint32_t r
     },
   };
 
-  geo.add_vertices_data(std::as_bytes(std::span(vertices)));
-  geo.add_indices_data(std::as_bytes(std::span(indices)));
+  geo.addVerticesData(std::as_bytes(std::span(vertices)));
+  geo.addIndicesData(std::as_bytes(std::span(indices)));
 }
 
 // ----------------------------------------------------------------------------
@@ -459,7 +459,7 @@ void Geometry::MakeTorus(Geometry &geo, float major_radius, float minor_radius, 
   geo.set_index_format(IndexFormat::U32);
   geo.set_topology(Topology::TriangleStrip);
 
-  geo.add_primitive({
+  geo.addPrimitive({
     .vertexCount = vertex_count,
     .indexCount = index_count,
     .bufferOffsets = {
@@ -496,8 +496,8 @@ void Geometry::MakeTorus(Geometry &geo, float major_radius, float minor_radius, 
     },
   };
 
-  geo.add_vertices_data(std::as_bytes(std::span(vertices)));
-  geo.add_indices_data(std::as_bytes(std::span(indices)));
+  geo.addVerticesData(std::as_bytes(std::span(vertices)));
+  geo.addIndicesData(std::as_bytes(std::span(indices)));
 }
 
 // ----------------------------------------------------------------------------
@@ -532,7 +532,7 @@ void Geometry::MakePointListPlane(Geometry &geo, float size, uint32_t resx, uint
   geo.set_index_format(IndexFormat::U32);
   geo.set_topology(Topology::PointList);
 
-  geo.add_primitive({
+  geo.addPrimitive({
     .vertexCount = vertex_count,
     .indexCount = vertex_count,
     .bufferOffsets = {
@@ -551,44 +551,44 @@ void Geometry::MakePointListPlane(Geometry &geo, float size, uint32_t resx, uint
     },
   };
 
-  geo.add_vertices_data(std::as_bytes(std::span(vertices)));
-  geo.add_indices_data(std::as_bytes(std::span(indices)));
+  geo.addVerticesData(std::as_bytes(std::span(vertices)));
+  geo.addIndicesData(std::as_bytes(std::span(indices)));
 }
 
 // ----------------------------------------------------------------------------
 
-void Geometry::add_primitive(Primitive const& primitive) {
+void Geometry::addPrimitive(Primitive const& primitive) {
   index_count_ += primitive.indexCount;
   vertex_count_ += primitive.vertexCount;
   primitives_.push_back(primitive);
 }
 
-uint64_t Geometry::add_vertices_data(std::span<const std::byte> data) {
+uint64_t Geometry::addVerticesData(std::span<const std::byte> data) {
   uint64_t const offset = vertices_.size();
   vertices_.insert(vertices_.end(), data.begin(), data.end());
   return offset;
 }
 
-uint64_t Geometry::add_indices_data(std::span<const std::byte> data) {
+uint64_t Geometry::addIndicesData(std::span<const std::byte> data) {
   uint64_t const offset = indices_.size();
   indices_.insert(indices_.cend(), data.begin(), data.end());
   return offset;
 }
 
-void Geometry::add_attribute(AttributeType const type, AttributeInfo const& info) {
+void Geometry::addAttribute(AttributeType const type, AttributeInfo const& info) {
   attributes_[type] = info;
 }
 
-void Geometry::clear_indices_and_vertices() {
+void Geometry::clearIndicesAndVertices() {
   indices_.clear();
   vertices_.clear();
 }
 
-bool Geometry::recalculate_tangents() {
-  if ( !has_attribute(AttributeType::Position)
-    || !has_attribute(AttributeType::Normal)
-    || !has_attribute(AttributeType::Tangent)
-    || !has_attribute(AttributeType::Texcoord)) {
+bool Geometry::recalculateTangents() {
+  if ( !hasAttribute(AttributeType::Position)
+    || !hasAttribute(AttributeType::Normal)
+    || !hasAttribute(AttributeType::Tangent)
+    || !hasAttribute(AttributeType::Texcoord)) {
     return false;
   }
 
