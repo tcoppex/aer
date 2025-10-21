@@ -315,6 +315,15 @@ if(TRUE)
   set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR})
 endif()
 
+# Earcut (triangulation ehader).
+CPMAddPackage(
+  NAME earcut
+  GITHUB_REPOSITORY mapbox/earcut.hpp
+  GIT_TAG v2.2.4
+  DOWNLOAD_ONLY YES
+)
+set(EARCUT_INCLUDE_DIR ${earcut_SOURCE_DIR}/include)
+
 # -----------------------------------------------------------------------------
 # Target properties.
 # -----------------------------------------------------------------------------
@@ -345,6 +354,7 @@ target_include_directories(${target}
     ${FRAMEWORK_SHADERS_DIR}
     ${CGLTF_INCLUDE_DIR}
     ${MIKKTSPACE_INCLUDE_DIR}
+    ${EARCUT_INCLUDE_DIR}
 )
 
 target_compile_definitions(${target}

@@ -30,10 +30,11 @@ cmake --build build --config Release
  * Volk 1.4.321.0 (_via CPM_)
  * VulkanMemoryAllocator 3.2.0 (_via CPM_)
  * GLFW 3.4 (_via CPM_)
+ * libfmt 12.0.0 (_via CPM_)
  * ImGUI v1.92.3-docking (_via CPM_)
  * MikkTSpace (_via CPM_)
  * linalg v2.2 (_via CPM_)
- * libfmt 12.0.0 (_via CPM_)
+ * earcut 2.2.4 (_via CPM_)
  * stb_image.h (_included_)
 
 By default, CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (either fetch from env or cmake variable). When none exist it will default to `./third_party/.cpmlocalcache/`.
