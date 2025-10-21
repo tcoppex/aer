@@ -324,6 +324,19 @@ CPMAddPackage(
 )
 set(EARCUT_INCLUDE_DIR ${earcut_SOURCE_DIR}/include)
 
+# STB libs
+set(STB_LIB_URL https://raw.githubusercontent.com/nothings/stb/refs/heads/master/)
+list(APPEND STB_LIBS_TO_FETCH
+  stb_truetype.h # (currently v1.26)
+)
+
+foreach (stb_lib ${STB_LIBS_TO_FETCH})
+  download_file(
+    ${PROJECT_THIRD_PARTY_DIR}/stb
+    ${STB_LIB_URL}/${stb_lib}
+  )
+endforeach()
+
 # -----------------------------------------------------------------------------
 # Target properties.
 # -----------------------------------------------------------------------------

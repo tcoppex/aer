@@ -35,7 +35,8 @@ cmake --build build --config Release
  * MikkTSpace (_via CPM_)
  * linalg v2.2 (_via CPM_)
  * earcut 2.2.4 (_via CPM_)
- * stb_image.h (_included_)
+ * stb\_truetype.h (_fetched_)
+ * stb\_image.h (_included_)
 
 By default, CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (either fetch from env or cmake variable). When none exist it will default to `./third_party/.cpmlocalcache/`.
 
