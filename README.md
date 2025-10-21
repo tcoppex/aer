@@ -1,9 +1,3 @@
-![language: c++20](https://img.shields.io/badge/c++-20-blue.svg)
-![api: vulkan1.3](https://img.shields.io/badge/Vulkan-1.3-red.svg)
-![api: openxr1.1](https://img.shields.io/badge/OpenXR-1.1-purple.svg)
-![api: android32](https://img.shields.io/badge/Android_API-32-green.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 <!--
 <pre>
           _____                    _____                    _____
@@ -30,6 +24,12 @@
 
 </pre>
 -->
+
+![language: c++20](https://img.shields.io/badge/c++-20-blue.svg)
+![api: vulkan1.3](https://img.shields.io/badge/Vulkan-1.3-red.svg)
+![api: openxr1.1](https://img.shields.io/badge/OpenXR-1.1-purple.svg)
+![api: android32](https://img.shields.io/badge/Android_API-32-green.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # aer
 
@@ -79,6 +79,9 @@ cmake --build build --config Release
 * **[09_post_process](samples/desktop/09_post_process/main.cc)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
 * **[10_material](samples/desktop/10_material/main.cc)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
 * **[11_raytracing](samples/desktop/11_raytracing/main.cc)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
+
+Samples are linear in progression: when a feature is introduced the
+first version uses a somewhat verbose semantic before switching to simpler ones in subsequent examples.
 
 ### Acknowledgement
 
