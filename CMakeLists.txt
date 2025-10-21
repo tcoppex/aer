@@ -125,6 +125,30 @@ function(findLibM)
   endif()
 endfunction(findLibM)
 
+
+function(download_file dst_dir url)
+  file(MAKE_DIRECTORY ${dst_dir})
+  get_filename_component(filename ${url} NAME)
+  set(dest "${dst_dir}/${filename}")
+  if(NOT EXISTS ${dest})
+    message(STATUS "Downloading ${filename}...")
+    file(DOWNLOAD
+      ${url}
+      ${dest}
+      SHOW_PROGRESS
+      STATUS status
+      LOG log
+    )
+    list(GET status 0 status_code)
+    if(NOT status_code EQUAL 0)
+      message(FATAL_ERROR "Failed to download ${url}: ${log}")
+    endif()
+  else()
+    message(STATUS "${filename} already exists, skipping download")
+  endif()
+endfunction()
+
+
 # -----------------------------------------------------------------------------
 # Custom macros
 # -----------------------------------------------------------------------------
