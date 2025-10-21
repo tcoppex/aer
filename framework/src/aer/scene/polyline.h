@@ -62,7 +62,7 @@ class Polyline {
     auto const dResolution = 1.0 / static_cast<double>(curve_resolution);
     auto const v = lina::to_vec2(vertices_.back());
 
-    for (uint32_t i = 0; i <= curve_resolution; ++i) {
+    for (uint32_t i = 1; i <= curve_resolution; ++i) {
       auto const t = static_cast<float>(i * dResolution);
       auto const sampled_pt = lina::quadratic_bezier(v, cp, p, t);
       addVertex(sampled_pt);
