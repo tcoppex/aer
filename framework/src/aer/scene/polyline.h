@@ -11,6 +11,9 @@ namespace scene {
 /* Represent a curvature in 3D space. */
 class Polyline {
  public:
+  static constexpr uint32_t kDefaultCurveResolution{ 8u };
+  static constexpr vec3 kDefaultFrontAxis{ 0, 0, -1 };
+
   using value_type = vec3;
   using size_type = std::size_t;
   using pointer = value_type*;
@@ -22,10 +25,6 @@ class Polyline {
     ClockWise,
     Degenerate,
   };
-
- public:
-  static constexpr uint32_t kDefaultCurveResolution{ 8u };
-  static constexpr vec3 kDefaultFrontAxis{ 0, 0, 1 };
 
   [[nodiscard]]
   static Geometry::AttributeInfo AttributeInfo() noexcept {
@@ -85,8 +84,8 @@ class Polyline {
     vec3 const axis = kDefaultFrontAxis
   ) const noexcept {
     auto const area = signedArea2D(axis);
-    return area < 0 ? Orientation::CounterClockWise
-         : area > 0 ? Orientation::ClockWise
+    return area > 0 ? Orientation::CounterClockWise
+         : area < 0 ? Orientation::ClockWise
          : Orientation::Degenerate
          ;
   }
