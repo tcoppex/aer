@@ -259,13 +259,12 @@ void Path2D::lineTo(
   vec2 const& p,
   uint32_t nsteps
 ) {
+  auto &poly = last_polyline();
   nsteps = (nsteps <= 0) ? 1 : nsteps;
   auto const dstep = 1.0f / static_cast<float>(nsteps);
-  auto const last_v = lina::to_vec2(last_polyline().last_vertex());
-  for (uint32_t i = 1; i <= nsteps; ++i) {
-    last_polyline().addVertex(
-      linalg::lerp(last_v, p, i * dstep)
-    );
+  auto const last_v = lina::to_vec2(poly.last_vertex());
+  for(uint32_t i = 1; i <= nsteps; ++i) {
+    poly.addVertex(linalg::lerp(last_v, p, i * dstep));
   }
 }
 
