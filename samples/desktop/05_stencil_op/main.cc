@@ -376,8 +376,6 @@ class SampleApp final : public Application {
   EnumArray<Pipeline, PipelineID> pipelines_;
 };
 
-
-
 // ----------------------------------------------------------------------------
 
 ENTRY_POINT(SampleApp)
