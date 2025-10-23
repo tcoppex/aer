@@ -61,10 +61,10 @@ class Path2D {
   );
 
   /* Fill "index_buffers_" for the filled shapes. */
-  bool tessellate();
+  bool triangulate();
 
   [[nodiscard]]
-  bool tessellated() const noexcept {
+  bool triangulated() const noexcept {
     return !index_buffers_.empty();
   }
 

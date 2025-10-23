@@ -29,7 +29,7 @@ struct nth<1, vec3> {
 namespace scene {
 
 bool Path2D::BuildContourMesh(Path2D path, scene::Mesh &mesh) {
-  if (!path.tessellate()) {
+  if (!path.triangulate()) {
     return false;
   }
 
@@ -67,7 +67,7 @@ bool Path2D::BuildShapeMesh(
   float extrusionDepth,
   uint32_t extrusionSampleCount
 ) {
-  if (!path.tessellate()) {
+  if (!path.triangulate()) {
     return false;
   }
 
@@ -280,7 +280,7 @@ void Path2D::quadBezierTo(
 
 // ----------------------------------------------------------------------------
 
-bool Path2D::tessellate() {
+bool Path2D::triangulate() {
   std::vector<bool> is_shapes(polylines_.size(), false);
 
   index_buffers_.clear();
@@ -310,11 +310,10 @@ bool Path2D::tessellate() {
   for (size_t i = 0; i < polylines_.size(); ++i) {
     if (is_shapes[i]) {
       index_buffers_[i] = mapbox::earcut(contour_subspan(i));
-      // LOGD("{} -> {}", i, range_sizes_[i]);
     }
   }
 
-  return tessellated();
+  return triangulated();
 }
 
 /* -------------------------------------------------------------------------- */
