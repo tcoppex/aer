@@ -21,7 +21,7 @@ namespace shader_interop {
 
 class SampleApp final : public Application {
  public:
-  static bool constexpr kFlipScreenVertically{ false };
+  static bool constexpr kFlipScreenVertically{ true };
 
   struct Vertex_t {
     float Position[4];
@@ -176,17 +176,17 @@ class SampleApp final : public Application {
       pass.bindPipeline(graphics_pipeline_);
       pass.bindVertexBuffer(vertex_buffer_);
 
-      // Left-side.
+      // Left-side (unflipped).
       {
         /* Set viewport-scissor using a VkExtent2D (with no offset). */
-        pass.setViewportScissor(half_screen, kFlipScreenVertically);
+        pass.setViewportScissor(half_screen, !kFlipScreenVertically);
         pass.draw(kVertices.size());
       }
 
-      // Right-side.
+      // Right-side (flipped, default behavior).
       {
         /* Set viewport-scissor using a VkRect2D (with offset). */
-        pass.setViewportScissor(right_side, !kFlipScreenVertically);
+        pass.setViewportScissor(right_side/*, kFlipScreenVertically*/);
 
         /**
          * If no pipeline layout is specified, the pass encoder will take the
