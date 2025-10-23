@@ -37,8 +37,12 @@ class Polyline {
  public:
   Polyline() = default;
 
-  Polyline(vec3 const& p) {
-    vertices_ = { p };
+  Polyline(std::initializer_list<vec3f> vertices) {
+    addVertices(vertices);
+  }
+
+  Polyline(std::initializer_list<vec2f> vertices) {
+    addVertices(vertices);
   }
 
   void clear() noexcept {
@@ -51,6 +55,16 @@ class Polyline {
 
   void addVertex(vec2 const& p) {
     addVertex(lina::to_vec3(p));
+  }
+
+  void addVertices(std::initializer_list<vec3f> vertices) {
+    vertices_ = vertices;
+  }
+
+  void addVertices(std::initializer_list<vec2f> vertices) {
+    for (auto const& v : vertices) {
+      addVertex(v);
+    }
   }
 
   void quadBezierTo(

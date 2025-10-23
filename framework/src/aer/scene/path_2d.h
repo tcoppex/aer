@@ -35,8 +35,16 @@ class Path2D {
  public:
   Path2D() = default;
 
+  Path2D(std::initializer_list<Polyline> polylines) {
+    polylines_ = polylines;
+  }
+
   void clear() noexcept {
     polylines_.clear();
+  }
+
+  void addContour(Polyline const& poly) {
+    polylines_.push_back(poly);
   }
 
   void moveTo(vec2 const& p);
