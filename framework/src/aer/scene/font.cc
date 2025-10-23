@@ -43,18 +43,24 @@ void Font::generate(
     stbtt_vertex *glyph_verts{};
     auto const nvertices = stbtt_GetGlyphShape(&font_, glyph.index, &glyph_verts);
 
+    auto &path = glyph.path;
     for (int i = 0; i < nvertices; ++i) {
       auto const& v = glyph_verts[i];
       auto const pt = vec2(v.x, v.y);
 
       if (v.type == STBTT_vmove) {
-        glyph.path.moveTo(pt);
+        path.moveTo(pt);
       } else if (v.type == STBTT_vline) {
-        glyph.path.lineTo(pt);
+        path.lineTo(pt);
       } else if (v.type == STBTT_vcurve) {
-        glyph.path.quadBezierTo(vec2(v.cx, v.cy), pt, curve_resolution);
+        path.quadBezierTo(vec2(v.cx, v.cy), pt, curve_resolution);
       }
     }
+
+    // In TTF outer contours are clockwise & inner contour are counter-clockwise,
+    // so we reverse them.
+    path.reverseOrientation();
+
     stbtt_FreeShape(&font_, glyph_verts);
     glyph_map_[c] = glyph;
   }

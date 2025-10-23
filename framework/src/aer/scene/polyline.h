@@ -11,8 +11,8 @@ namespace scene {
 /* Represent a curvature in 3D space. */
 class Polyline {
  public:
-  static constexpr uint32_t kDefaultCurveResolution{ 8u };
-  static constexpr vec3 kDefaultFrontAxis{ 0, 0, -1 };
+  static constexpr uint32_t kDefaultCurveResolution{ 1u };
+  static constexpr vec3 kDefaultFrontAxis{ 0, 0, 1 };
 
   using value_type = vec3;
   using size_type = std::size_t;
@@ -102,6 +102,10 @@ class Polyline {
          : area < 0 ? Orientation::ClockWise
          : Orientation::Degenerate
          ;
+  }
+
+  void reverseOrientation() noexcept {
+    std::reverse(vertices_.begin(), vertices_.end());
   }
 
   [[nodiscard]]

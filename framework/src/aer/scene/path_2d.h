@@ -60,6 +60,9 @@ class Path2D {
     uint32_t curve_resolution = Polyline::kDefaultCurveResolution
   );
 
+  /* Reverse orientation */
+  void reverseOrientation() noexcept;
+
   /* Fill "index_buffers_" for the filled shapes. */
   bool triangulate();
 

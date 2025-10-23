@@ -217,7 +217,10 @@ bool Path2D::BuildShapeMesh(
               uint32_t const i11 = i10 + 1u;
 
               eIndices.insert(eIndices.end(),
-                {i00, i10, i01, i10, i11, i01}
+                {
+                  i01, i10, i00,
+                  i01, i11, i10
+                }
               );
             }
             index += 1u;
@@ -248,8 +251,9 @@ bool Path2D::BuildShapeMesh(
 /* -------------------------------------------------------------------------- */
 
 void Path2D::moveTo(vec2 const& p) {
+  // LOGD("moveTo {} {}", p.x, p.y);
   if (polylines_.empty() || !last_polyline().empty()) {
-    polylines_.emplace_back(lina::to_vec3(p));
+    polylines_.push_back({ p });
   }
 }
 
@@ -276,6 +280,14 @@ void Path2D::quadBezierTo(
   uint32_t curve_resolution
 ) {
   last_polyline().quadBezierTo(cp, p, curve_resolution);
+}
+
+// ----------------------------------------------------------------------------
+
+void Path2D::reverseOrientation() noexcept {
+  for (auto &p : polylines_) {
+    p.reverseOrientation();
+  }
 }
 
 // ----------------------------------------------------------------------------
