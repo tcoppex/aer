@@ -293,6 +293,18 @@ void Path2D::reverseOrientation() noexcept {
 // ----------------------------------------------------------------------------
 
 bool Path2D::triangulate() {
+  // Cleanups polylines to avoid doubling vertices on start/end.
+  for (auto &p : polylines_) {
+    auto& vertices = p.vertices();
+    if (vertices.front() == vertices.back()) {
+      vertices.pop_back();
+    }
+  }
+  
+  if (polylines_.empty() || polylines_[0].size() < 3) {
+    return false;
+  }
+
   std::vector<bool> is_shapes(polylines_.size(), false);
 
   index_buffers_.clear();
