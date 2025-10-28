@@ -28,16 +28,17 @@ struct nth<1, vec3> {
 
 namespace scene {
 
-bool Path2D::BuildContourMesh(Path2D path, scene::Mesh &mesh) {
-  if (!path.triangulate()) {
-    return false;
-  }
-
+bool Path2D::BuildContourMesh(
+  Path2D /*const&*/ path,
+  Mesh &mesh
+) {
   mesh.addAttribute(
     Geometry::AttributeType::Position,
     Polyline::AttributeInfo()
   );
   mesh.set_topology(Geometry::Topology::LineStrip);
+
+  // ------
 
   /* Merge all contours into a single primitive. */
   auto const& polylines = path.polylines();
@@ -85,7 +86,6 @@ bool Path2D::BuildShapeMesh(
   // Those primitives don't share vertices
   //
 
-
   mesh.addAttribute(
     Geometry::AttributeType::Position,
     Polyline::AttributeInfo()
@@ -93,7 +93,8 @@ bool Path2D::BuildShapeMesh(
   mesh.set_index_format(Geometry::IndexFormat::U32);
   mesh.set_topology(Geometry::Topology::TriangleList);
 
-  auto const& polylines = path.polylines();
+  // ------
+
   auto const& index_buffers = path.index_buffers();
 
   for (size_t contour_id = 0; contour_id < polylines.size(); ++contour_id)
