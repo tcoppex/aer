@@ -15,19 +15,22 @@ class Path2D {
  public:
   using IndexBuffer = std::vector<uint32_t>;
 
-  static constexpr uint32_t kDefaultLineToSubdivCount{ 1u };
+  static constexpr uint32_t kDefaultLineResolution{ 1u };
 
   static constexpr float kDefaultExtrusionDepth{ 120.0f };
   static constexpr uint32_t kDefaultExtrusionSampleCount{ 4u };
 
  public:
   static
-  bool BuildContourMesh(Path2D path, scene::Mesh &mesh);
+  bool BuildContourMesh(
+    Path2D /*const&*/ path,
+    Mesh &mesh
+  );
 
   static
   bool BuildShapeMesh(
-    Path2D path,
-    scene::Mesh &mesh,
+    Path2D /*const&*/ path,
+    Mesh &mesh,
     float extrusionDepth = kDefaultExtrusionDepth,
     uint32_t extrusionSampleCount = kDefaultExtrusionSampleCount
   );
