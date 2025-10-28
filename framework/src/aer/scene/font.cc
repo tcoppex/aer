@@ -7,7 +7,7 @@ namespace scene {
 
 /* -------------------------------------------------------------------------- */
 
-const std::u16string Font::kDefaultChars = std::u16string(
+const std::u16string Font::kDefaultCorpus = std::u16string(
   u" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~àéçùïôè"
 );
 
@@ -15,6 +15,8 @@ const std::u16string Font::kDefaultChars = std::u16string(
 
 bool Font::load(std::string_view filename) {
   auto const fullpath = std::string(ASSETS_DIR "fonts/") + filename.data();
+
+  is_ttf_ = utils::ExtractExtension(filename) == "ttf";
 
   if (!file_reader_.read(fullpath)) {
     return false;
@@ -31,14 +33,20 @@ bool Font::load(std::string_view filename) {
 
 // ----------------------------------------------------------------------------
 
-void Font::generate(
+void Font::generateGlyphs(
   std::u16string const& corpus,
-  float const curve_resolution
+  uint32_t curve_resolution,
+  uint32_t line_resolution
 ) {
   for (auto const& c : corpus) {
-    Glyph glyph{
+    auto glyph = Glyph{
       .index = stbtt_FindGlyphIndex(&font_, c),
     };
+
+    stbtt_GetGlyphHMetrics(
+      &font_, glyph.index, &glyph.advanceWidth, &glyph.leftSideBearing
+    );
+    // LOGD("{} {} {}", (char)c, glyph.advanceWidth, glyph.leftSideBearing);
 
     stbtt_vertex *glyph_verts{};
     auto const nvertices = stbtt_GetGlyphShape(&font_, glyph.index, &glyph_verts);

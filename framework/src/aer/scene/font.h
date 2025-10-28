@@ -13,11 +13,14 @@ namespace scene {
 
 class Font {
  public:
-  static const std::u16string kDefaultChars;
+  static const std::u16string kDefaultCorpus;
 
   struct Glyph {
-    int32_t index{};
     Path2D path{};
+
+    int32_t index{};
+    int32_t advanceWidth{};
+    int32_t leftSideBearing{};
   };
 
  public:
@@ -27,9 +30,10 @@ class Font {
   [[nodiscard]]
   bool load(std::string_view filename);
 
-  void generate(
-    std::u16string const& corpus = kDefaultChars,
-    float const curve_resolution = scene::Polyline::kDefaultCurveResolution
+  void generateGlyphs(
+    std::u16string const& corpus = kDefaultCorpus,
+    uint32_t curve_resolution = scene::Polyline::kDefaultCurveResolution,
+    uint32_t line_resolution = scene::Path2D::kDefaultLineResolution
   );
 
   void release() {
@@ -43,19 +47,33 @@ class Font {
   float pixelScaleFromSize(int fontsize) const noexcept;
 
   [[nodiscard]]
-  Glyph & findGlyph(uint16_t code) {
+  bool hasGlyph(char16_t code) const {
+    if (auto it = glyph_map_.find(code); it != glyph_map_.end()) {
+      return true;
+    }
+    return false;
+  }
+
+  [[nodiscard]]
+  Glyph & findGlyph(char16_t code) {
     return glyph_map_.at(code);
   }
 
   [[nodiscard]]
-  Glyph const& findGlyph(uint16_t code) const {
+  Glyph const& findGlyph(char16_t code) const {
     return findGlyph(code);
+  }
+
+  [[nodiscard]]
+  auto const& glyph_map() const noexcept {
+    return glyph_map_;
   }
 
  private:
   utils::FileReader file_reader_{};
   stbtt_fontinfo font_{};
-  std::unordered_map<uint16_t, Glyph> glyph_map_{};
+  std::unordered_map<char16_t, Glyph> glyph_map_{};
+  bool is_ttf_{};
 };
 
 /* -------------------------------------------------------------------------- */
