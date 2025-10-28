@@ -36,9 +36,12 @@ void Mesh::initializeSubmeshDescriptors(
 // ----------------------------------------------------------------------------
 
 PipelineVertexBufferDescriptors Mesh::pipeline_vertex_buffer_descriptors() const {
-  LOG_CHECK( !submeshes.empty() );
-  auto const& vi{ submeshes[0u].draw_descriptor.vertexInput };
+  if (submeshes.empty()) {
+    LOGW("{}: called while no submeshes were defined.", __FUNCTION__);
+    return {};
+  }
 
+  auto const& vi{ submeshes[0u].draw_descriptor.vertexInput };
   PipelineVertexBufferDescriptors result(vi.bindings.size());
 
   std::transform(
