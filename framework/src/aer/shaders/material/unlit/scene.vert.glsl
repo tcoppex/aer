@@ -101,7 +101,6 @@ void apply_billboard_xz(
 
 // ----------------------------------------------------------------------------
 
-
 void main() {
   const CameraTransform camera = GetFrameCamera(uFrame);
   const TransformSBO transform = transforms[nonuniformEXT(pushConstant.transform_index)];

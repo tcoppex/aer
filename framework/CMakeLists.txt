@@ -20,7 +20,9 @@ endif()
 # to migrate them to samples APK assets directory, so we need to specify a distinct
 # subdir for them not to be in conflict with others assets (shaders or otherwhise).
 set(FRAMEWORK_SPIRV_ASSETS_SUBDIR   framework_shaders)
-set(FRAMEWORK_COMPILED_SHADERS_DIR  ${FRAMEWORK_COMPILED_SHADERS_DIR}/${FRAMEWORK_SPIRV_ASSETS_SUBDIR})
+set(FRAMEWORK_COMPILED_SHADERS_DIR
+  ${FRAMEWORK_COMPILED_SHADERS_DIR}/${FRAMEWORK_SPIRV_ASSETS_SUBDIR}
+)
 
 # -----------------------------------------------------------------------------
 # Source dependencies.
