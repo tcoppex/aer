@@ -1,3 +1,30 @@
+<!--
+<pre>
+          _____                    _____                    _____
+         /\    \                  /\    \                  /\    \
+        /::\    \                /::\    \                /::\    \
+       /::::\    \              /::::\    \              /::::\    \
+      /::::::\    \            /::::::\    \            /::::::\    \
+     /:::/\:::\    \          /:::/\:::\    \          /:::/\:::\    \
+    /:::/__\:::\    \        /:::/__\:::\    \        /:::/__\:::\    \
+   /::::\   \:::\    \      /::::\   \:::\    \      /::::\   \:::\    \
+  /::::::\   \:::\    \    /::::::\   \:::\    \    /::::::\   \:::\    \
+ /:::/\:::\   \:::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\____\
+/:::/  \:::\   \:::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::|    |
+\::/    \:::\  /:::/    /\:::\   \:::\   \::/    /\::/   |::::\  /:::|____|
+ \/____/ \:::\/:::/    /  \:::\   \:::\   \/____/  \/____|:::::\/:::/    /
+          \::::::/    /    \:::\   \:::\    \            |:::::::::/    /
+           \::::/    /      \:::\   \:::\____\           |::|\::::/    /
+           /:::/    /        \:::\   \::/    /           |::| \::/____/
+          /:::/    /          \:::\   \/____/            |::|  ~|
+         /:::/    /            \:::\    \                |::|   |
+        /:::/    /              \:::\____\               \::|   |
+        \::/    /                \::/    /                \:|   |
+         \/____/                  \/____/                  \|___|
+
+</pre>
+-->
+
 ![language: c++20](https://img.shields.io/badge/c++-20-blue.svg)
 ![api: vulkan1.3](https://img.shields.io/badge/Vulkan-1.3-red.svg)
 ![api: openxr1.1](https://img.shields.io/badge/OpenXR-1.1-purple.svg)
@@ -52,6 +79,10 @@ cmake --build build --config Release
 * **[09_post_process](samples/desktop/09_post_process/main.cc)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
 * **[10_material](samples/desktop/10_material/main.cc)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
 * **[11_raytracing](samples/desktop/11_raytracing/main.cc)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
+* **[12_font](samples/desktop/12_font/main.cc)**: Dynamic 2D/3D text generation from a font file.
+
+Samples are linear in progression: when a feature is introduced the
+first version uses a somewhat verbose semantic before switching to simpler ones in subsequent examples.
 
 ### Acknowledgement
 
@@ -62,3 +93,4 @@ This project was inspired by the expressiveness of WebGPU and the work of **NVID
 This project is released under the _MIT License_.
 
 :leaves:
+

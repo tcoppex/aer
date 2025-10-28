@@ -46,11 +46,11 @@ class Skybox {
   }
 
   backend::Image const& prefiltered_specular_map() const {
-    return envmap_.get_image(Envmap::ImageType::Specular);
+    return envmap_.image(Envmap::ImageType::Specular);
   }
 
   backend::Image const& irradiance_map() const {
-    return envmap_.get_image(Envmap::ImageType::Irradiance);
+    return envmap_.image(Envmap::ImageType::Irradiance);
   }
 
   bool is_valid() const {

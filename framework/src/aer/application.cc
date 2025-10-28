@@ -132,7 +132,7 @@ bool Application::presetup(AppData_t app_data) {
 
   // Complete OpenXR setup (Controllers & Spaces).
   if (xr_) {
-    if (!xr_->completeSetup()) {
+    if (!xr_->completeSetup(camera_)) {
       LOGE("OpenXR initialization completion fails.");
       shutdown();
       return false;
@@ -211,10 +211,32 @@ void Application::updateTimer() noexcept {
 
 // ----------------------------------------------------------------------------
 
-void Application::updateUI() noexcept {
-  ui_->beginFrame();
-  buildUI();
-  ui_->endFrame();
+void Application::updateInternal() noexcept {
+  auto const dt = delta_time();
+
+  if (!swapchain_interface_->is_valid()) {
+    resetSwapchain();
+  }
+
+  /* User Interface. */
+  if (ui_) {
+    ui_->beginFrame();
+    buildUI();
+    ui_->endFrame();
+  }
+
+  /* Set default space on OpenXR */
+  if (xr_) {
+    auto const& xr_frame_data = xr_->frame_data();
+    auto const& xr_default_space = xr_frame_data.space_matrix(XRSpaceId::Local);
+    context_.set_default_world_matrix(xr_default_space);
+  }
+
+  /* Camera. */
+  camera_.update(dt);
+
+  /* Application. */
+  update(dt);
 }
 
 // ----------------------------------------------------------------------------
@@ -235,8 +257,7 @@ void Application::mainloop(AppData_t app_data) {
     if (xr_->isSessionRunning()) [[likely]] {
       xr_->processFrame(
         [this]() {
-          updateUI();
-          update(delta_time());
+          updateInternal();
         },
         [this]() {
           auto const& cmd = renderer_.beginFrame();
@@ -255,8 +276,7 @@ void Application::mainloop(AppData_t app_data) {
   // ----------------------
   frame_fn classicFrame{[this]() -> bool {
     if (wm_->is_active()) [[likely]] {
-      updateUI();
-      update(delta_time());
+      updateInternal();
       auto const& cmd = renderer_.beginFrame();
       draw(cmd);
       renderer_.endFrame();

@@ -7,7 +7,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
 #include "aer/renderer/fx/postprocess/compute/impl/depth_minmax.h"
@@ -158,8 +157,8 @@ class SceneFx final : public RenderTargetFx {
       );
 
       for (auto const& submesh : mesh->submeshes) {
-        auto material = scene_->material(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = material.bindings.basecolor;
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
         push_constant_.model.material_index = submesh.material_ref->material_index;
         push_constant_.model.instance_index = instance_index++;
         pushConstant(pass);
@@ -179,7 +178,7 @@ class SceneFx final : public RenderTargetFx {
       {
         .binding = shader_interop::kDescriptorSetBinding_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .images = scene_->descriptor_image_infos()
+        .images = scene_->buildDescriptorImageInfos()
       }
     });
   }
@@ -232,24 +231,24 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
 
  public:
   void init(RenderContext const& context) final {
-    auto entry_fx = getEntryFx();
+    auto const& color_depth = entry_fx();
 
     auto depth_minmax = add<fx::compute::DepthMinMax>({
-      .images = { {entry_fx, 1u} }
+      .images = { {color_depth, 1u} }
     });
 
     auto normaldepth_edge = add<fx::frag::NormalDepthEdge>({
-      .images = { {entry_fx, 1u} },
+      .images = { {color_depth, 1u} },
       .buffers = { {depth_minmax, 0u} }
     });
 
     auto object_edge = add<fx::frag::ObjectEdge>({
-      .images = { {entry_fx, 1u} },
+      .images = { {color_depth, 1u} },
     });
 
     auto toon = add<ToonComposition>({
       .images = {
-        {entry_fx, 0u},
+        {color_depth, 0u},
         {normaldepth_edge, 0u},
         {object_edge, 0u}
       },
@@ -265,7 +264,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
 class SampleApp final : public Application {
  public:
   SampleApp() = default;
-  ~SampleApp() {}
+  ~SampleApp() = default;
 
  private:
   bool setup() final {
@@ -273,7 +272,7 @@ class SampleApp final : public Application {
 
     /* Setup the ArcBall camera. */
     {
-      camera_.setPerspective(
+      camera_.makePerspective(
         lina::radians(45.0f),
         viewport_size_.width,
         viewport_size_.height,
@@ -301,7 +300,7 @@ class SampleApp final : public Application {
     toon_pipeline_.init(context_);
     toon_pipeline_.setup(renderer_.surface_size()); //
 
-    if (auto sceneFx = toon_pipeline_.getEntryFx(); sceneFx) {
+    if (auto sceneFx = toon_pipeline_.entry_fx(); sceneFx) {
       sceneFx->setModel(gltf_scene);
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
@@ -315,8 +314,6 @@ class SampleApp final : public Application {
   }
 
   void update(float const dt) final {
-    camera_.update(dt);
-
     mat4 const world_matrix{
       lina::rotation_matrix_axis(
         vec3(-0.25f, 1.0f, -0.15f),
@@ -324,7 +321,7 @@ class SampleApp final : public Application {
       )
     };
 
-    auto sceneFx = toon_pipeline_.getEntryFx();
+    auto sceneFx = toon_pipeline_.entry_fx();
     sceneFx->setCameraPosition(camera_.position());
     sceneFx->setViewMatrix(camera_.view());
     sceneFx->setWorldMatrix(world_matrix);
@@ -355,7 +352,6 @@ class SampleApp final : public Application {
   }
 
  private:
-  Camera camera_{};
   ArcBallController arcball_controller_{};
   ToonFxPipeline toon_pipeline_{};
 };

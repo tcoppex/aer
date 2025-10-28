@@ -51,12 +51,14 @@ bool HostResources::loadFile(std::string_view filename) {
     return false;
   }
 
-  if (result = cgltf_parse(&options, file.buffer.data(), file.buffer.size(), &data); cgltf_result_success != result) {
+  result = cgltf_parse(&options, file.buffer.data(), file.buffer.size(), &data);
+  if (cgltf_result_success != result) {
     LOGE("GLTF: failed to parse file \"{}\" {}.\n", basename, (int)result);
     return false;
   }
 
-  if (result = cgltf_load_buffers(&options, data, filename.data()); cgltf_result_success != result) {
+  result = cgltf_load_buffers(&options, data, filename.data());
+  if (cgltf_result_success != result) {
     LOGE("GLTF: failed to load buffers in \"{}\" {}.\n", basename, (int)result);
     cgltf_free(data);
     return false;
@@ -99,7 +101,8 @@ bool HostResources::loadFile(std::string_view filename) {
         return ExtractSkeletons(data, _skeletons);
       });
 
-      // [real bottleneck, internally images are loaded asynchronously and must be waited for at the end]
+      // [real bottleneck, internally images are loaded asynchronously and must
+      //  be waited for at the end]
       auto taskImageData = run_task_ret([
         data,
         &_host_images = this->host_images
@@ -199,14 +202,14 @@ bool HostResources::loadFile(std::string_view filename) {
 
     /* Wait for the host images to finish loading before using them. */
     for (auto & host_image : host_images) {
-      host_image.getLoadAsyncResult();
+      host_image.async_load_result();
     }
   }
 
   /* Be sure to have finished loading all images before freeing gltf data */
   cgltf_free(data);
 
-  reset_internal_descriptors();
+  resetInternalDescriptors();
 
 #ifndef NDEBUG
   LOGI("> \"{}.{}\" has been loaded successfully.", basename, ext);
@@ -232,7 +235,7 @@ bool HostResources::loadFile(std::string_view filename) {
 
 // ----------------------------------------------------------------------------
 
-void HostResources::reset_internal_descriptors() {
+void HostResources::resetInternalDescriptors() {
   /* Calculate the offsets to indivual mesh data inside the shared vertices
    * and indices buffers. */
   uint32_t transform_index = 0u;
@@ -253,7 +256,7 @@ void HostResources::reset_internal_descriptors() {
   }
 
   for (auto const& host_image : host_images) {
-    total_image_size += host_image.getBytesize();
+    total_image_size += host_image.bytesize();
   }
 }
 

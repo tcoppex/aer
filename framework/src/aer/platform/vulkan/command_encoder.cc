@@ -26,9 +26,29 @@ void GenericCommandEncoder::bindDescriptorSet(
   }
   else
   {
+    // LOG_CHECK(nullptr != currently_bound_pipeline_);
+
+    // we  derive bindpoint from stage_flags..
+    VkPipelineBindPoint bind_point{};
+    if (stage_flags < VK_SHADER_STAGE_COMPUTE_BIT) {
+      bind_point = (VkPipelineBindPoint)(
+        bind_point | VK_PIPELINE_BIND_POINT_GRAPHICS
+      );
+    }
+    if (stage_flags == VK_SHADER_STAGE_COMPUTE_BIT) {
+      bind_point = (VkPipelineBindPoint)(
+        bind_point | VK_PIPELINE_BIND_POINT_COMPUTE
+      );
+    }
+    if (stage_flags > VK_SHADER_STAGE_COMPUTE_BIT) {
+      bind_point = (VkPipelineBindPoint)(
+        bind_point | VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
+      );
+    }
+
     vkCmdBindDescriptorSets(
       handle_,
-      currently_bound_pipeline_->bind_point(),
+      bind_point,
       pipeline_layout,
       first_set,
       1,

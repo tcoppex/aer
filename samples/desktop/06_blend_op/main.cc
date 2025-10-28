@@ -275,8 +275,6 @@ class SampleApp final : public Application {
   } graphics_;
 };
 
-
-
 // ----------------------------------------------------------------------------
 
 ENTRY_POINT(SampleApp)

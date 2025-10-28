@@ -1,4 +1,4 @@
-//  lina.h - v0.4.0
+//  lina.h - v0.6.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -129,18 +129,24 @@ template<class T, int M, int N> constexpr T const* ptr(linalg::mat<T, M, N> cons
 template<class T> constexpr linalg::vec<T, 2> to_vec2(linalg::vec<T, 3> const& v) { return {v.x,v.y}; }
 template<class T> constexpr linalg::vec<T, 3> to_vec3(linalg::vec<T, 4> const& v) { return {v.x,v.y,v.z}; }
 
+template<class T> constexpr linalg::vec<T, 3> to_vec3(linalg::vec<T, 2> const& v, T z = 0) { return {v.x,v.y,z}; }
+template<class T> constexpr linalg::vec<T, 4> to_vec4(linalg::vec<T, 3> const& v, T w = 0) { return {v.x,v.y,v.z,w}; }
+
 template<class T> constexpr linalg::mat<T, 3, 3> to_mat3(linalg::mat<T, 4, 4> const& v) { return {to_vec3(v.x),to_vec3(v.y),to_vec3(v.z)}; }
 template<class T> constexpr linalg::mat<T, 3, 4> to_mat3x4(linalg::mat<T, 4, 4> const& v) { return {to_vec3(v.x),to_vec3(v.y),to_vec3(v.z), to_vec3(v.w)}; }
+template<class T> constexpr linalg::mat<T, 4, 4> to_mat4(linalg::mat<T, 3, 3> const& v) { return {to_vec4(v.x),to_vec4(v.y),to_vec4(v.z), {0, 0, 0, 1}}; }
+
+template<class T> constexpr linalg::mat<T, 4, 4> remove_translation(linalg::mat<T, 4, 4> const& v) { return {v.x,v.y,v.z, {0, 0, 0, 1}}; }
 
 template<class T> constexpr linalg::vec<T, 4> qidentity() { return {0,0,0,1}; }
 
-template<typename T> constexpr T degrees(T const& _radians) { return _radians * (180.0 / kPi); }
-template<typename T> constexpr T radians(T const& _degrees) { return _degrees * (kPi / 180.0); }
+template<class T> constexpr T degrees(T const& _radians) { return _radians * (180.0 / kPi); }
+template<class T> constexpr T radians(T const& _degrees) { return _degrees * (kPi / 180.0); }
 
-template<typename T> constexpr T min4(T const& a, T const& b, T const& c, T const& d) { return min( a, min( b, min( c, d))); }
-template<typename T> constexpr T max4(T const& a, T const& b, T const& c, T const& d) { return max( a, max( b, max( c, d))); }
+template<class T> constexpr T min4(T const& a, T const& b, T const& c, T const& d) { return min( a, min( b, min( c, d))); }
+template<class T> constexpr T max4(T const& a, T const& b, T const& c, T const& d) { return max( a, max( b, max( c, d))); }
 
-template<typename T>
+template<class T>
 constexpr bool almost_equal(T const& a, T const& b, T tolerance) {
   static_assert(std::is_floating_point<T>::value);
   T const distance = linalg::abs(b - a);
@@ -155,7 +161,7 @@ constexpr bool almost_equal(aliases::vec3 const& a, aliases::vec3 const& b, floa
       ;
 }
 
-template<typename T>
+template<class T>
 constexpr T saturate(T const& a) {
   static_assert( std::is_floating_point<T>::value );
   return linalg::clamp(a, 0, 1);
@@ -163,26 +169,65 @@ constexpr T saturate(T const& a) {
 
 // ----------------------------------------------------------------------------
 
-template<class T, int M> constexpr linalg::vec<T,M> mul(const linalg::vec<T,4> & a, const linalg::mat<T,M,4> & b) {
+template<class T, int M>
+constexpr linalg::vec<T,M> mul(const linalg::vec<T,4> & a, const linalg::mat<T,M,4> & b) {
   return a.x*b.row(0) + a.y*b.row(1) + a.z*b.row(2) + a.w*b.row(3);
 }
 
 // ----------------------------------------------------------------------------
 
-template<class T> linalg::mat<T,4,4> rotation_matrix_axis(linalg::vec<T, 3> const& axis, T const angle) { return linalg::rotation_matrix(linalg::rotation_quat(linalg::normalize(axis), angle)); }
+template<class T>
+linalg::mat<T,4,4> rotation_matrix_axis(linalg::vec<T, 3> const& axis, T const angle) {
+  return linalg::rotation_matrix(
+    linalg::rotation_quat(linalg::normalize(axis), angle)
+  );
+}
+
 template<class T> linalg::mat<T,4,4> rotation_matrix_x(T const angle) { return rotation_matrix_axis(linalg::vec<T, 3>(1.0f, 0.0f, 0.0f), angle); }
 template<class T> linalg::mat<T,4,4> rotation_matrix_y(T const angle) { return rotation_matrix_axis(linalg::vec<T, 3>(0.0f, 1.0f, 0.0f), angle); }
 template<class T> linalg::mat<T,4,4> rotation_matrix_z(T const angle) { return rotation_matrix_axis(linalg::vec<T, 3>(0.0f, 0.0f, 1.0f), angle); }
 
+// template<class T> linalg::mat<T,4,4> scaling_matrix(T const s) { return linalg::scaling_matrix(linalg::vec<T, 3>(s)); }
+
 // ----------------------------------------------------------------------------
 
-template<typename T>
+template<class T, int M>
+constexpr linalg::vec<T, M> quadratic_bezier(
+  linalg::vec<T, M> const& a, // start point
+  linalg::vec<T, M> const& b, // control point
+  linalg::vec<T, M> const& c, // end point
+  T x
+) {
+  T u = (1.0 - x) * (1.0 - x);
+  T v = 2.0 * x * (1.0 - x);
+  T w = x * x;
+  return u * a + v * b + w * c;
+}
+
+template<class T, int M>
+constexpr linalg::vec<T, M> cubic_bezier(
+  linalg::vec<T, M> const& a,
+  linalg::vec<T, M> const& b,
+  linalg::vec<T, M> const& c,
+  linalg::vec<T, M> const& d,
+  T x
+) {
+  T nx = 1.0 - x;
+  T nx2 = nx * nx;
+  return (nx2 * nx) * a
+       + (3 * nx2 * x) * b
+       + (3 * nx * x * x) * c
+       + (x * x * x) * d
+       ;
+}
+
+template<class T>
 constexpr T step(T const& a, T const& x) {
   static_assert( std::is_floating_point<T>::value );
   return static_cast<T>(select(a > x, 0, 1));
 }
 
-template<typename T>
+template<class T>
 constexpr T smoothstep(T const& edge0, T const& edge1, T x) {
   static_assert( std::is_floating_point<T>::value );
   x = saturate((x - edge0) / (edge1 - edge0));
@@ -190,7 +235,7 @@ constexpr T smoothstep(T const& edge0, T const& edge1, T x) {
 }
 
 // Interpolate in two steps. ([0, 0.5, 1.0]->[a, b, c])
-template<typename T>
+template<class T>
 constexpr T trilerp(T const& a, T const& b, T const& c, T const& x) {
   static_assert( std::is_floating_point<T>::value );
   T l1 = a + 2 * x * (b - a);
@@ -199,14 +244,14 @@ constexpr T trilerp(T const& a, T const& b, T const& c, T const& x) {
 }
 
 // Interpolate following a pyramid curve. ([0, 0.5, 1.0]->[a, b, a])
-template<typename T>
+template<class T>
 constexpr T stepcurve(T const& a, T const& b, T const& x) {
   static_assert( std::is_floating_point<T>::value );
   return lerp(a, b, 1-abs(2*x-1));
 }
 
 // Adjust interpolation dynamics for a and b, clamping near boundaries for smooth transitions.
-template<typename T>
+template<class T>
 constexpr T bias(T const& a, T const& b) {
   static_assert( std::is_floating_point<T>::value );
   if (a < kEpsilon || b < kEpsilon) {
@@ -218,7 +263,7 @@ constexpr T bias(T const& a, T const& b) {
   return pow(a, log(b) / kHalfLog);
 }
 
-template<typename T>
+template<class T>
 constexpr T gain(T const& a, T const& b) {
   static_assert( std::is_floating_point<T>::value );
   if (a < kEpsilon) {
@@ -254,8 +299,19 @@ linalg::mat<T,4,4> frustum_tan_fov_matrix(T l, T r, T d, T u, T n, T f, linalg::
 }
 
 template<class T>
-linalg::mat<T,4,4> perspective_fov_matrix(T angleLeft, T angleRight, T angleDown, T angleUp, T n, T f, linalg::fwd_axis a = linalg::neg_z, linalg::z_range z = linalg::neg_one_to_one) {
-  return frustum_tan_fov_matrix(std::tan(angleLeft), std::tan(angleRight), std::tan(angleDown), std::tan(angleUp), n, f, a, z);
+linalg::mat<T,4,4> perspective_fov_matrix(
+  T angleLeft,
+  T angleRight,
+  T angleDown,
+  T angleUp,
+  T n,
+  T f,
+  linalg::fwd_axis a = linalg::neg_z,
+  linalg::z_range z = linalg::neg_one_to_one
+) {
+  return frustum_tan_fov_matrix(
+    std::tan(angleLeft), std::tan(angleRight), std::tan(angleDown), std::tan(angleUp), n, f, a, z
+  );
 }
 
 template <class T>
@@ -277,8 +333,14 @@ constexpr linalg::mat<T, 4, 4> rigidbody_inverse(const linalg::mat<T, 4, 4>& a) 
 // ----------------------------------------------------------------------------
 
 #if 0
-template<typename T>
-bool solve_basic_ik(T const lenA, T const lenB, const linalg::vec<T, 3>& target, const linalg::vec<T, 3>& targetUp, linalg::vec<T, 3>& _outIK) {
+template<class T>
+bool solve_basic_ik(
+  T const lenA,
+  T const lenB,
+  const linalg::vec<T, 3>& target,
+  const linalg::vec<T, 3>& targetUp,
+  linalg::vec<T, 3>& _outIK
+) {
     T const lenA2 = lenA * lenA;
     T const lenB2 = lenB * lenB;
 
@@ -332,30 +394,30 @@ END_LINA_NAMESPACE
 
 #include <iostream>
 
-template<typename T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,2> const& v) {
+template<class T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,2> const& v) {
   return o << "(" << v.x << ", " << v.y << ")";
 }
 
-template<typename T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,3> const& v) {
+template<class T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,3> const& v) {
   return o << '(' << v.x << ", " << v.y << ", " << v.z << ')';
 }
 
-template<typename T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,4> const& v) {
+template<class T> std::ostream &operator<<(std::ostream& o, linalg::vec<T,4> const& v) {
   return o << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 }
 
-template<typename T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,2,N> const& m) {
+template<class T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,2,N> const& m) {
   return o << m.row(0) << std::endl
            << m.row(1);
 }
 
-template<typename T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,3,N> const& m) {
+template<class T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,3,N> const& m) {
   return o << m.row(0) << std::endl
            << m.row(1) << std::endl
            << m.row(2);
 }
 
-template<typename T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,4,N> const& m) {
+template<class T, int N> std::ostream &operator<<(std::ostream& o, linalg::mat<T,4,N> const& m) {
   return o << m.row(0) << std::endl
            << m.row(1) << std::endl
            << m.row(2) << std::endl

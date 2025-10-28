@@ -8,6 +8,9 @@ const uint kDescriptorSetBinding_TransformSBO      = 1;
 
 struct Material {
   vec4 diffuse_factor;
+  uint diffuse_texture_id;
+  float alpha_cutoff;
+  uint pad0_[2];
 };
 
 struct PushConstant {

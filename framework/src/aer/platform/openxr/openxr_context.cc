@@ -45,8 +45,12 @@ void SetActionNames(
   char dst_localized[XR_MAX_LOCALIZED_ACTION_NAME_SIZE],
   std::string const& src
 ) {
-  CopyStringWithSafety(dst, src, XR_MAX_ACTION_NAME_SIZE - 1);
-  CopyStringWithSafety(dst_localized, LocalizeString(src), XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1);
+  CopyStringWithSafety(
+    dst, src, XR_MAX_ACTION_NAME_SIZE - 1
+  );
+  CopyStringWithSafety(
+    dst_localized, LocalizeString(src), XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1
+  );
 }
 
 XrPosef PoseIdentity() {
@@ -245,9 +249,12 @@ bool OpenXRContext::resetSwapchain() {
 
 // ----------------------------------------------------------------------------
 
-bool OpenXRContext::completeSetup() {
+bool OpenXRContext::completeSetup(Camera &camera) {
   LOG_CHECK(XR_NULL_HANDLE != session_);
   LOG_CHECK(XR_NULL_HANDLE != swapchain_.handle());
+
+  camera.set_controller(&view_controller_);
+  camera_ptr_ = &camera;
 
   // Default controllers.
   if (!initControllers()) [[unlikely]] {
@@ -350,7 +357,7 @@ void OpenXRContext::beginFrame() {
   // LOGD("-- OpenXRContext::beginFrame -- ");
   auto& frameState = controls_.frame.state;
 
-  shouldRender_ = false;
+  should_render_ = false;
 
   // -- Wait Frame.
   {
@@ -405,7 +412,7 @@ void OpenXRContext::beginFrame() {
     LOG_CHECK(viewCountOutput == kNumEyes);
 
     // Check the views have tracking poses.
-    shouldRender_ = (XR_TRUE == frameState.shouldRender)
+    should_render_ = (XR_TRUE == frameState.shouldRender)
                  && (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT)
                  && (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)
                   ;
@@ -435,26 +442,30 @@ void OpenXRContext::processFrame(
   XRUpdateFunc_t const& update_cb,
   XRRenderFunc_t const& render_cb
 ) {
-  LOG_CHECK(XR_NULL_HANDLE != session_);
+  LOG_CHECK( XR_NULL_HANDLE != session_ );
+  LOG_CHECK( nullptr != camera_ptr_ );
 
   beginFrame();
   {
-    // shouldRender_ might be false here, but we still call update.
+    // should_render_ might be false here, but we still call update.
 
     // UPDATE.
     {
       auto& frameState = controls_.frame.state;
-      float const nearZ = 0.05f; //
-      float const farZ = 150.0f; //
+
+      // ------------------------------
+      float const nearZ = Camera::kDefaultNear; //
+      float const farZ = Camera::kDefaultFar; //
+      // ------------------------------
 
       // Calculate space matrices.
       for (uint32_t i = 0u; i < spaces_.size(); ++i) {
         auto const spaceLoc = spaceLocation(spaces_[i], frameState.predictedDisplayTime);
         if (xrutils::IsSpaceLocationValid(spaceLoc)) {
           spaceMatrices_[i] = xrutils::PoseMatrix(spaceLoc.pose);
-          frameData_.spaceMatrices[i] = &spaceMatrices_[i];
+          frame_data_.spaceMatrices[i] = &spaceMatrices_[i];
         } else {
-          frameData_.spaceMatrices[i] = nullptr;
+          frame_data_.spaceMatrices[i] = nullptr;
         }
       }
 
@@ -462,14 +473,16 @@ void OpenXRContext::processFrame(
       for (uint32_t i = 0u; i < kNumEyes; ++i) {
         auto const &view = views_[i];
         auto const pose{xrutils::PoseMatrix(view.pose)};
-        frameData_.viewMatrices[i] = lina::rigidbody_inverse(pose); //
-        frameData_.projMatrices[i] = xrutils::ProjectionMatrix(view.fov, nearZ, farZ);
-      }
-      // frameData_.headMatrix = xrutils::PoseMatrix(controls_.frame.head_pose);
-      // frameData_.predictedDisplayTime = 1.0e9 * static_cast<double>(frameState.predictedDisplayTime); //
-      frameData_.shouldRender = shouldRender_;
+        frame_data_.viewMatrices[i] = lina::rigidbody_inverse(pose); //
+        frame_data_.projMatrices[i] = xrutils::ProjectionMatrix(view.fov, nearZ, farZ);
 
-      update_cb(/*frameData_*/);
+        camera_ptr_->set_projection(frame_data_.projMatrices[i], i);
+      }
+      // frame_data_.headMatrix = xrutils::PoseMatrix(controls_.frame.head_pose);
+      // frame_data_.predictedDisplayTime = 1.0e9 * static_cast<double>(frameState.predictedDisplayTime); //
+      frame_data_.shouldRender = should_render_;
+
+      update_cb();
     }
 
     // RENDER.
@@ -478,7 +491,7 @@ void OpenXRContext::processFrame(
       layers_.fill(CompositorLayerUnion_t{});
 
       // -------------------------------------------------
-      if (shouldRender_) {
+      if (should_render_) {
         renderProjectionLayer(render_cb);
 
         // [TODO: add system to handle user specific layers]
@@ -495,7 +508,7 @@ void OpenXRContext::processFrame(
           .views      = layer_projection_views_.data()
         };
       } else {
-        LOGV("shouldRender_ is set to false");
+        LOGV("should_render_ is set to false");
       }
       // -------------------------------------------------
 

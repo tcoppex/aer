@@ -392,10 +392,18 @@ class RenderPassEncoder : public GenericCommandEncoder {
 
   void setPrimitiveTopology(VkPrimitiveTopology const topology) const {
     // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
+    LOG_CHECK(vkCmdSetPrimitiveTopologyEXT);
     vkCmdSetPrimitiveTopologyEXT(handle_, topology);
   }
 
+  void setCullMode(VkCullModeFlags cull_mode) const {
+    // Provided by VK_EXT_extended_dynamic_state, VK_EXT_shader_object
+    LOG_CHECK(vkCmdSetCullModeEXT);
+    vkCmdSetCullModeEXT(handle_, cull_mode);
+  }
+
   void setVertexInput(VertexInputDescriptor const& vertex_input_descriptor) const {
+    LOG_CHECK(vkCmdSetVertexInputEXT);
     vkCmdSetVertexInputEXT(
       handle_,
       static_cast<uint32_t>(vertex_input_descriptor.bindings.size()),
@@ -435,10 +443,16 @@ class RenderPassEncoder : public GenericCommandEncoder {
     VkDeviceSize const offset = 0u,
     VkDeviceSize const size = VK_WHOLE_SIZE
   ) const {
-    // VK_KHR_maintenance5 or VK_VERSION_1_4
-    vkCmdBindIndexBuffer2KHR(
-      handle_, buffer.buffer, offset, size, index_type
-    );
+    if (vkCmdBindIndexBuffer2KHR) {
+      // VK_KHR_maintenance5 or VK_VERSION_1_4
+      vkCmdBindIndexBuffer2KHR(
+        handle_, buffer.buffer, offset, size, index_type
+      );
+    } else {
+      vkCmdBindIndexBuffer(
+        handle_, buffer.buffer, offset, index_type
+      );
+    }
   }
 
   // --- Draw ---

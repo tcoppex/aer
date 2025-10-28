@@ -7,7 +7,6 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h"
@@ -231,7 +230,7 @@ class SampleApp final : public Application {
 
     /* Setup the ArcBall camera. */
     {
-      camera_.setPerspective(
+      camera_.makePerspective(
         lina::radians(55.0f),
         viewport_size_.width,
         viewport_size_.height,
@@ -278,12 +277,12 @@ class SampleApp final : public Application {
       scene_->set_ray_tracing_fx(&ray_tracing_fx_);
     }
 
-    if (camera_.update(dt)) {
+    if (camera_.rebuilt()) {
       ray_tracing_fx_.resetFrameAccumulation();
     }
 
     if (scene_) {
-      scene_->update(camera_, renderer_.surface_size(), elapsed_time());
+      scene_->update(camera_, elapsed_time());
     }
   }
 
@@ -320,13 +319,11 @@ class SampleApp final : public Application {
   }
 
  private:
-  Camera camera_{};
   ArcBallController arcball_controller_{};
-
-  BasicRayTracingFx ray_tracing_fx_{};
-
   std::future<GLTFScene> future_scene_{};
   GLTFScene scene_{};
+
+  BasicRayTracingFx ray_tracing_fx_{};
 };
 
 // ----------------------------------------------------------------------------

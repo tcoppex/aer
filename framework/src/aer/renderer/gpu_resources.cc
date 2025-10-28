@@ -3,9 +3,8 @@
 #include "aer/core/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/fx/material/material_fx.h"
-
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h" //
-#include "aer/shaders/material/interop.h" //
+#include "aer/scene/vertex_internal.h" // for material_shader_interop::FrameData
 
 using namespace scene;
 
@@ -14,6 +13,9 @@ using namespace scene;
 GPUResources::GPUResources(RenderContext const& context)
   : context_(context)
 {
+  material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
+  material_fx_registry_->init(context_);
+
   // ---------------------------------------
   rt_scene_ = std::make_unique<RayTracingScene>();
   rt_scene_->init(context_);
@@ -25,14 +27,6 @@ GPUResources::GPUResources(RenderContext const& context)
 GPUResources::~GPUResources() {
   context_.deviceWaitIdle();
 
-  if (material_fx_registry_) {
-    material_fx_registry_->release();
-  }
-
-  // ---------------------------------------
-  rt_scene_.reset();
-  // ---------------------------------------
-
   for (auto& img : device_images) {
     context_.destroyImage(img);
   }
@@ -40,6 +34,13 @@ GPUResources::~GPUResources() {
   context_.destroyBuffer(frame_ubo_);
   context_.destroyBuffer(index_buffer);
   context_.destroyBuffer(vertex_buffer);
+
+  // ---------------------------------------
+  rt_scene_.reset();
+  // ---------------------------------------
+
+  material_fx_registry_->release();
+  material_fx_registry_.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -49,8 +50,17 @@ bool GPUResources::loadFile(std::string_view filename) {
     return false;
   }
 
-  material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
-  material_fx_registry_->init(context_);
+  /* Force a specific material model when requested. */
+  {
+    auto const material_model = context_.default_material_model();
+    if (material_model != scene::MaterialModel::Unknown) {
+      for (auto const& material_ref : material_refs) {
+        material_ref->model = material_model;
+      }
+    }
+  }
+
+  /* Build the registry from the materials found in the model. */
   material_fx_registry_->setup(material_proxies, material_refs);
 
   return true;
@@ -69,7 +79,7 @@ void GPUResources::initializeSubmeshDescriptors(
   // [~] When we expect Tangent we force recalculate them.
   //     Resulting indices might be incorrect.
   if (attribute_to_location.contains(Geometry::AttributeType::Tangent)) {
-    // for (auto& mesh : meshes) { mesh->recalculate_tangents(); } //
+    // for (auto& mesh : meshes) { mesh->recalculateTangents(); } //
   }
   // --------------------
 }
@@ -82,7 +92,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
 
   /* Create the shared Frame UBO */
   frame_ubo_ = context_.createBuffer(
-    sizeof(FrameData),
+    sizeof(material_shader_interop::FrameData),
       VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
     | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     ,
@@ -93,12 +103,12 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
 
   /* Transfer Textures */
   if (total_image_size > 0) {
-    upload_images();
+    uploadImages();
   }
 
   /* Transfer Buffers */
   if (vertex_buffer_size > 0) {
-    upload_buffers();
+    uploadBuffers();
 
     // ---------------------------------------
     /* Build the Raytracing acceleration structures. */
@@ -115,7 +125,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     DSR.update_frame_ubo(frame_ubo_);
 
     if (total_image_size > 0) {
-      DSR.update_scene_textures(descriptor_image_infos());
+      DSR.update_scene_textures(buildDescriptorImageInfos());
     }
 
     DSR.update_scene_transforms(transforms_ssbo_);
@@ -127,19 +137,19 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
   }
 
-  /* Clear host data once uploaded */
+  /* Clear host data once uploaded. */
   if (bReleaseHostDataOnUpload) {
     host_images.clear();
     host_images.shrink_to_fit();
     for (auto const& mesh : meshes) {
-      mesh->clear_indices_and_vertices(); //
+      mesh->clearIndicesAndVertices(); //
     }
   }
 }
 
 // ----------------------------------------------------------------------------
 
-std::vector<VkDescriptorImageInfo> GPUResources::descriptor_image_infos() const {
+std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() const {
   std::vector<VkDescriptorImageInfo> image_infos{};
 
   if (textures.empty()) {
@@ -161,12 +171,8 @@ std::vector<VkDescriptorImageInfo> GPUResources::descriptor_image_infos() const 
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::update(
-  Camera const& camera,
-  VkExtent2D const& surface_size,
-  float elapsed_time
-) {
-  updateFrameData(camera, surface_size, elapsed_time);
+void GPUResources::update(Camera const& camera, float elapsed_time) {
+  updateFrameData(camera, elapsed_time);
 
   if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
@@ -267,21 +273,25 @@ void GPUResources::render(RenderPassEncoder const& pass) {
       auto [fx, states] = hashpair;
 
       // Bind pipeline & descriptor set.
-      // auto const& states = submeshes[0]->material_ref->states;
       fx->prepareDrawState(pass, states);
 
       // Draw submeshes.
       for (auto submesh : submeshes) {
         auto mesh = submesh->parent;
+        auto const& matref = *(submesh->material_ref);
+        auto const& proxy = material_proxy(matref);
 
         // Submesh's pushConstants.
         fx->set_transform_index(mesh->transform_index);
-        fx->set_material_index(submesh->material_ref->material_index);
+        fx->set_material_index(matref.material_index);
         fx->set_instance_index(instance_index++); //
         fx->pushConstant(pass);
 
         pass.setPrimitiveTopology(mesh->vk_primitive_topology());
-        pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer); //
+        pass.setCullMode(proxy.double_sided ? VK_CULL_MODE_NONE
+                                            : VK_CULL_MODE_BACK_BIT);
+
+        pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer);
       }
     }
   }
@@ -297,7 +307,7 @@ void GPUResources::set_ray_tracing_fx(RayTracingFx* fx) {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::upload_images() {
+void GPUResources::uploadImages() {
   LOG_CHECK( total_image_size > 0 );
 
   /* Create a staging buffer. */
@@ -327,9 +337,9 @@ void GPUResources::upload_images() {
     ));
 
     /* Upload image to staging buffer */
-    auto const img_bytesize = host_image.getBytesize();
+    auto const img_bytesize = host_image.bytesize();
     context_.writeBuffer(
-      staging_buffer, staging_offset, host_image.getPixels(), 0u, img_bytesize
+      staging_buffer, staging_offset, host_image.pixels(), 0u, img_bytesize
     );
     copies.push_back({
       .bufferOffset = staging_offset,
@@ -374,7 +384,7 @@ void GPUResources::upload_images() {
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::upload_buffers() {
+void GPUResources::uploadBuffers() {
   LOG_CHECK(vertex_buffer_size > 0);
 
   VkBufferUsageFlags extra_flags{};
@@ -462,14 +472,17 @@ void GPUResources::upload_buffers() {
   auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Transfer);
   {
     size_t src_offset{0lu};
-
-    src_offset = cmd.copyBuffer(staging_buffer, src_offset, vertex_buffer, 0u, vertex_buffer_size);
-
+    src_offset = cmd.copyBuffer(
+      staging_buffer, src_offset, vertex_buffer, 0u, vertex_buffer_size
+    );
     if (index_buffer_size > 0) {
-      src_offset = cmd.copyBuffer(staging_buffer, src_offset, index_buffer, 0u, index_buffer_size);
+      src_offset = cmd.copyBuffer(
+        staging_buffer, src_offset, index_buffer, 0u, index_buffer_size
+      );
     }
-
-    src_offset = cmd.copyBuffer(staging_buffer, src_offset, transforms_ssbo_, 0u, transforms_buffer_size);
+    src_offset = cmd.copyBuffer(
+      staging_buffer, src_offset, transforms_ssbo_, 0u, transforms_buffer_size
+    );
 
     std::vector<VkBufferMemoryBarrier2> barriers{
       {
@@ -508,25 +521,34 @@ void GPUResources::upload_buffers() {
 
 void GPUResources::updateFrameData(
   Camera const& camera,
-  VkExtent2D const& surface_size,
   float elapsed_time
 ) {
-  FrameData frame_data{
-    .projectionMatrix = camera.proj(),
-    .invProjectionMatrix = camera.proj_inverse(),
-    .viewMatrix = camera.view(),
-    .invViewMatrix = camera.world(),
-    .viewProjMatrix = camera.viewproj(),
-    .cameraPos_Time = vec4(camera.position(), elapsed_time),
+  /* Current surface size provided by the Renderer to the RenderContext,
+   * in the future this might need tweaking if we use scaling. */
+  auto const& surface_size = context_.default_surface_size();
+
+  auto frame_data = material_shader_interop::FrameData{
+    .default_world_matrix = context_.default_world_matrix(),
+    .cameraPos_Time = vec4(camera.position(), elapsed_time), //
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = frame_index_++,
     .renderer_states = 0b11111111111111111111111111111111, // XXX
   };
-
+  
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
 
-  // [A writeBuffer could be more efficient here.]
+
+  /* Copy the multiview CameraTransform. */
+  {
+    auto const& src = camera.transforms();
+    auto& dst = frame_data.camera;
+
+    static_assert(std::is_trivially_copyable_v<Camera::Transform>);
+    std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
+  }
+
+  // [Using writeBuffer() could be more efficient here.]
   context_.transientUploadBuffer(
     &frame_data, sizeof(frame_data), frame_ubo_
   );

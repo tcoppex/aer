@@ -16,11 +16,34 @@ class Camera {
    public:
     virtual ~ViewController() = default;
 
+    /* Handle event inputs, return true when the view matrices has changed. */
     virtual bool update(float dt) { return false; }
 
-    virtual void calculateViewMatrix(mat4 *m) = 0;
+    /* Retrieve the new view matrix. */
+    virtual void calculateViewMatrix(mat4 *m, uint32_t view_id = 0u) = 0;
 
-    virtual vec3 target() const = 0;
+    /* Number of view supported by the controller, should be max 2. */
+    virtual uint32_t view_count() const noexcept { return 1u; }
+
+    virtual vec3 target() const = 0; //
+  };
+
+  struct Transform {
+    mat4 projection{linalg::identity};
+    mat4 projection_inverse{linalg::identity};
+    mat4 view{linalg::translation_matrix(vec3(0.0f, 0.0f, -1.0f))};
+    mat4 world{linalg::identity}; // view_inverse
+    mat4 view_projection{linalg::identity};
+
+    [[nodiscard]]
+    vec3 position() const noexcept {
+      return lina::to_vec3(world[3]); //
+    }
+
+    [[nodiscard]]
+    vec3 direction() const {
+      return linalg::normalize(-lina::to_vec3(world[2])); //
+    }
   };
   
  public:
@@ -30,9 +53,7 @@ class Camera {
     , width_(0u)
     , height_(0u)
     , linear_params_{0.0f, 0.0f, 0.0f, 0.0f}
-  {
-    view_ = linalg::translation_matrix(vec3(0.0f, 0.0f, -1.0f));
-  }
+  {}
 
   Camera(ViewController *controller) 
     : Camera()
@@ -46,37 +67,40 @@ class Camera {
   }
 
   /* Create a perspective projection matrix. */
-  void setPerspective(float fov, uint32_t w, uint32_t h, float znear, float zfar) {
-    assert( fov > 0.0f );
-    assert( (w > 0) && (h > 0) );
-    assert( (zfar - znear) > 0.0f );
+  void makePerspective(float fov, uint32_t w, uint32_t h, float znear, float zfar) {
+    LOG_CHECK( fov > 0.0f );
+    LOG_CHECK( (w > 0) && (h > 0) );
+    LOG_CHECK( (zfar - znear) > 0.0f );
 
     fov_    = fov;
     width_  = w;
     height_ = h;
 
     // Projection matrix.
-    float const ratio = static_cast<float>(width_) / static_cast<float>(height_);
-    proj_ = linalg::perspective_matrix(fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one);
-    proj_inverse_ = linalg::inverse(proj_);
-    bUseOrtho_ = false;
+    auto const ratio = static_cast<float>(width_) / static_cast<float>(height_);
+    set_projection(linalg::perspective_matrix(
+      fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one
+    ));
 
     // Linearization parameters.
-    float const A  = zfar / (zfar - znear);
+    float const A = zfar / (zfar - znear);
     linear_params_ = vec4( znear, zfar, A, - znear * A);
+    linear_params_set_ = true;
   }
 
-  void setPerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
-    setPerspective( fov, resolution.x, resolution.y, znear, zfar);
+  void makePerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
+    makePerspective(fov, resolution.x, resolution.y, znear, zfar);
   }
 
   /* Create a default perspective projection camera. */
-  void setDefault() {
-    setPerspective( kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar);
+  void makeDefault() {
+    makePerspective(
+      kDefaultFOV, kDefaultSize, kDefaultSize, kDefaultNear, kDefaultFar
+    );
   }
 
-  void setDefault(ivec2 const& resolution) {
-    setPerspective( kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
+  void makeDefault(ivec2 const& resolution) {
+    makePerspective(kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
   }
 
   // Update controller and rebuild all matrices.
@@ -93,119 +117,178 @@ class Camera {
 
   // Rebuild all matrices.
   void rebuild(bool bRetrieveView = true) {
-    if (controller_ && bRetrieveView) {
-      controller_->calculateViewMatrix(&view_);
+    LOG_CHECK(view_count() <= transforms_.size());
+    {
+      auto const view_id = 0u;
+      auto &T = transforms_[view_id];
+      if (controller_ && bRetrieveView) {
+        controller_->calculateViewMatrix(&T.view, view_id);
+      }
+      T.world = linalg::inverse(T.view);
+      T.view_projection = linalg::mul(T.projection, T.view);
     }
-    world_    = linalg::inverse(view_); //
-    viewproj_ = linalg::mul(proj_, view_);
-
+    if (view_count() == 2u)
+    {
+      auto const view_id = 1u;
+      auto &T = transforms_[view_id];
+      if (controller_ && bRetrieveView) {
+        controller_->calculateViewMatrix(&T.view, view_id);
+      }
+      T.world = linalg::inverse(T.view);
+      T.view_projection = linalg::mul(T.projection, T.view);
+    }
     need_rebuild_ = false;
     rebuilt_ = true;
   }
 
-  void set_controller(ViewController *controller) {
+  /* --- Setters --- */
+
+  void set_controller(ViewController *controller) noexcept {
     controller_ = controller;
+    need_rebuild_ = true;
   }
 
- public:
+  void set_projection(mat4 const& projection, uint32_t view_id = 0u) {
+    LOG_CHECK(view_id < transforms_.size());
+    auto &T = transforms_[view_id];
+    T.projection = projection;
+    T.projection_inverse = linalg::inverse(T.projection);
+    need_rebuild_ = true;
+    linear_params_set_ = false;
+  }
+
   /* --- Getters --- */
 
-  ViewController* controller() {
+  [[nodiscard]]
+  ViewController* controller() noexcept {
     return controller_;
   }
 
-  ViewController const* controller() const {
+  [[nodiscard]]
+  ViewController const* controller() const noexcept {
     return controller_;
   }
 
+  [[nodiscard]]
+  uint32_t view_count() const noexcept {
+    return controller_ ? controller_->view_count() : 1u;
+  }
+
+  [[nodiscard]]
   float fov() const noexcept {
     return fov_;
   }
 
+  [[nodiscard]]
   int32_t width() const noexcept {
     return width_;
   }
 
+  [[nodiscard]]
   int32_t height() const noexcept {
     return height_;
   }
 
+  [[nodiscard]]
   float aspect() const {
     return static_cast<float>(width_) / static_cast<float>(height_);
   }
 
+  [[nodiscard]]
   float znear() const noexcept {
     return linear_params_.x;
   }
 
+  [[nodiscard]]
   float zfar() const noexcept {
     return linear_params_.y;
   }
 
+  [[nodiscard]]
   vec4 const& linearization_params() const {
+    LOG_CHECK(linear_params_set_);
     return linear_params_;
   }
 
-  mat4 const& view() const noexcept {
-    return view_;
+  // -------------------------------
+
+  [[nodiscard]]
+  Transform const& transform(uint32_t view_id = 0u) const {
+    LOG_CHECK(view_id < transforms_.size());
+    return transforms_[view_id];
   }
 
-  mat4 const& world() const noexcept {
-    return world_;
+  [[nodiscard]]
+  auto const& transforms() const noexcept {
+    return transforms_;
   }
 
-  mat4 const& proj() const noexcept {
-    return proj_;
+  // -------------------------------
+
+  [[nodiscard]]
+  mat4 const& proj(uint32_t view_id = 0u) const {
+    return transforms_[view_id].projection;
   }
 
-  mat4 const& proj_inverse() const noexcept {
-    return proj_inverse_;
+  // [[nodiscard]]
+  // mat4 const& proj_inverse() const noexcept {
+  //   return transform_.projection_inverse;
+  // }
+
+  [[nodiscard]]
+  mat4 const& view(uint32_t view_id = 0u) const {
+    return transforms_[view_id].view;
   }
 
-  mat4 const& viewproj() const noexcept {
-    return viewproj_;
+  // [[nodiscard]]
+  // mat4 const& world() const noexcept {
+  //   return transform_.world;
+  // }
+
+  // [[nodiscard]]
+  // mat4 const& viewproj() const noexcept {
+  //   return transform_.view_projection;
+  // }
+
+  // -------------------------------
+
+  [[nodiscard]]
+  vec3 position(uint32_t view_id = 0u) const {
+    return transform(view_id).position(); // XXX
   }
 
-  vec3 position() const noexcept {
-    return lina::to_vec3(world_[3]); //
+  [[nodiscard]]
+  vec3 direction(uint32_t view_id = 0u) const {
+    return transform(view_id).direction(); // XXX
   }
 
-  vec3 direction() const noexcept {
-    return linalg::normalize(-lina::to_vec3(world_[2])); //
-  }
-
-  vec3 target() const noexcept {
+  [[nodiscard]]
+  vec3 target(uint32_t view_id = 0u) const {
     return controller_ ? controller_->target()
-                       : position() + 3.0f*direction() //
+                       : position(view_id) + 3.0f * direction(view_id) //
                        ;
   }
 
-  bool is_ortho() const noexcept {
-    return bUseOrtho_;
-  }
+  // -------------------------------
 
-  bool rebuilt() const {
+  [[nodiscard]]
+  bool rebuilt() const noexcept {
     return rebuilt_;
   }
 
  private:
   ViewController *controller_{};
-
   float fov_{};
   uint32_t width_{};
   uint32_t height_{};
   vec4 linear_params_{};
 
-  mat4 view_{};
-  mat4 world_{};
-  mat4 proj_{};
-  mat4 proj_inverse_{};
-  mat4 viewproj_{};
-
-  bool bUseOrtho_{};
+  // Transform transform_{};
+  std::array<Transform, 2u> transforms_{};
 
   bool need_rebuild_{true};
   bool rebuilt_{false};
+  bool linear_params_set_{false};
 };
 
 /* -------------------------------------------------------------------------- */

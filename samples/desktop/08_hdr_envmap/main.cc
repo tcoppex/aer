@@ -4,11 +4,12 @@
 //
 //  Where we use a HDR envmap to illuminate a 3D model.
 //
+//  Show how to load and display a glTF object manually, redefining the pipeline
+//  (see sample_10 for how to use the internal renderer system directly).
+//
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-
-#include "aer/core/camera.h"
 #include "aer/core/arcball_controller.h"
 
 namespace shader_interop {
@@ -31,9 +32,11 @@ class SampleApp final : public Application {
 
     renderer_.set_clear_color({ 0.55f, 0.65f, 0.75f, 1.0f });
 
-    /* Setup the ArcBall camera. */
+    /* Setup the camera. */
     {
-      camera_.setPerspective(
+      /* We use the internal camera_ object, on which we give an ArcBallController
+       * to be able to move it with input events. */
+      camera_.makePerspective(
         lina::radians(60.0f),
         viewport_size_.width,
         viewport_size_.height,
@@ -146,7 +149,7 @@ class SampleApp final : public Application {
       {
         .binding = shader_interop::kDescriptorSetBinding_Sampler,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .images = scene_->descriptor_image_infos()
+        .images = scene_->buildDescriptorImageInfos()
       }
     });
 
@@ -223,8 +226,8 @@ class SampleApp final : public Application {
         mesh->world_matrix()
       );
       for (auto const& submesh : mesh->submeshes) {
-        auto material = scene_->material(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = material.bindings.basecolor;
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
         pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
         pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
       }
@@ -232,8 +235,10 @@ class SampleApp final : public Application {
   }
 
   void update(float const dt) final {
-    camera_.update( dt );
-    push_constant_.viewMatrix = camera_.view();
+    /* We can check if the camera has changed between frame. */
+    if (camera_.rebuilt()) {
+      push_constant_.viewMatrix = camera_.view();
+    }
   }
 
   void draw(CommandEncoder const& cmd) final {
@@ -268,16 +273,11 @@ class SampleApp final : public Application {
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};
   shader_interop::PushConstant push_constant_{};
-
   Pipeline graphics_pipeline_{};
 
-  Camera camera_{};
   ArcBallController arcball_controller_{};
-
   GLTFScene scene_{};
 };
-
-
 
 // ----------------------------------------------------------------------------
 

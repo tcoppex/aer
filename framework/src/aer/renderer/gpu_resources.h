@@ -36,14 +36,10 @@ struct GPUResources : scene::HostResources {
   );
 
   /* Construct the image info buffer for the scene textures descriptor set. */
-  std::vector<VkDescriptorImageInfo> descriptor_image_infos() const;
+  std::vector<VkDescriptorImageInfo> buildDescriptorImageInfos() const;
 
   /* Update relevant resources before rendering (eg. shared uniform buffers). */
-  void update(
-    Camera const& camera,
-    VkExtent2D const& surface_size,
-    float elapsed_time
-  );
+  void update(Camera const& camera, float elapsed_time);
 
   /* Render the scene batch per MaterialFx. */
   void render(RenderPassEncoder const& pass);
@@ -53,14 +49,10 @@ struct GPUResources : scene::HostResources {
   // -------------------------------
 
  private:
-  void upload_images();
-  void upload_buffers();
+  void uploadImages();
+  void uploadBuffers();
 
-  void updateFrameData(
-    Camera const& camera,
-    VkExtent2D const& surface_size,
-    float elapsed_time
-  );
+  void updateFrameData(Camera const& camera, float elapsed_time);
 
  public:
   /* --- Device Data --- */

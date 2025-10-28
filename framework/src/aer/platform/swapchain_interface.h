@@ -18,6 +18,8 @@ class SwapchainInterface {
 
   virtual bool finishFrame(VkQueue queue) = 0;
 
+  virtual bool is_valid() const noexcept { return true; }
+
   virtual VkExtent2D surface_size() const noexcept = 0;
 
   virtual uint32_t image_count() const noexcept = 0;

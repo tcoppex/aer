@@ -23,6 +23,7 @@ class Geometry {
  public:
   enum class Topology {
     PointList,
+    LineStrip,
     TriangleList,
     TriangleStrip,
     kCount,
@@ -126,6 +127,10 @@ class Geometry {
   Geometry() = default;
   ~Geometry() = default;
 
+  void reset() {
+    *this = {};
+  }
+
   /* --- Getters --- */
 
   [[nodiscard]]
@@ -210,23 +215,24 @@ class Geometry {
   /* --- Utils --- */
 
   [[nodiscard]]
-  bool has_attribute(AttributeType const type) const noexcept {
+  bool hasAttribute(AttributeType const type) const noexcept {
     return attributes_.contains(type);
   }
 
-  void add_attribute(AttributeType const type, AttributeInfo const& info);
+  void addAttribute(AttributeType const type, AttributeInfo const& info);
 
-  void add_primitive(Primitive const& primitive);
+  void addPrimitive(Primitive const& primitive);
 
   /* Return the current bytesize of the vertex attributes buffer. */
-  uint64_t add_vertices_data(std::span<const std::byte> data);
+  uint64_t addVerticesData(std::span<const std::byte> data);
 
   /* Return the current bytesize of the indices buffer. */
-  uint64_t add_indices_data(std::span<const std::byte> data);
+  uint64_t addIndicesData(std::span<const std::byte> data);
 
-  void clear_indices_and_vertices();
+  /* Release host data. */
+  void clearIndicesAndVertices();
 
-  bool recalculate_tangents();
+  bool recalculateTangents();
 
  protected:
   AttributeInfoMap attributes_{};

@@ -52,7 +52,7 @@ void Skybox::init(RenderContext& context) {
     );
 
     context.finishTransientCommandEncoder(cmd);
-    cube_.clear_indices_and_vertices();
+    cube_.clearIndicesAndVertices();
   }
 
   /* Descriptor sets */
@@ -73,7 +73,7 @@ void Skybox::init(RenderContext& context) {
         .images = {
           {
             .sampler = sampler_LinearClampMipMap_, //
-            .imageView = envmap_.get_image(Envmap::ImageType::Diffuse).view,
+            .imageView = envmap_.image(Envmap::ImageType::Diffuse).view,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           }
         }
@@ -159,12 +159,26 @@ bool Skybox::setup(std::string_view hdr_filename) {
 // ----------------------------------------------------------------------------
 
 void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
-  mat4 view{ camera.view() };
-  view[3] = vec4(vec3(0.0f), view[3].w);
+  if (!is_valid()) {
+    LOGW("Trying to render a non setup skybox.");
+    return;
+  }
 
   PushConstant_t push_constant{};
-  push_constant.viewProjectionMatrix = linalg::mul(camera.proj(), view);
   push_constant.hdrIntensity = 1.0f;
+
+  /* Compute the MVP matrix while remove the translation part to keep the
+   * skybox always centered on the camera. */
+  auto const world_matrix = lina::remove_translation(
+    context_ptr_->default_world_matrix()
+  );
+  for (uint32_t i = 0; i < camera.view_count(); ++i) {
+    auto view = lina::remove_translation(camera.view(i));
+    push_constant.mvpMatrix[i] = linalg::mul(
+      linalg::mul(camera.proj(i), view),
+      world_matrix
+    );
+  }
 
   pass.bindPipeline(graphics_pipeline_);
   {

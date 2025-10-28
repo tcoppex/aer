@@ -153,7 +153,7 @@ class PipelineInterface {
     , bind_point_(bind_point)
   {}
 
-  virtual ~PipelineInterface() {}
+  virtual ~PipelineInterface() = default;
 
   VkPipelineLayout layout() const {
     return pipeline_layout_;

@@ -8,7 +8,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-#define WINDOW_SCALE          0.54f
+#define WINDOW_SCALE          0.64f
 #define MONITOR_SCALE         1.25f
 #define WINDOW_SIZE_FACTOR    (WINDOW_SCALE / MONITOR_SCALE)
 
@@ -124,7 +124,7 @@ bool Window::init(Settings const& settings, AppData_t app_data) {
   }
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, settings.resizeable ? GLFW_TRUE : GLFW_FALSE);
 
   GLFWmonitor* monitor = glfwGetPrimaryMonitor();
   {

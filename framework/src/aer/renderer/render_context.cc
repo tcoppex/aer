@@ -1,11 +1,10 @@
 #include <set>
 
 #include "aer/renderer/render_context.h"
+#include "aer/shaders/material/interop.h" // for kAttribLocation_*
 
 #include "aer/platform/swapchain_interface.h" //
 #include "aer/scene/image_data.h" // ~
-#include "aer/shaders/material/interop.h" // for kAttribLocation_*
-
 
 /* -------------------------------------------------------------------------- */
 
@@ -795,75 +794,78 @@ bool RenderContext::loadImage2D(
   std::string_view filename,
   backend::Image &image
 ) const {
-  uint32_t constexpr kForcedChannelCount{ 4u }; //
-
   bool const is_hdr{ stbi_is_hdr(filename.data()) != 0 };
   bool const is_srgb{ false }; //
 
-  stbi_set_flip_vertically_on_load(false);
+  scene::ImageData image_data{};
 
-  int x, y, num_channels;
-  stbi_uc* data{nullptr};
-
-  if (is_hdr) [[unlikely]] {
-    data = reinterpret_cast<stbi_uc*>(
-      stbi_loadf(filename.data(), &x, &y, &num_channels, kForcedChannelCount) //
-    );
-  } else {
-    data = stbi_load(filename.data(), &x, &y, &num_channels, kForcedChannelCount);
-  }
-
-  if (!data) {
-    return false;
-  }
-
-  VkExtent3D const extent{
-    .width = static_cast<uint32_t>(x),
-    .height = static_cast<uint32_t>(y),
-    .depth = 1u,
-  };
-
-  VkFormat const format{ is_hdr ? VK_FORMAT_R32G32B32A32_SFLOAT //
-                      : is_srgb ? VK_FORMAT_R8G8B8A8_SRGB
-                                : VK_FORMAT_R8G8B8A8_UNORM
-  };
-  uint32_t const layer_count = 1u;
-
-  image = createImage2D(
-    extent.width,
-    extent.height,
-    format,
-      VK_IMAGE_USAGE_SAMPLED_BIT
-    | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-    filename
-  );
-
-  /* Copy host data to a staging buffer. */
-  size_t const comp_bytesize{ (is_hdr ? 4 : 1) * sizeof(std::byte) };
-  size_t const bytesize{
-    kForcedChannelCount * extent.width * extent.height * comp_bytesize
-  };
-  auto staging_buffer = createStagingBuffer(bytesize, data); //
-  stbi_image_free(data);
-
-  /* Transfer staging device buffer to image memory. */
+  /* Load an image into host memory. */
   {
-    VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
-    cmd.transitionImages(
-      { image },
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      transfer_layout,
-      layer_count
+    utils::FileReader fr;
+    if (!fr.read(filename)) {
+      return false;
+    }
+
+    stbi_set_flip_vertically_on_load(false);
+
+    if (is_hdr) [[unlikely]] {
+      image_data.loadf(fr.buffer.data(), fr.buffer.size());
+    } else {
+      image_data.load(fr.buffer.data(), fr.buffer.size());
+    }
+
+    if (!image_data.pixels()) {
+      return false;
+    }
+  }
+
+  /* Create a device image and upload data to it. */
+  {
+    uint32_t const layer_count = 1u;
+    VkExtent3D const extent{
+      .width = static_cast<uint32_t>(image_data.width),
+      .height = static_cast<uint32_t>(image_data.height),
+      .depth = layer_count,
+    };
+
+    VkFormat const format{ is_hdr ? VK_FORMAT_R32G32B32A32_SFLOAT //
+                        : is_srgb ? VK_FORMAT_R8G8B8A8_SRGB
+                                  : VK_FORMAT_R8G8B8A8_UNORM
+    };
+
+    image = createImage2D(
+      extent.width,
+      extent.height,
+      format,
+        VK_IMAGE_USAGE_SAMPLED_BIT
+      | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+      filename
     );
 
-    cmd.copyBufferToImage(staging_buffer, image, extent, transfer_layout);
-
-    cmd.transitionImages(
-      { image },
-      transfer_layout,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      layer_count
+    /* Copy host data to a staging buffer. */
+    auto staging_buffer = createStagingBuffer(
+      image_data.bytesize(), image_data.pixels()
     );
+
+    /* Transfer staging device buffer to image memory. */
+    {
+      VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
+      cmd.transitionImages(
+        { image },
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        transfer_layout,
+        layer_count
+      );
+
+      cmd.copyBufferToImage(staging_buffer, image, extent, transfer_layout);
+
+      cmd.transitionImages(
+        { image },
+        transfer_layout,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        layer_count
+      );
+    }
   }
 
   return true;

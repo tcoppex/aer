@@ -12,6 +12,8 @@
 #include "aer/renderer/sampler_pool.h"
 #include "aer/renderer/descriptor_set_registry.h" //
 
+#include "aer/scene/material.h" // ~ (for scene::MaterialModel)
+
 class SwapchainInterface;
 
 /* -------------------------------------------------------------------------- */
@@ -28,6 +30,7 @@ class RenderContext : public Context {
     VkFormat color_format{VK_FORMAT_UNDEFINED};
     VkFormat depth_stencil_format{VK_FORMAT_UNDEFINED};
     VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+    scene::MaterialModel material_model{scene::MaterialModel::Unknown};
   };
 
  public:
@@ -219,6 +222,11 @@ class RenderContext : public Context {
   }
 
   [[nodiscard]]
+  scene::MaterialModel default_material_model() const noexcept {
+    return settings_.material_model;
+  }
+
+  [[nodiscard]]
   uint32_t default_view_mask() const noexcept {
     return default_view_mask_;
   }
@@ -228,8 +236,16 @@ class RenderContext : public Context {
     return default_surface_size_;
   }
 
+  mat4f const& default_world_matrix() const noexcept {
+    return default_world_matrix_;
+  }
+
   void set_default_surface_size(VkExtent2D const& surface_size) noexcept {
     default_surface_size_ = surface_size;
+  }
+
+  void set_default_world_matrix(mat4f const& matrix) noexcept {
+    default_world_matrix_ = matrix;
   }
 
  public:
@@ -252,6 +268,8 @@ class RenderContext : public Context {
 
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
+
+  mat4f default_world_matrix_{linalg::identity};
 };
 
 /* -------------------------------------------------------------------------- */

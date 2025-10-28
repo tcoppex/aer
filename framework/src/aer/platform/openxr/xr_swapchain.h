@@ -13,12 +13,16 @@ struct OpenXRSwapchain : public SwapchainInterface {
  public:
   virtual ~OpenXRSwapchain() = default;
 
+  [[nodiscard]]
   bool acquireNextImage() final;
 
+  [[nodiscard]]
   bool submitFrame(VkQueue queue, VkCommandBuffer command_buffer) final;
 
+  [[nodiscard]]
   bool finishFrame(VkQueue queue) final;
 
+  [[nodiscard]]
   VkExtent2D surface_size() const noexcept final {
     return {
       .width = create_info_.width,
@@ -26,24 +30,29 @@ struct OpenXRSwapchain : public SwapchainInterface {
     };
   }
 
+  [[nodiscard]]
   uint32_t image_count() const noexcept final {
     return image_count_;
   }
 
+  [[nodiscard]]
   VkFormat format() const noexcept final {
     return (VkFormat)create_info_.format;
   }
 
+  [[nodiscard]]
   uint32_t view_mask() const noexcept final {
     LOG_CHECK(create_info_.arraySize > 1u);
     return 0b11;
   }
 
+  [[nodiscard]]
   backend::Image current_image() const noexcept final {
     return images_[current_image_index_];
   }
 
  public:
+  [[nodiscard]]
   bool create(
     XrSession session,
     XrSwapchainCreateInfo const& info,
@@ -79,7 +88,6 @@ struct OpenXRSwapchain : public SwapchainInterface {
   std::vector<backend::Image> images_{};
   uint32_t image_count_{};
   uint32_t current_image_index_{};
-
   XRVulkanInterface *xr_graphics_{};
 };
 

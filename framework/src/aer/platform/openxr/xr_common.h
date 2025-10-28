@@ -121,32 +121,23 @@ struct XRControlState_t {
 
 // ----------------------------------------------------------------------------
 
-struct XRFrameData_t {
+struct XRFrameData {
   std::array<mat4f, XRSide::kNumSide> viewMatrices{};
   std::array<mat4f, XRSide::kNumSide> projMatrices{};
   std::array<mat4f const*, XRSpaceId::kNumSpaceId> spaceMatrices{}; //
   double predictedDisplayTime{};
   bool shouldRender{};
+
+  mat4f space_matrix(XRSpaceId space_id) const {
+    auto *m = spaceMatrices[space_id];
+    return  (m != nullptr) ? *m : linalg::identity;
+  }
 };
 
 // ----------------------------------------------------------------------------
 
-// struct XRFrameView_t {
-//   uint32_t viewId{};
-//   struct {
-//     mat4f view{};
-//     mat4f proj{};
-//     mat4f viewProj{};
-//   } transform;
-//   std::array<int32_t, 4u> viewport{0, 0, 0, 0};
-//   XRImageHandle_t colorImage{};
-//   XRImageHandle_t depthStencilImage{};
-// };
-
-// ----------------------------------------------------------------------------
-
-using XRUpdateFunc_t = std::function<void(/*XRFrameData_t const&*/)>;
-using XRRenderFunc_t = std::function<void(/*XRFrameView_t const&*/)>;
+using XRUpdateFunc_t = std::function<void()>;
+using XRRenderFunc_t = std::function<void()>;
 
 /* -------------------------------------------------------------------------- */
 

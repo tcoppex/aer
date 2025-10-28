@@ -1,8 +1,8 @@
 #ifndef AER_APP_SETTINGS_H_
 #define AER_APP_SETTINGS_H_
 
-#include "aer/platform/wm_interface.h"  // for WMInterface::Settings
-#include "aer/renderer/renderer.h"      // for RenderContext::Settings
+#include "aer/platform/wm_interface.h"    // for WMInterface::Settings
+#include "aer/renderer/render_context.h"  // for RenderContext::Settings
 
 /* -------------------------------------------------------------------------- */
 
@@ -23,6 +23,7 @@ struct AppSettings {
     .color_format         = VK_FORMAT_B10G11R11_UFLOAT_PACK32,
     .depth_stencil_format = VK_FORMAT_D24_UNORM_S8_UINT,
     .sample_count         = VK_SAMPLE_COUNT_1_BIT,
+    .material_model       = scene::MaterialModel::Unknown,
   };
 
   // Those will be overrided by the application.

@@ -4,12 +4,11 @@
 #include "aer/core/common.h"
 #include "aer/platform/vulkan/types.h"  // for DescriptorSetWriteEntry
 #include "aer/scene/material.h" // for scene::MaterialRef, scene::MaterialProxy
+#include "aer/renderer/fx/material/material_fx.h"
 
 #include <set>
 
-class Context;
 class RenderContext;
-class MaterialFx;
 
 /* -------------------------------------------------------------------------- */
 
@@ -34,11 +33,11 @@ class MaterialFxRegistry {
 
   /* Getters */
 
+  [[nodiscard]]
   MaterialFx* material_fx(scene::MaterialRef const& ref) const;
 
  private:
-  using MaterialModel = scene::MaterialModel; // std::type_index
-
+  using MaterialModel     = scene::MaterialModel; // std::type_index
   using MaterialFxMap     = std::unordered_map<MaterialModel, MaterialFx*>;
   using MaterialStatesMap = std::unordered_map<MaterialModel, std::set<scene::MaterialStates>>;
 

@@ -195,7 +195,7 @@ void Envmap::release() {
 // ----------------------------------------------------------------------------
 
 bool Envmap::setup(std::string_view hdr_filename) {
-  if (!load_diffuse_envmap(hdr_filename)) {
+  if (!loadDiffuseEnvmap(hdr_filename)) {
     LOGE("Fail to load spherical map \"{}\".", hdr_filename);
     return false;
   }
@@ -207,23 +207,23 @@ bool Envmap::setup(std::string_view hdr_filename) {
       .images = {
         {
           .sampler = sampler_, //
-          .imageView = get_image(ImageType::Diffuse).view,
+          .imageView = image(ImageType::Diffuse).view,
           .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         }
       }
     }
   });
 
-  compute_irradiance_sh_coeff();
-  compute_irradiance();
-  compute_specular();
+  computeIrradianceSHCoeff();
+  computeIrradiance();
+  computeSpecular();
 
   return true;
 }
 
 // ----------------------------------------------------------------------------
 
-bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
+bool Envmap::loadDiffuseEnvmap(std::string_view hdr_filename) {
   backend::Image spherical_envmap{};
   if (!context_ptr_->loadImage2D(hdr_filename, spherical_envmap)) {
     return false;
@@ -288,7 +288,7 @@ bool Envmap::load_diffuse_envmap(std::string_view hdr_filename) {
 
 // ----------------------------------------------------------------------------
 
-void Envmap::compute_irradiance_sh_coeff() {
+void Envmap::computeIrradianceSHCoeff() {
   uint32_t const faceResolution = kDiffuseResolution * kDiffuseResolution;
   uint32_t const reduceKernelSize = shader_interop::envmap::kCompute_IrradianceReduceSHCoeff_kernelSize_x;
 
@@ -423,7 +423,7 @@ void Envmap::compute_irradiance_sh_coeff() {
 
 // ----------------------------------------------------------------------------
 
-void Envmap::compute_irradiance() {
+void Envmap::computeIrradiance() {
   auto const& irradiance = images_[ImageType::Irradiance];
 
   context_ptr_->updateDescriptorSet(descriptor_set_, {
@@ -477,7 +477,7 @@ void Envmap::compute_irradiance() {
 
 // ----------------------------------------------------------------------------
 
-void Envmap::compute_specular() {
+void Envmap::computeSpecular() {
   auto const& specular = images_[ImageType::Specular];
 
   /* Create an imageView for each mip level to render into. */

@@ -11,9 +11,15 @@
 #include <unordered_map>
 
 #if defined(ANDROID)
+
 extern "C" {
 #include <android/log.h>
 }
+
+#if !defined(LOGGER_ANDROID_TAG)
+#define LOGGER_ANDROID_TAG "VkFramework"
+#endif
+
 #endif
 
 #include "fmt/core.h" // (c++20 format require gcc13+)
@@ -82,6 +88,34 @@ class Logger : public Singleton<Logger> {
       error_log_[key] = true;
     }
 
+#if defined(ANDROID)
+    int AndroidLogType{};
+    switch (type) {
+      case LogType::Verbose:
+        AndroidLogType = ANDROID_LOG_VERBOSE;
+      break;
+      case LogType::Debug:
+        AndroidLogType = ANDROID_LOG_DEBUG;
+      break;
+      case LogType::Info:
+        AndroidLogType = ANDROID_LOG_INFO;
+      break;
+      case LogType::Warning:
+        AndroidLogType = ANDROID_LOG_WARN;
+        ++warning_count_;
+      break;
+      case LogType::Error:
+        AndroidLogType = ANDROID_LOG_ERROR;
+        ++error_count_;
+      break;
+      case LogType::FatalError:
+        AndroidLogType = ANDROID_LOG_ERROR; //
+      break;
+    }
+    __android_log_print(AndroidLogType, LOGGER_ANDROID_TAG, "%s", out_.str().data());
+    return true;
+#endif
+
     // Prefix.
     switch (type) {
       case LogType::Verbose:    std::cerr << "\x1b[3;38;5;109m";
@@ -118,18 +152,18 @@ class Logger : public Singleton<Logger> {
     return true;
   }
 
-  template<typename... Args>
-  void android_log(
-    int priority,
-    char const* tag,
-    fmt::format_string<Args...> fmt,
-    Args&&... args
-  ) {
-#if defined(ANDROID)
-    auto const msg = fmt::format(fmt, std::forward<Args>(args)...);
-    __android_log_print(priority, tag, "%s", msg.c_str());
-#endif
-  }
+//   template<typename... Args>
+//   void android_log(
+//     int priority,
+//     char const* tag,
+//     fmt::format_string<Args...> fmt,
+//     Args&&... args
+//   ) {
+// #if defined(ANDROID)
+//     auto const msg = fmt::format(fmt, std::forward<Args>(args)...);
+//     __android_log_print(priority, tag, "%s", msg.c_str());
+// #endif
+//   }
 
   template<typename... Args>
   void verbose(char const* file, char const* fn, int line, fmt::format_string<Args...> fmt, Args&&... args) {
@@ -182,23 +216,20 @@ class Logger : public Singleton<Logger> {
 
 /* -------------------------------------------------------------------------- */
 
-#if defined(ANDROID) && !defined(LOGGER_ANDROID_TAG)
-#define LOGGER_ANDROID_TAG "VkFramework"
-#endif
 
-#if defined(ANDROID)
-#define LOGV(...) Logger::Get().android_log(ANDROID_LOG_VERBOSE, LOGGER_ANDROID_TAG, __VA_ARGS__)
-#define LOGD(...) Logger::Get().android_log(ANDROID_LOG_DEBUG,   LOGGER_ANDROID_TAG, __VA_ARGS__)
-#define LOGI(...) Logger::Get().android_log(ANDROID_LOG_INFO,    LOGGER_ANDROID_TAG, __VA_ARGS__)
-#define LOGW(...) Logger::Get().android_log(ANDROID_LOG_WARN,    LOGGER_ANDROID_TAG, __VA_ARGS__)
-#define LOGE(...) Logger::Get().android_log(ANDROID_LOG_ERROR,   LOGGER_ANDROID_TAG, __VA_ARGS__)
-#else
+// #if defined(ANDROID)
+// #define LOGV(...) Logger::Get().android_log(ANDROID_LOG_VERBOSE, LOGGER_ANDROID_TAG, __VA_ARGS__)
+// #define LOGD(...) Logger::Get().android_log(ANDROID_LOG_DEBUG,   LOGGER_ANDROID_TAG, __VA_ARGS__)
+// #define LOGI(...) Logger::Get().android_log(ANDROID_LOG_INFO,    LOGGER_ANDROID_TAG, __VA_ARGS__)
+// #define LOGW(...) Logger::Get().android_log(ANDROID_LOG_WARN,    LOGGER_ANDROID_TAG, __VA_ARGS__)
+// #define LOGE(...) Logger::Get().android_log(ANDROID_LOG_ERROR,   LOGGER_ANDROID_TAG, __VA_ARGS__)
+// #else
 #define LOGV(...) Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOGD(...) Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOGI(...) Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOGW(...) Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOGE(...) Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#endif
+// #endif
 
 // ----------------------------------------------------------------------------
 // Special aliases.

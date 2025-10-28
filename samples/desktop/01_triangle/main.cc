@@ -164,8 +164,6 @@ class SampleApp final : public Application {
   Pipeline graphics_pipeline_;
 };
 
-
-
 // ----------------------------------------------------------------------------
 
 ENTRY_POINT(SampleApp)

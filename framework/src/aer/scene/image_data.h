@@ -40,12 +40,6 @@ struct ImageData {
  public:
   ImageData() = default;
 
-  ImageData(stbi_uc const* buffer_data, uint32_t const buffer_size)
-    : ImageData()
-  {
-    load(buffer_data, buffer_size);
-  }
-
   ImageData(uint8_t r, uint8_t g, uint8_t b, uint8_t a, int32_t _width = 1, int32_t _height = 1) {
     width = _width;
     height = _height;
@@ -60,7 +54,7 @@ struct ImageData {
         data[index+3] = a;
       }
     }
-    pixels.reset(data);
+    pixels_.reset(data);
   }
 
   bool load(stbi_uc const* buffer_data, uint32_t const buffer_size) {
@@ -73,16 +67,34 @@ struct ImageData {
       kDefaultNumChannels
     );
     if (pixels_data) {
-      pixels.reset(pixels_data);
+      pixels_.reset(pixels_data);
+      comp_bytesize_ = 1u;
+    }
+    return nullptr != pixels_data;
+  }
+
+  bool loadf(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+    auto pixels_data = reinterpret_cast<stbi_uc*>(stbi_loadf_from_memory(
+      buffer_data,
+      static_cast<int32_t>(buffer_size),
+      &width,
+      &height,
+      &channels,
+      kDefaultNumChannels
+    ));
+
+    if (pixels_data) {
+      pixels_.reset(pixels_data);
+      comp_bytesize_ = 4u;
     }
     return nullptr != pixels_data;
   }
 
   void release() {
-    pixels.reset();
+    pixels_.reset();
   }
 
-  std::future<bool> loadAsyncFuture(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+  std::future<bool> asyncLoadFuture(stbi_uc const* buffer_data, uint32_t const buffer_size) {
     if (retrieveImageInfo(buffer_data, buffer_size)) {
       return utils::RunTaskGeneric<bool>([this, buffer_data, buffer_size] {
         return load(buffer_data, buffer_size);
@@ -91,7 +103,7 @@ struct ImageData {
     return {};
   }
 
-  void loadAsync(stbi_uc const* buffer_data, uint32_t const buffer_size) {
+  void asyncLoad(stbi_uc const* buffer_data, uint32_t const buffer_size) {
     if (retrieveImageInfo(buffer_data, buffer_size)) {
       async_result_ = utils::RunTaskGeneric<bool>([this, buffer_data, buffer_size] {
         return load(buffer_data, buffer_size);
@@ -99,35 +111,35 @@ struct ImageData {
     }
   }
 
-  bool getLoadAsyncResult() {
+  bool async_load_result() {
     return async_result_.valid() ? async_result_.get() : false;
   }
 
-  uint8_t const* getPixels() const {
-    return pixels.get();
+  uint8_t const* pixels() {
+    return (pixels_ || (async_load_result() && pixels_)) ? pixels_.get() : nullptr;
   }
 
-  uint8_t const* getPixels() {
-    return (pixels || (getLoadAsyncResult() && pixels)) ? pixels.get() : nullptr;
+  uint8_t const* pixels() const {
+    return pixels_.get();
   }
 
-  uint32_t getBytesize() const {
-    return static_cast<uint32_t>(kDefaultNumChannels * width * height);
+  uint32_t bytesize() const {
+    return static_cast<uint32_t>(kDefaultNumChannels * width * height * comp_bytesize_);
   }
 
  public:
   int32_t width{};
   int32_t height{};
-  int32_t channels{}; //
-
-  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels{nullptr, stbi_image_free}; //
+  int32_t channels{};
 
  private:
   bool retrieveImageInfo(stbi_uc const *buffer_data, int buffer_size) {
     return 0 < stbi_info_from_memory(buffer_data, buffer_size, &width, &height, &channels);
   }
 
+  std::unique_ptr<uint8_t, decltype(&stbi_image_free)> pixels_{nullptr, stbi_image_free}; //
   std::future<bool> async_result_;
+  uint32_t comp_bytesize_{1u};
 };
 
 /* -------------------------------------------------------------------------- */

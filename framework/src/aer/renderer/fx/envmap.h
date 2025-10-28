@@ -61,22 +61,22 @@ class Envmap {
 
   bool setup(std::string_view filename);
 
-  backend::Image const& get_image(ImageType const type) const {
+  backend::Image const& image(ImageType const type) const {
     return images_[type];
   }
 
-  backend::Buffer const& get_irradiance_matrices_buffer() const {
+  backend::Buffer const& irradiance_matrices_buffer() const {
     return irradiance_matrices_buffer_;
   }
 
  private:
-  bool load_diffuse_envmap(std::string_view filename);
+  bool loadDiffuseEnvmap(std::string_view filename);
 
-  void compute_irradiance_sh_coeff();
+  void computeIrradianceSHCoeff();
 
-  void compute_irradiance();
+  void computeIrradiance();
 
-  void compute_specular();
+  void computeSpecular();
 
  private:
   RenderContext const* context_ptr_{};

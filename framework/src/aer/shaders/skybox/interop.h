@@ -30,7 +30,7 @@ const UINT kCompute_IntegrateBRDF_kernelSize_y = 32u; //
 
 // 80 bytes
 struct PushConstant {
-  mat4 viewProjectionMatrix;
+  mat4 mvpMatrix[2];
   float hdrIntensity;
   UINT mapResolution;
   UINT numSamples;

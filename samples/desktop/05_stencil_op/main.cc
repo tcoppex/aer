@@ -99,7 +99,7 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clear_indices_and_vertices();
+        mesh.clearIndicesAndVertices();
       }
 
       // Torus
@@ -119,7 +119,7 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clear_indices_and_vertices();
+        mesh.clearIndicesAndVertices();
       }
 
       context_.finishTransientCommandEncoder(cmd);
@@ -375,8 +375,6 @@ class SampleApp final : public Application {
 
   EnumArray<Pipeline, PipelineID> pipelines_;
 };
-
-
 
 // ----------------------------------------------------------------------------
 

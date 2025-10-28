@@ -43,7 +43,11 @@ scene::MaterialStates GetMaterialStates(cgltf_material const& mat) {
 
 // ----------------------------------------------------------------------------
 
-bool DecompressDracoPrimitive(cgltf_primitive const& prim, std::vector<VertexInternal_t>& vertices, std::vector<uint32_t>& indices) {
+bool DecompressDracoPrimitive(
+  cgltf_primitive const& prim,
+  std::vector<VertexInternal_t>& vertices,
+  std::vector<uint32_t>& indices
+) {
   if (!prim.has_draco_mesh_compression) {
     LOGE("Error: Primitive does not have draco compression.");
     return false;
@@ -154,7 +158,10 @@ bool DecompressDracoPrimitive(cgltf_primitive const& prim, std::vector<VertexInt
 
 // ----------------------------------------------------------------------------
 
-void ExtractPrimitiveVertices(cgltf_primitive const& prim, std::vector<VertexInternal_t>& vertices) {
+void ExtractPrimitiveVertices(
+  cgltf_primitive const& prim,
+  std::vector<VertexInternal_t>& vertices
+) {
   uint32_t const vertex_count = prim.attributes[0].data->count;
   vertices.resize(vertex_count);
 
@@ -284,9 +291,9 @@ PointerToIndexMap_t ExtractImages(
       reinterpret_cast<stbi_uc const*>(buffer_view->buffer->data) + buffer_view->offset
     };
 
-    /* Image tasks should be retrieved outside this function via 'image->getLoadAsyncResult()' */
+    /* Image tasks should be retrieved outside this function via 'image->async_load_result()' */
     images.emplace_back();
-    images.back().loadAsync(buffer_data, buffer_view->size);
+    images.back().asyncLoad(buffer_data, buffer_view->size);
 
     uint32_t const image_index = index_offset + static_cast<uint32_t>(image_id);
     image_indices.try_emplace(&gl_image, image_index);
@@ -349,7 +356,9 @@ PointerToIndexMap_t ExtractMaterials(
     cgltf_material const& mat = data->materials[mat_id];
     auto const& pbr_mr = mat.pbr_metallic_roughness;
 
-    auto const material_model{GetMaterialModel(mat)};
+    auto const material_model{
+      GetMaterialModel(mat)
+    };
 
     if (scene::MaterialModel::Unknown == material_model) {
       LOGW("[GLTF] Material {} has unsupported material type.", uint32_t(mat_id));
@@ -362,7 +371,9 @@ PointerToIndexMap_t ExtractMaterials(
         .normal     = get_texture(mat.normal_texture,     bindings.normal),
         .occlusion  = get_texture(mat.occlusion_texture,  bindings.occlusion),
         .emissive   = get_texture(mat.emissive_texture,   bindings.emissive),
-        .roughness_metallic = get_texture(pbr_mr.metallic_roughness_texture, bindings.roughness_metallic),
+        .roughness_metallic = get_texture(
+          pbr_mr.metallic_roughness_texture, bindings.roughness_metallic
+        ),
       },
       .alpha_cutoff = mat.alpha_cutoff,
       .double_sided = static_cast<bool>(mat.double_sided),
@@ -538,7 +549,7 @@ void ExtractMeshes(
           if (prim.indices) {
             mesh->set_index_format(Geometry::IndexFormat::U32);
             primitive.indexCount = static_cast<uint32_t>(indices.size());
-            primitive.indexOffset = mesh->add_indices_data(std::as_bytes(std::span(indices)));
+            primitive.indexOffset = mesh->addIndicesData(std::as_bytes(std::span(indices)));
           }
         } else {
           // Attributes.
@@ -586,12 +597,12 @@ void ExtractMeshes(
                   indices_u32.push_back(val);
                 }
                 mesh->set_index_format(Geometry::IndexFormat::U32);
-                primitive.indexOffset = mesh->add_indices_data(
+                primitive.indexOffset = mesh->addIndicesData(
                   std::as_bytes(std::span(indices_u32))
                 );
               } else {
                 mesh->set_index_format(index_format);
-                primitive.indexOffset = mesh->add_indices_data(std::span(src, total_size));
+                primitive.indexOffset = mesh->addIndicesData(std::span(src, total_size));
               }
             } else {
               LOGD("index format unsupported.");
@@ -600,7 +611,7 @@ void ExtractMeshes(
         }
 
         /* Add the primitive interleaved attributes to the mesh, and retrieve its internal offset. */
-        attribs_buffer_offset = mesh->add_vertices_data(std::as_bytes(std::span(vertices)));
+        attribs_buffer_offset = mesh->addVerticesData(std::as_bytes(std::span(vertices)));
         primitive.vertexCount = static_cast<uint32_t>(vertices.size());
         primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(attribs_buffer_offset);
 
@@ -611,7 +622,7 @@ void ExtractMeshes(
           mesh->submeshes[prim_index].material_ref = material_refs[ material_index ].get();
         }
 
-        mesh->add_primitive(primitive);
+        mesh->addPrimitive(primitive);
       }
     } else {
       /* Utility function. */
@@ -634,7 +645,7 @@ void ExtractMeshes(
 
           if (auto type = ConvertAttributeType(attribute); type != Geometry::AttributeType::kUnknown) {
             size_t const accessorOffset{ isAccessorOffsetFlat(accessor) ? 0u : accessor->offset };
-            mesh->add_attribute(type, {
+            mesh->addAttribute(type, {
               .format = ConvertAttributeFormat(accessor),
               .offset = static_cast<uint32_t>(accessorOffset),
               .stride = static_cast<uint32_t>(accessor->stride),
@@ -667,7 +678,7 @@ void ExtractMeshes(
 
             uint64_t bufferOffset{};
             if (isAccessorOffsetFlat(accessor)) {
-              bufferOffset = mesh->add_vertices_data(std::span<const std::byte>(
+              bufferOffset = mesh->addVerticesData(std::span<const std::byte>(
                   reinterpret_cast<const std::byte*>(buffer_view->buffer->data), buffer_view->size
                 ).subspan(buffer_view->offset + accessor->offset)
               );
@@ -689,7 +700,7 @@ void ExtractMeshes(
             mesh->set_index_format(index_format);
 
             primitive.indexCount = accessor->count;
-            primitive.indexOffset = mesh->add_indices_data(std::span<const std::byte>(
+            primitive.indexOffset = mesh->addIndicesData(std::span<const std::byte>(
                 reinterpret_cast<const std::byte*>(buffer->data),
                 buffer_view->size
               ).subspan(buffer_view->offset + accessor->offset)
@@ -704,7 +715,7 @@ void ExtractMeshes(
           mesh->submeshes[prim_index].material_ref = material_refs[ material_index ].get();
         }
 
-        mesh->add_primitive(primitive);
+        mesh->addPrimitive(primitive);
       }
     }
 

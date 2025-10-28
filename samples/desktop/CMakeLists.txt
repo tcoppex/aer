@@ -65,5 +65,6 @@ add_sample(08_hdr_envmap)
 add_sample(09_post_process)
 add_sample(10_material)
 add_sample(11_raytracing)
+add_sample(12_font)
 
 # -----------------------------------------------------------------------------

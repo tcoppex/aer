@@ -155,7 +155,6 @@ class Renderer {
  private:
   /* Non owning References. */
   RenderContext* context_ptr_{};
-  VkDevice device_{};
   SwapchainInterface** swapchain_ptr_{};
 
   /* Timeline frame resources. */

@@ -20,7 +20,9 @@ endif()
 # to migrate them to samples APK assets directory, so we need to specify a distinct
 # subdir for them not to be in conflict with others assets (shaders or otherwhise).
 set(FRAMEWORK_SPIRV_ASSETS_SUBDIR   framework_shaders)
-set(FRAMEWORK_COMPILED_SHADERS_DIR  ${FRAMEWORK_COMPILED_SHADERS_DIR}/${FRAMEWORK_SPIRV_ASSETS_SUBDIR})
+set(FRAMEWORK_COMPILED_SHADERS_DIR
+  ${FRAMEWORK_COMPILED_SHADERS_DIR}/${FRAMEWORK_SPIRV_ASSETS_SUBDIR}
+)
 
 # -----------------------------------------------------------------------------
 # Source dependencies.
@@ -315,6 +317,37 @@ if(TRUE)
   set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR})
 endif()
 
+# Earcut (triangulation ehader).
+CPMAddPackage(
+  NAME earcut
+  GITHUB_REPOSITORY mapbox/earcut.hpp
+  GIT_TAG v2.2.4
+  DOWNLOAD_ONLY YES
+)
+set(EARCUT_INCLUDE_DIR ${earcut_SOURCE_DIR}/include)
+
+# UTF8
+CPMAddPackage(
+  NAME utfcpp
+  GITHUB_REPOSITORY nemtrif/utfcpp
+  GIT_TAG v4.0.8
+  DOWNLOAD_ONLY YES
+)
+set(UTFCPP_INCLUDE_DIR ${utfcpp_SOURCE_DIR}/source)
+
+# STB libs
+set(STB_LIB_URL https://raw.githubusercontent.com/nothings/stb/refs/heads/master/)
+list(APPEND STB_LIBS_TO_FETCH
+  stb_truetype.h # (currently v1.26)
+)
+
+foreach (stb_lib ${STB_LIBS_TO_FETCH})
+  download_file(
+    ${PROJECT_THIRD_PARTY_DIR}/stb
+    ${STB_LIB_URL}/${stb_lib}
+  )
+endforeach()
+
 # -----------------------------------------------------------------------------
 # Target properties.
 # -----------------------------------------------------------------------------
@@ -341,10 +374,12 @@ target_include_directories(${target}
     ${FMT_INCLUDE_DIR}
     ${LINALG_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}
+    ${UTFCPP_INCLUDE_DIR}
   PRIVATE
     ${FRAMEWORK_SHADERS_DIR}
     ${CGLTF_INCLUDE_DIR}
     ${MIKKTSPACE_INCLUDE_DIR}
+    ${EARCUT_INCLUDE_DIR}
 )
 
 target_compile_definitions(${target}
