@@ -62,12 +62,19 @@ bool Path2D::BuildContourMesh(Path2D path, scene::Mesh &mesh) {
 // ----------------------------------------------------------------------------
 
 bool Path2D::BuildShapeMesh(
-  Path2D path,
-  scene::Mesh &mesh,
+  Path2D /*const&*/ path,
+  Mesh &mesh,
   float extrusionDepth,
   uint32_t extrusionSampleCount
 ) {
+  auto const& polylines = path.polylines();
+
+  if (polylines.empty()) {
+    return true;
+  }
+
   if (!path.triangulate()) {
+    LOGD("{}: Triangulation fails.", __FUNCTION__);
     return false;
   }
 
