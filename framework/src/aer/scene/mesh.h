@@ -32,6 +32,10 @@ struct Mesh : Geometry {
  public:
   Mesh() = default;
 
+  void reset() {
+    *this = {};
+  }
+
   /* Bind mesh attributes to pipeline attributes location. */
   // xx this make a mesh tighly bound to a pipeline, or at least its vertex input desc.
   void initializeSubmeshDescriptors(

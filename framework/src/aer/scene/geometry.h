@@ -127,6 +127,10 @@ class Geometry {
   Geometry() = default;
   ~Geometry() = default;
 
+  void reset() {
+    *this = {};
+  }
+
   /* --- Getters --- */
 
   [[nodiscard]]
@@ -225,6 +229,7 @@ class Geometry {
   /* Return the current bytesize of the indices buffer. */
   uint64_t addIndicesData(std::span<const std::byte> data);
 
+  /* Release host data. */
   void clearIndicesAndVertices();
 
   bool recalculateTangents();
