@@ -48,10 +48,7 @@ class Font {
 
   [[nodiscard]]
   bool hasGlyph(char16_t code) const {
-    if (auto it = glyph_map_.find(code); it != glyph_map_.end()) {
-      return true;
-    }
-    return false;
+    return glyph_map_.contains(code);
   }
 
   [[nodiscard]]
@@ -61,8 +58,11 @@ class Font {
 
   [[nodiscard]]
   Glyph const& findGlyph(char16_t code) const {
-    return findGlyph(code);
+    return glyph_map_.at(code);
   }
+
+  [[nodiscard]]
+  int kern_advance(char16_t c1, char16_t c2) const;
 
   [[nodiscard]]
   auto const& glyph_map() const noexcept {

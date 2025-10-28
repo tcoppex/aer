@@ -8,14 +8,15 @@ namespace scene {
 /* -------------------------------------------------------------------------- */
 
 const std::u16string Font::kDefaultCorpus = std::u16string(
-  u" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~àéçùïôè"
+  u" !\"#$%&'()°*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~àâèéêçùüïôö"
 );
 
 // ----------------------------------------------------------------------------
 
 bool Font::load(std::string_view filename) {
-  auto const fullpath = std::string(ASSETS_DIR "fonts/") + filename.data();
+  release();
 
+  auto const fullpath = std::string(ASSETS_DIR "fonts/") + filename.data();
   is_ttf_ = utils::ExtractExtension(filename) == "ttf";
 
   if (!file_reader_.read(fullpath)) {
@@ -130,6 +131,21 @@ float Font::pixelScaleFromSize(int fontsize) const noexcept {
   return stbtt_ScaleForPixelHeight(&font_, fontsize);
 }
 
+// ----------------------------------------------------------------------------
+
+int Font::kern_advance(char16_t c1, char16_t c2) const {
+  if (hasGlyph(c1) && hasGlyph(c2)) {
+    auto g1 = findGlyph(c1);
+    auto g2 = findGlyph(c2);
+    return stbtt_GetGlyphKernAdvance(
+      &font_,
+      g1.index,
+      g2.index
+    );
+  }
+  return 0;
+}
+
 /* -------------------------------------------------------------------------- */
 
-}
+} // namespace "scene"
