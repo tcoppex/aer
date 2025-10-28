@@ -34,7 +34,8 @@ cmake --build build --config Release
  * ImGUI v1.92.3-docking (_via CPM_)
  * MikkTSpace (_via CPM_)
  * linalg v2.2 (_via CPM_)
- * earcut 2.2.4 (_via CPM_)
+ * earcut v2.2.4 (_via CPM_)
+ * utfcpp v4.0.8 (_via CPM_)
  * stb\_truetype.h (_fetched_)
  * stb\_image.h (_included_)
 

@@ -324,6 +324,15 @@ CPMAddPackage(
 )
 set(EARCUT_INCLUDE_DIR ${earcut_SOURCE_DIR}/include)
 
+# UTF8
+CPMAddPackage(
+  NAME utfcpp
+  GITHUB_REPOSITORY nemtrif/utfcpp
+  GIT_TAG v4.0.8
+  DOWNLOAD_ONLY YES
+)
+set(UTFCPP_INCLUDE_DIR ${utfcpp_SOURCE_DIR}/source)
+
 # STB libs
 set(STB_LIB_URL https://raw.githubusercontent.com/nothings/stb/refs/heads/master/)
 list(APPEND STB_LIBS_TO_FETCH
@@ -363,6 +372,7 @@ target_include_directories(${target}
     ${FMT_INCLUDE_DIR}
     ${LINALG_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}
+    ${UTFCPP_INCLUDE_DIR}
   PRIVATE
     ${FRAMEWORK_SHADERS_DIR}
     ${CGLTF_INCLUDE_DIR}
