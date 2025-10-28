@@ -1,4 +1,4 @@
-//  lina.h - v0.5.0
+//  lina.h - v0.6.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -202,6 +202,23 @@ constexpr linalg::vec<T, M> quadratic_bezier(
   T v = 2.0 * x * (1.0 - x);
   T w = x * x;
   return u * a + v * b + w * c;
+}
+
+template<class T, int M>
+constexpr linalg::vec<T, M> cubic_bezier(
+  linalg::vec<T, M> const& a,
+  linalg::vec<T, M> const& b,
+  linalg::vec<T, M> const& c,
+  linalg::vec<T, M> const& d,
+  T x
+) {
+  T nx = 1.0 - x;
+  T nx2 = nx * nx;
+  return (nx2 * nx) * a
+       + (3 * nx2 * x) * b
+       + (3 * nx * x * x) * c
+       + (x * x * x) * d
+       ;
 }
 
 template<class T>
