@@ -82,6 +82,22 @@ class Polyline {
     }
   }
 
+  void cubicBezierTo(
+    vec2 const& cp0,
+    vec2 const& cp1,
+    vec2 const& p,
+    uint32_t curve_resolution = Polyline::kDefaultCurveResolution
+  ) {
+    auto const dResolution = 1.0 / static_cast<double>(curve_resolution);
+    auto const v = lina::to_vec2(vertices_.back());
+
+    for (uint32_t i = 1; i <= curve_resolution; ++i) {
+      auto const t = static_cast<float>(i * dResolution);
+      auto const sampled_pt = lina::cubic_bezier(v, cp0, cp1, p, t);
+      addVertex(sampled_pt);
+    }
+  }
+
   [[nodiscard]]
   float signedArea2D(vec3 const axis) const noexcept {
     float area = 0.0f;

@@ -51,15 +51,29 @@ void Font::generate(
       if (v.type == STBTT_vmove) {
         path.moveTo(pt);
       } else if (v.type == STBTT_vline) {
-        path.lineTo(pt);
+        path.lineTo(pt, line_resolution);
       } else if (v.type == STBTT_vcurve) {
-        path.quadBezierTo(vec2(v.cx, v.cy), pt, curve_resolution);
+        path.quadBezierTo(
+          vec2(v.cx, v.cy), pt, curve_resolution
+        );
+      } else if (v.type == STBTT_vcubic) {
+        path.cubicBezierTo(
+          vec2(v.cx, v.cy), vec2(v.cx1, v.cy1), pt, curve_resolution
+        );
       }
     }
+    // for (auto &p : path.polylines()) {
+    //   auto& vertices = p.vertices();
+    //   if (vertices.front() == vertices.back()) {
+    //     vertices.pop_back();
+    //   }
+    // }
 
     // In TTF outer contours are clockwise & inner contour are counter-clockwise,
     // so we reverse them.
-    path.reverseOrientation();
+    if (is_ttf_) {
+      path.reverseOrientation();
+    }
 
     stbtt_FreeShape(&font_, glyph_verts);
     glyph_map_[c] = glyph;

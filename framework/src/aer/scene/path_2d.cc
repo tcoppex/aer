@@ -284,6 +284,17 @@ void Path2D::quadBezierTo(
 
 // ----------------------------------------------------------------------------
 
+void Path2D::cubicBezierTo(
+  vec2 const& cp0,
+  vec2 const& cp1,
+  vec2 const& p,
+  uint32_t curve_resolution
+) {
+  last_polyline().cubicBezierTo(cp0, cp1, p, curve_resolution);
+}
+
+// ----------------------------------------------------------------------------
+
 void Path2D::reverseOrientation() noexcept {
   for (auto &p : polylines_) {
     p.reverseOrientation();

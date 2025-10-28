@@ -51,11 +51,18 @@ class Path2D {
 
   void lineTo(
     vec2 const& p,
-    uint32_t nsteps = kDefaultLineToSubdivCount
+    uint32_t nsteps = kDefaultLineResolution
   );
 
   void quadBezierTo(
     vec2 const& cp,
+    vec2 const& p,
+    uint32_t curve_resolution = Polyline::kDefaultCurveResolution
+  );
+
+  void cubicBezierTo(
+    vec2 const& cp0,
+    vec2 const& cp1,
     vec2 const& p,
     uint32_t curve_resolution = Polyline::kDefaultCurveResolution
   );
@@ -68,7 +75,11 @@ class Path2D {
 
   [[nodiscard]]
   bool triangulated() const noexcept {
-    return !index_buffers_.empty();
+    return std::any_of(
+      index_buffers_.begin(),
+      index_buffers_.end(),
+      [](const auto& v) { return !v.empty(); }
+    );
   }
 
   [[nodiscard]]
