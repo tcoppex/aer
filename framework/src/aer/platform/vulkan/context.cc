@@ -379,7 +379,7 @@ void Context::transientUploadBuffer(
   size_t const device_buffer_offset
 ) const {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
-  cmd.transferHostToDevice(
+  cmd.transferBufferToDevice(
     host_data,
     host_data_size,
     device_buffer,

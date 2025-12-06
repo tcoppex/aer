@@ -289,7 +289,7 @@ void CommandEncoder::blitImage2D(
 
 // ----------------------------------------------------------------------------
 
-void CommandEncoder::transferHostToDevice(
+void CommandEncoder::transferBufferToDevice(
   void const* host_data,
   size_t const host_data_size,
   backend::Buffer const& device_buffer,
@@ -339,7 +339,7 @@ backend::Buffer CommandEncoder::createBufferAndUpload(
     usage | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR,
     VMA_MEMORY_USAGE_GPU_ONLY
   )};
-  transferHostToDevice(
+  transferBufferToDevice(
     host_data, host_data_size, device_buffer, device_buffer_offset
   );
 

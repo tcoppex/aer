@@ -209,7 +209,7 @@ class CommandEncoder : public GenericCommandEncoder {
     return copyBuffer(src, 0, dst, 0, size);
   }
 
-  void transferHostToDevice(
+  void transferBufferToDevice(
     void const* host_data,
     size_t const host_data_size,
     backend::Buffer const& device_buffer,
