@@ -128,7 +128,7 @@ class RenderContext : public Context {
 
   // --- Compute Pipelines ---
 
-  void create_compute_pipelines(
+  void createComputePipelines(
     VkPipelineLayout pipeline_layout,
     std::vector<backend::ShaderModule> const& modules,
     Pipeline *pipelines

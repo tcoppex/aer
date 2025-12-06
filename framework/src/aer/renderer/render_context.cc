@@ -564,7 +564,7 @@ Pipeline RenderContext::createGraphicsPipeline(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::create_compute_pipelines(
+void RenderContext::createComputePipelines(
   VkPipelineLayout pipeline_layout,
   std::vector<backend::ShaderModule> const& modules,
   Pipeline *pipelines
@@ -607,7 +607,7 @@ Pipeline RenderContext::createComputePipeline(
   backend::ShaderModule const& module
 ) const {
   Pipeline p;
-  create_compute_pipelines(pipeline_layout, { module }, &p);
+  createComputePipelines(pipeline_layout, { module }, &p);
   return p;
 }
 

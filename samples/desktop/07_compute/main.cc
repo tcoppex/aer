@@ -206,7 +206,7 @@ class SampleApp final : public Application {
         "calculate_dot_product.comp.glsl",
         "sort_indices.comp.glsl",
       })};
-      context_.create_compute_pipelines(
+      context_.createComputePipelines(
         pipeline_layout_, shaders, compute_pipelines_.data()
       );
       context_.releaseShaderModules(shaders);

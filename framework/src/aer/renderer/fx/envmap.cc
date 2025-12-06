@@ -152,7 +152,7 @@ void Envmap::init(RenderContext const& context) {
       "irradiance_convolution.comp.glsl",
       "specular_convolution.comp.glsl",
     })};
-    context_ptr_->create_compute_pipelines(pipeline_layout_, shaders, compute_pipelines_.data());
+    context_ptr_->createComputePipelines(pipeline_layout_, shaders, compute_pipelines_.data());
     context_ptr_->releaseShaderModules(shaders);
   }
 
