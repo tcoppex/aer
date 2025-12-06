@@ -166,21 +166,26 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
     }
   }
 
-  /* Set up triangle strip indices. */
-  uint32_t const index_count = ((resx + 1u) * 2u) * resy + (resy - 1u) * 2u;
+  /* Setup triangle list indices. */
+  uint32_t const index_count = resy * resy * 6u;
   std::vector<uint32_t> indices(index_count);
   {
     uint32_t index = 0u;
-    for (uint32_t iy = 0u; iy < resy; ++iy) {
-      for (uint32_t ix = 0u; ix < resx + 1u; ++ix) {
-        uint32_t const v_index = (ncols * (iy + 1u)) - (ix + 1);
-        indices[index++] = v_index + ncols;
-        indices[index++] = v_index;
-      }
-      if (iy < resy - 1u) {
-        indices[index] = indices[index - 1u];
-        indices[index + 1u] = indices[index] + resx;
-        index += 2u;
+    for (uint32_t iy = 0; iy < resy; ++iy) {
+      for (uint32_t ix = 0; ix < resx; ++ix) {
+
+        uint32_t v0 =  iy      * ncols + ix;
+        uint32_t v1 =  iy      * ncols + ix + 1;
+        uint32_t v2 = (iy + 1) * ncols + ix;
+        uint32_t v3 = (iy + 1) * ncols + ix + 1;
+
+        indices[index++] = v0;
+        indices[index++] = v2;
+        indices[index++] = v1;
+
+        indices[index++] = v1;
+        indices[index++] = v2;
+        indices[index++] = v3;
       }
     }
     assert(index == index_count);
@@ -189,7 +194,7 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
   /// --------------
 
   geo.set_index_format(IndexFormat::U32);
-  geo.set_topology(Topology::TriangleStrip);
+  geo.set_topology(Topology::TriangleList);
 
   geo.addPrimitive({
     .vertexCount = vertex_count,
