@@ -53,18 +53,22 @@ struct Mesh : Geometry {
   }
 
   /* Set pointer to global resources. */
-  void set_resources_ptr(HostResources const* R);
+  void set_resources_ptr(HostResources /*const*/ * R);
 
+  // ----------------------
   /* Return the mesh world transform. */
   [[nodiscard]]
   mat4 const& world_matrix() const; //
+
+  void set_world_matrix(mat4 const& world_matrix);
+  // ----------------------
 
  public:
   std::vector<SubMesh> submeshes{};
   uint32_t transform_index{};
 
  private:
-  HostResources const* resources_ptr_{};
+  HostResources /*const*/ * resources_ptr_{};
   BufferInfo buffer_info_{};
 
 
