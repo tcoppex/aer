@@ -519,6 +519,17 @@ void GPUResources::uploadBuffers() {
 
 // ----------------------------------------------------------------------------
 
+void GPUResources::uploadTransforms() {
+  /// [improvement: only update ranges that has been changed]
+
+  if (transforms_has_changed) {
+    context_.transientUploadBuffer(transforms, transforms_ssbo_);
+    transforms_has_changed = false;
+  }
+}
+
+// ----------------------------------------------------------------------------
+
 void GPUResources::updateFrameData(
   Camera const& camera,
   float elapsed_time
@@ -548,10 +559,14 @@ void GPUResources::updateFrameData(
     std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
   }
 
-  // [Using writeBuffer() could be more efficient here.]
+  // [Using writeBuffer() could be more efficient here if the buffer has been
+  // setup accordingly]
   context_.transientUploadBuffer(
     &frame_data, sizeof(frame_data), frame_ubo_
   );
+
+  /* Upload mesh transforms when needed. */
+  uploadTransforms();
 }
 
 /* -------------------------------------------------------------------------- */

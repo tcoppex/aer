@@ -52,6 +52,8 @@ struct GPUResources : scene::HostResources {
   void uploadImages();
   void uploadBuffers();
 
+  void uploadTransforms();
+
   void updateFrameData(Camera const& camera, float elapsed_time);
 
  public:
