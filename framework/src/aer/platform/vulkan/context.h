@@ -299,7 +299,7 @@ class Context {
   void transientUploadBuffer(
     T const& host_data,
     backend::Buffer const& device_buffer
-  ) {
+  ) const {
     auto const host_span{ std::span(host_data) };
     auto const bytesize{
       sizeof(typename decltype(host_span)::element_type) * host_span.size()
