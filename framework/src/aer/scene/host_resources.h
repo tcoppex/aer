@@ -20,6 +20,8 @@ using ResourceBuffer = std::vector<std::unique_ptr<T>>;
 template<typename T>
 using ResourceMap = std::unordered_map<std::string, std::unique_ptr<T>>;
 
+using IndexMap = std::unordered_map<std::string, uint32_t>;
+
 // ----------------------------------------------------------------------------
 
 struct HostResources {
@@ -48,6 +50,11 @@ struct HostResources {
     return material_proxies[ref.proxy_index];
   }
 
+  [[nodiscard]]
+  Mesh* findMeshByName(std::string_view mesh_name) const;
+
+  void debugPrintMeshNames() const;
+
   /* --- Host Data --- */
 
   std::vector<Sampler> samplers{};
@@ -58,7 +65,10 @@ struct HostResources {
   ResourceBuffer<MaterialRef> material_refs{}; //
 
   ResourceBuffer<Mesh> meshes{}; //
+  IndexMap mesh_indices_map{};
+
   std::vector<mat4f> transforms{};
+  bool transforms_has_changed{};
 
   ResourceBuffer<Skeleton> skeletons{}; //
   ResourceMap<AnimationClip> animations_map{};

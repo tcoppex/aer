@@ -427,6 +427,7 @@ void ExtractMeshes(
   PointerToIndexMap_t const& skeleton_indices,
   scene::ResourceBuffer<scene::Skeleton>const& skeletons,
   scene::ResourceBuffer<scene::Mesh>& meshes,
+  scene::IndexMap &mesh_indices_map,
   std::vector<mat4f>& meshes_transforms,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex
@@ -773,6 +774,11 @@ void ExtractMeshes(
 #endif
 
     meshes.push_back( std::move(mesh) );
+
+    mesh_indices_map.emplace(
+      std::string(node.mesh->name),
+      static_cast<uint32_t>(meshes.size() - 1)
+    );
   }
 }
 

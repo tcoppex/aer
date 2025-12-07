@@ -55,6 +55,7 @@ void ExtractMeshes(
   PointerToIndexMap_t const& skeleton_indices,
   scene::ResourceBuffer<scene::Skeleton>const& skeletons,
   scene::ResourceBuffer<scene::Mesh>& meshes,
+  scene::IndexMap &mesh_indices_map,
   std::vector<mat4f>& transforms,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex

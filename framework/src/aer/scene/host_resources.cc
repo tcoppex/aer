@@ -155,6 +155,7 @@ bool HostResources::loadFile(std::string_view filename) {
         &_material_refs = this->material_refs,
         &_skeletons = this->skeletons,
         &_meshes = this->meshes,
+        &_mesh_indices_map = this->mesh_indices_map,
         &_transforms = this->transforms
       ] {
         auto materials_indices = taskMaterials.get();
@@ -165,6 +166,7 @@ bool HostResources::loadFile(std::string_view filename) {
           skeletons_indices,
           _skeletons,
           _meshes,
+          _mesh_indices_map,
           _transforms,
           kRestructureAttribs,
           kForce32BitsIndexing
@@ -194,7 +196,7 @@ bool HostResources::loadFile(std::string_view filename) {
         data,
         materials_indices, material_refs,
         skeletons_indices, skeletons,
-        meshes, transforms,
+        meshes, mesh_indices_map, transforms,
         kRestructureAttribs,
         kForce32BitsIndexing
       );
@@ -231,6 +233,24 @@ bool HostResources::loadFile(std::string_view filename) {
 #endif
 
   return true;
+}
+
+// ----------------------------------------------------------------------------
+
+Mesh* HostResources::findMeshByName(std::string_view mesh_name) const {
+  if (auto it = mesh_indices_map.find(std::string(mesh_name)); it != mesh_indices_map.end()) {
+    uint32_t index = it->second;
+    return meshes[index].get();
+  }
+  return nullptr;
+}
+
+// ----------------------------------------------------------------------------
+
+void HostResources::debugPrintMeshNames() const {
+  for (auto [name, _] : mesh_indices_map) {
+    LOGD("> {}", name);
+  }
 }
 
 // ----------------------------------------------------------------------------
