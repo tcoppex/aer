@@ -262,13 +262,6 @@ class Context {
 
   // --- Transient Command Encoder Wrappers ---
 
-  void transitionImages(
-    std::vector<backend::Image> const& images,
-    VkImageLayout const src_layout,
-    VkImageLayout const dst_layout,
-    uint32_t layer_count = 1u
-  ) const;
-
   // (formerly 'createBufferAndUpload')
   [[nodiscard]]
   backend::Buffer transientCreateBuffer(
@@ -318,6 +311,20 @@ class Context {
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t const buffersize
+  ) const;
+
+  void transitionImages(
+    std::vector<backend::Image> const& images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const;
+
+  void transientUploadImage(
+    void const* host_data,
+    size_t const host_data_size,
+    backend::Image const& device_image,
+    VkExtent3D const& extent
   ) const;
 
   // --- Descriptor set ---

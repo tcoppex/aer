@@ -342,19 +342,6 @@ void Context::finishTransientCommandEncoder(
 
 // ----------------------------------------------------------------------------
 
-void Context::transitionImages(
-  std::vector<backend::Image> const& images,
-  VkImageLayout const src_layout,
-  VkImageLayout const dst_layout,
-  uint32_t layer_count
-) const {
-  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
-  cmd.transitionImages(images, src_layout, dst_layout, layer_count);
-  finishTransientCommandEncoder(cmd);
-}
-
-// ----------------------------------------------------------------------------
-
 backend::Buffer Context::transientCreateBuffer(
   void const* host_data,
   size_t host_data_size,
@@ -398,6 +385,45 @@ void Context::transientCopyBuffer(
   auto cmd = createTransientCommandEncoder(Context::TargetQueue::Transfer);
   cmd.copyBuffer(src, dst, buffersize);
   finishTransientCommandEncoder(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::transitionImages(
+  std::vector<backend::Image> const& images,
+  VkImageLayout const src_layout,
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
+) const {
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  cmd.transitionImages(images, src_layout, dst_layout, layer_count);
+  finishTransientCommandEncoder(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::transientUploadImage(
+  void const* host_data,
+  size_t const host_data_size,
+  backend::Image const& device_image,
+  VkExtent3D const& extent
+) const {
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+
+  auto staging = createStagingBuffer(
+    host_data_size, host_data
+  );
+
+  VkImageLayout const src_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkImageLayout const tmp_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  VkImageLayout const dst_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  cmd.transitionImages({ device_image }, src_layout, tmp_layout);
+  cmd.copyBufferToImage(staging, device_image, extent, tmp_layout);
+  cmd.transitionImages({ device_image }, tmp_layout, dst_layout);
+
+  finishTransientCommandEncoder(cmd);
+  // clearStagingBuffers(); //
 }
 
 // ----------------------------------------------------------------------------
