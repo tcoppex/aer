@@ -18,13 +18,46 @@ class SamplerPool {
   void init(VkDevice device) noexcept {
     device_ = device;
 
-    default_sampler_ = get({
+    anyso_clampedge_nearest_ = get({
+      .magFilter = VK_FILTER_NEAREST,
+      .minFilter = VK_FILTER_NEAREST,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .anisotropyEnable = VK_TRUE,
+      .maxAnisotropy = 16.0f,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    });
+    anyso_clampedge_linear_ = get({
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .anisotropyEnable = VK_TRUE,
+      .maxAnisotropy = 16.0f,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    });
+    anyso_repeat_linear_ = get({
       .magFilter = VK_FILTER_LINEAR,
       .minFilter = VK_FILTER_LINEAR,
       .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
       .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .anisotropyEnable = VK_TRUE,
+      .maxAnisotropy = 16.0f,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    });
+    anyso_repeat_nearest_ = get({
+      .magFilter = VK_FILTER_NEAREST,
+      .minFilter = VK_FILTER_NEAREST,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .anisotropyEnable = VK_TRUE,
       .maxAnisotropy = 16.0f,
       .maxLod = VK_LOD_CLAMP_NONE,
@@ -39,9 +72,26 @@ class SamplerPool {
     *this = {};
   }
 
+  // [[nodiscard]]
+  // VkSampler default_sampler() const noexcept {
+  //   return anyso_repeat_linear_;
+  // }
+
   [[nodiscard]]
-  VkSampler default_sampler() const noexcept {
-    return default_sampler_;
+  VkSampler anyso_clampedge_nearest() const noexcept {
+    return anyso_clampedge_nearest_;
+  }
+  [[nodiscard]]
+  VkSampler anyso_clampedge_linear() const noexcept {
+    return anyso_clampedge_linear_;
+  }
+  [[nodiscard]]
+  VkSampler anyso_repeat_nearest() const noexcept {
+    return anyso_repeat_nearest_;
+  }
+  [[nodiscard]]
+  VkSampler anyso_repeat_linear() const noexcept {
+    return anyso_repeat_linear_;
   }
 
   [[nodiscard]]
@@ -57,7 +107,7 @@ class SamplerPool {
 
   [[nodiscard]]
   VkSampler convert(scene::Sampler const& scene_sampler) const {
-    return scene_sampler.use_default() ? default_sampler_
+    return scene_sampler.use_default() ? anyso_repeat_linear()
                                        : get(scene_sampler.info)
                                        ;
   }
@@ -113,7 +163,10 @@ class SamplerPool {
 
  private:
   VkDevice device_{};
-  VkSampler default_sampler_{};
+  VkSampler anyso_repeat_nearest_{};
+  VkSampler anyso_repeat_linear_{};
+  VkSampler anyso_clampedge_nearest_{};
+  VkSampler anyso_clampedge_linear_{};
 
   mutable std::unordered_map<VkSamplerCreateInfo, VkSampler, InfoHash, InfoKeyEqual> map_{};
 };

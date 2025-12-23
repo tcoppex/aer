@@ -191,7 +191,7 @@ class RenderContext : public Context {
 
   [[nodiscard]]
   VkSampler default_sampler() const noexcept {
-    return sampler_pool_.default_sampler();
+    return sampler_pool_.anyso_repeat_linear(); //
   }
 
   [[nodiscard]]
