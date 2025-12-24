@@ -438,6 +438,10 @@ void ExtractMeshes(
    * We assume every primitives of a Mesh have the same topology / attributes
    ***/
 
+  /* When set, the mesh node's transform will be applied to their attribute
+   * directly instead of being used as default transform matrix. */
+  bool const kForceApplyWorldMatrix = true; //
+
   /* Preprocess meshes nodes. */
   std::vector<uint32_t> meshNodeIndices{};
   for (cgltf_size i = 0; i < data->nodes_count; ++i) {
@@ -501,14 +505,20 @@ void ExtractMeshes(
       continue;
     }
 
+    // Retrieve the node's world matrix.
+    mat4 world_matrix{};
+    cgltf_node_transform_world(&node, lina::ptr(world_matrix)); //
+
     // -----------------
     // B. Create a new mesh.
     auto mesh = std::make_unique<scene::Mesh>();
     {
-      meshes_transforms.emplace_back(linalg::identity);
-      cgltf_node_transform_world(&node, lina::ptr(meshes_transforms.back()));
       mesh->submeshes.resize(valid_prim_indices.size(), {.parent = mesh.get()});
+      meshes_transforms.emplace_back(
+        kForceApplyWorldMatrix ? linalg::identity : world_matrix //
+      );
     }
+
 
     // -----------------
     // C. Retrieve its vertex attributes and indices.
@@ -608,6 +618,13 @@ void ExtractMeshes(
             } else {
               LOGD("index format unsupported.");
             }
+          }
+        }
+
+        /* Force apply the node's matrix to the mesh. */
+        if (kForceApplyWorldMatrix) {
+          for (auto &v : vertices) {
+            v.applyTransform(world_matrix);
           }
         }
 
