@@ -79,6 +79,13 @@ struct VertexInternal_t : material_shader_interop::Vertex {
       { Geometry::AttributeType::Texcoord, material_shader_interop::kAttribLocation_Texcoord },
     };
   };
+
+  void applyTransform(mat4 const& matrix) {
+    position = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(position, 1.0f)));
+    normal = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(normal, 0.0f)));
+    auto t3 = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(lina::to_vec3(tangent), 0.0f)));
+    tangent = vec4f(t3, tangent.w);
+  }
 };
 
 // ----------------------------------------------------------------------------
