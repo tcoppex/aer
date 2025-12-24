@@ -26,12 +26,14 @@ void Events::prepareNextFrame() {
 
   // Update "Pressed" states to "Down", "Released" states to "Up".
   auto const update_state{ [](auto& btn) {
-    auto const state(btn.second);
-    btn.second = (state == KeyState::Pressed) ? KeyState::Down :
-                 (state == KeyState::Released) ? KeyState::Up : state;
+    auto const state = btn.second;
+    btn.second = (state == KeyState::Pressed) ? KeyState::Down
+               : (state == KeyState::Released) ? KeyState::Up
+               : state;
   }};
   std::for_each(buttons_.begin(), buttons_.end(), update_state);
   std::for_each(keys_.begin(), keys_.end(), update_state);
+  std::for_each(gamepad_buttons_.begin(), gamepad_buttons_.end(), update_state);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -90,6 +92,7 @@ void Events::onResize(int w, int h) {
   EVENTS_DISPATCH_SIGNAL(onResize, w, h);
 }
 
+// ----------------------------------------------------------------------------
 
 bool Events::buttonDown(KeyCode_t button) const noexcept {
   return checkButtonState(button, [](KeyState state) {
@@ -127,6 +130,26 @@ return checkKeyState(key, [](KeyState state) {
   });
 }
 
+bool Events::gamepadButtonDown(KeyCode_t button) const noexcept {
+  return checkGamepadButtonState(button, [](KeyState state) {
+    return (state == KeyState::Pressed) || (state == KeyState::Down);
+  });
+}
+
+bool Events::gamepadButtonPressed(KeyCode_t button) const noexcept {
+  return checkGamepadButtonState(button, [](KeyState state) {
+    return (state == KeyState::Pressed);
+  });
+}
+
+bool Events::gamepadButtonReleased(KeyCode_t button) const noexcept {
+return checkGamepadButtonState(button, [](KeyState state) {
+    return (state == KeyState::Released);
+  });
+}
+
+// ----------------------------------------------------------------------------
+
 bool Events::checkButtonState(KeyCode_t button, StatePredicate_t predicate) const noexcept {
   if (auto search = buttons_.find(button); search != buttons_.end()) {
     return predicate(search->second);
@@ -136,6 +159,13 @@ bool Events::checkButtonState(KeyCode_t button, StatePredicate_t predicate) cons
 
 bool Events::checkKeyState(KeyCode_t key, StatePredicate_t predicate) const noexcept {
   if (auto search = keys_.find(key); search != keys_.end()) {
+    return predicate(search->second);
+  }
+  return false;
+}
+
+bool Events::checkGamepadButtonState(KeyCode_t button, StatePredicate_t predicate) const noexcept {
+  if (auto search = gamepad_buttons_.find(button); search != gamepad_buttons_.end()) {
     return predicate(search->second);
   }
   return false;

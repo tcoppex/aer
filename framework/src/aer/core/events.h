@@ -64,6 +64,10 @@ class Events final : public Singleton<Events>
   bool keyPressed(KeyCode_t key) const noexcept;
   bool keyReleased(KeyCode_t key) const noexcept;
 
+  bool gamepadButtonDown(KeyCode_t button) const noexcept;
+  bool gamepadButtonPressed(KeyCode_t button) const noexcept;
+  bool gamepadButtonReleased(KeyCode_t button) const noexcept;
+
   /* Return the last user's keystroke. */
   KeyCode_t lastKeyDown() const noexcept {
     return key_pressed_.empty() ? -1 : key_pressed_.top(); //
@@ -93,6 +97,25 @@ class Events final : public Singleton<Events>
 
   void onResize(int w, int h) final;
 
+  //----------------------
+  void onGamepadAxeMove(int axe_id, float dx) {
+    dx = (fabs(dx) < 0.005f) ? 0.0f : dx;
+    gamepad_axes_[axe_id] = dx;
+  }
+  void onGamepadButtonPressed(int button_id) {
+    auto &s = gamepad_buttons_[button_id];
+    s = (s == KeyState::Up || s == KeyState::Released) ? KeyState::Pressed
+                                                       : KeyState::Down
+                                                       ;
+  }
+  void onGamepadButtonReleased(int button_id) {
+    auto &s = gamepad_buttons_[button_id];
+    s = (s == KeyState::Down || s == KeyState::Pressed) ? KeyState::Released
+                                                        : KeyState::Up
+                                                        ;
+  }
+  //----------------------
+
  private:
   Events() = default;
   ~Events() final = default;
@@ -103,6 +126,7 @@ class Events final : public Singleton<Events>
   /* Check if a key state match a state predicate. */
   bool checkButtonState(KeyCode_t button, StatePredicate_t predicate) const noexcept;
   bool checkKeyState(KeyCode_t key, StatePredicate_t predicate) const noexcept;
+  bool checkGamepadButtonState(KeyCode_t button, StatePredicate_t predicate) const noexcept;
 
   // Per-frame state.
   bool mouse_moved_{};
@@ -128,6 +152,10 @@ class Events final : public Singleton<Events>
 
   // Char input.
   uint16_t last_input_char_{};
+
+  // Gamepad (Joystick 1).
+  std::array<float, 4> gamepad_axes_{};
+  KeyMap_t gamepad_buttons_{};
 
   // Registered events callbacks.
   std::set<EventCallbacksPtr> event_callbacks_{};
