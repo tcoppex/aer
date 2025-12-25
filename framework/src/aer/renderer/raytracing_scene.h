@@ -40,13 +40,13 @@ class RayTracingSceneInterface {
 
  protected:
   /* Build the Bottom Level Acceleration Structure. */
-  virtual bool build_blas(scene::Mesh::SubMesh const& submesh) = 0;
+  virtual bool buildBLAS(scene::Mesh::SubMesh const& submesh) = 0;
 
   /* Build the Top Level Acceleration Structure. */
-  virtual void build_tlas() = 0;
+  virtual void buildTLAS() = 0;
 
   /* Build the Instances data buffer. */
-  virtual void build_instances_data_buffer(
+  virtual void buildInstancesDataBuffer(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
@@ -92,18 +92,18 @@ class RayTracingScene : public RayTracingSceneInterface {
   }
 
  protected:
-  bool build_blas(scene::Mesh::SubMesh const& submesh) final;
+  bool buildBLAS(scene::Mesh::SubMesh const& submesh) final;
 
-  void build_tlas() final;
+  void buildTLAS() final;
 
-  void build_instances_data_buffer(
+  void buildInstancesDataBuffer(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) override;
 
  private:
-  void build_acceleration_structure(
+  void buildAccelerationStructure(
     backend::AccelerationStructure* as,
     VkPipelineStageFlags2 dstStageMask,
     VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo
