@@ -122,16 +122,20 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
   {
     auto const& DSR = context_.descriptor_set_registry();
 
-    DSR.update_frame_ubo(frame_ubo_);
+    if (frame_ubo_.valid()) {
+      DSR.update_frame_ubo(frame_ubo_);
+    }
 
     if (total_image_size > 0) {
       DSR.update_scene_textures(buildDescriptorImageInfos());
     }
 
-    DSR.update_scene_transforms(transforms_ssbo_);
+    if (transforms_ssbo_.valid()) {
+      DSR.update_scene_transforms(transforms_ssbo_);
+    }
 
     // ---------------------------------------
-    if (rt_scene_) {
+    if (rt_scene_ && (vertex_buffer_size > 0)) {
       DSR.update_ray_tracing_scene(rt_scene_.get());
     }
     // ---------------------------------------
@@ -386,6 +390,7 @@ void GPUResources::uploadImages() {
 
 void GPUResources::uploadBuffers() {
   LOG_CHECK(vertex_buffer_size > 0);
+  LOG_CHECK(transforms.size() == meshes.size()); //
 
   VkBufferUsageFlags extra_flags{};
 
