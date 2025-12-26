@@ -118,28 +118,32 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
   }
 
+  //--------------------------------------------------------------
+  //--------------------------------------------------------------
   /* Update Global Descriptor Set bindings. */
   {
     auto const& DSR = context_.descriptor_set_registry();
 
     if (frame_ubo_.valid()) {
-      DSR.update_frame_ubo(frame_ubo_);
+      DSR.updateFrameUBO(frame_ubo_);
     }
 
     if (total_image_size > 0) {
-      DSR.update_scene_textures(buildDescriptorImageInfos());
+      DSR.updateSceneTextures(buildDescriptorImageInfos());
     }
 
     if (transforms_ssbo_.valid()) {
-      DSR.update_scene_transforms(transforms_ssbo_);
+      DSR.updateSceneTransforms(transforms_ssbo_);
     }
 
     // ---------------------------------------
     if (rt_scene_ && (vertex_buffer_size > 0)) {
-      DSR.update_ray_tracing_scene(rt_scene_.get());
+      DSR.updateRayTracingScene(rt_scene_.get());
     }
     // ---------------------------------------
   }
+  //--------------------------------------------------------------
+  //--------------------------------------------------------------
 
   /* Clear host data once uploaded. */
   if (bReleaseHostDataOnUpload) {

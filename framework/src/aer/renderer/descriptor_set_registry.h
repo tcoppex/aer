@@ -54,12 +54,12 @@ class DescriptorSetRegistry {
   /* Methods to allocate custom descriptor set and layout. */
 
   [[nodiscard]]
-  VkDescriptorSetLayout create_layout(
+  VkDescriptorSetLayout createLayout(
     DescriptorSetLayoutParamsBuffer const& params,
     VkDescriptorSetLayoutCreateFlags flags
   ) const;
 
-  void destroy_layout(VkDescriptorSetLayout &layout) const;
+  void destroyLayout(VkDescriptorSetLayout &layout) const;
 
   [[nodiscard]]
   VkDescriptorSet allocateDescriptorSet(
@@ -69,22 +69,22 @@ class DescriptorSetRegistry {
  public:
   /* Methods to update shared internal descriptor sets. */
 
-  void update_frame_ubo(backend::Buffer const& buffer) const;
+  void updateFrameUBO(backend::Buffer const& buffer) const;
 
-  void update_scene_transforms(backend::Buffer const& buffer) const;
+  void updateSceneTransforms(backend::Buffer const& buffer) const;
 
-  void update_scene_textures(std::vector<VkDescriptorImageInfo> image_infos) const;
+  void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
 
-  void update_scene_ibl(Skybox const& skybox) const;
+  void updateSceneIBL(Skybox const& skybox) const;
 
-  void update_ray_tracing_scene(RayTracingSceneInterface const* rt_scene) const;
+  void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
 
  private:
-  void init_descriptor_pool(uint32_t const max_sets);
+  void initDescriptorPool(uint32_t const max_sets);
 
-  void init_descriptor_sets();
+  void initDescriptorSets();
 
-  void create_main_set(
+  void createMainSet(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
     VkDescriptorSetLayoutCreateFlags layout_flags,

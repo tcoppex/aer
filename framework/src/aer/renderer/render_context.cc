@@ -757,7 +757,7 @@ VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
   DescriptorSetLayoutParamsBuffer const& params,
   VkDescriptorSetLayoutCreateFlags flags
 ) const {
-  return descriptor_set_registry_.create_layout(params, flags);
+  return descriptor_set_registry_.createLayout(params, flags);
 }
 
 // ----------------------------------------------------------------------------
@@ -765,7 +765,7 @@ VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
 void RenderContext::destroyDescriptorSetLayout(
   VkDescriptorSetLayout &layout
 ) const {
-  descriptor_set_registry_.destroy_layout(layout);
+  descriptor_set_registry_.destroyLayout(layout);
 }
 
 // ----------------------------------------------------------------------------
