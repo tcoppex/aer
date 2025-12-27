@@ -10,15 +10,20 @@ using namespace scene;
 
 /* -------------------------------------------------------------------------- */
 
-GPUResources::GPUResources(RenderContext const& context)
+GPUResources::GPUResources(
+  RenderContext const& context,
+  bool bEnableRayTracing
+)
   : context_(context)
 {
   material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
   material_fx_registry_->init(context_);
 
   // ---------------------------------------
-  rt_scene_ = std::make_unique<RayTracingScene>();
-  rt_scene_->init(context_);
+  if (bEnableRayTracing) {
+    rt_scene_ = std::make_unique<RayTracingScene>();
+    rt_scene_->init(context_);
+  }
   // ---------------------------------------
 }
 

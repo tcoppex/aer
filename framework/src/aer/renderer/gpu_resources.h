@@ -13,12 +13,22 @@ class RayTracingFx;
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @class GPUResources
+ * 
+ * Represent Scene data on GPU to be used for rendering.
+ * (As is, using multiple instances of it is not ideal)
+ */
 struct GPUResources : scene::HostResources {
  public:
+  /* When set, will construct the internal strutucture for RayTracing. */
+  static bool constexpr kDefaultEnableRayTracing = true;
+
+  /* When set, host data will be released on upload. */
   static bool constexpr kReleaseHostDataOnUpload = true;
 
  public:
-  GPUResources(RenderContext const& context);
+  GPUResources(RenderContext const& context, bool bEnableRayTracing = kDefaultEnableRayTracing);
 
   ~GPUResources();
 
