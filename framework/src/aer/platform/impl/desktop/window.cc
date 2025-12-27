@@ -191,14 +191,12 @@ bool Window::poll(AppData_t app_data) noexcept {
   if (glfwJoystickPresent(GLFW_JOYSTICK_1)) {
     int axes_count;
     float const* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axes_count);
-
     for (int i = 0; i < axes_count; ++i) {
-      E.onGamepadAxeMove(i, axes[i]);
+      E.onGamepadAxisMove(i, axes[i]);
     }
 
     int btn_count;
     uint8_t const* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &btn_count);
-
     for (int i = 0; i < btn_count; ++i) {
       if (buttons[i] == GLFW_PRESS) {
         E.onGamepadButtonPressed(i);

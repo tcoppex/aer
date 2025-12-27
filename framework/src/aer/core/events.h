@@ -68,6 +68,10 @@ class Events final : public Singleton<Events>
   bool gamepadButtonPressed(KeyCode_t button) const noexcept;
   bool gamepadButtonReleased(KeyCode_t button) const noexcept;
 
+  float gamepadAxis(int axe_id) const {
+    return gamepad_axis_[axe_id];
+  }
+
   /* Return the last user's keystroke. */
   KeyCode_t lastKeyDown() const noexcept {
     return key_pressed_.empty() ? -1 : key_pressed_.top(); //
@@ -98,9 +102,9 @@ class Events final : public Singleton<Events>
   void onResize(int w, int h) final;
 
   //----------------------
-  void onGamepadAxeMove(int axe_id, float dx) {
+  void onGamepadAxisMove(int axe_id, float dx) {
     dx = (fabs(dx) < 0.005f) ? 0.0f : dx;
-    gamepad_axes_[axe_id] = dx;
+    gamepad_axis_[axe_id] = dx;
   }
   void onGamepadButtonPressed(int button_id) {
     auto &s = gamepad_buttons_[button_id];
@@ -154,7 +158,7 @@ class Events final : public Singleton<Events>
   uint16_t last_input_char_{};
 
   // Gamepad (Joystick 1).
-  std::array<float, 4> gamepad_axes_{};
+  std::array<float, 6> gamepad_axis_{};
   KeyMap_t gamepad_buttons_{};
 
   // Registered events callbacks.
