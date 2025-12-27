@@ -189,14 +189,19 @@ bool HostResources::loadFile(std::string_view filename) {
       auto materials_indices  = ExtractMaterials(
         data,
         textures_indices,
-        material_proxies, material_refs,
+        material_proxies,
+        material_refs,
         default_texture_binding_
       );
       ExtractMeshes(
         data,
-        materials_indices, material_refs,
-        skeletons_indices, skeletons,
-        meshes, mesh_indices_map, transforms,
+        materials_indices,
+        material_refs,
+        skeletons_indices,
+        skeletons,
+        meshes,
+        mesh_indices_map,
+        transforms,
         kRestructureAttribs,
         kForce32BitsIndexing
       );

@@ -41,13 +41,13 @@ class ArcBallController : public Camera::ViewController {
   void calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) final;
 
   [[nodiscard]]
-  double yaw() const noexcept {
-    return yaw_;
+  double pitch() const noexcept {
+    return pitch_;
   }
 
   [[nodiscard]]
-  double pitch() const noexcept {
-    return pitch_;
+  double yaw() const noexcept {
+    return yaw_;
   }
 
   [[nodiscard]]

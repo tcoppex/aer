@@ -519,7 +519,6 @@ void ExtractMeshes(
       );
     }
 
-
     // -----------------
     // C. Retrieve its vertex attributes and indices.
     //
@@ -582,8 +581,10 @@ void ExtractMeshes(
               size_t const stride = accessor->stride ? accessor->stride : index_size;
               size_t const total_size = accessor->count * stride;
 
-              std::byte const* src = reinterpret_cast<std::byte const*>(buffer->data) +
-                                buffer_view->offset + accessor->offset;
+              std::byte const* src = reinterpret_cast<std::byte const*>(buffer->data)
+                                   + buffer_view->offset
+                                   + accessor->offset
+                                   ;
               std::vector<uint32_t> indices_u32{};
 
               // [the same index format should be shared by the whole mesh.]
@@ -719,10 +720,9 @@ void ExtractMeshes(
 
             primitive.indexCount = accessor->count;
             primitive.indexOffset = mesh->addIndicesData(std::span<const std::byte>(
-                reinterpret_cast<const std::byte*>(buffer->data),
-                buffer_view->size
-              ).subspan(buffer_view->offset + accessor->offset)
-            );
+              reinterpret_cast<const std::byte*>(buffer->data),
+              buffer_view->size
+            ).subspan(buffer_view->offset + accessor->offset));
           }
         }
 

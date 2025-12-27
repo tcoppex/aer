@@ -187,6 +187,7 @@ std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() con
 void GPUResources::update(Camera const& camera, float elapsed_time) {
   updateFrameData(camera, elapsed_time);
 
+  /* The rest of the update does not concern ray traced scenes. */
   if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
   }
@@ -274,6 +275,7 @@ void GPUResources::update(Camera const& camera, float elapsed_time) {
 
 void GPUResources::render(RenderPassEncoder const& pass) {
   LOG_CHECK( material_fx_registry_ != nullptr );
+  LOG_CHECK( !material_refs.empty() ); //
 
   if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
     return;
@@ -553,7 +555,7 @@ void GPUResources::updateFrameData(
   auto const& surface_size = context_.default_surface_size();
 
   auto frame_data = material_shader_interop::FrameData{
-    .default_world_matrix = context_.default_world_matrix(),
+    .default_world_matrix = context_.default_world_matrix(), //
     .cameraPos_Time = vec4(camera.position(), elapsed_time), //
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = frame_index_++,
@@ -563,7 +565,6 @@ void GPUResources::updateFrameData(
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
 
-
   /* Copy the multiview CameraTransform. */
   {
     auto const& src = camera.transforms();
@@ -572,6 +573,9 @@ void GPUResources::updateFrameData(
     static_assert(std::is_trivially_copyable_v<Camera::Transform>);
     std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
   }
+
+  /* Upload buffers */
+  // Note: we might want to double/triple buffering those to avoid race conditions.
 
   // [Using writeBuffer() could be more efficient here if the buffer has been
   // setup accordingly]
