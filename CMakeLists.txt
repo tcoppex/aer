@@ -31,7 +31,7 @@ set(DEFAULT_CPM_SOURCE_CACHE        ${PROJECT_THIRD_PARTY_DIR}/.cpmlocalcache)
 set(FRAMEWORK_PATH                  ${PROJECT_ROOT_PATH}/framework)
 set(FRAMEWORK_SOURCE_DIR            ${FRAMEWORK_PATH}/src)
 set(FRAMEWORK_INCLUDE_DIR           ${FRAMEWORK_PATH}/src) #!
-set(FRAMEWORK_SHADERS_DIR           ${FRAMEWORK_SOURCE_DIR}/aer/shaders) #!
+set(FRAMEWORK_SHADERS_DIR           ${FRAMEWORK_SOURCE_DIR}/aer/shaders CACHE PATH "") #!
 set(FRAMEWORK_COMPILED_SHADERS_DIR  ${PROJECT_BINARY_DIR}/spirv)
 
 # -----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ set(CMAKE_CXX_EXTENSIONS            OFF)
 # CMake includes
 # -----------------------------------------------------------------------------
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Vulkan SDK helpers
 include(VulkanSDK)
