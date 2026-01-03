@@ -294,6 +294,7 @@ void Application::mainloop(AppData_t app_data) {
     if (!frame()) {
       break;
     }
+    frame_index_++;
   }
 }
 
