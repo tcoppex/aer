@@ -248,16 +248,18 @@ class SampleApp final : public Application {
         for (size_t i=0; i < text_draw_info_.glyphs.size(); ++i) {
           auto const& glyph_draw_info = text_draw_info_.glyphs[i];
           auto const waveMatrix = ui_.enableAnimation ?
-            linalg::translation_matrix(
-              vec3(0, 12 * sin(i + 4.2*elapsed_time()), 85 * cos(i + 2.1 * elapsed_time()))
-            ) : linalg::identity;
+            linalg::translation_matrix(vec3(
+              0.0f,
+              12.0f * sin(i + 4.2f * elapsed_time()),
+              85.0f * cos(i + 2.1f * elapsed_time())
+            )) : linalg::identity;
           push_constant_.model.worldMatrix = linalg::mul(
             worldMatrix,
             linalg::mul(glyph_draw_info.matrix, waveMatrix)
           );
           pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
           for (auto const& submesh : glyph_draw_info.submeshes) {
-            pass.draw(submesh.draw_descriptor, vertex_buffer_, index_buffer_); //
+            pass.bindAndDraw(submesh.draw_descriptor, vertex_buffer_, index_buffer_); //
           }
         }
       }

@@ -306,7 +306,7 @@ void GPUResources::render(RenderPassEncoder const& pass) {
         pass.setCullMode(proxy.double_sided ? VK_CULL_MODE_NONE
                                             : VK_CULL_MODE_BACK_BIT);
 
-        pass.draw(submesh->draw_descriptor, vertex_buffer, index_buffer);
+        pass.bindAndDraw(submesh->draw_descriptor, vertex_buffer, index_buffer);
       }
     }
   }

@@ -483,7 +483,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     );
   }
 
-  void draw(
+  void bindAndDraw(
     DrawDescriptor const& desc,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer

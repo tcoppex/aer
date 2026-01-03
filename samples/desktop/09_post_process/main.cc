@@ -162,7 +162,7 @@ class SceneFx final : public RenderTargetFx {
         push_constant_.model.material_index = submesh.material_ref->material_index;
         push_constant_.model.instance_index = instance_index++;
         pushConstant(pass);
-        pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
       }
     }
   }

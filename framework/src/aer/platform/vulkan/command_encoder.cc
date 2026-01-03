@@ -541,7 +541,7 @@ void RenderPassEncoder::setViewportScissor(VkRect2D const rect, bool flip_y) con
 
 // ----------------------------------------------------------------------------
 
-void RenderPassEncoder::draw(
+void RenderPassEncoder::bindAndDraw(
   DrawDescriptor const& desc,
   backend::Buffer const& vertex_buffer,
   backend::Buffer const& index_buffer
