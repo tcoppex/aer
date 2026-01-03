@@ -148,6 +148,13 @@ class GenericCommandEncoder {
     );
   }
 
+  void dispatchIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0
+  ) const {
+    vkCmdDispatchIndirect(handle_, buffer.buffer, offset);
+  }
+
   // --- Ray Tracing ---
 
   void traceRays(
@@ -464,6 +471,15 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t first_instance = 0u
   ) const {
     vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
+  }
+
+  void drawIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0u,
+    uint32_t drawCount = 1u,
+    uint32_t stride = 0u
+  ) const {
+    vkCmdDrawIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
 
   void drawIndexed(
