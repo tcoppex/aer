@@ -335,6 +335,32 @@ float smoothcurve(float edge, float x) {
 
 // ----------------------------------------------------------------------------
 
+float easeInQuad(float x) {
+  return x * x;
+}
+
+float easeOutQuad(float x) {
+  return x * (2.0 - x);
+}
+
+// ----------------------------------------------------------------------------
+
+// https://www.desmos.com/calculator/3lchecue5l
+
+float easeIngCirc(float x) {
+  return 1.0 - sqrt(1.0 - x*x);
+}
+
+float easeOutCirc(float x) {
+  return sqrt(x * (2.0 - x));
+}
+
+float easeInOutCirc(float edge, float x) {
+  return mix(easeIngCirc(x), easeOutCirc(x), edge);
+}
+
+// ----------------------------------------------------------------------------
+
 // float curve_inout(in float x, in float edge) {
 //   const float a = maprange(0.0, edge, x);
 //   const float b = maprange(edge, 1.0, x);
