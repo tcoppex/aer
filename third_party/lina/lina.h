@@ -1,4 +1,4 @@
-//  lina.h - v0.6.0
+//  lina.h - v0.7.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -191,6 +191,22 @@ template<class T> linalg::mat<T,4,4> rotation_matrix_z(T const angle) { return r
 
 // ----------------------------------------------------------------------------
 
+template<class T>
+linalg::mat<T,4,4> look_dir_matrix(linalg::vec<T,3> const& U) {
+  auto Z = -normalize(U);
+  auto up = std::abs(Z.y) < T(0.999) ? linalg::vec<T,3>{0,1,0} : linalg::vec<T,3>{1,0,0};
+  auto X = normalize(cross(up, Z));
+  auto Y = cross(Z, X);
+  return linalg::mat<T,4,4>(
+    to_vec4<T>(X, 0.0),
+    to_vec4<T>(Y, 0.0),
+    to_vec4<T>(Z, 0.0),
+    {0,0,0,1}
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 template<class T, int M>
 constexpr linalg::vec<T, M> quadratic_bezier(
   linalg::vec<T, M> const& a, // start point
@@ -224,7 +240,7 @@ constexpr linalg::vec<T, M> cubic_bezier(
 template<class T>
 constexpr T step(T const& a, T const& x) {
   static_assert( std::is_floating_point<T>::value );
-  return static_cast<T>(select(a > x, 0, 1));
+  return static_cast<T>(linalg::select(a > x, 0, 1));
 }
 
 template<class T>
