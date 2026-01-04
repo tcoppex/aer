@@ -172,8 +172,10 @@ endif()
 # Third Parties Dependencies.
 # -----------------------------------------------------------------------------
 
+#-----------------------------------
 # Vulkan
 # Headers + Utility Libraries + Volk (dynamic extension loader)
+#-----------------------------------
 set(VULKAN_SDK_TAG vulkan-sdk-1.4.321.0)
 CPMAddPackage(
   NAME VulkanHeaders
@@ -204,7 +206,9 @@ list(APPEND VULKAN_INCLUDE_DIR
   $ENV{VULKAN_SDK}/Include
 )
 
+#-----------------------------------
 # Vulkan Memory Allocator (VMA)
+#-----------------------------------
 CPMAddPackage(
   NAME VulkanMemoryAllocator
   GITHUB_REPOSITORY GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
@@ -212,7 +216,9 @@ CPMAddPackage(
 )
 set(VMA_INCLUDE_DIR  ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 
+#-----------------------------------
 # CGLTF
+#-----------------------------------
 CPMAddPackage(
   NAME cgltf
   GITHUB_REPOSITORY jkuhlmann/cgltf
@@ -220,9 +226,11 @@ CPMAddPackage(
 )
 set(CGLTF_INCLUDE_DIR ${cgltf_SOURCE_DIR})
 
+#-----------------------------------
 # Draco (not currently supported)
 # see https://github.com/google/draco/blob/1.5.7/BUILDING.md#cmake-build-configuration
 # option(FRAMEWORK_HAS_DRACO OFF)
+#-----------------------------------
 if(FRAMEWORK_HAS_DRACO)
   # CPMAddPackage(
   #   NAME Draco
@@ -237,7 +245,9 @@ if(FRAMEWORK_HAS_DRACO)
   # list(APPEND SharedLibs draco)
 endif()
 
+#-----------------------------------
 # MikkTSpace (build as Static Lib).
+#-----------------------------------
 CPMAddPackage(
   NAME mikktspace
   GITHUB_REPOSITORY mmikk/MikkTSpace
@@ -250,7 +260,9 @@ add_library(mikktspace STATIC
 )
 set(MIKKTSPACE_INCLUDE_DIR ${mikktspace_SOURCE_DIR})
 
+#-----------------------------------
 # libfmt, formatting library emulating std20.
+#-----------------------------------
 CPMAddPackage(
   NAME fmt
   GITHUB_REPOSITORY fmtlib/fmt
@@ -258,7 +270,9 @@ CPMAddPackage(
 )
 set(FMT_INCLUDE_DIR ${fmt_SOURCE_DIR}/include)
 
+#-----------------------------------
 # linalg (single header linear algebra library).
+#-----------------------------------
 CPMAddPackage(
   NAME linalg
   GITHUB_REPOSITORY sgorsten/linalg
@@ -267,15 +281,20 @@ CPMAddPackage(
 )
 set(LINALG_INCLUDE_DIR ${linalg_SOURCE_DIR})
 
+#-----------------------------------
 # LibM.
+#-----------------------------------
 findLibM()
 
+#-----------------------------------
 # ImGui Docking.
+#-----------------------------------
 if(TRUE)
   CPMAddPackage(
     NAME imgui
     GITHUB_REPOSITORY ocornut/imgui
     GIT_TAG v1.92.3-docking # updating this version will break
+    DOWNLOAD_ONLY YES
   )
 
   if(ANDROID)
@@ -299,6 +318,7 @@ if(TRUE)
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
     ${imgui_SOURCE_DIR}/backends/imgui_impl_${IMGUI_WM_BACKEND}.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_${IMGUI_WM_BACKEND}.h
+    # ${imgui_SOURCE_DIR}/imgui_demo.cpp ##
   )
   source_group("Imgui" FILES ${IMGUI_SOURCES})
   # Tell Imgui to use volk's vulkan header.
@@ -314,10 +334,14 @@ if(TRUE)
   endif()
 
   target_sources(${target} PRIVATE ${IMGUI_SOURCES})
-  set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR})
+  list(APPEND IMGUI_INCLUDE_DIR
+    ${imgui_SOURCE_DIR}
+  )
 endif()
 
-# Earcut (triangulation ehader).
+#-----------------------------------
+# Earcut (triangulation lib header).
+#-----------------------------------
 CPMAddPackage(
   NAME earcut
   GITHUB_REPOSITORY mapbox/earcut.hpp
@@ -326,7 +350,9 @@ CPMAddPackage(
 )
 set(EARCUT_INCLUDE_DIR ${earcut_SOURCE_DIR}/include)
 
+#-----------------------------------
 # UTF8
+#-----------------------------------
 CPMAddPackage(
   NAME utfcpp
   GITHUB_REPOSITORY nemtrif/utfcpp
@@ -335,7 +361,9 @@ CPMAddPackage(
 )
 set(UTFCPP_INCLUDE_DIR ${utfcpp_SOURCE_DIR}/source)
 
+#-----------------------------------
 # STB libs
+#-----------------------------------
 set(STB_LIB_URL https://raw.githubusercontent.com/nothings/stb/refs/heads/master/)
 list(APPEND STB_LIBS_TO_FETCH
   stb_truetype.h # (currently v1.26)

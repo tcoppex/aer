@@ -62,10 +62,11 @@ void MaterialFxRegistry::setup(
   // ----------------------
 
   // Create internal material for each MaterialFx.
-  for (size_t i = 0; i < material_proxies.size(); ++i) {
+  for (size_t i = 0; i < material_refs.size(); ++i) {
     auto &matref = *material_refs[i];
+    auto const& proxy = material_proxies[matref.proxy_index];
     MaterialFx* fx = fx_map_.at(matref.model);
-    matref.material_index = fx->createMaterial(material_proxies[i]);
+    matref.material_index = fx->createMaterial(proxy);
   }
 }
 

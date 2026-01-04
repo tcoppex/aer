@@ -23,13 +23,9 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
 
-  static constexpr std::array<const char*, 2> kFontSelection{
+  static constexpr std::array<const char*, 3> kFontSelection{
     "angeme/Angeme-Regular.ttf",
     "angeme/Angeme-Bold.ttf",
-    // "takezo/TakezoRegular.otf",
-    // "takezo/TakezoTilt.otf",
-    // "takezo/TakezoCondensed.otf",
-    // "heroika/HeroikanamikusRegular.otf",
     // "freesans/FreeSans.ttf"
   };
 
@@ -58,7 +54,7 @@ class SampleApp final : public Application {
 
     resetFont();
 
-    /* Create Buffers). */
+    /* Create Buffers. */
     {
       uniform_buffer_ = context_.createBuffer(
         sizeof(host_data_),

@@ -68,7 +68,7 @@ class DescriptorSetRegistry {
 
  public:
   /* Methods to update shared internal descriptor sets. */
-
+  // -----------------------------------------------
   void updateFrameUBO(backend::Buffer const& buffer) const;
 
   void updateSceneTransforms(backend::Buffer const& buffer) const;
@@ -78,6 +78,7 @@ class DescriptorSetRegistry {
   void updateSceneIBL(Skybox const& skybox) const;
 
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
+  // -----------------------------------------------
 
  private:
   void initDescriptorPool(uint32_t const max_sets);

@@ -298,7 +298,9 @@ class SampleApp final : public Application {
     {
       // RASTERIZER
       auto pass = cmd.beginRendering();
-      if (scene_) scene_->render(pass);
+      if (scene_) {
+        scene_->render(pass);
+      }
       cmd.endRendering();
     }
 

@@ -62,11 +62,13 @@ void MaterialFx::prepareDrawState(
 
   // ----------------------------
   auto const& DSR = context_ptr_->descriptor_set_registry();
+
   VkShaderStageFlags const stage_flags{
       VK_SHADER_STAGE_VERTEX_BIT
     | VK_SHADER_STAGE_FRAGMENT_BIT
   };
 
+  // Material Specific descriptor set.
   pass.bindDescriptorSet(
     descriptor_set_,
     pipeline_layout_,
@@ -74,6 +76,7 @@ void MaterialFx::prepareDrawState(
     material_shader_interop::kDescriptorSet_Internal
   );
 
+  // Shared Frame descriptor set.
   pass.bindDescriptorSet(
     DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
     pipeline_layout_,
@@ -81,6 +84,7 @@ void MaterialFx::prepareDrawState(
     material_shader_interop::kDescriptorSet_Frame
   );
 
+  // [~] 'Shared' Scene descriptor set.
   pass.bindDescriptorSet(
     DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
     pipeline_layout_,

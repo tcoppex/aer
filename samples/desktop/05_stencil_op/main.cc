@@ -99,7 +99,6 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clearIndicesAndVertices();
       }
 
       // Torus
@@ -119,10 +118,13 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clearIndicesAndVertices();
       }
 
       context_.finishTransientCommandEncoder(cmd);
+
+      // Clear host data once the command buffer has completed.
+      plane_.clearIndicesAndVertices();
+      torus_.clearIndicesAndVertices();
     }
 
     /* Descriptor set. */

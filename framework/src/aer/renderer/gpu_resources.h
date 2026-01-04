@@ -74,10 +74,10 @@ struct GPUResources : scene::HostResources {
   backend::Buffer index_buffer{};
 
  protected:
+  std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
+
   backend::Buffer frame_ubo_{};
   backend::Buffer transforms_ssbo_{};
-
-  std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};
