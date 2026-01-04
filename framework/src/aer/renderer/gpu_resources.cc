@@ -65,9 +65,6 @@ bool GPUResources::loadFile(std::string_view filename) {
     }
   }
 
-  /* Build the registry from the materials found in the model. */
-  material_fx_registry_->setup(material_proxies, material_refs);
-
   return true;
 }
 
@@ -92,19 +89,31 @@ void GPUResources::initializeSubmeshDescriptors(
 // ----------------------------------------------------------------------------
 
 void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
-  /* Transfer Materials */
-  material_fx_registry_->pushMaterialStorageBuffers();
+  /* Force descriptors to be up to date before uploading.
+     Will invalidate previous ones.
+  */
+  resetInternalDescriptors();
+
+  /* Build the Material Registry. */
+  {
+    material_fx_registry_->setup(material_proxies, material_refs); //
+    material_fx_registry_->pushMaterialStorageBuffers();
+  }
+
+  // ---------------------------------
 
   /* Create the shared Frame UBO */
-  frame_ubo_ = context_.createBuffer(
-    sizeof(material_shader_interop::FrameData),
-      VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
-    | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-    ,
-    VMA_MEMORY_USAGE_AUTO,
-      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-    | VMA_ALLOCATION_CREATE_MAPPED_BIT
-  );
+  if (!frame_ubo_.valid()) {
+    frame_ubo_ = context_.createBuffer(
+      sizeof(material_shader_interop::FrameData),
+        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      ,
+      VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+      | VMA_ALLOCATION_CREATE_MAPPED_BIT
+    );
+  }
 
   /* Transfer Textures */
   if (total_image_size > 0) {
