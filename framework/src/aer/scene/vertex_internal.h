@@ -82,9 +82,10 @@ struct VertexInternal_t : material_shader_interop::Vertex {
 
   void applyTransform(mat4 const& matrix) {
     position = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(position, 1.0f)));
-    normal = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(normal, 0.0f)));
-    auto t3 = lina::to_vec3(linalg::mul(matrix, lina::to_vec4(lina::to_vec3(tangent), 0.0f)));
-    tangent = vec4f(t3, tangent.w);
+    auto const normalMatrix = lina::to_mat3(matrix);
+    normal = linalg::normalize(linalg::mul(normalMatrix, normal));
+    auto const t3 = linalg::mul(normalMatrix, lina::to_vec3(tangent));
+    tangent = vec4(linalg::normalize(t3), tangent.w);
   }
 };
 
