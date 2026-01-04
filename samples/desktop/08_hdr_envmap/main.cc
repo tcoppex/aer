@@ -88,6 +88,7 @@ class SampleApp final : public Application {
         { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
         { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
       });
+      scene_->uploadToDevice();
 
       LOG_CHECK(scene_->device_images.size() <= kMaxNumTextures); //
     }

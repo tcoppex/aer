@@ -295,6 +295,7 @@ class SampleApp final : public Application {
       { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
       { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
     });
+    gltf_scene->uploadToDevice();
 
     /* Fx Pipeline. */
     toon_pipeline_.init(context_);

@@ -247,7 +247,7 @@ GLTFScene Renderer::loadGLTF(
     scene->setup();
     if (scene->loadFile(gltf_filename)) {
       scene->initializeSubmeshDescriptors(attribute_to_location);
-      scene->uploadToDevice();
+      // scene->uploadToDevice(); // (do it manually instead?)
       return scene;
     }
   }
