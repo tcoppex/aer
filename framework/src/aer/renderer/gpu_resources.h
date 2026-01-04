@@ -59,7 +59,11 @@ struct GPUResources : scene::HostResources {
   // -------------------------------
 
  private:
+  /* Update Global Descriptor Set bindings. */
+  void updateGlobalDescriptorSetBindings() const; //
+
   void uploadImages();
+
   void uploadBuffers();
 
   void uploadTransforms();

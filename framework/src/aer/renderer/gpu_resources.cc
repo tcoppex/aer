@@ -123,33 +123,6 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
   }
 
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-  /* Update Global Descriptor Set bindings. */
-  {
-    auto const& DSR = context_.descriptor_set_registry();
-
-    if (frame_ubo_.valid()) {
-      DSR.updateFrameUBO(frame_ubo_);
-    }
-
-    if (total_image_size > 0) {
-      DSR.updateSceneTextures(buildDescriptorImageInfos());
-    }
-
-    if (transforms_ssbo_.valid()) {
-      DSR.updateSceneTransforms(transforms_ssbo_);
-    }
-
-    // ---------------------------------------
-    if (rt_scene_ && (vertex_buffer_size > 0)) {
-      DSR.updateRayTracingScene(rt_scene_.get());
-    }
-    // ---------------------------------------
-  }
-  //--------------------------------------------------------------
-  //--------------------------------------------------------------
-
   /* Clear host data once uploaded. */
   if (bReleaseHostDataOnUpload) {
     host_images.clear();
@@ -158,6 +131,11 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
       mesh->clearIndicesAndVertices(); //
     }
   }
+
+  // ---------------------------------
+
+  /* Initial descriptor setup */
+  updateGlobalDescriptorSetBindings(); //
 }
 
 // ----------------------------------------------------------------------------
@@ -318,6 +296,30 @@ void GPUResources::set_ray_tracing_fx(RayTracingFx* fx) {
   LOG_CHECK(fx != nullptr);
   fx->buildMaterialStorageBuffer(material_proxies); //
   ray_tracing_fx_ = fx;
+}
+
+// ----------------------------------------------------------------------------
+
+void GPUResources::updateGlobalDescriptorSetBindings() const {
+  auto const& DSR = context_.descriptor_set_registry();
+
+  if (frame_ubo_.valid()) {
+    DSR.updateFrameUBO(frame_ubo_);
+  }
+
+  if (total_image_size > 0) {
+    DSR.updateSceneTextures(buildDescriptorImageInfos());
+  }
+
+  if (transforms_ssbo_.valid()) {
+    DSR.updateSceneTransforms(transforms_ssbo_);
+  }
+
+  // ---------------------------------------
+  if (rt_scene_ && (vertex_buffer_size > 0)) {
+    DSR.updateRayTracingScene(rt_scene_.get());
+  }
+  // ---------------------------------------
 }
 
 // ----------------------------------------------------------------------------
