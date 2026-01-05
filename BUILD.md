@@ -29,6 +29,7 @@ cmake --build build --config Release
  * Vulkan SDK 1.1 (_1.4.321.0 headers downloaded via CPM_)
  * Volk 1.4.321.0 (_via CPM_)
  * VulkanMemoryAllocator 3.2.0 (_via CPM_)
+ * KTX (Khronos Texture) Library 4.4.2 (_via CPM_)
  * GLFW 3.4 (_via CPM_)
  * libfmt 12.0.0 (_via CPM_)
  * ImGUI v1.92.3-docking (_via CPM_)

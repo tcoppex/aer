@@ -217,6 +217,22 @@ CPMAddPackage(
 set(VMA_INCLUDE_DIR  ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 
 #-----------------------------------
+# KTX (Khronos Texture) Library
+#-----------------------------------
+CPMAddPackage(
+  NAME libktx
+  GITHUB_REPOSITORY KhronosGroup/KTX-Software
+  GIT_TAG v4.4.2
+  OPTIONS
+    "KTX_FEATURE_VULKAN ON"
+    "KTX_FEATURE_STATIC_LIBRARY ON"
+    "KTX_FEATURE_OPENGL OFF"
+    "KTX_FEATURE_TOOLS OFF"
+    "KTX_FEATURE_TESTS OFF"
+)
+set(KTX_INCLUDE_DIR  ${libktx_SOURCE_DIR}/include)
+
+#-----------------------------------
 # CGLTF
 #-----------------------------------
 CPMAddPackage(
@@ -384,12 +400,13 @@ target_link_libraries(${target}
   PUBLIC
     ${PlatformLibs} #!
   PRIVATE
-    ${X11_LIBRARIES}
-    volk
-    fmt
-    VulkanMemoryAllocator
-    mikktspace
     ${LIBM_LIBRARIES}
+    ${X11_LIBRARIES}
+    fmt
+    volk
+    VulkanMemoryAllocator
+    ktx
+    mikktspace
 )
 
 target_include_directories(${target}
@@ -406,6 +423,7 @@ target_include_directories(${target}
   PRIVATE
     ${FRAMEWORK_SHADERS_DIR}
     ${CGLTF_INCLUDE_DIR}
+    ${KTX_INCLUDE_DIR}
     ${MIKKTSPACE_INCLUDE_DIR}
     ${EARCUT_INCLUDE_DIR}
 )
