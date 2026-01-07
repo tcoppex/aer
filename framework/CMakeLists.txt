@@ -383,6 +383,7 @@ set(UTFCPP_INCLUDE_DIR ${utfcpp_SOURCE_DIR}/source)
 set(STB_LIB_URL https://raw.githubusercontent.com/nothings/stb/refs/heads/master/)
 list(APPEND STB_LIBS_TO_FETCH
   stb_truetype.h # (currently v1.26)
+  stb_image.h # (currently v2.30)
 )
 
 foreach (stb_lib ${STB_LIBS_TO_FETCH})
