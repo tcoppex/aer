@@ -1,4 +1,4 @@
-//  lina.h - v0.7.0
+//  lina.h - v0.8.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -81,6 +81,8 @@ using mat3x4f = linalg::mat<LINA_FP, 3, 4>;
 // using mat3x3f = mat3f;
 // using mat4x4f = mat4f;
 
+using quat = vec4f;
+
 // GLSL types
 using vec2 = vec2f;
 using vec3 = vec3f;
@@ -137,8 +139,6 @@ template<class T> constexpr linalg::mat<T, 3, 4> to_mat3x4(linalg::mat<T, 4, 4> 
 template<class T> constexpr linalg::mat<T, 4, 4> to_mat4(linalg::mat<T, 3, 3> const& v) { return {to_vec4(v.x),to_vec4(v.y),to_vec4(v.z), {0, 0, 0, 1}}; }
 
 template<class T> constexpr linalg::mat<T, 4, 4> remove_translation(linalg::mat<T, 4, 4> const& v) { return {v.x,v.y,v.z, {0, 0, 0, 1}}; }
-
-template<class T> constexpr linalg::vec<T, 4> qidentity() { return {0,0,0,1}; }
 
 template<class T> constexpr T degrees(T const& _radians) { return _radians * (180.0 / kPi); }
 template<class T> constexpr T radians(T const& _degrees) { return _degrees * (kPi / 180.0); }
@@ -401,6 +401,16 @@ bool solve_basic_ik(
 END_LINA_NAMESPACE
 
 /* -------------------------------------------------------------------------- */
+
+namespace linalg {
+
+template<class T> struct converter<vec<T, 4>, identity_t> {
+  constexpr vec<T, 4> operator() (identity_t) const { return {0,0,0,1}; }
+};
+
+}
+
+// ----------------------------------------------------------------------------
 
 //
 // Types interoperability.
