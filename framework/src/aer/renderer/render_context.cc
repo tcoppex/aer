@@ -850,7 +850,7 @@ bool RenderContext::loadImage2D(
     /* Transfer staging device buffer to image memory. */
     {
       VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
-      cmd.transitionImages(
+      cmd.transitionColorImages(
         { image },
         VK_IMAGE_LAYOUT_UNDEFINED,
         transfer_layout,
@@ -859,7 +859,7 @@ bool RenderContext::loadImage2D(
 
       cmd.copyBufferToImage(staging_buffer, image, extent, transfer_layout);
 
-      cmd.transitionImages(
+      cmd.transitionColorImages(
         { image },
         transfer_layout,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

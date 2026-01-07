@@ -382,7 +382,7 @@ void GPUResources::uploadImages() {
   {
     VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
 
-    cmd.transitionImages(
+    cmd.transitionColorImages(
       device_images,
       VK_IMAGE_LAYOUT_UNDEFINED,
       transfer_layout,
@@ -398,7 +398,7 @@ void GPUResources::uploadImages() {
         &copies[i]
       );
     }
-    cmd.transitionImages(
+    cmd.transitionColorImages(
       device_images,
       transfer_layout,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

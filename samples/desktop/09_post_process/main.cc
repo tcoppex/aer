@@ -333,7 +333,10 @@ class SampleApp final : public Application {
     toon_pipeline_.execute(cmd);
 
     /* Blit the result directly to the current swapchain image. */
-    renderer_.blitColor(cmd, toon_pipeline_.image_output());
+    {
+      auto const& image = toon_pipeline_.image_output();
+      renderer_.blitColor(cmd, image);
+    }
 
     /* Draw UI on top. */
     drawUI(cmd);

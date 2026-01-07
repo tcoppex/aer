@@ -191,10 +191,19 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   /* When using timeline semaphore, we need to transition images layout to present. */
   context.transitionImages(
     images_,
-    VK_IMAGE_LAYOUT_UNDEFINED,
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    image_array_size()
+    VkImageMemoryBarrier2{
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0u,
+        .levelCount = 1u,
+        .baseArrayLayer = 0u,
+        .layerCount = image_array_size()
+      },
+    }
   );
+
   need_rebuild_ = false;
 
   return true;

@@ -253,6 +253,12 @@ class CommandEncoder : public GenericCommandEncoder {
 
   void transitionImages(
     std::vector<backend::Image> const& images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const;
+
+  // [somewhat deprecated helper to transition color images]
+  void transitionColorImages(
+    std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
     VkImageLayout const dst_layout,
     uint32_t layer_count = 1u
@@ -284,11 +290,13 @@ class CommandEncoder : public GenericCommandEncoder {
 
   void blitImage2D(
     backend::Image const& src,
-    VkImageLayout src_layout,
+    VkImageLayout current_src_layout,
+    VkImageLayout final_src_layout,
     backend::Image const& dst,
-    VkImageLayout dst_layout,
+    VkImageLayout current_dst_layout,
+    VkImageLayout final_dst_layout,
     VkExtent2D const& extent,
-    uint32_t layer_count = 1u
+    uint32_t layer_count
   ) const;
 
   // --- Rendering ---

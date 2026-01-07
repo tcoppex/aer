@@ -290,13 +290,26 @@ class SampleApp final : public Application {
   void draw(CommandEncoder const& cmd) final {
     if (ray_tracing_fx_.is_enable())
     {
-      // RAY TRACER
+      // -- RAY TRACING --
+
       ray_tracing_fx_.execute(cmd);
-      renderer_.blitColor(cmd, ray_tracing_fx_.image_output());
+
+      auto const& src_image = ray_tracing_fx_.image_output();
+
+      /* Blitting the image will change the layout to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
+      renderer_.blitColor(cmd, src_image);
+
+      /* So we need to transition it back before the next frame start. */
+      cmd.transitionColorImages(
+        {src_image},
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+      );
     }
     else
     {
-      // RASTERIZER
+      // -- RASTERIZING --
+
       auto pass = cmd.beginRendering();
       if (scene_) {
         scene_->render(pass);

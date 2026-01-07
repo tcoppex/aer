@@ -315,9 +315,7 @@ class Context {
 
   void transitionImages(
     std::vector<backend::Image> const& images,
-    VkImageLayout const src_layout,
-    VkImageLayout const dst_layout,
-    uint32_t layer_count = 1u
+    VkImageMemoryBarrier2 const& barrier
   ) const;
 
   void transientUploadImage(

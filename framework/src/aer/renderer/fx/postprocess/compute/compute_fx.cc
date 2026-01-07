@@ -48,7 +48,7 @@ void ComputeFx::execute(CommandEncoder const& cmd) const {
     return;
   }
 
-  cmd.transitionImages(
+  cmd.transitionColorImages(
     images_, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL
   );
 

@@ -35,12 +35,6 @@ void Framebuffer::resize(VkExtent2D const dimension) {
       | RenderTarget::kDefaultColorImageUsageFlags //
     );
   }
-  context_ptr_->transitionImages(
-    outputs_[BufferName::Color],
-    desc_.color_desc.initialLayout,
-    desc_.color_desc.finalLayout,
-    1u // layer_count
-  );
 
   // DepthStencil(s).
   if (use_depth_stencil_) {
@@ -54,6 +48,33 @@ void Framebuffer::resize(VkExtent2D const dimension) {
       );
     }
   }
+
+  /* Transition image layouts */
+  auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Transfer);
+  {
+    auto image_barrier = VkImageMemoryBarrier2{
+      .oldLayout = desc_.color_desc.initialLayout,
+      .newLayout = desc_.color_desc.finalLayout,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0u,
+        .levelCount = 1u,
+        .baseArrayLayer = 0u,
+        .layerCount = 1u
+      },
+    };
+
+    cmd.transitionImages(outputs_[BufferName::Color], image_barrier);
+
+    if (use_depth_stencil_) {
+      image_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; //
+      image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT
+                                                | VK_IMAGE_ASPECT_STENCIL_BIT
+                                                ;
+      cmd.transitionImages(outputs_[BufferName::DepthStencil], image_barrier);
+    }
+  }
+  context_ptr_->finishTransientCommandEncoder(cmd);
 
   uint32_t const attachmentCount{
     static_cast<uint32_t>(BufferName::kCount) - (use_depth_stencil_ ? 0u : 1u)

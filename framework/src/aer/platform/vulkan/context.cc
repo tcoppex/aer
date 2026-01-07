@@ -391,12 +391,10 @@ void Context::transientCopyBuffer(
 
 void Context::transitionImages(
   std::vector<backend::Image> const& images,
-  VkImageLayout const src_layout,
-  VkImageLayout const dst_layout,
-  uint32_t layer_count
+  VkImageMemoryBarrier2 const& barrier
 ) const {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
-  cmd.transitionImages(images, src_layout, dst_layout, layer_count);
+  cmd.transitionImages(images, barrier);
   finishTransientCommandEncoder(cmd);
 }
 
@@ -418,9 +416,9 @@ void Context::transientUploadImage(
   VkImageLayout const tmp_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   VkImageLayout const dst_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-  cmd.transitionImages({ device_image }, src_layout, tmp_layout);
+  cmd.transitionColorImages({ device_image }, src_layout, tmp_layout);
   cmd.copyBufferToImage(staging, device_image, extent, tmp_layout);
-  cmd.transitionImages({ device_image }, tmp_layout, dst_layout);
+  cmd.transitionColorImages({ device_image }, tmp_layout, dst_layout);
 
   finishTransientCommandEncoder(cmd);
   // clearStagingBuffers(); //
