@@ -38,7 +38,7 @@ cmake --build build --config Release
  * earcut v2.2.4 (_via CPM_)
  * utfcpp v4.0.8 (_via CPM_)
  * stb\_truetype.h (_fetched_)
- * stb\_image.h (_included_)
+ * stb\_image.h (_fetched_)
 
 By default, CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (either fetch from env or cmake variable). When none exist it will default to `./third_party/.cpmlocalcache/`.
 
