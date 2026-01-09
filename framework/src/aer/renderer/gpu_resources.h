@@ -70,6 +70,8 @@ struct GPUResources : scene::HostResources {
 
   void updateFrameData(Camera const& camera, float elapsed_time);
 
+  void prepareRasterizationRendering(Camera const& camera);
+
  public:
   /* --- Device Data --- */
 

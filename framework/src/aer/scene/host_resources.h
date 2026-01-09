@@ -9,6 +9,8 @@
 #include "aer/scene/material.h"
 #include "aer/scene/mesh.h"
 
+#include "aer/scene/ecs/hierarchy.h" //
+
 /* -------------------------------------------------------------------------- */
 
 namespace scene {
@@ -33,11 +35,15 @@ struct HostResources {
   static bool constexpr kRestructureAttribs{true};
 
   // For consistency and simplicity across shaders, even if 16bit is common.
+  // Required for RayTracing.
   static bool constexpr kForce32BitsIndexing{true};
+
+  // When set the mesh node's global matrix will be applied to its attributes
+  // and its local transforms set to identity.
+  static bool constexpr kForceApplyWorldMatrix{false};
 
  public:
   HostResources() = default;
-
   ~HostResources() = default;
 
   void setup();
@@ -50,10 +56,24 @@ struct HostResources {
     return material_proxies[ref.proxy_index];
   }
 
-  [[nodiscard]]
-  Mesh* findMeshByName(std::string_view mesh_name) const;
+  // ---------------------
+  // [[nodiscard]]
+  // Mesh* createMesh(std::string_view mesh_name); //
 
-  void debugPrintMeshNames() const;
+  // [[nodiscard]]
+  // Mesh* findMeshByName(std::string_view mesh_name) const;
+  // ---------------------
+
+ protected:
+  [[nodiscard]]
+  bool loadGLTF(std::string_view filename);
+
+  void resetInternalDescriptors();
+
+ public:
+  //-----------
+  scene::Hierarchy scene{};   // [wip]
+  //-----------
 
   /* --- Host Data --- */
 
@@ -64,11 +84,11 @@ struct HostResources {
   std::vector<MaterialProxy> material_proxies{};
   ResourceBuffer<MaterialRef> material_refs{}; //
 
-  ResourceBuffer<Mesh> meshes{}; //
-  IndexMap mesh_indices_map{};
-
-  std::vector<mat4f> transforms{};
-  bool transforms_has_changed{};
+  // -------
+  ResourceBuffer<Mesh> meshes{};    //
+  IndexMap mesh_indices_map{};      // [deprecated]
+  std::vector<mat4f> transforms{};  // [deprecated]
+  // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //
   ResourceMap<AnimationClip> animations_map{};
@@ -78,8 +98,6 @@ struct HostResources {
   uint32_t total_image_size{0u};
 
  protected:
-  void resetInternalDescriptors();
-
   MaterialProxy::TextureBinding default_texture_binding_{};
 };
 

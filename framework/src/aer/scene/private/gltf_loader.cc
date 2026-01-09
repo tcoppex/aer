@@ -245,8 +245,82 @@ void ExtractPrimitiveVertices(
 } // namespace ""
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
 namespace internal::gltf_loader {
+
+void ExtractNode(
+  cgltf_node const* node,
+  scene::Hierarchy& scene,
+  PointerToEntityMap_t &entities_lut,
+  bool const bForceApplyWorldMatrix
+) {
+  if (nullptr == node) {
+    return;
+  }
+
+  // Create a new entity.
+  auto parent_entity = entities_lut.at(node->parent);
+  auto e = scene.createStagingEntity(parent_entity);
+  entities_lut.try_emplace( node, e );
+
+  if (!bForceApplyWorldMatrix) [[likely]] {
+    // Set the entity local transform.
+    auto &transform = scene.registry.get<scene::component::Transform>(e);
+    if (node->has_translation) {
+      transform.position = vec3(node->translation);
+    }
+    if (node->has_rotation) {
+      transform.rotation = quat(node->rotation);
+    }
+    if (node->has_scale) {
+      transform.scale = vec3(node->scale);
+    }
+  }
+
+  // Parse its children.
+  for (cgltf_size i = 0; i < node->children_count; ++i) {
+    auto child_node = node->children[i];
+    ExtractNode(child_node, scene, entities_lut, bForceApplyWorldMatrix);
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+PointerToEntityMap_t ExtractSceneHierarchy(
+  cgltf_data const* data,
+  scene::Hierarchy& scene,
+  bool const bForceApplyWorldMatrix
+) {
+  PointerToEntityMap_t entities_lut{
+    {nullptr, entt::null}
+  };
+
+  if (data->scenes_count > 1) {
+    LOGW("{} : gltf file contains {} scenes, only the first one will be extracted.",
+      __FUNCTION__, data->scenes_count);
+  }
+
+  auto first_scene = data->scene;
+  // -----
+  // LOGI("> gltf file contains {} scene(s).", data->scenes_count);
+  // LOGI("> gltf file 1st scene contains {} node(s).", first_scene->nodes_count);
+  // LOGI("> gltf file contains {} node(s).", data->nodes_count);
+  // -----
+
+  if (first_scene != nullptr) [[likely]] {
+    for (cgltf_size i = 0; i < first_scene->nodes_count; ++i) {
+      cgltf_node const* node = first_scene->nodes[i];
+      ExtractNode(node, scene, entities_lut, bForceApplyWorldMatrix);
+    }
+  } else {
+    LOGW("{} : gltf file contains no scene.", __FUNCTION__);
+  }
+
+  return entities_lut;
+}
+
+// ----------------------------------------------------------------------------
 
 PointerToSamplerMap_t ExtractSamplers(
   cgltf_data const* data,
@@ -422,25 +496,23 @@ PointerToIndexMap_t ExtractSkeletons(
 
 void ExtractMeshes(
   cgltf_data const* data,
+  scene::Hierarchy &scene,
+  PointerToEntityMap_t &entities_lut,
   PointerToIndexMap_t const& materials_indices,
   scene::ResourceBuffer<scene::MaterialRef> const& material_refs,
   PointerToIndexMap_t const& skeleton_indices,
   scene::ResourceBuffer<scene::Skeleton>const& skeletons,
   scene::ResourceBuffer<scene::Mesh>& meshes,
   scene::IndexMap &mesh_indices_map,
-  std::vector<mat4f>& meshes_transforms,
   bool const bRestructureAttribs,
-  bool const bForce32bitsIndex
+  bool const bForce32bitsIndex,
+  bool const bForceApplyWorldMatrix
 ) {
   /**
    * Each Mesh hold its geometry,
    * each primitive consist of a material and offset in the mesh geometry.
    * We assume every primitives of a Mesh have the same topology / attributes
    ***/
-
-  /* When set, the mesh node's transform will be applied to their attribute
-   * directly instead of being used as default transform matrix. */
-  bool const kForceApplyWorldMatrix = true; //
 
   /* Preprocess meshes nodes. */
   std::vector<uint32_t> meshNodeIndices{};
@@ -505,6 +577,11 @@ void ExtractMeshes(
       continue;
     }
 
+    // Next valid mesh index.
+    uint32_t const mesh_index = static_cast<uint32_t>(
+      meshes.empty() ? 0u : meshes.size()
+    );
+
     // Retrieve the node's world matrix.
     mat4 world_matrix{};
     cgltf_node_transform_world(&node, lina::ptr(world_matrix)); //
@@ -514,9 +591,15 @@ void ExtractMeshes(
     auto mesh = std::make_unique<scene::Mesh>();
     {
       mesh->submeshes.resize(valid_prim_indices.size(), {.parent = mesh.get()});
-      meshes_transforms.emplace_back(
-        kForceApplyWorldMatrix ? linalg::identity : world_matrix //
-      );
+
+      // Add a mesh component to the current entity.
+      {
+        auto mesh_entity = entities_lut.at(&node);
+        scene.registry.emplace<scene::component::Mesh>(
+          mesh_entity,
+          mesh_index
+        );
+      }
     }
 
     // -----------------
@@ -623,7 +706,7 @@ void ExtractMeshes(
         }
 
         /* Force apply the node's matrix to the mesh. */
-        if (kForceApplyWorldMatrix) {
+        if (bForceApplyWorldMatrix) {
           for (auto &v : vertices) {
             v.applyTransform(world_matrix);
           }
@@ -794,7 +877,7 @@ void ExtractMeshes(
 
     mesh_indices_map.emplace(
       std::string(node.mesh->name),
-      static_cast<uint32_t>(meshes.size() - 1)
+      mesh_index
     );
   }
 }

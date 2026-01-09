@@ -1,6 +1,8 @@
 #ifndef AER_RENDERER_RAYTRACING_SCENE_H_
 #define AER_RENDERER_RAYTRACING_SCENE_H_
 
+#include "aer/core/common.h"
+
 #include "aer/platform/vulkan/context.h"
 #include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/host_resources.h" // for scene::ResourceBuffer
@@ -20,6 +22,7 @@ class RayTracingSceneInterface {
   /* Build the Acceleration structures & Instances data buffer. */
   virtual void build(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
+    std::vector<mat4> const& transforms,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) = 0;
@@ -78,6 +81,7 @@ class RayTracingScene : public RayTracingSceneInterface {
 
   void build(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
+    std::vector<mat4> const& transforms,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) final;

@@ -38,6 +38,7 @@ void RayTracingScene::release() {
 
 void RayTracingScene::build(
   scene::ResourceBuffer<scene::Mesh> const& meshes,
+  std::vector<mat4> const& transforms,
   backend::Buffer const& vertex_buffer,
   backend::Buffer const& index_buffer
 ) {
@@ -82,7 +83,7 @@ void RayTracingScene::build(
           .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, //
           .accelerationStructureReference = blas_.back().address,
         };
-        ToVkTransformMatrix(mesh->world_matrix(), instance.transform);
+        ToVkTransformMatrix(transforms[mesh->transform_index], instance.transform); //
         tlas_.instances.push_back(instance);
       }
     }

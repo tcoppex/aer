@@ -189,27 +189,6 @@ VertexInputDescriptor Mesh::createVertexInputDescriptors(
   return result;
 }
 
-// ----------------------------------------------------------------------------
-
-void Mesh::set_resources_ptr(HostResources /*const*/ * R) {
-  resources_ptr_ = R;
-}
-
-// ----------------------------------------------------------------------------
-
-mat4 const& Mesh::world_matrix() const {
-  LOG_CHECK(resources_ptr_ != nullptr);
-  return resources_ptr_->transforms[transform_index];
-}
-
-// ----------------------------------------------------------------------------
-
-void Mesh::set_world_matrix(mat4 const& world_matrix) {
-  LOG_CHECK(resources_ptr_ != nullptr);
-  resources_ptr_->transforms[transform_index] = world_matrix;
-  resources_ptr_->transforms_has_changed = true;
-}
-
 } // namespace "scene"
 
 /* -------------------------------------------------------------------------- */

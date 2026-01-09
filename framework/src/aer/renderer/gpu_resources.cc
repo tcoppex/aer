@@ -127,7 +127,7 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
     /* Build the Raytracing acceleration structures. */
     if (rt_scene_) {
-      rt_scene_->build(meshes, vertex_buffer, index_buffer);
+      rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
     }
     // ---------------------------------------
   }
@@ -172,91 +172,34 @@ std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() con
 // ----------------------------------------------------------------------------
 
 void GPUResources::update(Camera const& camera, float elapsed_time) {
+  /* Update the entities hierarchy. */
+  scene.update();
+
+  // [Copy new matrices to the local matrices buffer]
+  // ------------------------
+#if 1
+  {
+    scene.registry
+         .view<scene::component::GlobalTransform, scene::component::Mesh>()
+         .each([&_transforms = this->transforms](auto &global, auto &mesh) {
+      // HLOGI("meshIndex {}",mesh.meshIndex );
+      _transforms[mesh.meshIndex] = global.worldMatrix;
+    });
+  }
+#endif
+  // ------------------------
+
+  /* Update and upload per-frame data. */
   updateFrameData(camera, elapsed_time);
 
-  /* The rest of the update does not concern ray traced scenes. */
-  if (ray_tracing_fx_ && ray_tracing_fx_->is_enable()) {
-    return;
+  /* Upload mesh transforms when needed. */
+  uploadTransforms();
+
+  /* Prepare the scenes for rasterization (sort meshes). */
+  if (!ray_tracing_fx_ || !ray_tracing_fx_->is_enable()) {
+    prepareRasterizationRendering(camera);
   }
-
-  /// ---------------------------------------
-  ///
-  /// + DevNotes +
-  ///
-  /// We could improve the overall sorting by using a generic 64bits sorting
-  /// key (pipeline << 32) | (material << 16) | depthBits), using a single buffer.
-  ///
-  /// The lookups_ are bins sorted by AlphaMode, to avoid collisions on possible
-  /// future MaterialStates we hash the map on <MaterialFx*, MaterialStates> pairs
-  /// instead of the sole MaterialFx*, however the resulting key not being sort
-  /// it would possible to rebind a pipeline multiple time for a given lookup bins,
-  /// which is okay for alphablend materials but could affect performance on
-  /// Opaque / AlphaMask renders.
-  /// However using std::map with MaterialFx* as the first key of the pair should
-  /// give ordered result.
-  ///
-  /// ---------------------------------------
-
-  // -- Retrieve submeshes associated to each MaterialFx --
-
-  if constexpr (true) {
-    lookups_ = {};
-    for (auto const& mesh : meshes) {
-      for (auto const& submesh : mesh->submeshes) {
-        if (auto matref = submesh.material_ref; matref) {
-          auto const alpha_mode = matref->states.alpha_mode;
-          auto fx = material_fx_registry_->material_fx(*matref);
-          auto hashpair = std::make_pair(fx, matref->states);
-          lookups_[alpha_mode][hashpair].emplace_back(&submesh);
-        }
-      }
-    }
-    //reset_scene_lookups = false;
-  }
-
-  // -- Sort each buffer of submeshes --
-
-  using SortKey = std::pair<float, size_t>; // (depthProxy, index)
-  std::vector<SortKey> sortkeys{};
-  SubMeshBuffer swap_buffer{};
-  auto const camera_dir = camera.direction();
-
-  auto sort_submeshes = [&](SubMeshBuffer &submeshes, auto comp) {
-    sortkeys = {};
-    sortkeys.reserve(submeshes.size());
-    for (size_t i = 0; i < submeshes.size(); ++i) {
-      mat4 const& world = submeshes[i]->parent->world_matrix();
-      vec3 const pos = lina::to_vec3(world.w);
-      vec3 const v = camera.position() - pos;
-      float const dp = linalg::dot(camera_dir, v);
-      sortkeys.emplace_back(dp, i);
-    }
-    std::ranges::sort(sortkeys, comp, &SortKey::first);
-
-    // final-sort on submeshes by swapping with new buffer.
-    swap_buffer.resize(submeshes.size());
-    for (size_t i = 0; i < submeshes.size(); ++i) {
-      auto [_, submesh_index] = sortkeys[i];
-      swap_buffer[i] = std::move(submeshes[submesh_index]);
-    }
-    submeshes.swap(swap_buffer);
-  };
-
-  // -- Sort front to back for depth testing --
-
-  for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Opaque]) {
-    sort_submeshes(submeshes, std::less{});
-  }
-  for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Mask]) {
-    sort_submeshes(submeshes, std::less{});
-  }
-
-  // -- Sort back to front for alpha blending --
-
-  for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Blend]) {
-    sort_submeshes(submeshes, std::greater{});
-  }
-}
+};
 
 // ----------------------------------------------------------------------------
 
@@ -271,7 +214,7 @@ void GPUResources::render(RenderPassEncoder const& pass) {
   // Render each Fx.
   uint32_t instance_index = 0u;
   for (auto& lookup : lookups_) {
-    for (auto& [ hashpair, submeshes] : lookup) {
+    for (auto& [hashpair, submeshes] : lookup) {
       auto [fx, states] = hashpair;
 
       // Bind pipeline & descriptor set.
@@ -307,6 +250,7 @@ void GPUResources::set_ray_tracing_fx(RayTracingFx* fx) {
   ray_tracing_fx_ = fx;
 }
 
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 void GPUResources::updateGlobalDescriptorSetBindings() const {
@@ -486,11 +430,11 @@ void GPUResources::uploadBuffers() {
     }
 
     // Transfer the transforms buffer in one go.
-    memcpy(
-      device_data + vertex_buffer_size + index_buffer_size,
-      transforms.data(),
-      transforms_buffer_size
-    );
+    // memcpy(
+    //   device_data + vertex_buffer_size + index_buffer_size,
+    //   transforms.data(),
+    //   transforms_buffer_size
+    // );
 
     context_.unmapMemory(staging_buffer);
   }
@@ -547,12 +491,8 @@ void GPUResources::uploadBuffers() {
 // ----------------------------------------------------------------------------
 
 void GPUResources::uploadTransforms() {
-  /// [improvement: only update ranges that has been changed]
-
-  if (transforms_has_changed) {
-    context_.transientUploadBuffer(transforms, transforms_ssbo_);
-    transforms_has_changed = false;
-  }
+  LOG_CHECK(transforms.size() == meshes.size()); //
+  context_.transientUploadBuffer(transforms, transforms_ssbo_);
 }
 
 // ----------------------------------------------------------------------------
@@ -585,17 +525,85 @@ void GPUResources::updateFrameData(
     std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
   }
 
-  /* Upload buffers */
-  // Note: we might want to double/triple buffering those to avoid race conditions.
+  /* Upload buffer. */
+  {
+    // [Note]
+    // 1. We might want to double/triple buffering it to avoid race conditions.
+    // 2. Using writeBuffer() could be more efficient here if the buffer has been
+    //     setup accordingly
+    context_.transientUploadBuffer(
+      &frame_data, sizeof(frame_data), frame_ubo_
+    );
+  }
+}
 
-  // [Using writeBuffer() could be more efficient here if the buffer has been
-  // setup accordingly]
-  context_.transientUploadBuffer(
-    &frame_data, sizeof(frame_data), frame_ubo_
-  );
+// ----------------------------------------------------------------------------
 
-  /* Upload mesh transforms when needed. */
-  uploadTransforms();
+void GPUResources::prepareRasterizationRendering(Camera const& camera) {
+  LOG_CHECK(!ray_tracing_fx_ || !ray_tracing_fx_->is_enable());
+
+  // -- Retrieve submeshes associated to each MaterialFx --
+
+  if constexpr (true) {
+    lookups_ = {};
+    for (auto const& mesh : meshes) {
+      for (auto const& submesh : mesh->submeshes) {
+        if (auto matref = submesh.material_ref; matref) {
+          auto const alpha_mode = matref->states.alpha_mode;
+          auto fx = material_fx_registry_->material_fx(*matref);
+          auto hashpair = std::make_pair(fx, matref->states);
+          lookups_[alpha_mode][hashpair].emplace_back(&submesh);
+        }
+      }
+    }
+    //reset_scene_lookups = false;
+  }
+
+  // -- Sort each buffer of submeshes --
+
+  using SortKey = std::pair<float, size_t>; // (depthProxy, index)
+  std::vector<SortKey> sortkeys{};
+  SubMeshBuffer swap_buffer{};
+  auto const camera_dir = camera.direction();
+
+  auto sort_submeshes = [&](SubMeshBuffer &submeshes, auto comp) {
+    sortkeys = {};
+    sortkeys.reserve(submeshes.size());
+    for (size_t i = 0; i < submeshes.size(); ++i) {
+      mat4 const& world = transforms[submeshes[i]->parent->transform_index];
+      vec3 const pos = lina::to_vec3(world.w);
+      vec3 const v = camera.position() - pos;
+      float const dp = linalg::dot(camera_dir, v);
+      sortkeys.emplace_back(dp, i);
+    }
+    std::ranges::sort(sortkeys, comp, &SortKey::first);
+
+    // final-sort on submeshes by swapping with new buffer.
+    swap_buffer.resize(submeshes.size());
+    for (size_t i = 0; i < submeshes.size(); ++i) {
+      auto [_, submesh_index] = sortkeys[i];
+      swap_buffer[i] = std::move(submeshes[submesh_index]);
+    }
+    submeshes.swap(swap_buffer);
+  };
+
+  // -- [optionnal] Sort front to back for early depth testing --
+
+  for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Opaque]) {
+    sort_submeshes(submeshes, std::less{});
+  }
+
+  if constexpr (false) {
+    for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Mask]) {
+      sort_submeshes(submeshes, std::less{});
+    }
+  }
+
+  // -- Sort back to front for alpha blending --
+
+  for (auto& [_, submeshes] : lookups_[MaterialStates::AlphaMode::Blend]) {
+    sort_submeshes(submeshes, std::greater{});
+  }
 }
 
 /* -------------------------------------------------------------------------- */
