@@ -15,7 +15,10 @@ void Hierarchy::setup() {
 // ----------------------------------------------------------------------------
 
 void Hierarchy::update() {
-  updateGlobalTransform();
+  // [todo]
+  // Use a system to flag dirty matrices to only rebuild those who needs it.
+  auto group = staging_group();
+  updateGlobalTransform(group, root, linalg::identity);
 }
 
 // ----------------------------------------------------------------------------
@@ -71,22 +74,15 @@ void Hierarchy::moveEntity(entt::entity e, entt::entity newParent) {
 }
 
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 
-void Hierarchy::updateGlobalTransform() {
-  auto group = staging_group();
-
-  // LOGI("staging group size : {}", group.size());
-  // auto nRootChildren = group.get<component::Node>(root).numChildren;
-  // LOGI("root children count : {}", nRootChildren);
-
-  // TODO
-  // Use a system to flag dirty matrices to only rebuild those who needs it
-  // Same for local Transforms.
-
-  updateGlobalTransform(group, root, linalg::identity);
+entt::entity Hierarchy::findByName(std::string_view entity_name) const {
+  if (auto it = entity_map.find(std::string(entity_name)); it != entity_map.end()) {
+    return it->second;
+  }
+  return entt::null;
 }
 
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 void Hierarchy::updateGlobalTransform(
@@ -96,7 +92,14 @@ void Hierarchy::updateGlobalTransform(
 ) {
   auto [node, transform, global] = group.get(e);
 
-  global.worldMatrix = linalg::mul(parent_matrix, transform.matrix());
+  // [todo] cache local transform.
+  auto const& localMatrix = lina::transform_matrix(
+    transform.position,
+    transform.rotation,
+    transform.scale
+  );
+
+  global.worldMatrix = linalg::mul(parent_matrix, localMatrix);
 
   auto child = node.firstChild;
   while (child != entt::null) {

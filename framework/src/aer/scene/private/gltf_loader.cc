@@ -253,7 +253,7 @@ void ExtractNode(
   cgltf_node const* node,
   scene::Hierarchy& scene,
   PointerToEntityMap_t &entities_lut,
-  bool const bForceApplyWorldMatrix
+  bool const bApplyRootWorldMatrix
 ) {
   if (nullptr == node) {
     return;
@@ -264,8 +264,14 @@ void ExtractNode(
   auto e = scene.createStagingEntity(parent_entity);
   entities_lut.try_emplace( node, e );
 
-  if (!bForceApplyWorldMatrix) [[likely]] {
-    // Set the entity local transform.
+  if (node->name != nullptr) {
+    scene.entity_map.try_emplace(node->name, e);
+  }
+
+  // Set the entity local transform.
+  bool const is_root_node = (node->parent == nullptr);
+  if ((bApplyRootWorldMatrix && !is_root_node) || !bApplyRootWorldMatrix)
+  {
     auto &transform = scene.registry.get<scene::component::Transform>(e);
     if (node->has_translation) {
       transform.position = vec3(node->translation);
@@ -278,10 +284,10 @@ void ExtractNode(
     }
   }
 
-  // Parse its children.
+  // Parse the node's children.
   for (cgltf_size i = 0; i < node->children_count; ++i) {
     auto child_node = node->children[i];
-    ExtractNode(child_node, scene, entities_lut, bForceApplyWorldMatrix);
+    ExtractNode(child_node, scene, entities_lut, bApplyRootWorldMatrix);
   }
 }
 
@@ -290,7 +296,7 @@ void ExtractNode(
 PointerToEntityMap_t ExtractSceneHierarchy(
   cgltf_data const* data,
   scene::Hierarchy& scene,
-  bool const bForceApplyWorldMatrix
+  bool const bApplyRootWorldMatrix
 ) {
   PointerToEntityMap_t entities_lut{
     {nullptr, entt::null}
@@ -302,6 +308,7 @@ PointerToEntityMap_t ExtractSceneHierarchy(
   }
 
   auto first_scene = data->scene;
+
   // -----
   // LOGI("> gltf file contains {} scene(s).", data->scenes_count);
   // LOGI("> gltf file 1st scene contains {} node(s).", first_scene->nodes_count);
@@ -311,7 +318,7 @@ PointerToEntityMap_t ExtractSceneHierarchy(
   if (first_scene != nullptr) [[likely]] {
     for (cgltf_size i = 0; i < first_scene->nodes_count; ++i) {
       cgltf_node const* node = first_scene->nodes[i];
-      ExtractNode(node, scene, entities_lut, bForceApplyWorldMatrix);
+      ExtractNode(node, scene, entities_lut, bApplyRootWorldMatrix);
     }
   } else {
     LOGW("{} : gltf file contains no scene.", __FUNCTION__);
@@ -506,7 +513,7 @@ void ExtractMeshes(
   scene::IndexMap &mesh_indices_map,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex,
-  bool const bForceApplyWorldMatrix
+  bool const bApplyRootWorldMatrix
 ) {
   /**
    * Each Mesh hold its geometry,
@@ -527,6 +534,13 @@ void ExtractMeshes(
     }
   }
   // meshes.reserve(meshNodeIndices.size());
+
+  mat4 world_matrix{linalg::identity};
+
+  // (not correct if there is multiple scene)
+  if (bApplyRootWorldMatrix) {
+    cgltf_node_transform_world(data->scene->nodes[0], lina::ptr(world_matrix)); //
+  }
 
   // Parse each mesh nodes (for primitives & skeleton).
   for (auto mesh_node_index : meshNodeIndices) {
@@ -581,10 +595,6 @@ void ExtractMeshes(
     uint32_t const mesh_index = static_cast<uint32_t>(
       meshes.empty() ? 0u : meshes.size()
     );
-
-    // Retrieve the node's world matrix.
-    mat4 world_matrix{};
-    cgltf_node_transform_world(&node, lina::ptr(world_matrix)); //
 
     // -----------------
     // B. Create a new mesh.
@@ -705,8 +715,8 @@ void ExtractMeshes(
           }
         }
 
-        /* Force apply the node's matrix to the mesh. */
-        if (bForceApplyWorldMatrix) {
+        /* Apply the root node's matrix to the mesh. */
+        if (bApplyRootWorldMatrix) {
           for (auto &v : vertices) {
             v.applyTransform(world_matrix);
           }

@@ -24,7 +24,7 @@ using PointerToSamplerMap_t = PointerMap_t<scene::Sampler>;
 PointerToEntityMap_t ExtractSceneHierarchy(
   cgltf_data const* data,
   scene::Hierarchy& scene,
-  bool const bForceApplyWorldMatrix
+  bool const bApplyRootWorldMatrix
 );
 
 PointerToSamplerMap_t ExtractSamplers(
@@ -69,7 +69,7 @@ void ExtractMeshes(
   scene::IndexMap &mesh_indices_map,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex,
-  bool const bForceApplyWorldMatrix
+  bool const bApplyRootWorldMatrix
 );
 
 void ExtractAnimations(

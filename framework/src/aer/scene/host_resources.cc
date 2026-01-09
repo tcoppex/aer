@@ -136,7 +136,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
         data,
         &_scene = this->scene
       ] {
-        return ExtractSceneHierarchy(data, _scene, kForceApplyWorldMatrix);
+        return ExtractSceneHierarchy(data, _scene, kApplyRootWorldMatrix);
       });
 
       auto taskSamplers = run_task_sampler([
@@ -225,7 +225,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
           _mesh_indices_map,
           kRestructureAttribs,
           kForce32BitsIndexing,
-          kForceApplyWorldMatrix
+          kApplyRootWorldMatrix
         );
       });
 
@@ -236,7 +236,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
     {
       /* --- Serialized version --- */
 
-      auto entities_lut       = ExtractSceneHierarchy(data, scene, kForceApplyWorldMatrix);
+      auto entities_lut       = ExtractSceneHierarchy(data, scene, kApplyRootWorldMatrix);
       auto samplers_lut       = ExtractSamplers(data, samplers);
       auto skeletons_indices  = ExtractSkeletons(data, skeletons);
       auto images_indices     = ExtractImages(data, host_images);
@@ -262,7 +262,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
         mesh_indices_map,
         kRestructureAttribs,
         kForce32BitsIndexing,
-        kForceApplyWorldMatrix
+        kApplyRootWorldMatrix
       );
     }
 

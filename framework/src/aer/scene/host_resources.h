@@ -38,9 +38,9 @@ struct HostResources {
   // Required for RayTracing.
   static bool constexpr kForce32BitsIndexing{true};
 
-  // When set the mesh node's global matrix will be applied to its attributes
-  // and its local transforms set to identity.
-  static bool constexpr kForceApplyWorldMatrix{false};
+  // When set a mesh root node's matrix will be applied to its attributes
+  // and its local transforms set to identity. Use to correct axis orientation.
+  static bool constexpr kApplyRootWorldMatrix{true};
 
  public:
   HostResources() = default;
@@ -55,14 +55,6 @@ struct HostResources {
   MaterialProxy const& material_proxy(MaterialRef const& ref) const {
     return material_proxies[ref.proxy_index];
   }
-
-  // ---------------------
-  // [[nodiscard]]
-  // Mesh* createMesh(std::string_view mesh_name); //
-
-  // [[nodiscard]]
-  // Mesh* findMeshByName(std::string_view mesh_name) const;
-  // ---------------------
 
  protected:
   [[nodiscard]]

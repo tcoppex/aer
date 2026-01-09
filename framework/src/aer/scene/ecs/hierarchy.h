@@ -28,17 +28,6 @@ struct Transform {
   vec3 position{};
   quat rotation{linalg::identity};
   vec3 scale{1.0f, 1.0f, 1.0f};
-
-  [[nodiscard]]
-  mat4 matrix() const noexcept {
-    return linalg::mul(
-      linalg::mul(
-        linalg::translation_matrix(position),
-        linalg::rotation_matrix(rotation)
-      ),
-      linalg::scaling_matrix(scale)
-    );
-  }
 };
 
 /* World matrix for the entity */
@@ -59,8 +48,12 @@ struct Mesh {
 
 class Hierarchy {
  public:
+  using EntityMap = std::unordered_map<std::string, entt::entity>;
+
+ public:
   entt::registry registry{};
   entt::entity root{};
+  EntityMap entity_map{};
 
  public:
   using StagingGroup = decltype(registry.group<
@@ -85,12 +78,12 @@ class Hierarchy {
 
   void update();
 
-  template<typename... Components>
+  template<typename... Components> [[nodiscard]]
   entt::entity createEntity(entt::entity parent) {
     auto entity = registry.create();
 
     // All entities requires a hierarchical component.
-    registry.emplace<component::Node>(entity /*, parent*/);
+    registry.emplace<component::Node>(entity);
 
     // Add additionnal optionnal components.
     (registry.emplace<Components>(entity), ...);
@@ -101,7 +94,7 @@ class Hierarchy {
     return entity;
   }
 
-  template<typename... Components>
+  template<typename... Components> [[nodiscard]]
   entt::entity createStagingEntity(entt::entity parent) {
     return createEntity<
       component::Transform,
@@ -113,9 +106,10 @@ class Hierarchy {
   /* Move an entity to a new parent or the root when newParent is null. */
   void moveEntity(entt::entity e, entt::entity newParent);
 
- private:
-  void updateGlobalTransform();
+  [[nodiscard]]
+  entt::entity findByName(std::string_view entity_name) const;
 
+ private:
   void updateGlobalTransform(
     StagingGroup &group,
     entt::entity e,
