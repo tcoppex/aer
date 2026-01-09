@@ -106,7 +106,7 @@ if(ANDROID)
 
   # (Alternatively just uncomment the following line.)
   # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
-else() # DESKTOP
+else()
   # GLFW
   CPMAddPackage(
     NAME glfw
@@ -219,18 +219,18 @@ set(VMA_INCLUDE_DIR  ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 #-----------------------------------
 # KTX (Khronos Texture) Library
 #-----------------------------------
-CPMAddPackage(
-  NAME libktx
-  GITHUB_REPOSITORY KhronosGroup/KTX-Software
-  GIT_TAG v4.4.2
-  OPTIONS
-    "KTX_FEATURE_VULKAN ON"
-    "KTX_FEATURE_STATIC_LIBRARY ON"
-    "KTX_FEATURE_OPENGL OFF"
-    "KTX_FEATURE_TOOLS OFF"
-    "KTX_FEATURE_TESTS OFF"
-)
-set(KTX_INCLUDE_DIR  ${libktx_SOURCE_DIR}/include)
+# CPMAddPackage(
+#   NAME libktx
+#   GITHUB_REPOSITORY KhronosGroup/KTX-Software
+#   GIT_TAG v4.4.2
+#   OPTIONS
+#     "KTX_FEATURE_VULKAN ON"
+#     "KTX_FEATURE_STATIC_LIBRARY ON"
+#     "KTX_FEATURE_OPENGL OFF"
+#     "KTX_FEATURE_TOOLS OFF"
+#     "KTX_FEATURE_TESTS OFF"
+# )
+# set(KTX_INCLUDE_DIR  ${libktx_SOURCE_DIR}/include)
 
 #-----------------------------------
 # CGLTF
@@ -260,6 +260,19 @@ if(FRAMEWORK_HAS_DRACO)
   # list(APPEND SharedIncludeDirs ${DRACO_INCLUDE_DIR})
   # list(APPEND SharedLibs draco)
 endif()
+
+#-----------------------------------
+# Entt (ECS lib).
+#-----------------------------------
+CPMAddPackage(
+  NAME entt
+  GITHUB_REPOSITORY skypjack/entt
+  GIT_TAG v3.16.0
+  # OPTIONS
+  #   "ENTT_INCLUDE_HEADERS ON"
+  #   "ENTT_INCLUDE_NATVIS ON"
+)
+set(ENTT_INCLUDE_DIR ${entt_SOURCE_DIR}/src)
 
 #-----------------------------------
 # MikkTSpace (build as Static Lib).
@@ -408,6 +421,7 @@ target_link_libraries(${target}
     VulkanMemoryAllocator
     ktx
     mikktspace
+    EnTT::EnTT
 )
 
 target_include_directories(${target}
@@ -421,10 +435,11 @@ target_include_directories(${target}
     ${LINALG_INCLUDE_DIR}
     ${IMGUI_INCLUDE_DIR}
     ${UTFCPP_INCLUDE_DIR}
+    ${ENTT_INCLUDE_DIR}
   PRIVATE
     ${FRAMEWORK_SHADERS_DIR}
     ${CGLTF_INCLUDE_DIR}
-    ${KTX_INCLUDE_DIR}
+    # ${KTX_INCLUDE_DIR}
     ${MIKKTSPACE_INCLUDE_DIR}
     ${EARCUT_INCLUDE_DIR}
 )
