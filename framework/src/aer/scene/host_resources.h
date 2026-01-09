@@ -85,7 +85,7 @@ struct HostResources {
   ResourceBuffer<MaterialRef> material_refs{}; //
 
   // -------
-  ResourceBuffer<Mesh> meshes{};    //
+  ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
   std::vector<mat4f> transforms{};  // [deprecated]
   // -------

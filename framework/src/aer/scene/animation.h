@@ -12,9 +12,9 @@ using JointBuffer = std::vector<T>;
 
 struct Pose {
   struct Transform {
-    vec4f rotation = lina::qidentity<float>();
-    vec3f translation = vec3f(0.0f);
-    float scale = 1.0f;
+    quat rotation{linalg::identity};
+    vec3 translation{};
+    float scale{1.0f};
   };
 
   JointBuffer<Transform> joints{};

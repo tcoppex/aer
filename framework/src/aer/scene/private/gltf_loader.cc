@@ -613,7 +613,7 @@ void ExtractMeshes(
     if (bRestructureAttribs) [[likely]] {
       mesh->set_attributes(VertexInternal_t::GetAttributeInfoMap());
 
-      // XXX (Do not support different topology yet) XXX
+      // XXX (Does not support other topology than TriList yet) XXX
       mesh->set_topology(Geometry::Topology::TriangleList); // xxx
 
       // Hold the interleaved attributes of the mesh in the same interleaved buffer.
