@@ -32,11 +32,12 @@ extern "C" {
 // A colored logger that could be used inside loops to print messages once.
 //
 //  Type of logs :
-//    * Debug      : white, not hashed (will be repeated).
-//    * Info       : blue, hashed (will not be repeated).
-//    * Warning    : yellow, hashed, used in stats.
-//    * Error      : bold red, hashed, display file and line, used in stats.
-//    * FatalError : flashing red, not hashed, exit program instantly.
+//    * Verbose    : italic white.
+//    * Debug      : white.
+//    * Info       : blue.
+//    * Warning    : yellow, used in stats.
+//    * Error      : bold red, display file and line, used in stats.
+//    * FatalError : flashing red, exit program instantly.
 //
 class Logger : public Singleton<Logger> {
   friend class Singleton<Logger>;
@@ -166,28 +167,28 @@ class Logger : public Singleton<Logger> {
 //   }
 
   template<typename... Args>
-  void verbose(char const* file, char const* fn, int line, fmt::format_string<Args...> fmt, Args&&... args) {
-    log(file, fn, line, false, LogType::Verbose, fmt::vformat(fmt, fmt::make_format_args(args...)));
+  void verbose(char const* file, char const* fn, int line, bool useHash, fmt::format_string<Args...> fmt, Args&&... args) {
+    log(file, fn, line, useHash, LogType::Verbose, fmt::vformat(fmt, fmt::make_format_args(args...)));
   }
 
   template<typename... Args>
-  void debug(char const* file, char const* fn, int line, fmt::format_string<Args...> fmt, Args&&... args) {
-    log(file, fn, line, false, LogType::Debug, fmt::vformat(fmt, fmt::make_format_args(args...)));
+  void debug(char const* file, char const* fn, int line, bool useHash, fmt::format_string<Args...> fmt, Args&&... args) {
+    log(file, fn, line, useHash, LogType::Debug, fmt::vformat(fmt, fmt::make_format_args(args...)));
   }
 
   template<typename... Args>
-  void info(char const* file, char const* fn, int line, fmt::format_string<Args...> fmt, Args&&... args) {
-    log(file, fn, line, true, LogType::Info, fmt::vformat(fmt, fmt::make_format_args(args...)));
+  void info(char const* file, char const* fn, int line, bool useHash, fmt::format_string<Args...> fmt, Args&&... args) {
+    log(file, fn, line, useHash, LogType::Info, fmt::vformat(fmt, fmt::make_format_args(args...)));
   }
 
   template<typename... Args>
-  void warning(char const* file, char const* fn, int line, std::string_view fmt, Args&&... args) {
-    log(file, fn, line, true, LogType::Warning, fmt::vformat(fmt, fmt::make_format_args(args...)));
+  void warning(char const* file, char const* fn, int line, bool useHash, std::string_view fmt, Args&&... args) {
+    log(file, fn, line, useHash, LogType::Warning, fmt::vformat(fmt, fmt::make_format_args(args...)));
   }
 
   template<typename... Args>
-  void error(char const* file, char const* fn, int line, fmt::format_string<Args...> fmt, Args&&... args) {
-    log(file, fn, line, true, LogType::Error, fmt::vformat(fmt, fmt::make_format_args(args...)));
+  void error(char const* file, char const* fn, int line, bool useHash, fmt::format_string<Args...> fmt, Args&&... args) {
+    log(file, fn, line, useHash, LogType::Error, fmt::vformat(fmt, fmt::make_format_args(args...)));
   }
 
   template<typename... Args>
@@ -216,20 +217,16 @@ class Logger : public Singleton<Logger> {
 
 /* -------------------------------------------------------------------------- */
 
+#define LOGV(...)   Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
+#define LOGD(...)   Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
+#define LOGI(...)   Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
+#define LOGW(...)   Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define LOGE(...)   Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
 
-// #if defined(ANDROID)
-// #define LOGV(...) Logger::Get().android_log(ANDROID_LOG_VERBOSE, LOGGER_ANDROID_TAG, __VA_ARGS__)
-// #define LOGD(...) Logger::Get().android_log(ANDROID_LOG_DEBUG,   LOGGER_ANDROID_TAG, __VA_ARGS__)
-// #define LOGI(...) Logger::Get().android_log(ANDROID_LOG_INFO,    LOGGER_ANDROID_TAG, __VA_ARGS__)
-// #define LOGW(...) Logger::Get().android_log(ANDROID_LOG_WARN,    LOGGER_ANDROID_TAG, __VA_ARGS__)
-// #define LOGE(...) Logger::Get().android_log(ANDROID_LOG_ERROR,   LOGGER_ANDROID_TAG, __VA_ARGS__)
-// #else
-#define LOGV(...) Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define LOGD(...) Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define LOGI(...) Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define LOGW(...) Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define LOGE(...) Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-// #endif
+/* Hashed version of loggers. Warnings and Errors are always hashed. */
+#define HLOGV(...)  Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define HLOGD(...)  Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define HLOGI(...)  Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
 
 // ----------------------------------------------------------------------------
 // Special aliases.
