@@ -252,8 +252,7 @@ namespace internal::gltf_loader {
 void ExtractNode(
   cgltf_node const* node,
   scene::Hierarchy& scene,
-  PointerToEntityMap_t &entities_lut,
-  bool const bApplyRootWorldMatrix
+  PointerToEntityMap_t &entities_lut
 ) {
   if (nullptr == node) {
     return;
@@ -267,27 +266,41 @@ void ExtractNode(
   if (node->name != nullptr) {
     scene.entity_map.try_emplace(node->name, e);
   }
+  // LOGI("Node {} : {} // parent : {}",
+  //   (uintptr_t)node, node->name ? node->name : "<>", (uintptr_t)node->parent);
 
   // Set the entity local transform.
-  bool const is_root_node = (node->parent == nullptr);
-  if ((bApplyRootWorldMatrix && !is_root_node) || !bApplyRootWorldMatrix)
   {
     auto &transform = scene.registry.get<scene::component::Transform>(e);
-    if (node->has_translation) {
-      transform.position = vec3(node->translation);
+
+    if (node->has_matrix)
+    {
+      auto const& m = reinterpret_cast<mat4 const &>(node->matrix);
+      lina::decompose_transform_from_matrix(
+        m,
+        transform.position,
+        transform.rotation,
+        transform.scale
+      );
     }
-    if (node->has_rotation) {
-      transform.rotation = quat(node->rotation);
-    }
-    if (node->has_scale) {
-      transform.scale = vec3(node->scale);
+    else
+    {
+      if (node->has_translation) {
+        transform.position = vec3(node->translation);
+      }
+      if (node->has_rotation) {
+        transform.rotation = quat(node->rotation);
+      }
+      if (node->has_scale) {
+        transform.scale = vec3(node->scale);
+      }
     }
   }
 
   // Parse the node's children.
   for (cgltf_size i = 0; i < node->children_count; ++i) {
     auto child_node = node->children[i];
-    ExtractNode(child_node, scene, entities_lut, bApplyRootWorldMatrix);
+    ExtractNode(child_node, scene, entities_lut);
   }
 }
 
@@ -295,8 +308,7 @@ void ExtractNode(
 
 PointerToEntityMap_t ExtractSceneHierarchy(
   cgltf_data const* data,
-  scene::Hierarchy& scene,
-  bool const bApplyRootWorldMatrix
+  scene::Hierarchy& scene
 ) {
   PointerToEntityMap_t entities_lut{
     {nullptr, entt::null}
@@ -318,7 +330,7 @@ PointerToEntityMap_t ExtractSceneHierarchy(
   if (first_scene != nullptr) [[likely]] {
     for (cgltf_size i = 0; i < first_scene->nodes_count; ++i) {
       cgltf_node const* node = first_scene->nodes[i];
-      ExtractNode(node, scene, entities_lut, bApplyRootWorldMatrix);
+      ExtractNode(node, scene, entities_lut);
     }
   } else {
     LOGW("{} : gltf file contains no scene.", __FUNCTION__);
@@ -512,8 +524,7 @@ void ExtractMeshes(
   scene::ResourceBuffer<scene::Mesh>& meshes,
   scene::IndexMap &mesh_indices_map,
   bool const bRestructureAttribs,
-  bool const bForce32bitsIndex,
-  bool const bApplyRootWorldMatrix
+  bool const bForce32bitsIndex
 ) {
   /**
    * Each Mesh hold its geometry,
@@ -535,12 +546,8 @@ void ExtractMeshes(
   }
   // meshes.reserve(meshNodeIndices.size());
 
-  mat4 world_matrix{linalg::identity};
-
-  // (not correct if there is multiple scene)
-  if (bApplyRootWorldMatrix) {
-    cgltf_node_transform_world(data->scene->nodes[0], lina::ptr(world_matrix)); //
-  }
+  // mat4 world_matrix{linalg::identity};
+  // cgltf_node_transform_world(data->scene->nodes[0], lina::ptr(world_matrix)); //
 
   // Parse each mesh nodes (for primitives & skeleton).
   for (auto mesh_node_index : meshNodeIndices) {
@@ -716,11 +723,9 @@ void ExtractMeshes(
         }
 
         /* Apply the root node's matrix to the mesh. */
-        if (bApplyRootWorldMatrix) {
-          for (auto &v : vertices) {
-            v.applyTransform(world_matrix);
-          }
-        }
+        // for (auto &v : vertices) {
+        //   v.applyTransform(world_matrix);
+        // }
 
         /* Add the primitive interleaved attributes to the mesh, and retrieve its internal offset. */
         attribs_buffer_offset = mesh->addVerticesData(std::as_bytes(std::span(vertices)));

@@ -38,10 +38,6 @@ struct HostResources {
   // Required for RayTracing.
   static bool constexpr kForce32BitsIndexing{true};
 
-  // When set a mesh root node's matrix will be applied to its attributes
-  // and its local transforms set to identity. Use to correct axis orientation.
-  static bool constexpr kApplyRootWorldMatrix{true};
-
  public:
   HostResources() = default;
   ~HostResources() = default;
