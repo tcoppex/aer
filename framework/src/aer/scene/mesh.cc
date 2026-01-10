@@ -93,9 +93,9 @@ VkPrimitiveTopology Mesh::vk_primitive_topology() const {
 // ----------------------------------------------------------------------------
 
 VkIndexType Mesh::vk_index_type() const {
-  auto format = index_format();
-  switch (format) {
+  auto const format = index_format();
 
+  switch (format) {
     case IndexFormat::U32:
       return VK_INDEX_TYPE_UINT32;
 
@@ -107,7 +107,7 @@ VkIndexType Mesh::vk_index_type() const {
       return VK_INDEX_TYPE_UINT8;
 
     default:
-      LOGD("Unsupported IndexFormat : {}", int(format));
+      LOGD("Unsupported IndexFormat : {}", uint32_t(format));
       return VK_INDEX_TYPE_UINT8;
   }
 }

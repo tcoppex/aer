@@ -808,13 +808,14 @@ bool RenderContext::loadImage2D(
 
     stbi_set_flip_vertically_on_load(false);
 
+    bool result{false};
     if (is_hdr) [[unlikely]] {
-      image_data.loadf(fr.buffer.data(), fr.buffer.size());
+      result = image_data.loadf(fr.buffer.data(), fr.buffer.size());
     } else {
-      image_data.load(fr.buffer.data(), fr.buffer.size());
+      result = image_data.load(fr.buffer.data(), fr.buffer.size());
     }
 
-    if (!image_data.pixels()) {
+    if (!result || !image_data.pixels()) {
       return false;
     }
   }
