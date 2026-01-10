@@ -195,7 +195,7 @@ void ExtractPrimitiveVertices(
       for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
         auto& vertex = vertices[vertex_index];
         cgltf_accessor_read_float( accessor, vertex_index, lina::ptr(vertex.tangent), 4);
-        // vec3 t3 = vec3(linalg::mul(world_matrix, vec4(lina::to_vec3(tangent), 0.0f)));
+        // vec3 t3 = vec3(lina::mul(world_matrix, vec4(lina::to_vec3(tangent), 0.0f)));
         // vertex.tangent = vec4(t3, vertex.tangent.w);
       }
     }
@@ -546,7 +546,7 @@ void ExtractMeshes(
   }
   // meshes.reserve(meshNodeIndices.size());
 
-  // mat4 world_matrix{linalg::identity};
+  // mat4 world_matrix{lina::identity};
   // cgltf_node_transform_world(data->scene->nodes[0], lina::ptr(world_matrix)); //
 
   // Parse each mesh nodes (for primitives & skeleton).
@@ -877,7 +877,7 @@ void ExtractMeshes(
           cgltf_accessor_unpack_floats(skin->inverse_bind_matrices, lina::ptr(matrices[0]), bufferSize);
 
           // Transform them to world space.
-          auto const inverse_world_matrix{linalg::inverse(mesh->world_matrix)};
+          auto const inverse_world_matrix{lina::inverse(mesh->world_matrix)};
           skeleton->transformInverseBindMatrices(inverse_world_matrix);
         }
 
@@ -1064,7 +1064,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_translation:
           {
             vec3f const* v = reinterpret_cast<vec3f const*>(outputs.data());
-            joint.translation = bNeedResampling ? linalg::lerp(v[frameStart], v[frameEnd], lerpFactor)
+            joint.translation = bNeedResampling ? lina::lerp(v[frameStart], v[frameEnd], lerpFactor)
                                                 : v[sid]
                                                 ;
           }
@@ -1073,7 +1073,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_rotation:
           {
             vec4f const* q = reinterpret_cast<vec4f const*>(outputs.data());
-            joint.rotation = bNeedResampling ? linalg::qnlerp(q[frameStart], q[frameEnd], lerpFactor)
+            joint.rotation = bNeedResampling ? lina::qnlerp(q[frameStart], q[frameEnd], lerpFactor)
                                              : q[sid]
                                              ;
           }
@@ -1082,7 +1082,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_scale:
           {
             vec3f const* v = reinterpret_cast<vec3f const*>(outputs.data());
-            vec3f s = bNeedResampling ? linalg::lerp(v[frameStart], v[frameEnd], lerpFactor)
+            vec3f s = bNeedResampling ? lina::lerp(v[frameStart], v[frameEnd], lerpFactor)
                                       : v[sid]
                                       ;
 

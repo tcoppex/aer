@@ -12,7 +12,7 @@ using JointBuffer = std::vector<T>;
 
 struct Pose {
   struct Transform {
-    quat rotation{linalg::identity};
+    quat rotation{lina::identity};
     vec3 translation{};
     float scale{1.0f};
   };
@@ -31,7 +31,7 @@ struct AnimationClip {
   void setup(std::string_view clip_name, size_t const sampleCount, float const clip_duration, size_t const jointCount) {
     name = std::string(clip_name);
     duration = clip_duration;
-    framerate = static_cast<float>(sampleCount) / linalg::max(duration, lina::kTrueEpsilon);
+    framerate = static_cast<float>(sampleCount) / lina::max(duration, lina::kTrueEpsilon);
 
     poses.resize(sampleCount);
     for (auto& pose : poses) {
@@ -69,7 +69,7 @@ struct Skeleton {
 
   void transformInverseBindMatrices(mat4f const& inv_world) {
     for (auto &inverse_bind_matrix : inverse_bind_matrices) {
-      inverse_bind_matrix = linalg::mul(inverse_bind_matrix, inv_world);
+      inverse_bind_matrix = lina::mul(inverse_bind_matrix, inv_world);
     }
   }
 };

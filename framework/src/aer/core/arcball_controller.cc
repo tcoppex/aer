@@ -129,17 +129,17 @@ void ArcBallController::calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) {
   // This matrix will orbit around the front of the camera.
 
   auto const dolly = vec3( 0.0f, 0.0f, - static_cast<float>(dolly_));
-  auto const Tdolly = linalg::translation_matrix(dolly);
+  auto const Tdolly = lina::translation_matrix(dolly);
 
-  auto const Tpan = linalg::translation_matrix(target_);
+  auto const Tpan = lina::translation_matrix(target_);
 
   auto const Rx = lina::rotation_matrix_x(pitchf());
   auto const Ry = lina::rotation_matrix_y(yawf());
 
-  Rmatrix_ = linalg::mul(Rx, Ry);
+  Rmatrix_ = lina::mul(Rx, Ry);
 
-  *m = linalg::mul(
-    linalg::mul(Tdolly, Rmatrix_),
+  *m = lina::mul(
+    lina::mul(Tdolly, Rmatrix_),
     Tpan
   );
 
@@ -242,10 +242,10 @@ void ArcBallController::smoothTransition(double const deltatime) {
   // due to temporal composition, or better yet : keep an anim timecode for smoother control.
   auto k{ kSmoothingCoeff * deltatime };
   k = (k > 1.0) ? 1.0 : k;
-  yaw_   = linalg::lerp(yaw_, yaw2_, k);
-  pitch_ = linalg::lerp(pitch_, pitch2_, k);
-  dolly_ = linalg::lerp(dolly_, dolly2_, k);
-  target_ = linalg::lerp(target_, target2_, static_cast<float>(k));
+  yaw_   = lina::lerp(yaw_, yaw2_, k);
+  pitch_ = lina::lerp(pitch_, pitch2_, k);
+  dolly_ = lina::lerp(dolly_, dolly2_, k);
+  target_ = lina::lerp(target_, target2_, static_cast<float>(k));
 }
 
 /* -------------------------------------------------------------------------- */

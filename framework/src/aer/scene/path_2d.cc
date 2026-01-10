@@ -276,7 +276,7 @@ void Path2D::lineTo(
   auto const dstep = 1.0f / static_cast<float>(nsteps);
   auto const last_v = lina::to_vec2(poly.last_vertex());
   for(uint32_t i = 1; i <= nsteps; ++i) {
-    poly.addVertex(linalg::lerp(last_v, p, i * dstep));
+    poly.addVertex(lina::lerp(last_v, p, i * dstep));
   }
 }
 

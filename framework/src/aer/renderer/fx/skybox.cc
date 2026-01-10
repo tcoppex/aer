@@ -174,8 +174,8 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
   );
   for (uint32_t i = 0; i < camera.view_count(); ++i) {
     auto view = lina::remove_translation(camera.view(i));
-    push_constant.mvpMatrix[i] = linalg::mul(
-      linalg::mul(camera.proj(i), view),
+    push_constant.mvpMatrix[i] = lina::mul(
+      lina::mul(camera.proj(i), view),
       world_matrix
     );
   }

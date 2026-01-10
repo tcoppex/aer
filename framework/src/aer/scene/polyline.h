@@ -104,7 +104,7 @@ class Polyline {
     for (size_t i = 0; i < vertices_.size(); ++i) {
       auto const& p1 = vertices_[i];
       auto const& p2 = vertices_[(i+1) % vertices_.size()];
-      area += linalg::dot(linalg::cross(p1, p2), axis);
+      area += lina::dot(lina::cross(p1, p2), axis);
     }
     return area * 0.5f;
   }

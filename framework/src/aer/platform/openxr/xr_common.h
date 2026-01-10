@@ -130,7 +130,7 @@ struct XRFrameData {
 
   mat4f space_matrix(XRSpaceId space_id) const {
     auto *m = spaceMatrices[space_id];
-    return  (m != nullptr) ? *m : linalg::identity;
+    return  (m != nullptr) ? *m : lina::identity;
   }
 };
 

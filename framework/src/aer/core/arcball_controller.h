@@ -200,7 +200,7 @@ class ArcBallController : public Camera::ViewController {
 
 #if ABC_USE_CUSTOM_TARGET
   // [we could avoid keeping the previous rotation matrix].
-  mat4 Rmatrix_{ linalg::identity };
+  mat4 Rmatrix_{ lina::identity };
 #endif
 // -------------
 

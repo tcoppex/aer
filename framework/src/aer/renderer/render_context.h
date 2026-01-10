@@ -269,7 +269,7 @@ class RenderContext : public Context {
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
 
-  mat4f default_world_matrix_{linalg::identity};
+  mat4f default_world_matrix_{lina::identity};
 };
 
 /* -------------------------------------------------------------------------- */

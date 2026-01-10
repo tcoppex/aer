@@ -26,13 +26,13 @@ struct Node {
 /* Local Transforms */
 struct Transform {
   vec3 position{};
-  quat rotation{linalg::identity};
+  quat rotation{lina::identity};
   vec3 scale{1.0f, 1.0f, 1.0f};
 };
 
 /* World matrix for the entity */
 struct GlobalTransform {
-  mat4f worldMatrix{linalg::identity};
+  mat4f worldMatrix{lina::identity};
 };
 
 // -----------

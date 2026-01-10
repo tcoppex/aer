@@ -18,7 +18,7 @@ void Hierarchy::update() {
   // [todo]
   // Use a system to flag dirty matrices to only rebuild those who needs it.
   auto group = staging_group();
-  updateGlobalTransform(group, root, linalg::identity);
+  updateGlobalTransform(group, root, lina::identity);
 }
 
 // ----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ void Hierarchy::updateGlobalTransform(
     transform.scale
   );
 
-  global.worldMatrix = linalg::mul(parent_matrix, localMatrix);
+  global.worldMatrix = lina::mul(parent_matrix, localMatrix);
 
   auto child = node.firstChild;
   while (child != entt::null) {

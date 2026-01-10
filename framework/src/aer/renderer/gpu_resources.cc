@@ -573,7 +573,7 @@ void GPUResources::prepareRasterizationRendering(Camera const& camera) {
       mat4 const& world = transforms[submeshes[i]->parent->transform_index];
       vec3 const pos = lina::to_vec3(world.w);
       vec3 const v = camera.position() - pos;
-      float const dp = linalg::dot(camera_dir, v);
+      float const dp = lina::dot(camera_dir, v);
       sortkeys.emplace_back(dp, i);
     }
     std::ranges::sort(sortkeys, comp, &SortKey::first);
