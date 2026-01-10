@@ -180,8 +180,11 @@ constexpr T saturate(T const& a) {
 // ----------------------------------------------------------------------------
 
 template<class T, int M>
-constexpr vec<T,M> mul(const vec<T,4> & a, const mat<T,M,4> & b) {
-  return a.x*b.row(0) + a.y*b.row(1) + a.z*b.row(2) + a.w*b.row(3);
+constexpr vec<T,M> row_mul(vec<T,4> const& a, mat<T,M,4> const& b) {
+  return a.x * b.row(0)
+       + a.y * b.row(1)
+       + a.z * b.row(2)
+       + a.w * b.row(3);
 }
 
 // ----------------------------------------------------------------------------

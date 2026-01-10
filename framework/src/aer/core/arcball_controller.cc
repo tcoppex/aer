@@ -210,7 +210,7 @@ void ArcBallController::eventMouseMoved(
     double const ty = - dv_y * acc;
 
 #if ABC_USE_CUSTOM_TARGET
-    auto t = lina::mul(vec4(tx, ty, 0.0f, 0.0f), Rmatrix_);
+    auto t = lina::row_mul(vec4(tx, ty, 0.0f, 0.0f), Rmatrix_);
     target_ += t.xyz();
     target2_ = target_;
 #else
