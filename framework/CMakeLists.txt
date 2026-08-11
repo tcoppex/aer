@@ -419,7 +419,7 @@ target_link_libraries(${target}
     fmt
     volk
     VulkanMemoryAllocator
-    ktx
+    # ktx
     mikktspace
     EnTT::EnTT
 )
