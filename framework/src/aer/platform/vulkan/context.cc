@@ -831,14 +831,15 @@ bool Context::initDevice() {
 
     for (size_t j = 0u; j < queues.size(); ++j) {
       auto& pair = queues[j];
+      bool queue_found = false;
 
       for (uint32_t i = 0u; i < queue_family_count; ++i) {
         auto const& queue_family_props = properties_.queue_families2[i].queueFamilyProperties;
         auto const& queue_flags = queue_family_props.queueFlags;
 
-        if ((pair.second == (queue_flags & pair.second))
-         && (queue_infos[i].queueCount < queue_family_props.queueCount))
-        {
+        bool const has_flags = (pair.second == (queue_flags & pair.second));
+
+        if (has_flags && (queue_infos[i].queueCount < queue_family_props.queueCount)) {
           pair.first->family_index = i;
           pair.first->queue_index = queue_infos[i].queueCount;
 
@@ -847,13 +848,28 @@ bool Context::initDevice() {
           queue_infos[i].queueFamilyIndex = i;
           queue_infos[i].pQueuePriorities = queue_priorities[i].data();
           queue_infos[i].queueCount += 1u;
+
+          queue_found = true;
+
           // LOGI("{} {} {}", i, priorities[j], queue_infos[i].queueCount);
           break;
         }
       }
 
+      // When secondary queue are not found, use the main one instead.
+      // (could have issue if used concurrently)
+      if (!queue_found) {
+        if (j > 0) {
+          pair.first->family_index = queues[0].first->family_index;
+          pair.first->queue_index = queues[0].first->queue_index;
+        }
+      }
+
       if (UINT32_MAX == pair.first->family_index) {
-        LOGE("Could not find a queue family with the requested support {:08x}.", pair.second);
+        LOGE(
+          "Could not find a queue family with the requested support {:08x}.",
+          pair.second
+        );
         return false;
       }
     }
