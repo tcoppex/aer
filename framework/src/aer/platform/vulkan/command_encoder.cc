@@ -453,19 +453,25 @@ RenderPassEncoder CommandEncoder::beginRendering() const {
 void CommandEncoder::endRendering() const {
   vkCmdEndRendering(handle_);
 
-  // Transition the color buffers to "shader read only".
+  // Transition the color buffers.
   if (current_render_target_ptr_ != nullptr) [[likely]]
   {
+    auto const& images_to_transition = current_render_target_ptr_->use_msaa()
+      ? current_render_target_ptr_->resolve_attachments()
+      : current_render_target_ptr_->color_attachments();
+
+    // Determine final layout based on whether the target goes to display or shader
+    VkImageLayout const target_layout = false // (TODO)
+      ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
     transitionColorImages(
-      current_render_target_ptr_->resolve_attachments(),
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      // -----------------------------
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      // -----------------------------
+      images_to_transition,
+      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      target_layout,
       current_render_target_ptr_->layer_count()
     );
+
     current_render_target_ptr_ = nullptr;
   }
 }
