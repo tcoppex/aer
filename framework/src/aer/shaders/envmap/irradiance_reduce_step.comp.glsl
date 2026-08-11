@@ -19,11 +19,11 @@ layout(push_constant, scalar) uniform PushConstant_ {
 
 // ----------------------------------------------------------------------------
 
-shared vec4 sharedData[gl_WorkGroupSize.x];
-
 layout(
   local_size_x = kCompute_IrradianceReduceSHCoeff_kernelSize_x
 ) in;
+
+shared vec4 sharedData[gl_WorkGroupSize.x];
 
 // ----------------------------------------------------------------------------
 
