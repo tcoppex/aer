@@ -33,9 +33,9 @@
 
 # aer
 
-A real-time 3d rendering framework, inspired by WebGPU and _vk\_minimal\_latest_.
+A real-time rendering framework, inspired by WebGPU and _vk\_minimal\_latest_.
 
-Runs on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
+Tested on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
 
 <details>
   <summary><strong>Quick start & run!</strong></summary>
