@@ -428,31 +428,33 @@ class Context {
     // VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
-    // VK_VERSION_1_1
-    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
-    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
-    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
-    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
+    // core in VK_VERSION_1_1
     VkPhysicalDeviceMultiviewFeaturesKHR multiview{};
+    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
 
-    // VK_VERSION_1_2
+    // core in VK_VERSION_1_2
+    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
     VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing{};
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR buffer_device_address{};
-    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
 
-    // VK_VERSION_1_3
+    // core in VK_VERSION_1_3
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
+    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering{};
     VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2{};
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4{};
 
-    // VK_VERSION_1_4
-    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8{}; //
+    // core in VK_VERSION_1_4
+    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{}; //
     VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
+
+    // non core
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
+    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
+    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{}; //
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{}; //
 
   } feature_;
 

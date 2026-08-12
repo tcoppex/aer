@@ -658,36 +658,12 @@ bool Context::initDevice() {
 
   /* Vulkan GPU features. */
   {
-    // VK_VERSION_1_1
+    // Core in VK_VERSION_1_1
 
     add_device_feature(
-      VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
-      feature_.vertex_input_dynamic_state,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-      feature_.extended_dynamic_state,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
-      feature_.extended_dynamic_state2,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-      feature_.extended_dynamic_state3,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME,
-      feature_.image_view_min_lod,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
+      VK_KHR_MULTIVIEW_EXTENSION_NAME,
+      feature_.multiview,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
     );
 
     add_device_feature(
@@ -696,13 +672,7 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
     );
 
-    add_device_feature(
-      VK_KHR_MULTIVIEW_EXTENSION_NAME,
-      feature_.multiview,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
-    );
-
-    // VK_VERSION_1_2
+    // Core in VK_VERSION_1_2
 
     add_device_feature(
       VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
@@ -722,24 +692,19 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
     );
 
-    // [TODO] make optionnal
-    // ------------------------
+    // Core in VK_VERSION_1_3
+
     add_device_feature(
-      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-      feature_.acceleration_structure,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
+      VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+      feature_.extended_dynamic_state,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT
     );
 
-#if !defined(ANDROID)
     add_device_feature(
-      VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-      feature_.ray_tracing_pipeline,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
+      VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+      feature_.extended_dynamic_state2,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT
     );
-#endif
-    // ------------------------
-
-    // VK_VERSION_1_3
 
     add_device_feature(
       VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
@@ -759,7 +724,7 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
     );
 
-    // VK_VERSION_1_4
+    // Core in VK_VERSION_1_4
 
     add_device_feature(
       VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
@@ -779,6 +744,43 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
     );
 
+    // Not Core
+
+    add_device_feature(
+      VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+      feature_.extended_dynamic_state3,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
+    );
+
+    add_device_feature(
+      VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
+      feature_.vertex_input_dynamic_state,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
+    );
+
+    add_device_feature(
+      VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME,
+      feature_.image_view_min_lod,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
+    );
+
+    // [TODO] make optionnal
+    // ------------------------
+    add_device_feature(
+      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+      feature_.acceleration_structure,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
+    );
+
+#if !defined(ANDROID)
+    add_device_feature(
+      VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+      feature_.ray_tracing_pipeline,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
+    );
+#endif
+    // ------------------------
+
     vkGetPhysicalDeviceFeatures2(gpu_, &feature_.base);
   }
 
@@ -786,12 +788,13 @@ bool Context::initDevice() {
     feature = bool(feature) ? VK_TRUE : VK_FALSE;
   };
 
-  enable_feature(feature_.dynamic_rendering.dynamicRendering);
   enable_feature(feature_.timeline_semaphore.timelineSemaphore);
-  enable_feature(feature_.synchronization2.synchronization2);
   enable_feature(feature_.descriptor_indexing.descriptorBindingPartiallyBound);
   enable_feature(feature_.descriptor_indexing.runtimeDescriptorArray);
   enable_feature(feature_.descriptor_indexing.shaderSampledImageArrayNonUniformIndexing);
+  enable_feature(feature_.dynamic_rendering.dynamicRendering);
+  enable_feature(feature_.synchronization2.synchronization2);
+  
   enable_feature(feature_.vertex_input_dynamic_state.vertexInputDynamicState);
 
 #if !defined(ANDROID)
