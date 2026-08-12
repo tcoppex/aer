@@ -886,24 +886,35 @@ bool Context::initDevice() {
     }
   }
 
-  /* Create logical device. */
-  VkDeviceCreateInfo const device_info{
-    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .pNext = &feature_.base,
-    .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
-    .pQueueCreateInfos = queue_create_infos.data(),
-    .enabledExtensionCount = static_cast<uint32_t>(device_extension_names_.size()),
-    .ppEnabledExtensionNames = device_extension_names_.data(),
-  };
 
-  if (vulkan_xr_) {
-    CHECK_VK(vulkan_xr_->createVulkanDevice(
-      gpu_, &device_info, nullptr, &handle_
-    ));
-  } else {
-    CHECK_VK(vkCreateDevice(
-      gpu_, &device_info, nullptr, &handle_
-    ));
+  /* Create logical device. */
+  {
+    // Convert the internal device extenstions set to a buffer.
+    std::vector<const char*> extension_names{};
+    extension_names.insert(
+      extension_names.end(),
+      device_extension_names_.cbegin(),
+      device_extension_names_.cend()
+    );
+
+    VkDeviceCreateInfo const device_info{
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext = &feature_.base,
+      .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
+      .pQueueCreateInfos = queue_create_infos.data(),
+      .enabledExtensionCount = static_cast<uint32_t>(extension_names.size()),
+      .ppEnabledExtensionNames = extension_names.data(),
+    };
+
+    if (vulkan_xr_) {
+      CHECK_VK(vulkan_xr_->createVulkanDevice(
+        gpu_, &device_info, nullptr, &handle_
+      ));
+    } else {
+      CHECK_VK(vkCreateDevice(
+        gpu_, &device_info, nullptr, &handle_
+      ));
+    }
   }
 
   /* Load device extensions. */

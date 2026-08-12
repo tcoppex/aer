@@ -3,6 +3,8 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <set>
+
 #include "aer/platform/vulkan/types.h"
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/vulkan/allocator.h"
@@ -366,16 +368,19 @@ class Context {
       LOGI("[Vulkan] Feature extension \"{:s}\" is not available.\n", extension_name);
       return false;
     }
+    if (device_extension_names_.contains(extension_name)) {
+      LOGW("{:s} : extension {:s} already present.\n", __FUNCTION__, extension_name);
+      return false;
+    }
     feature = { .sType = sType };
     vk_utils::PushNextVKStruct(&feature_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
-        device_extension_names_.end(),
-        dependencies.begin(),
-        dependencies.end()
+        dependencies.cbegin(),
+        dependencies.cend()
       );
     }
-    device_extension_names_.push_back(extension_name);
+    device_extension_names_.insert(extension_name);
     return true;
   }
 
@@ -405,7 +410,7 @@ class Context {
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
   };
 
-  std::vector<char const*> device_extension_names_{
+  std::set<char const*> device_extension_names_{
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
