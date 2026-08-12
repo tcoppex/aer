@@ -259,7 +259,10 @@ class SampleApp final : public Application {
     if constexpr(true) {
       future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
     } else {
+      // (Alternative)
       scene_ = renderer_.loadGLTF(gtlf_filename);
+      scene_->set_ray_tracing_fx(&ray_tracing_fx_);
+      scene_->uploadToDevice();
     }
 
     return true;
