@@ -23,10 +23,9 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
 
-  static constexpr std::array<const char*, 3> kFontSelection{
+  static constexpr std::array<const char*, 2> kFontSelection{
     "angeme/Angeme-Regular.ttf",
     "angeme/Angeme-Bold.ttf",
-    // "freesans/FreeSans.ttf"
   };
 
  public:
