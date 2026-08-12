@@ -63,6 +63,8 @@ struct HostResources {
 
   void resetInternalDescriptors();
 
+  void updateTransformsBuffer();
+
  public:
   //-----------
   scene::Hierarchy scene{};   // [wip]
@@ -80,7 +82,6 @@ struct HostResources {
   // -------
   ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
-  std::vector<mat4f> transforms{};  // [deprecated] (to be move to the hierarchy object)
   // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //
@@ -92,6 +93,10 @@ struct HostResources {
 
  protected:
   MaterialProxy::TextureBinding default_texture_binding_{};
+
+  // Used to store the buffer of global transforms, caculated by the hierarchy.
+  // Should not be changed locally [move to hierarchy ?]
+  std::vector<mat4f> transforms{};  //
 };
 
 } // namespace scene

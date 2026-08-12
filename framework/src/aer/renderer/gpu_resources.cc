@@ -129,6 +129,8 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     // ---------------------------------------
     /* Build the Raytracing acceleration structures. */
     if (rt_scene_) {
+      // The global matrices buffer should have been initialized for the BLAS.
+      // updateTransformsBuffer();
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
     }
     // ---------------------------------------
@@ -174,22 +176,8 @@ std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() con
 // ----------------------------------------------------------------------------
 
 void GPUResources::update(Camera const& camera, float elapsed_time) {
-  /* Update the entities hierarchy. */
-  scene.update();
-
-  // [Copy new matrices to the local matrices buffer]
-  // ------------------------
-#if 1
-  {
-    scene.registry
-         .view<scene::component::GlobalTransform, scene::component::Mesh>()
-         .each([&_transforms = this->transforms](auto &global, auto &mesh) {
-      // HLOGI("meshIndex {}",mesh.meshIndex );
-      _transforms[mesh.meshIndex] = global.worldMatrix;
-    });
-  }
-#endif
-  // ------------------------
+  /* Recalculate the whole hierarchy global transform buffer. */
+  updateTransformsBuffer(); //
 
   /* Update and upload per-frame data. */
   updateFrameData(camera, elapsed_time);

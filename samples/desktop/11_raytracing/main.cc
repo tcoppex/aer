@@ -262,8 +262,6 @@ class SampleApp final : public Application {
       scene_ = renderer_.loadGLTF(gtlf_filename);
     }
 
-    LOGW("The scene root transform is currently broken.");
-
     return true;
   }
 

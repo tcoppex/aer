@@ -264,8 +264,8 @@ bool HostResources::loadGLTF(std::string_view filename) {
       );
     }
 
-    /* Resize transform buffer according to mesh count. */
-    transforms.resize(meshes.size()); //
+    /* Recalculate the scene global matrices buffer. */
+    updateTransformsBuffer();
 
     /* Wait for the host images to finish loading before using them. */
     for (auto & host_image : host_images) {
@@ -291,12 +291,12 @@ void HostResources::resetInternalDescriptors() {
   for (auto const& mesh : meshes) {
     // ---------
     mesh->transform_index = transform_index++; //
+    // ---------
 
     mesh->set_buffer_info({
       .vertex_offset = vertex_buffer_size,
       .index_offset = index_buffer_size,
     });
-    // ---------
     vertex_buffer_size += mesh->vertices_bytesize();
     index_buffer_size += mesh->indices_bytesize();
   }
@@ -304,6 +304,23 @@ void HostResources::resetInternalDescriptors() {
   for (auto const& host_image : host_images) {
     total_image_size += host_image.bytesize();
   }
+}
+
+// ----------------------------------------------------------------------------
+
+void HostResources::updateTransformsBuffer() {
+  /* Resize the transform buffer according to mesh count. */
+  transforms.resize(meshes.size(), linalg::identity); //
+
+  /* Update the entities hierarchy. */
+  scene.update();
+
+  // [wip] Copy new matrices to the local matrices buffer.
+  scene.registry
+    .view<scene::component::GlobalTransform, scene::component::Mesh>()
+    .each([&_transforms = this->transforms](auto &global, auto &mesh) {
+      _transforms[mesh.meshIndex] = global.worldMatrix;
+    });
 }
 
 }  // namespace scene
