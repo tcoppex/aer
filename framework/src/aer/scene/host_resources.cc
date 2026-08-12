@@ -75,6 +75,36 @@ bool HostResources::loadFile(std::string_view filename) {
 }
 
 // ----------------------------------------------------------------------------
+
+/* [Work In Progress] */
+// Mesh* HostResources::createMesh(std::string_view mesh_name) {
+//   auto mesh = std::make_unique<Mesh>();
+
+//   // material_refs.push_back( std::make_unique<scene::MaterialRef>(scene::MaterialRef{
+//   //   .model = material_model,
+//   //   .states = GetMaterialStates(mat),
+//   //   .proxy_index = material_index,
+//   // }) );
+
+//   meshes.push_back( std::move(mesh) );
+
+//   mesh_indices_map[std::string(mesh_name)] = meshes.size() - 1;
+//   transforms.emplace_back( linalg::identity );
+//   transforms_has_changed = true;
+//   return meshes.back().get();
+// }
+
+// ----------------------------------------------------------------------------
+
+// Mesh* HostResources::findMeshByName(std::string_view mesh_name) const {
+//   if (auto it = mesh_indices_map.find(std::string(mesh_name)); it != mesh_indices_map.end()) {
+//     uint32_t index = it->second;
+//     return meshes[index].get();
+//   }
+//   return nullptr;
+// }
+
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 bool HostResources::loadGLTF(std::string_view filename) {
