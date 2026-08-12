@@ -658,70 +658,12 @@ bool Context::initDevice() {
 
   /* Vulkan GPU features. */
   {
-    add_device_feature(
-      VK_KHR_MULTIVIEW_EXTENSION_NAME,
-      feature_.multiview,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
-    );
+    // VK_VERSION_1_1
 
     add_device_feature(
-      VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-      feature_.buffer_device_address,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-      feature_.storage_16bit,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-      feature_.dynamic_rendering,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
-      feature_.maintenance4,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
-      feature_.maintenance5,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_6_EXTENSION_NAME,
-      feature_.maintenance6,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-      feature_.timeline_semaphore,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
-    );
-
-    // add_device_feature(
-    //   VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-    //   feature_.swapchain_maintenance1,
-    //   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT
-    // );
-
-    add_device_feature(
-      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-      feature_.synchronization2,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-      feature_.descriptor_indexing,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
+      VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
+      feature_.vertex_input_dynamic_state,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
     );
 
     add_device_feature(
@@ -749,17 +691,39 @@ bool Context::initDevice() {
     );
 
     add_device_feature(
-      VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
-      feature_.index_type_uint8,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT
+      VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+      feature_.storage_16bit,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
     );
 
     add_device_feature(
-      VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
-      feature_.vertex_input_dynamic_state,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
+      VK_KHR_MULTIVIEW_EXTENSION_NAME,
+      feature_.multiview,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
     );
 
+    // VK_VERSION_1_2
+
+    add_device_feature(
+      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+      feature_.descriptor_indexing,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
+    );
+
+    add_device_feature(
+      VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+      feature_.buffer_device_address,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR
+    );
+
+    add_device_feature(
+      VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+      feature_.timeline_semaphore,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
+    );
+
+    // [TODO] make optionnal
+    // ------------------------
     add_device_feature(
       VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
       feature_.acceleration_structure,
@@ -773,6 +737,47 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
     );
 #endif
+    // ------------------------
+
+    // VK_VERSION_1_3
+
+    add_device_feature(
+      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+      feature_.dynamic_rendering,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR
+    );
+
+    add_device_feature(
+      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+      feature_.synchronization2,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR
+    );
+
+    add_device_feature(
+      VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+      feature_.maintenance4,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
+    );
+
+    // VK_VERSION_1_4
+
+    add_device_feature(
+      VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
+      feature_.index_type_uint8,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT
+    );
+
+    add_device_feature(
+      VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+      feature_.maintenance5,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
+    );
+
+    add_device_feature(
+      VK_KHR_MAINTENANCE_6_EXTENSION_NAME,
+      feature_.maintenance6,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
+    );
 
     vkGetPhysicalDeviceFeatures2(gpu_, &feature_.base);
   }

@@ -418,12 +418,10 @@ class Context {
 
   struct {
     VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-
-    // (to be used with later vulkan version)
-    // VkPhysicalDeviceVulkan11Features features11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    // VkPhysicalDeviceVulkan12Features features12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    // VkPhysicalDeviceVulkan13Features features13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    // VkPhysicalDeviceVulkan14Features features14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
+    // VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    // VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    // VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
     // VK_VERSION_1_1
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
@@ -433,14 +431,12 @@ class Context {
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
     VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
     VkPhysicalDeviceMultiviewFeaturesKHR multiview{};
-    // VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchain_maintenance1{}; 
 
     // VK_VERSION_1_2
     VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing{};
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR buffer_device_address{};
     VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
-    // VkPhysicalDeviceRayQueryFeaturesKHR ray_query{};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
 
     // VK_VERSION_1_3
