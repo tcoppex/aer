@@ -222,22 +222,6 @@ class SampleApp final : public Application {
     scene_.reset();
   }
 
-  void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
-    for (auto const& mesh : scene_->meshes) {
-      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
-      push_constant_.model.worldMatrix = lina::mul(
-        world_matrix,
-        scene_->transforms[mesh->transform_index] //
-      );
-      for (auto const& submesh : mesh->submeshes) {
-        auto const& mat = scene_->material_proxy(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
-        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
-        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
-      }
-    }
-  }
-
   void update(float const dt) final {
     /* We can check if the camera has changed between frame. */
     if (camera_.rebuilt()) {
@@ -268,6 +252,25 @@ class SampleApp final : public Application {
       }
     }
     cmd.endRendering();
+  }
+
+
+  void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
+    for (auto const& mesh : scene_->meshes) {
+      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
+
+      push_constant_.model.worldMatrix = lina::mul(
+        world_matrix,
+        scene_->root_matrix()
+      );
+
+      for (auto const& submesh : mesh->submeshes) {
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
+        pass.pushConstant( push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+      }
+    }
   }
 
  private:

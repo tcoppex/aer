@@ -151,10 +151,13 @@ class SceneFx final : public RenderTargetFx {
     for (auto const& mesh : scene_->meshes) {
       pass.setPrimitiveTopology(mesh->vk_primitive_topology());
 
-      push_constant_.model.worldMatrix = lina::mul(
-        world_matrix_,
-        scene_->transforms[mesh->transform_index]
-      );
+      // [deprecated] previous method.
+      // push_constant_.model.worldMatrix = lina::mul(
+      //   world_matrix_,
+      //   scene_->transforms[mesh->transform_index]
+      // );
+
+      push_constant_.model.worldMatrix = linalg::identity; // 
 
       for (auto const& submesh : mesh->submeshes) {
         auto const& mat = scene_->material_proxy(*submesh.material_ref);
@@ -290,22 +293,24 @@ class SampleApp final : public Application {
       "DamagedHelmet.glb"
     };
 
-    auto gltf_scene = renderer_.loadGLTF(gltf_filename, {
-      { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
-      { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
-      { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
-    });
-    gltf_scene->uploadToDevice();
-
     /* Fx Pipeline. */
     toon_pipeline_.init(context_);
     toon_pipeline_.setup(renderer_.surface_size()); //
 
     if (auto sceneFx = toon_pipeline_.entry_fx(); sceneFx) {
-      sceneFx->setModel(gltf_scene);
+      auto scene = renderer_.loadGLTF(gltf_filename, {
+        { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
+        { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
+        { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
+      });
+      scene->uploadToDevice();
+
+      sceneFx->setModel(scene); //
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
     }
+
+    LOGW("The scene root transform is currently broken.");
 
     return true;
   }

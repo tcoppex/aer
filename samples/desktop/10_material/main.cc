@@ -46,6 +46,7 @@ class SampleApp final : public Application {
       future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
     } else {
       scene_ = renderer_.loadGLTF(gtlf_filename);
+      scene_->uploadToDevice();
     }
 
     return true;

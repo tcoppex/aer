@@ -52,6 +52,11 @@ struct HostResources {
     return material_proxies[ref.proxy_index];
   }
 
+  [[nodiscard]]
+  mat4 const& root_matrix() const {
+    return scene.registry.get<component::GlobalTransform>(scene.root).worldMatrix;
+  }
+
  protected:
   [[nodiscard]]
   bool loadGLTF(std::string_view filename);
