@@ -75,7 +75,7 @@ struct HostResources {
   // -------
   ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
-  std::vector<mat4f> transforms{};  // [deprecated]
+  std::vector<mat4f> transforms{};  // [deprecated] (to be move to the hierarchy object)
   // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //

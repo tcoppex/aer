@@ -20,7 +20,8 @@ buffer TransformSBO_ {
   TransformSBO transforms[];
 };
 
-layout(scalar, push_constant) uniform PushConstant_ {
+layout(scalar, push_constant)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 

@@ -8,24 +8,23 @@
 
 // ----------------------------------------------------------------------------
 
+layout(
+  local_size_x = kCompute_IrradianceReduceSHCoeff_kernelSize_x
+) in;
+
 layout(scalar, binding = kDescriptorSetBinding_IrradianceSHCoeff_StorageBuffer)
 buffer SHCoeffData_ {
   SHCoeff sh_coeff_data[];
 };
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
 // ----------------------------------------------------------------------------
 
-layout(
-  local_size_x = kCompute_IrradianceReduceSHCoeff_kernelSize_x
-) in;
-
 shared vec4 sharedData[gl_WorkGroupSize.x];
-
-// ----------------------------------------------------------------------------
 
 void main() {
   const uint localId = gl_LocalInvocationID.x;

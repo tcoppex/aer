@@ -8,11 +8,13 @@
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_UniformBuffer) uniform UBO_ {
+layout(scalar, set = 0, binding = kDescriptorSetBinding_UniformBuffer)
+uniform UBO_ {
   UniformData uData;
 };
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 

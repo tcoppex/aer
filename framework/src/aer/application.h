@@ -50,11 +50,11 @@ class Application : public EventCallbacks
 
   virtual void buildUI() {}
 
-  void drawUI(CommandEncoder const& cmd);
-
   virtual void update(float const dt) {}
 
   virtual void draw(CommandEncoder const& cmd) {}
+
+  void drawUI(CommandEncoder const& cmd);
 
  protected:
   [[nodiscard]]

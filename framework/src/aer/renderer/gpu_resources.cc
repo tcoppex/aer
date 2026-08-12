@@ -44,8 +44,10 @@ GPUResources::~GPUResources() {
   rt_scene_.reset();
   // ---------------------------------------
 
-  material_fx_registry_->release();
-  material_fx_registry_.reset();
+  if (material_fx_registry_) {
+    material_fx_registry_->release();
+    material_fx_registry_.reset();
+  }
 }
 
 // ----------------------------------------------------------------------------
