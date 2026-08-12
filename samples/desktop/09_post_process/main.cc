@@ -151,13 +151,10 @@ class SceneFx final : public RenderTargetFx {
     for (auto const& mesh : scene_->meshes) {
       pass.setPrimitiveTopology(mesh->vk_primitive_topology());
 
-      // [deprecated] previous method.
-      // push_constant_.model.worldMatrix = lina::mul(
-      //   world_matrix_,
-      //   scene_->transforms[mesh->transform_index]
-      // );
-
-      push_constant_.model.worldMatrix = linalg::identity; // 
+      push_constant_.model.worldMatrix = lina::mul(
+        world_matrix_,
+        scene_->transforms[mesh->transform_index]
+      );
 
       for (auto const& submesh : mesh->submeshes) {
         auto const& mat = scene_->material_proxy(*submesh.material_ref);
@@ -309,8 +306,6 @@ class SampleApp final : public Application {
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
     }
-
-    LOGW("The scene root transform is currently broken.");
 
     return true;
   }

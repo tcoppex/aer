@@ -82,6 +82,10 @@ struct HostResources {
   // -------
   ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
+
+  // Used to store the buffer of global transforms, caculated by the hierarchy.
+  // Should not be changed directly.
+  std::vector<mat4f> transforms{};  // [move to hierarchy ?]
   // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //
@@ -93,10 +97,6 @@ struct HostResources {
 
  protected:
   MaterialProxy::TextureBinding default_texture_binding_{};
-
-  // Used to store the buffer of global transforms, caculated by the hierarchy.
-  // Should not be changed locally [move to hierarchy ?]
-  std::vector<mat4f> transforms{};  //
 };
 
 } // namespace scene
