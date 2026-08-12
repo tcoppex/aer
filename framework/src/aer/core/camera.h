@@ -29,11 +29,11 @@ class Camera {
   };
 
   struct Transform {
-    mat4 projection{linalg::identity};
-    mat4 projection_inverse{linalg::identity};
-    mat4 view{linalg::translation_matrix(vec3(0.0f, 0.0f, -1.0f))};
-    mat4 world{linalg::identity}; // view_inverse
-    mat4 view_projection{linalg::identity};
+    mat4 projection{lina::identity};
+    mat4 projection_inverse{lina::identity};
+    mat4 view{lina::translation_matrix(vec3(0.0f, 0.0f, -1.0f))};
+    mat4 world{lina::identity}; // view_inverse
+    mat4 view_projection{lina::identity};
 
     [[nodiscard]]
     vec3 position() const noexcept {
@@ -42,7 +42,7 @@ class Camera {
 
     [[nodiscard]]
     vec3 direction() const {
-      return linalg::normalize(-lina::to_vec3(world[2])); //
+      return lina::normalize(-lina::to_vec3(world[2])); //
     }
   };
   
@@ -78,8 +78,8 @@ class Camera {
 
     // Projection matrix.
     auto const ratio = static_cast<float>(width_) / static_cast<float>(height_);
-    set_projection(linalg::perspective_matrix(
-      fov_, ratio, znear, zfar, linalg::neg_z, linalg::zero_to_one
+    set_projection(lina::perspective_matrix(
+      fov_, ratio, znear, zfar, lina::neg_z, lina::zero_to_one
     ));
 
     // Linearization parameters.
@@ -124,8 +124,8 @@ class Camera {
       if (controller_ && bRetrieveView) {
         controller_->calculateViewMatrix(&T.view, view_id);
       }
-      T.world = linalg::inverse(T.view);
-      T.view_projection = linalg::mul(T.projection, T.view);
+      T.world = lina::inverse(T.view);
+      T.view_projection = lina::mul(T.projection, T.view);
     }
     if (view_count() == 2u)
     {
@@ -134,8 +134,8 @@ class Camera {
       if (controller_ && bRetrieveView) {
         controller_->calculateViewMatrix(&T.view, view_id);
       }
-      T.world = linalg::inverse(T.view);
-      T.view_projection = linalg::mul(T.projection, T.view);
+      T.world = lina::inverse(T.view);
+      T.view_projection = lina::mul(T.projection, T.view);
     }
     need_rebuild_ = false;
     rebuilt_ = true;
@@ -152,7 +152,7 @@ class Camera {
     LOG_CHECK(view_id < transforms_.size());
     auto &T = transforms_[view_id];
     T.projection = projection;
-    T.projection_inverse = linalg::inverse(T.projection);
+    T.projection_inverse = lina::inverse(T.projection);
     need_rebuild_ = true;
     linear_params_set_ = false;
   }

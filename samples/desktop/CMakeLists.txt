@@ -4,7 +4,7 @@
 #
 # -----------------------------------------------------------------------------
 
-## Add  Sample target and setup its properties.
+## Add a sample target and setup their properties.
 function(add_sample dirname)
   set(SAMPLE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${dirname})
   set(target ${dirname})

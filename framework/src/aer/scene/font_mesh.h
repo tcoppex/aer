@@ -18,7 +18,7 @@ class FontMesh : public Mesh {
 
   struct GlyphDrawInfo {
     char16_t code{};
-    mat4 matrix{linalg::identity};
+    mat4 matrix{lina::identity};
     std::span<const SubMesh> submeshes{};
   };
 

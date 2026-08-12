@@ -52,18 +52,18 @@ class SampleApp final : public Application {
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
-      .viewMatrix = linalg::lookat_matrix(
+      .viewMatrix = lina::lookat_matrix(
         vec3f(0.0f, 0.0f, 4.0f),
         vec3f(0.0f, 0.0f, 0.0f),
         vec3f(0.0f, 1.0f, 0.0f)
       ),
-      .projectionMatrix = linalg::perspective_matrix(
+      .projectionMatrix = lina::perspective_matrix(
         lina::radians(60.0f),
         static_cast<float>(viewport_size_.width) / static_cast<float>(viewport_size_.height),
         0.01f,
         500.0f,
-        linalg::neg_z,
-        linalg::zero_to_one
+        lina::neg_z,
+        lina::zero_to_one
       ),
     };
 
@@ -99,7 +99,6 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clearIndicesAndVertices();
       }
 
       // Torus
@@ -119,10 +118,13 @@ class SampleApp final : public Application {
           mesh.indices(),
           VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
         );
-        mesh.clearIndicesAndVertices();
       }
 
       context_.finishTransientCommandEncoder(cmd);
+
+      // Clear host data once the command buffer has completed.
+      plane_.clearIndicesAndVertices();
+      torus_.clearIndicesAndVertices();
     }
 
     /* Descriptor set. */
@@ -308,7 +310,7 @@ class SampleApp final : public Application {
   void draw(CommandEncoder const& cmd) final {
     float const tick{ frame_time() };
 
-    mat4 const portal_world_matrix = linalg::mul(
+    mat4 const portal_world_matrix = lina::mul(
       lina::rotation_matrix_x(lina::kHalfPi),
       lina::rotation_matrix_axis(
         vec3(2.45f * cosf(0.5f * tick), 1.35f, -1.4 * sinf(0.35f * tick)),
@@ -350,8 +352,8 @@ class SampleApp final : public Application {
         torus_.draw(pass);
 
         // Outer-ring.
-        push_constant_.model.worldMatrix = linalg::mul(
-          linalg::scaling_matrix(vec3(3.0)),
+        push_constant_.model.worldMatrix = lina::mul(
+          lina::scaling_matrix(vec3(3.0)),
           lina::rotation_matrix_z(-0.32f * tick)
         );
         pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);

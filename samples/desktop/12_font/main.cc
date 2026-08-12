@@ -26,11 +26,6 @@ class SampleApp final : public Application {
   static constexpr std::array<const char*, 2> kFontSelection{
     "angeme/Angeme-Regular.ttf",
     "angeme/Angeme-Bold.ttf",
-    // "takezo/TakezoRegular.otf",
-    // "takezo/TakezoTilt.otf",
-    // "takezo/TakezoCondensed.otf",
-    // "heroika/HeroikanamikusRegular.otf",
-    // "freesans/FreeSans.ttf"
   };
 
  public:
@@ -58,7 +53,7 @@ class SampleApp final : public Application {
 
     resetFont();
 
-    /* Create Buffers). */
+    /* Create Buffers. */
     {
       uniform_buffer_ = context_.createBuffer(
         sizeof(host_data_),
@@ -229,13 +224,13 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    auto const scaleMatrix = linalg::scaling_matrix(
+    auto const scaleMatrix = lina::scaling_matrix(
       vec3(font_.pixelScaleFromSize(2))
     );
-    auto const centerMatrix = linalg::translation_matrix(
+    auto const centerMatrix = lina::translation_matrix(
       vec3(text_draw_info_.cx, 0, 0)
     );
-    auto const worldMatrix = linalg::mul(scaleMatrix, centerMatrix);
+    auto const worldMatrix = lina::mul(scaleMatrix, centerMatrix);
 
     auto pass = cmd.beginRendering();
     {
@@ -248,16 +243,18 @@ class SampleApp final : public Application {
         for (size_t i=0; i < text_draw_info_.glyphs.size(); ++i) {
           auto const& glyph_draw_info = text_draw_info_.glyphs[i];
           auto const waveMatrix = ui_.enableAnimation ?
-            linalg::translation_matrix(
-              vec3(0, 12 * sin(i + 4.2*elapsed_time()), 85 * cos(i + 2.1 * elapsed_time()))
-            ) : linalg::identity;
-          push_constant_.model.worldMatrix = linalg::mul(
+            lina::translation_matrix(vec3(
+              0.0f,
+              12.0f * sin(i + 4.2f * elapsed_time()),
+              85.0f * cos(i + 2.1f * elapsed_time())
+            )) : lina::identity;
+          push_constant_.model.worldMatrix = lina::mul(
             worldMatrix,
-            linalg::mul(glyph_draw_info.matrix, waveMatrix)
+            lina::mul(glyph_draw_info.matrix, waveMatrix)
           );
           pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
           for (auto const& submesh : glyph_draw_info.submeshes) {
-            pass.draw(submesh.draw_descriptor, vertex_buffer_, index_buffer_); //
+            pass.bindAndDraw(submesh.draw_descriptor, vertex_buffer_, index_buffer_); //
           }
         }
       }
@@ -335,7 +332,7 @@ class SampleApp final : public Application {
 
   struct {
     std::array<char, 128u> sampleText{
-      "C’était à Mégara, faubourg de Carthage, dans les jardins d’Hamilcar"
+      "C'était à Mégara, faubourg de Carthage, dans les jardins d'Hamilcar."
     };
     int32_t fontArrayIndex{};
     int32_t fontCurveResolution{scene::Polyline::kDefaultCurveResolution};

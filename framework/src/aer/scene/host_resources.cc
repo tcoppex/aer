@@ -8,12 +8,16 @@
 namespace scene {
 
 void HostResources::setup() {
+  // -----------------
+  scene.setup();
+  // -----------------
+
   // Create default 1x1 textures for optionnal bindings.
   //  -> should it be left to each MaterialFx?
   {
-    constexpr uint32_t kDefaultResourceSize = 32u;
-    host_images.reserve(kDefaultResourceSize);
-    textures.reserve(kDefaultResourceSize);
+    constexpr uint32_t kDefaultResourceBufferSize = 128u;
+    host_images.reserve(kDefaultResourceBufferSize);
+    textures.reserve(kDefaultResourceBufferSize);
 
     auto push_default_texture{[
       &_textures = this->textures,
@@ -33,11 +37,77 @@ void HostResources::setup() {
     bindings.occlusion          = push_default_texture({255, 255, 255, 255});
     bindings.emissive           = push_default_texture({  0,   0,   0,   0});
   }
+
 }
 
 // ----------------------------------------------------------------------------
 
 bool HostResources::loadFile(std::string_view filename) {
+  auto const basename{ utils::ExtractBasename(filename) };
+  auto const ext{ utils::ExtractExtension(filename) };
+
+  if (!loadGLTF(filename)) {
+    return false;
+  }
+
+  resetInternalDescriptors();
+
+#ifndef NDEBUG
+  LOGI("> \"{}.{}\" has been loaded successfully.", basename, ext);
+
+  // This will also display the extra data procedurally created.
+  std::cout << "┌────────────┬───── " << std::endl;
+  std::cout << "│ Images     │ " << host_images.size() << std::endl;
+  std::cout << "│ Textures   │ " << textures.size() << std::endl;
+  std::cout << "│ Materials  │ " << material_proxies.size() << std::endl;
+  std::cout << "│ Skeletons  │ " << skeletons.size() << std::endl;
+  std::cout << "│ Animations │ " << animations_map.size() << std::endl;
+  std::cout << "│ Meshes     │ " << meshes.size() << std::endl;
+  std::cerr << "└────────────┴─────" << std::endl;
+
+  // uint32_t const kMegabyte{ 1024u * 1024u };
+  // LOGI("> vertex buffer size {} Mb", vertex_buffer_size / static_cast<float>(kMegabyte));
+  // LOGI("> index buffer size {} Mb ", index_buffer_size / static_cast<float>(kMegabyte));
+  // LOGI("> total image size {} Mb ", total_image_size / static_cast<float>(kMegabyte));
+#endif
+
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+/* [Work In Progress] */
+// Mesh* HostResources::createMesh(std::string_view mesh_name) {
+//   auto mesh = std::make_unique<Mesh>();
+
+//   // material_refs.push_back( std::make_unique<scene::MaterialRef>(scene::MaterialRef{
+//   //   .model = material_model,
+//   //   .states = GetMaterialStates(mat),
+//   //   .proxy_index = material_index,
+//   // }) );
+
+//   meshes.push_back( std::move(mesh) );
+
+//   mesh_indices_map[std::string(mesh_name)] = meshes.size() - 1;
+//   transforms.emplace_back( linalg::identity );
+//   transforms_has_changed = true;
+//   return meshes.back().get();
+// }
+
+// ----------------------------------------------------------------------------
+
+// Mesh* HostResources::findMeshByName(std::string_view mesh_name) const {
+//   if (auto it = mesh_indices_map.find(std::string(mesh_name)); it != mesh_indices_map.end()) {
+//     uint32_t index = it->second;
+//     return meshes[index].get();
+//   }
+//   return nullptr;
+// }
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+bool HostResources::loadGLTF(std::string_view filename) {
   auto const basename{ utils::ExtractBasename(filename) };
   auto const ext{ utils::ExtractExtension(filename) };
 
@@ -68,6 +138,10 @@ bool HostResources::loadFile(std::string_view filename) {
   {
     using namespace internal::gltf_loader;
 
+    // ++ Important Note ++
+    // Scenes are not parsed, all objects are loaded as part of the
+    // same scene.
+
     // Reserve data.
     samplers.reserve(data->samplers_count + samplers.size());
     host_images.reserve(data->images_count + host_images.size());
@@ -85,7 +159,15 @@ bool HostResources::loadFile(std::string_view filename) {
 
       auto run_task         = utils::RunTaskGeneric<void>;
       auto run_task_ret     = utils::RunTaskGeneric<PointerToIndexMap_t>;
+      auto run_task_scene   = utils::RunTaskGeneric<PointerToEntityMap_t>;
       auto run_task_sampler = utils::RunTaskGeneric<PointerToSamplerMap_t>;
+
+      auto taskSceneEntities = run_task_scene([
+        data,
+        &_scene = this->scene
+      ] {
+        return ExtractSceneHierarchy(data, _scene);
+      });
 
       auto taskSamplers = run_task_sampler([
         data,
@@ -101,8 +183,8 @@ bool HostResources::loadFile(std::string_view filename) {
         return ExtractSkeletons(data, _skeletons);
       });
 
-      // [real bottleneck, internally images are loaded asynchronously and must
-      //  be waited for at the end]
+      // [real bottleneck]
+      // Internally images are loaded asynchronously and must be waited for at the end.
       auto taskImageData = run_task_ret([
         data,
         &_host_images = this->host_images
@@ -149,23 +231,28 @@ bool HostResources::loadFile(std::string_view filename) {
       });
 
       auto taskMeshes = run_task([
+        &taskSceneEntities,
         &taskMaterials,
         data,
         &skeletons_indices,
+        &_scene = this->scene, //
         &_material_refs = this->material_refs,
         &_skeletons = this->skeletons,
         &_meshes = this->meshes,
-        &_transforms = this->transforms
+        &_mesh_indices_map = this->mesh_indices_map
       ] {
+        auto entities_lut = taskSceneEntities.get();
         auto materials_indices = taskMaterials.get();
         ExtractMeshes(
           data,
+          _scene,
+          entities_lut,
           materials_indices,
           _material_refs,
           skeletons_indices,
           _skeletons,
           _meshes,
-          _transforms,
+          _mesh_indices_map,
           kRestructureAttribs,
           kForce32BitsIndexing
         );
@@ -178,6 +265,7 @@ bool HostResources::loadFile(std::string_view filename) {
     {
       /* --- Serialized version --- */
 
+      auto entities_lut       = ExtractSceneHierarchy(data, scene);
       auto samplers_lut       = ExtractSamplers(data, samplers);
       auto skeletons_indices  = ExtractSkeletons(data, skeletons);
       auto images_indices     = ExtractImages(data, host_images);
@@ -187,48 +275,36 @@ bool HostResources::loadFile(std::string_view filename) {
       auto materials_indices  = ExtractMaterials(
         data,
         textures_indices,
-        material_proxies, material_refs,
+        material_proxies,
+        material_refs,
         default_texture_binding_
       );
       ExtractMeshes(
         data,
-        materials_indices, material_refs,
-        skeletons_indices, skeletons,
-        meshes, transforms,
+        scene,
+        entities_lut,
+        materials_indices,
+        material_refs,
+        skeletons_indices,
+        skeletons,
+        meshes,
+        mesh_indices_map,
         kRestructureAttribs,
         kForce32BitsIndexing
       );
     }
 
+    /* Recalculate the scene global matrices buffer. */
+    updateTransformsBuffer();
+
     /* Wait for the host images to finish loading before using them. */
     for (auto & host_image : host_images) {
-      host_image.async_load_result();
+      host_image.getAsyncResult();
     }
   }
 
-  /* Be sure to have finished loading all images before freeing gltf data */
+  /* [!] Be sure to have loaded all images before freeing gltf data. */
   cgltf_free(data);
-
-  resetInternalDescriptors();
-
-#ifndef NDEBUG
-  LOGI("> \"{}.{}\" has been loaded successfully.", basename, ext);
-  
-  // This will also display the extra data procedurally created.
-  std::cout << "┌────────────┬───── " << std::endl;
-  std::cout << "│ Images     │ " << host_images.size() << std::endl;
-  std::cout << "│ Textures   │ " << textures.size() << std::endl;
-  std::cout << "│ Materials  │ " << material_proxies.size() << std::endl;
-  std::cout << "│ Skeletons  │ " << skeletons.size() << std::endl;
-  std::cout << "│ Animations │ " << animations_map.size() << std::endl;
-  std::cout << "│ Meshes     │ " << meshes.size() << std::endl;
-  std::cerr << "└────────────┴─────" << std::endl;
-
-  // uint32_t const kMegabyte{ 1024u * 1024u };
-  // LOGI("> vertex buffer size {} Mb", vertex_buffer_size / static_cast<float>(kMegabyte));
-  // LOGI("> index buffer size {} Mb ", index_buffer_size / static_cast<float>(kMegabyte));
-  // LOGI("> total image size {} Mb ", total_image_size / static_cast<float>(kMegabyte));
-#endif
 
   return true;
 }
@@ -245,12 +321,12 @@ void HostResources::resetInternalDescriptors() {
   for (auto const& mesh : meshes) {
     // ---------
     mesh->transform_index = transform_index++; //
-    mesh->set_resources_ptr(this); //
+    // ---------
+
     mesh->set_buffer_info({
       .vertex_offset = vertex_buffer_size,
       .index_offset = index_buffer_size,
     });
-    // ---------
     vertex_buffer_size += mesh->vertices_bytesize();
     index_buffer_size += mesh->indices_bytesize();
   }
@@ -260,6 +336,23 @@ void HostResources::resetInternalDescriptors() {
   }
 }
 
+// ----------------------------------------------------------------------------
+
+void HostResources::updateTransformsBuffer() {
+  /* Resize the transform buffer according to mesh count. */
+  transforms.resize(meshes.size(), linalg::identity); //
+
+  /* Update the entities hierarchy. */
+  scene.update();
+
+  // [wip] Copy new matrices to the local matrices buffer.
+  scene.registry
+    .view<scene::component::GlobalTransform, scene::component::Mesh>()
+    .each([&_transforms = this->transforms](auto &global, auto &mesh) {
+      _transforms[mesh.meshIndex] = global.worldMatrix;
+    });
+}
+
 }  // namespace scene
 
 /* -------------------------------------------------------------------------- */
@@ -267,12 +360,16 @@ void HostResources::resetInternalDescriptors() {
 
 #if !defined(NDEBUG)
 
+/* Checks to assert the data structures can be moved / assigned cheaply. */
+
 STATIC_ASSERT_TRIVIALITY(scene::Sampler);
 STATIC_ASSERT_TRIVIALITY(scene::Texture);
 STATIC_ASSERT_TRIVIALITY(scene::MaterialProxy);
 STATIC_ASSERT_TRIVIALITY(scene::MaterialRef);
 
 STATIC_ASSERT_MOVABLE_ONLY(scene::ImageData);
+
+// [TODO]
 // STATIC_ASSERT_MOVABLE_ONLY(scene::Mesh);
 // STATIC_ASSERT_MOVABLE_ONLY(scene::Skeleton);
 

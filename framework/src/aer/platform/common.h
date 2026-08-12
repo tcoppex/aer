@@ -77,14 +77,12 @@ extern "C" {                                                            \
 #else // DESKTOP
 
 #define ENTRY_POINT(AppClass)                                           \
-extern "C" {                                                            \
   int main(int argc, char *argv[]) {                                    \
     std::unique_ptr<Application> app = std::make_unique<AppClass>();    \
     auto settings = app->settings();                                    \
     settings.use_xr = bool(AER_USE_OPENXR);                             \
     return app->run(settings);                                          \
   }                                                                     \
-}
 
 #endif
 

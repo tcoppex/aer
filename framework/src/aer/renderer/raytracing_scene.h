@@ -1,6 +1,8 @@
 #ifndef AER_RENDERER_RAYTRACING_SCENE_H_
 #define AER_RENDERER_RAYTRACING_SCENE_H_
 
+#include "aer/core/common.h"
+
 #include "aer/platform/vulkan/context.h"
 #include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/host_resources.h" // for scene::ResourceBuffer
@@ -20,6 +22,7 @@ class RayTracingSceneInterface {
   /* Build the Acceleration structures & Instances data buffer. */
   virtual void build(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
+    std::vector<mat4> const& transforms,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) = 0;
@@ -40,13 +43,13 @@ class RayTracingSceneInterface {
 
  protected:
   /* Build the Bottom Level Acceleration Structure. */
-  virtual bool build_blas(scene::Mesh::SubMesh const& submesh) = 0;
+  virtual bool buildBLAS(scene::Mesh::SubMesh const& submesh) = 0;
 
   /* Build the Top Level Acceleration Structure. */
-  virtual void build_tlas() = 0;
+  virtual void buildTLAS() = 0;
 
   /* Build the Instances data buffer. */
-  virtual void build_instances_data_buffer(
+  virtual void buildInstancesDataBuffer(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
@@ -78,6 +81,7 @@ class RayTracingScene : public RayTracingSceneInterface {
 
   void build(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
+    std::vector<mat4> const& transforms,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) final;
@@ -92,18 +96,18 @@ class RayTracingScene : public RayTracingSceneInterface {
   }
 
  protected:
-  bool build_blas(scene::Mesh::SubMesh const& submesh) final;
+  bool buildBLAS(scene::Mesh::SubMesh const& submesh) final;
 
-  void build_tlas() final;
+  void buildTLAS() final;
 
-  void build_instances_data_buffer(
+  void buildInstancesDataBuffer(
     scene::ResourceBuffer<scene::Mesh> const& meshes,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer
   ) override;
 
  private:
-  void build_acceleration_structure(
+  void buildAccelerationStructure(
     backend::AccelerationStructure* as,
     VkPipelineStageFlags2 dstStageMask,
     VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo

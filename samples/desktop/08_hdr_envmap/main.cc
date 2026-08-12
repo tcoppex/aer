@@ -4,8 +4,10 @@
 //
 //  Where we use a HDR envmap to illuminate a 3D model.
 //
-//  Show how to load and display a glTF object manually, redefining the pipeline
-//  (see sample_10 for how to use the internal renderer system directly).
+//  Show how to load and display a glTF scene manually, redefining the pipeline.
+//
+//  For a simpler approach, sample #10 show how to use the internal renderer
+//  system directly.
 //
 /* -------------------------------------------------------------------------- */
 
@@ -84,10 +86,12 @@ class SampleApp final : public Application {
       /* Load the model directly on device, as we do not change the model's internal data
        * layout we need to specify how to map its attributes to the shader used. */
       scene_ = renderer_.loadGLTF(gltf_filename, {
-        { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
-        { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
-        { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
-      });
+          { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
+          { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
+          { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
+        }
+      );
+      scene_->uploadToDevice();
 
       LOG_CHECK(scene_->device_images.size() <= kMaxNumTextures); //
     }
@@ -218,22 +222,6 @@ class SampleApp final : public Application {
     scene_.reset();
   }
 
-  void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
-    for (auto const& mesh : scene_->meshes) {
-      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
-      push_constant_.model.worldMatrix = linalg::mul(
-        world_matrix,
-        mesh->world_matrix()
-      );
-      for (auto const& submesh : mesh->submeshes) {
-        auto const& mat = scene_->material_proxy(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
-        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT); //
-        pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
-      }
-    }
-  }
-
   void update(float const dt) final {
     /* We can check if the camera has changed between frame. */
     if (camera_.rebuilt()) {
@@ -264,6 +252,25 @@ class SampleApp final : public Application {
       }
     }
     cmd.endRendering();
+  }
+
+
+  void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
+    for (auto const& mesh : scene_->meshes) {
+      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
+
+      push_constant_.model.worldMatrix = lina::mul(
+        world_matrix,
+        scene_->root_matrix()
+      );
+
+      for (auto const& submesh : mesh->submeshes) {
+        auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
+        pass.pushConstant( push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+      }
+    }
   }
 
  private:

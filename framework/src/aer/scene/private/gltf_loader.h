@@ -6,6 +6,8 @@
 #include "aer/scene/host_resources.h"
 #include "aer/scene/private/cgltf_wrapper.h"
 
+#include "aer/scene/ecs/hierarchy.h"
+
 /* -------------------------------------------------------------------------- */
 
 namespace internal::gltf_loader {
@@ -14,9 +16,15 @@ template<typename T>
 using PointerMap_t = std::unordered_map<void const*, T>;
 
 using PointerToIndexMap_t = PointerMap_t<uint32_t>;
+using PointerToEntityMap_t = PointerMap_t<entt::entity>;
 using PointerToSamplerMap_t = PointerMap_t<scene::Sampler>;
 
 /* -------------------------------------------------------------------------- */
+
+PointerToEntityMap_t ExtractSceneHierarchy(
+  cgltf_data const* data,
+  scene::Hierarchy& scene
+);
 
 PointerToSamplerMap_t ExtractSamplers(
   cgltf_data const* data,
@@ -50,12 +58,14 @@ PointerToIndexMap_t ExtractSkeletons(
 
 void ExtractMeshes(
   cgltf_data const* data,
+  scene::Hierarchy &scene,
+  PointerToEntityMap_t &entities_lut,
   PointerToIndexMap_t const& materials_indices,
   scene::ResourceBuffer<scene::MaterialRef>const& material_refs,
   PointerToIndexMap_t const& skeleton_indices,
   scene::ResourceBuffer<scene::Skeleton>const& skeletons,
   scene::ResourceBuffer<scene::Mesh>& meshes,
-  std::vector<mat4f>& transforms,
+  scene::IndexMap &mesh_indices_map,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex
 );

@@ -128,7 +128,7 @@ class RenderContext : public Context {
 
   // --- Compute Pipelines ---
 
-  void create_compute_pipelines(
+  void createComputePipelines(
     VkPipelineLayout pipeline_layout,
     std::vector<backend::ShaderModule> const& modules,
     Pipeline *pipelines
@@ -191,7 +191,7 @@ class RenderContext : public Context {
 
   [[nodiscard]]
   VkSampler default_sampler() const noexcept {
-    return sampler_pool_.default_sampler();
+    return sampler_pool_.anyso_repeat_linear(); //
   }
 
   [[nodiscard]]
@@ -269,7 +269,7 @@ class RenderContext : public Context {
   SamplerPool sampler_pool_{};
   DescriptorSetRegistry descriptor_set_registry_{};
 
-  mat4f default_world_matrix_{linalg::identity};
+  mat4f default_world_matrix_{lina::identity};
 };
 
 /* -------------------------------------------------------------------------- */

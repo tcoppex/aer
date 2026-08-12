@@ -93,6 +93,12 @@ std::tuple<VkPipelineStageFlags2, VkAccessFlags2> MakePipelineStageAccessTuple(
                               VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT
                             | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
 
+    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      return std::make_tuple( VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT
+                            | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                              VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+
     case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
       return std::make_tuple( VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
                             | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT

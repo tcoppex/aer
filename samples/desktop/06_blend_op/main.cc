@@ -44,18 +44,18 @@ class SampleApp final : public Application {
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {
-      .viewMatrix = linalg::lookat_matrix(
+      .viewMatrix = lina::lookat_matrix(
         vec3f(1.0f, 1.25f, 2.0f),
         vec3f(0.0f, 0.0f, 0.0f),
         vec3f(0.0f, 1.0f, 0.0f)
       ),
-      .projectionMatrix = linalg::perspective_matrix(
+      .projectionMatrix = lina::perspective_matrix(
         lina::radians(60.0f),
         static_cast<float>(viewport_size_.width) / static_cast<float>(viewport_size_.height),
         0.01f,
         500.0f,
-        linalg::neg_z,
-        linalg::zero_to_one
+        lina::neg_z,
+        lina::zero_to_one
       ),
     };
 
@@ -227,9 +227,9 @@ class SampleApp final : public Application {
 
   void draw(CommandEncoder const& cmd) final {
     mat4 const world_matrix(
-      linalg::mul(
+      lina::mul(
         lina::rotation_matrix_y(0.25f * frame_time()),
-        linalg::scaling_matrix(vec3(4.0f))
+        lina::scaling_matrix(vec3(4.0f))
       )
     );
 

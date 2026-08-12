@@ -9,6 +9,8 @@
 #include "aer/scene/material.h"
 #include "aer/scene/mesh.h"
 
+#include "aer/scene/ecs/hierarchy.h" //
+
 /* -------------------------------------------------------------------------- */
 
 namespace scene {
@@ -19,6 +21,8 @@ using ResourceBuffer = std::vector<std::unique_ptr<T>>;
 
 template<typename T>
 using ResourceMap = std::unordered_map<std::string, std::unique_ptr<T>>;
+
+using IndexMap = std::unordered_map<std::string, uint32_t>;
 
 // ----------------------------------------------------------------------------
 
@@ -31,11 +35,11 @@ struct HostResources {
   static bool constexpr kRestructureAttribs{true};
 
   // For consistency and simplicity across shaders, even if 16bit is common.
+  // Required for RayTracing.
   static bool constexpr kForce32BitsIndexing{true};
 
  public:
   HostResources() = default;
-
   ~HostResources() = default;
 
   void setup();
@@ -48,6 +52,24 @@ struct HostResources {
     return material_proxies[ref.proxy_index];
   }
 
+  [[nodiscard]]
+  mat4 const& root_matrix() const {
+    return scene.registry.get<component::GlobalTransform>(scene.root).worldMatrix;
+  }
+
+ protected:
+  [[nodiscard]]
+  bool loadGLTF(std::string_view filename);
+
+  void resetInternalDescriptors();
+
+  void updateTransformsBuffer();
+
+ public:
+  //-----------
+  scene::Hierarchy scene{};   // [wip]
+  //-----------
+
   /* --- Host Data --- */
 
   std::vector<Sampler> samplers{};
@@ -57,8 +79,14 @@ struct HostResources {
   std::vector<MaterialProxy> material_proxies{};
   ResourceBuffer<MaterialRef> material_refs{}; //
 
-  ResourceBuffer<Mesh> meshes{}; //
-  std::vector<mat4f> transforms{};
+  // -------
+  ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
+  IndexMap mesh_indices_map{};      // [deprecated]
+
+  // Used to store the buffer of global transforms, caculated by the hierarchy.
+  // Should not be changed directly.
+  std::vector<mat4f> transforms{};  // [move to hierarchy ?]
+  // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //
   ResourceMap<AnimationClip> animations_map{};
@@ -68,8 +96,6 @@ struct HostResources {
   uint32_t total_image_size{0u};
 
  protected:
-  void resetInternalDescriptors();
-
   MaterialProxy::TextureBinding default_texture_binding_{};
 };
 

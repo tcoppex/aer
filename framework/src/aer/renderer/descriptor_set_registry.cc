@@ -15,8 +15,8 @@ void DescriptorSetRegistry::init(
 ) {
   context_ptr_ = &context;
   device_ = context.device();
-  init_descriptor_pool(max_sets);
-  init_descriptor_sets();
+  initDescriptorPool(max_sets);
+  initDescriptorSets();
 }
 
 // ----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ void DescriptorSetRegistry::release() {
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSetLayout DescriptorSetRegistry::create_layout(
+VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
   DescriptorSetLayoutParamsBuffer const& params,
   VkDescriptorSetLayoutCreateFlags flags
 ) const {
@@ -75,7 +75,7 @@ VkDescriptorSetLayout DescriptorSetRegistry::create_layout(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::destroy_layout(VkDescriptorSetLayout &layout) const {
+void DescriptorSetRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
   vkDestroyDescriptorSetLayout(device_, layout, nullptr);
   layout = VK_NULL_HANDLE;
 }
@@ -98,7 +98,7 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::update_frame_ubo(backend::Buffer const& buffer) const {
+void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Frame].set,
   {{
@@ -110,7 +110,7 @@ void DescriptorSetRegistry::update_frame_ubo(backend::Buffer const& buffer) cons
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::update_scene_transforms(backend::Buffer const& buffer) const {
+void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
   {{
@@ -122,7 +122,7 @@ void DescriptorSetRegistry::update_scene_transforms(backend::Buffer const& buffe
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::update_scene_textures(std::vector<VkDescriptorImageInfo> image_infos) const {
+void DescriptorSetRegistry::updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
     {{
@@ -135,7 +135,7 @@ void DescriptorSetRegistry::update_scene_textures(std::vector<VkDescriptorImageI
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::update_scene_ibl(Skybox const& skybox) const {
+void DescriptorSetRegistry::updateSceneIBL(Skybox const& skybox) const {
   auto const& ibl_sampler = skybox.sampler(); // ClampToEdge Linear MipMap
 
   context_ptr_->updateDescriptorSet(
@@ -180,7 +180,12 @@ void DescriptorSetRegistry::update_scene_ibl(Skybox const& skybox) const {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::update_ray_tracing_scene(RayTracingSceneInterface const* rt_scene) const {
+void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const {
+  LOG_CHECK(rt_scene != nullptr);
+
+  auto const& instance_data_buffer = rt_scene->instances_data_buffer();
+  LOG_CHECK(instance_data_buffer.valid());
+
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::RayTracing].set,
     {
@@ -192,7 +197,7 @@ void DescriptorSetRegistry::update_ray_tracing_scene(RayTracingSceneInterface co
       {
         .binding = material_shader_interop::kDescriptorSet_RayTracing_InstanceSBO,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .buffers = { { rt_scene->instances_data_buffer().buffer } },
+        .buffers = { { instance_data_buffer.buffer } },
       },
     }
   );
@@ -201,7 +206,7 @@ void DescriptorSetRegistry::update_ray_tracing_scene(RayTracingSceneInterface co
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::init_descriptor_pool(uint32_t const max_sets) {
+void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 50 },                 // standalone samplers
@@ -240,14 +245,14 @@ void DescriptorSetRegistry::init_descriptor_pool(uint32_t const max_sets) {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::init_descriptor_sets() {
+void DescriptorSetRegistry::initDescriptorSets() {
   VkShaderStageFlags extra_stage_flags{
       VK_SHADER_STAGE_RAYGEN_BIT_KHR
     | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
   };
 
-  create_main_set(
+  createMainSet(
     Type::Frame,
     {
       {
@@ -265,7 +270,7 @@ void DescriptorSetRegistry::init_descriptor_sets() {
     "Frame"
   );
 
-  create_main_set(
+  createMainSet(
     Type::Scene,
     {
       {
@@ -315,7 +320,7 @@ void DescriptorSetRegistry::init_descriptor_sets() {
     "Scene"
   );
 
-  create_main_set(
+  createMainSet(
     Type::RayTracing,
     {
       {
@@ -343,13 +348,13 @@ void DescriptorSetRegistry::init_descriptor_sets() {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::create_main_set(
+void DescriptorSetRegistry::createMainSet(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
   VkDescriptorSetLayoutCreateFlags layout_flags,
   std::string const& name
 ) {
-  VkDescriptorSetLayout const layout = create_layout(layout_params, layout_flags);
+  VkDescriptorSetLayout const layout = createLayout(layout_params, layout_flags);
   sets_[type] = {
     .index = static_cast<uint32_t>(type),
     .set = allocateDescriptorSet(layout),

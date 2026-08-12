@@ -192,15 +192,15 @@ class SampleApp final : public Application {
     // Calculate new model matrix.
     {
       float const tZ = -10.0f + z_depth_delta * 7.0f;
-      auto translateMatrix = linalg::translation_matrix(vec3(0.0f, 0.0f, tZ));
+      auto translateMatrix = lina::translation_matrix(vec3(0.0f, 0.0f, tZ));
 
       auto rotationMatrix = lina::rotation_matrix_z(
         lina::radians(z_angle_delta * 180.0f)
       );
 
-      push_constant_.modelMatrix = linalg::mul(
+      push_constant_.modelMatrix = lina::mul(
         push_constant_.modelMatrix,
-        linalg::mul(translateMatrix, rotationMatrix)
+        lina::mul(translateMatrix, rotationMatrix)
       );
     }
   }

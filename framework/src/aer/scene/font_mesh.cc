@@ -66,7 +66,7 @@ FontMesh::TextDrawInfo FontMesh::buildTextDrawInfo(
 
     result.glyphs[i] = {
       .code = ucode,
-      .matrix = linalg::translation_matrix(vec3(tx, 0, 0)),
+      .matrix = lina::translation_matrix(vec3(tx, 0, 0)),
       .submeshes = glyph_submeshes(ucode),
     };
   }

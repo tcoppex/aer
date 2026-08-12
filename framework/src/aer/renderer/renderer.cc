@@ -176,7 +176,7 @@ void Renderer::applyPostProcess() {
     uint32_t const layer_count = src_rt.layer_count();
     LOG_CHECK(layer_count == swapchain().image_array_size());
 
-    frame.cmd.transitionImages(
+    frame.cmd.transitionColorImages(
       { src_img },
       VK_IMAGE_LAYOUT_UNDEFINED,
       src_layout,
@@ -184,11 +184,14 @@ void Renderer::applyPostProcess() {
     );
 
     frame.cmd.blitImage2D(
-      src_img, src_layout,
-      // -----------------------------
-      dst_img, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      // dst_img, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      // -----------------------------
+      src_img,
+      src_layout,
+      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+      dst_img,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+
       surface_size(),
       layer_count
     );
@@ -226,14 +229,19 @@ void Renderer::blitColor(
   CommandEncoder const& cmd,
   backend::Image const& src_image
 ) const noexcept {
+  auto const& dst_image = main_render_target().resolve_attachment();
+
   cmd.blitImage2D(
     src_image,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
-    main_render_target().resolve_attachment(),
-    // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, //
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+    dst_image,
+    VK_IMAGE_LAYOUT_UNDEFINED,
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+
     surface_size(),
-    swapchain().image_array_size() //
+    swapchain().image_array_size()
   );
 }
 
@@ -247,7 +255,7 @@ GLTFScene Renderer::loadGLTF(
     scene->setup();
     if (scene->loadFile(gltf_filename)) {
       scene->initializeSubmeshDescriptors(attribute_to_location);
-      scene->uploadToDevice();
+      // scene->uploadToDevice(); // (do it manually instead?)
       return scene;
     }
   }

@@ -50,11 +50,11 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
   pushConstant(cmd);
 
   cmd.pipelineImageBarriers(barriers_.images_start);
-  // cmd.pipelineImageBarriers(barriers_.buffers_start);
+  // cmd.pipelineBufferBarriers(barriers_.buffers_start);
 
   cmd.traceRays(region_, dimension_.width, dimension_.height);
 
-  // cmd.pipelineImageBarriers(barriers_.buffers_end);
+  // cmd.pipelineBufferBarriers(barriers_.buffers_end);
   cmd.pipelineImageBarriers(barriers_.images_end);
 }
 
@@ -65,7 +65,10 @@ bool RayTracingFx::resize(VkExtent2D const dimension) {
 
   bool const has_resized = (dimension.width != dimension_.width)
                         || (dimension.height != dimension_.height);
-  bool const has_outputs = !out_images_.empty() || !out_images_.empty();
+
+  bool const has_outputs = !out_images_.empty()
+                        // || !out_buffers_.empty()
+                        ;
 
   if (!has_resized && has_outputs) {
     return false;
@@ -82,6 +85,7 @@ bool RayTracingFx::resize(VkExtent2D const dimension) {
         VK_IMAGE_USAGE_SAMPLED_BIT
       | VK_IMAGE_USAGE_STORAGE_BIT
       | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // (for blitting)
+      | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT //
       ,
       "RayTracingFx::AccumulationImage"
     )
@@ -169,7 +173,7 @@ void RayTracingFx::createPipeline() {
   }
 
   // The default SBT holds all groups requested.
-  // [In the future we might prefers build them dynamically].
+  // [In the future we might prefer to build them dynamically].
   buildShaderBindingTable(pipeline_desc);
 }
 

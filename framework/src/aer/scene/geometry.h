@@ -94,10 +94,10 @@ class Geometry {
   /* Create a cube with interleaved Position, Normal and UV. */
   static void MakeCube(Geometry &geo, float size = kDefaultSize);
 
-  // --- Indexed Triangle Strip ---
-
   /* Create a +Y plane with interleaved Position, Normal and UV. */
   static void MakePlane(Geometry &geo, float size = kDefaultSize, uint32_t resx = 1u, uint32_t resy = 1u);
+
+  // --- Indexed Triangle Strip ---
 
   /* Create a sphere with interleaved Position, Normal and UV. */
   static void MakeSphere(Geometry &geo, float radius, uint32_t resx, uint32_t resy);

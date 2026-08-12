@@ -195,7 +195,7 @@ void ExtractPrimitiveVertices(
       for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
         auto& vertex = vertices[vertex_index];
         cgltf_accessor_read_float( accessor, vertex_index, lina::ptr(vertex.tangent), 4);
-        // vec3 t3 = vec3(linalg::mul(world_matrix, vec4(lina::to_vec3(tangent), 0.0f)));
+        // vec3 t3 = vec3(lina::mul(world_matrix, vec4(lina::to_vec3(tangent), 0.0f)));
         // vertex.tangent = vec4(t3, vertex.tangent.w);
       }
     }
@@ -245,8 +245,101 @@ void ExtractPrimitiveVertices(
 } // namespace ""
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
 namespace internal::gltf_loader {
+
+void ExtractNode(
+  cgltf_node const* node,
+  scene::Hierarchy& scene,
+  PointerToEntityMap_t &entities_lut
+) {
+  if (nullptr == node) {
+    return;
+  }
+
+  // Create a new entity.
+  auto parent_entity = entities_lut.at(node->parent);
+  auto e = scene.createStagingEntity(parent_entity);
+  entities_lut.try_emplace( node, e );
+
+  if (node->name != nullptr) {
+    scene.entity_map.try_emplace(node->name, e);
+  }
+  // LOGI("Node {} : {} // parent : {}",
+  //   (uintptr_t)node, node->name ? node->name : "<>", (uintptr_t)node->parent);
+
+  // Set the entity local transform.
+  {
+    auto &transform = scene.registry.get<scene::component::Transform>(e);
+
+    if (node->has_matrix)
+    {
+      auto const& m = reinterpret_cast<mat4 const &>(node->matrix);
+      lina::decompose_transform_from_matrix(
+        m,
+        transform.position,
+        transform.rotation,
+        transform.scale
+      );
+    }
+    else
+    {
+      if (node->has_translation) {
+        transform.position = vec3(node->translation);
+      }
+      if (node->has_rotation) {
+        transform.rotation = quat(node->rotation);
+      }
+      if (node->has_scale) {
+        transform.scale = vec3(node->scale);
+      }
+    }
+  }
+
+  // Parse the node's children.
+  for (cgltf_size i = 0; i < node->children_count; ++i) {
+    auto child_node = node->children[i];
+    ExtractNode(child_node, scene, entities_lut);
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+PointerToEntityMap_t ExtractSceneHierarchy(
+  cgltf_data const* data,
+  scene::Hierarchy& scene
+) {
+  PointerToEntityMap_t entities_lut{
+    {nullptr, entt::null}
+  };
+
+  if (data->scenes_count > 1) {
+    LOGW("{} : gltf file contains {} scenes, only the first one will be extracted.",
+      __FUNCTION__, data->scenes_count);
+  }
+
+  auto first_scene = data->scene;
+
+  // -----
+  // LOGI("> gltf file contains {} scene(s).", data->scenes_count);
+  // LOGI("> gltf file 1st scene contains {} node(s).", first_scene->nodes_count);
+  // LOGI("> gltf file contains {} node(s).", data->nodes_count);
+  // -----
+
+  if (first_scene != nullptr) [[likely]] {
+    for (cgltf_size i = 0; i < first_scene->nodes_count; ++i) {
+      cgltf_node const* node = first_scene->nodes[i];
+      ExtractNode(node, scene, entities_lut);
+    }
+  } else {
+    LOGW("{} : gltf file contains no scene.", __FUNCTION__);
+  }
+
+  return entities_lut;
+}
+
+// ----------------------------------------------------------------------------
 
 PointerToSamplerMap_t ExtractSamplers(
   cgltf_data const* data,
@@ -422,12 +515,14 @@ PointerToIndexMap_t ExtractSkeletons(
 
 void ExtractMeshes(
   cgltf_data const* data,
+  scene::Hierarchy &scene,
+  PointerToEntityMap_t &entities_lut,
   PointerToIndexMap_t const& materials_indices,
   scene::ResourceBuffer<scene::MaterialRef> const& material_refs,
   PointerToIndexMap_t const& skeleton_indices,
   scene::ResourceBuffer<scene::Skeleton>const& skeletons,
   scene::ResourceBuffer<scene::Mesh>& meshes,
-  std::vector<mat4f>& meshes_transforms,
+  scene::IndexMap &mesh_indices_map,
   bool const bRestructureAttribs,
   bool const bForce32bitsIndex
 ) {
@@ -450,6 +545,9 @@ void ExtractMeshes(
     }
   }
   // meshes.reserve(meshNodeIndices.size());
+
+  // mat4 world_matrix{lina::identity};
+  // cgltf_node_transform_world(data->scene->nodes[0], lina::ptr(world_matrix)); //
 
   // Parse each mesh nodes (for primitives & skeleton).
   for (auto mesh_node_index : meshNodeIndices) {
@@ -500,13 +598,25 @@ void ExtractMeshes(
       continue;
     }
 
+    // Next valid mesh index.
+    uint32_t const mesh_index = static_cast<uint32_t>(
+      meshes.empty() ? 0u : meshes.size()
+    );
+
     // -----------------
     // B. Create a new mesh.
     auto mesh = std::make_unique<scene::Mesh>();
     {
-      meshes_transforms.emplace_back(linalg::identity);
-      cgltf_node_transform_world(&node, lina::ptr(meshes_transforms.back()));
       mesh->submeshes.resize(valid_prim_indices.size(), {.parent = mesh.get()});
+
+      // Add a mesh component to the current entity.
+      {
+        auto mesh_entity = entities_lut.at(&node);
+        scene.registry.emplace<scene::component::Mesh>(
+          mesh_entity,
+          mesh_index
+        );
+      }
     }
 
     // -----------------
@@ -520,7 +630,7 @@ void ExtractMeshes(
     if (bRestructureAttribs) [[likely]] {
       mesh->set_attributes(VertexInternal_t::GetAttributeInfoMap());
 
-      // XXX (Do not support different topology yet) XXX
+      // XXX (Does not support other topology than TriList yet) XXX
       mesh->set_topology(Geometry::Topology::TriangleList); // xxx
 
       // Hold the interleaved attributes of the mesh in the same interleaved buffer.
@@ -571,8 +681,10 @@ void ExtractMeshes(
               size_t const stride = accessor->stride ? accessor->stride : index_size;
               size_t const total_size = accessor->count * stride;
 
-              std::byte const* src = reinterpret_cast<std::byte const*>(buffer->data) +
-                                buffer_view->offset + accessor->offset;
+              std::byte const* src = reinterpret_cast<std::byte const*>(buffer->data)
+                                   + buffer_view->offset
+                                   + accessor->offset
+                                   ;
               std::vector<uint32_t> indices_u32{};
 
               // [the same index format should be shared by the whole mesh.]
@@ -609,6 +721,11 @@ void ExtractMeshes(
             }
           }
         }
+
+        /* Apply the root node's matrix to the mesh. */
+        // for (auto &v : vertices) {
+        //   v.applyTransform(world_matrix);
+        // }
 
         /* Add the primitive interleaved attributes to the mesh, and retrieve its internal offset. */
         attribs_buffer_offset = mesh->addVerticesData(std::as_bytes(std::span(vertices)));
@@ -701,10 +818,9 @@ void ExtractMeshes(
 
             primitive.indexCount = accessor->count;
             primitive.indexOffset = mesh->addIndicesData(std::span<const std::byte>(
-                reinterpret_cast<const std::byte*>(buffer->data),
-                buffer_view->size
-              ).subspan(buffer_view->offset + accessor->offset)
-            );
+              reinterpret_cast<const std::byte*>(buffer->data),
+              buffer_view->size
+            ).subspan(buffer_view->offset + accessor->offset));
           }
         }
 
@@ -761,7 +877,7 @@ void ExtractMeshes(
           cgltf_accessor_unpack_floats(skin->inverse_bind_matrices, lina::ptr(matrices[0]), bufferSize);
 
           // Transform them to world space.
-          auto const inverse_world_matrix{linalg::inverse(mesh->world_matrix)};
+          auto const inverse_world_matrix{lina::inverse(mesh->world_matrix)};
           skeleton->transformInverseBindMatrices(inverse_world_matrix);
         }
 
@@ -773,6 +889,11 @@ void ExtractMeshes(
 #endif
 
     meshes.push_back( std::move(mesh) );
+
+    mesh_indices_map.emplace(
+      std::string(node.mesh->name),
+      mesh_index
+    );
   }
 }
 
@@ -943,7 +1064,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_translation:
           {
             vec3f const* v = reinterpret_cast<vec3f const*>(outputs.data());
-            joint.translation = bNeedResampling ? linalg::lerp(v[frameStart], v[frameEnd], lerpFactor)
+            joint.translation = bNeedResampling ? lina::lerp(v[frameStart], v[frameEnd], lerpFactor)
                                                 : v[sid]
                                                 ;
           }
@@ -952,7 +1073,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_rotation:
           {
             vec4f const* q = reinterpret_cast<vec4f const*>(outputs.data());
-            joint.rotation = bNeedResampling ? linalg::qnlerp(q[frameStart], q[frameEnd], lerpFactor)
+            joint.rotation = bNeedResampling ? lina::qnlerp(q[frameStart], q[frameEnd], lerpFactor)
                                              : q[sid]
                                              ;
           }
@@ -961,7 +1082,7 @@ void ExtractAnimations(
           case cgltf_animation_path_type_scale:
           {
             vec3f const* v = reinterpret_cast<vec3f const*>(outputs.data());
-            vec3f s = bNeedResampling ? linalg::lerp(v[frameStart], v[frameEnd], lerpFactor)
+            vec3f s = bNeedResampling ? lina::lerp(v[frameStart], v[frameEnd], lerpFactor)
                                       : v[sid]
                                       ;
 

@@ -38,6 +38,7 @@ void RayTracingScene::release() {
 
 void RayTracingScene::build(
   scene::ResourceBuffer<scene::Mesh> const& meshes,
+  std::vector<mat4> const& transforms,
   backend::Buffer const& vertex_buffer,
   backend::Buffer const& index_buffer
 ) {
@@ -73,7 +74,7 @@ void RayTracingScene::build(
                                                    : kInvalidIndexU32
                                                    ;
 
-      if (build_blas(submesh)) {
+      if (buildBLAS(submesh)) {
         // (simply instanciate the BLAS we just built)
         VkAccelerationStructureInstanceKHR instance{
           .instanceCustomIndex = custom_index & 0x00FFFFFF,
@@ -82,21 +83,21 @@ void RayTracingScene::build(
           .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, //
           .accelerationStructureReference = blas_.back().address,
         };
-        ToVkTransformMatrix(mesh->world_matrix(), instance.transform);
+        ToVkTransformMatrix(transforms[mesh->transform_index], instance.transform); //
         tlas_.instances.push_back(instance);
       }
     }
   }
-  build_tlas();
+  buildTLAS();
 
-  build_instances_data_buffer(meshes, vertex_buffer, index_buffer); //
+  buildInstancesDataBuffer(meshes, vertex_buffer, index_buffer); //
 
   context_ptr_->clearStagingBuffers();
 }
 
 // ----------------------------------------------------------------------------
 
-bool RayTracingScene::build_blas(scene::Mesh::SubMesh const& submesh) {
+bool RayTracingScene::buildBLAS(scene::Mesh::SubMesh const& submesh) {
   DrawDescriptor const& desc{ submesh.draw_descriptor };
 
   if ((desc.indexType != VK_INDEX_TYPE_UINT16)
@@ -195,7 +196,7 @@ bool RayTracingScene::build_blas(scene::Mesh::SubMesh const& submesh) {
 
   // C - Build the BLAS.
 
-  build_acceleration_structure(
+  buildAccelerationStructure(
     &blas,
     VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
     blas.build_range_info
@@ -208,7 +209,7 @@ bool RayTracingScene::build_blas(scene::Mesh::SubMesh const& submesh) {
 
 // ----------------------------------------------------------------------------
 
-void RayTracingScene::build_tlas() {
+void RayTracingScene::buildTLAS() {
   if (blas_.empty()) {
     return;
   }
@@ -286,7 +287,7 @@ void RayTracingScene::build_tlas() {
     context_ptr_->device(), &asInfo, nullptr, &tlas_.handle
   ));
 
-  build_acceleration_structure(
+  buildAccelerationStructure(
     &tlas_,
     VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
     { .primitiveCount = primitiveCount }
@@ -297,7 +298,7 @@ void RayTracingScene::build_tlas() {
 
 // ----------------------------------------------------------------------------
 
-void RayTracingScene::build_instances_data_buffer(
+void RayTracingScene::buildInstancesDataBuffer(
   scene::ResourceBuffer<scene::Mesh> const& meshes,
   backend::Buffer const& vertex_buffer,
   backend::Buffer const& index_buffer
@@ -326,7 +327,7 @@ void RayTracingScene::build_instances_data_buffer(
 
 // ----------------------------------------------------------------------------
 
-void RayTracingScene::build_acceleration_structure(
+void RayTracingScene::buildAccelerationStructure(
   backend::AccelerationStructure* as,
   VkPipelineStageFlags2 dstStageMask,
   VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo

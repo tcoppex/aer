@@ -342,19 +342,6 @@ void Context::finishTransientCommandEncoder(
 
 // ----------------------------------------------------------------------------
 
-void Context::transitionImages(
-  std::vector<backend::Image> const& images,
-  VkImageLayout const src_layout,
-  VkImageLayout const dst_layout,
-  uint32_t layer_count
-) const {
-  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
-  cmd.transitionImages(images, src_layout, dst_layout, layer_count);
-  finishTransientCommandEncoder(cmd);
-}
-
-// ----------------------------------------------------------------------------
-
 backend::Buffer Context::transientCreateBuffer(
   void const* host_data,
   size_t host_data_size,
@@ -379,7 +366,7 @@ void Context::transientUploadBuffer(
   size_t const device_buffer_offset
 ) const {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
-  cmd.transferHostToDevice(
+  cmd.transferBufferToDevice(
     host_data,
     host_data_size,
     device_buffer,
@@ -398,6 +385,43 @@ void Context::transientCopyBuffer(
   auto cmd = createTransientCommandEncoder(Context::TargetQueue::Transfer);
   cmd.copyBuffer(src, dst, buffersize);
   finishTransientCommandEncoder(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::transitionImages(
+  std::vector<backend::Image> const& images,
+  VkImageMemoryBarrier2 const& barrier
+) const {
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  cmd.transitionImages(images, barrier);
+  finishTransientCommandEncoder(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::transientUploadImage(
+  void const* host_data,
+  size_t const host_data_size,
+  backend::Image const& device_image,
+  VkExtent3D const& extent
+) const {
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+
+  auto staging = createStagingBuffer(
+    host_data_size, host_data
+  );
+
+  VkImageLayout const src_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  VkImageLayout const tmp_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  VkImageLayout const dst_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+  cmd.transitionColorImages({ device_image }, src_layout, tmp_layout);
+  cmd.copyBufferToImage(staging, device_image, extent, tmp_layout);
+  cmd.transitionColorImages({ device_image }, tmp_layout, dst_layout);
+
+  finishTransientCommandEncoder(cmd);
+  // clearStagingBuffers(); //
 }
 
 // ----------------------------------------------------------------------------
@@ -634,10 +658,26 @@ bool Context::initDevice() {
 
   /* Vulkan GPU features. */
   {
+    // Core in VK_VERSION_1_1
+
     add_device_feature(
       VK_KHR_MULTIVIEW_EXTENSION_NAME,
       feature_.multiview,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
+    );
+
+    add_device_feature(
+      VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+      feature_.storage_16bit,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
+    );
+
+    // Core in VK_VERSION_1_2
+
+    add_device_feature(
+      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+      feature_.descriptor_indexing,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
     );
 
     add_device_feature(
@@ -647,58 +687,12 @@ bool Context::initDevice() {
     );
 
     add_device_feature(
-      VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-      feature_.storage_16bit,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-      feature_.dynamic_rendering,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
-      feature_.maintenance4,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
-      feature_.maintenance5,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_6_EXTENSION_NAME,
-      feature_.maintenance6,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
-    );
-
-    add_device_feature(
       VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
       feature_.timeline_semaphore,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
     );
 
-    // add_device_feature(
-    //   VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-    //   feature_.swapchain_maintenance1,
-    //   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT
-    // );
-
-    add_device_feature(
-      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-      feature_.synchronization2,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-      feature_.descriptor_indexing,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
-    );
+    // Core in VK_VERSION_1_3
 
     add_device_feature(
       VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
@@ -713,16 +707,24 @@ bool Context::initDevice() {
     );
 
     add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-      feature_.extended_dynamic_state3,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
+      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+      feature_.dynamic_rendering,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR
     );
 
     add_device_feature(
-      VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME,
-      feature_.image_view_min_lod,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
+      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+      feature_.synchronization2,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR
     );
+
+    add_device_feature(
+      VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+      feature_.maintenance4,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
+    );
+
+    // Core in VK_VERSION_1_4
 
     add_device_feature(
       VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
@@ -731,11 +733,39 @@ bool Context::initDevice() {
     );
 
     add_device_feature(
+      VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+      feature_.maintenance5,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
+    );
+
+    add_device_feature(
+      VK_KHR_MAINTENANCE_6_EXTENSION_NAME,
+      feature_.maintenance6,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
+    );
+
+    // Not Core
+
+    add_device_feature(
+      VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+      feature_.extended_dynamic_state3,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
+    );
+
+    add_device_feature(
       VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
       feature_.vertex_input_dynamic_state,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
     );
 
+    add_device_feature(
+      VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME,
+      feature_.image_view_min_lod,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
+    );
+
+    // [TODO] make optionnal
+    // ------------------------
     add_device_feature(
       VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
       feature_.acceleration_structure,
@@ -749,6 +779,7 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
     );
 #endif
+    // ------------------------
 
     vkGetPhysicalDeviceFeatures2(gpu_, &feature_.base);
   }
@@ -757,12 +788,13 @@ bool Context::initDevice() {
     feature = bool(feature) ? VK_TRUE : VK_FALSE;
   };
 
-  enable_feature(feature_.dynamic_rendering.dynamicRendering);
   enable_feature(feature_.timeline_semaphore.timelineSemaphore);
-  enable_feature(feature_.synchronization2.synchronization2);
   enable_feature(feature_.descriptor_indexing.descriptorBindingPartiallyBound);
   enable_feature(feature_.descriptor_indexing.runtimeDescriptorArray);
   enable_feature(feature_.descriptor_indexing.shaderSampledImageArrayNonUniformIndexing);
+  enable_feature(feature_.dynamic_rendering.dynamicRendering);
+  enable_feature(feature_.synchronization2.synchronization2);
+  
   enable_feature(feature_.vertex_input_dynamic_state.vertexInputDynamicState);
 
 #if !defined(ANDROID)
@@ -807,14 +839,15 @@ bool Context::initDevice() {
 
     for (size_t j = 0u; j < queues.size(); ++j) {
       auto& pair = queues[j];
+      bool queue_found = false;
 
       for (uint32_t i = 0u; i < queue_family_count; ++i) {
         auto const& queue_family_props = properties_.queue_families2[i].queueFamilyProperties;
         auto const& queue_flags = queue_family_props.queueFlags;
 
-        if ((pair.second == (queue_flags & pair.second))
-         && (queue_infos[i].queueCount < queue_family_props.queueCount))
-        {
+        bool const has_flags = (pair.second == (queue_flags & pair.second));
+
+        if (has_flags && (queue_infos[i].queueCount < queue_family_props.queueCount)) {
           pair.first->family_index = i;
           pair.first->queue_index = queue_infos[i].queueCount;
 
@@ -823,13 +856,28 @@ bool Context::initDevice() {
           queue_infos[i].queueFamilyIndex = i;
           queue_infos[i].pQueuePriorities = queue_priorities[i].data();
           queue_infos[i].queueCount += 1u;
+
+          queue_found = true;
+
           // LOGI("{} {} {}", i, priorities[j], queue_infos[i].queueCount);
           break;
         }
       }
 
+      // When secondary queue are not found, use the main one instead.
+      // (could have issue if used concurrently)
+      if (!queue_found) {
+        if (j > 0) {
+          pair.first->family_index = queues[0].first->family_index;
+          pair.first->queue_index = queues[0].first->queue_index;
+        }
+      }
+
       if (UINT32_MAX == pair.first->family_index) {
-        LOGE("Could not find a queue family with the requested support {:08x}.", pair.second);
+        LOGE(
+          "Could not find a queue family with the requested support {:08x}.",
+          pair.second
+        );
         return false;
       }
     }
@@ -841,24 +889,35 @@ bool Context::initDevice() {
     }
   }
 
-  /* Create logical device. */
-  VkDeviceCreateInfo const device_info{
-    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .pNext = &feature_.base,
-    .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
-    .pQueueCreateInfos = queue_create_infos.data(),
-    .enabledExtensionCount = static_cast<uint32_t>(device_extension_names_.size()),
-    .ppEnabledExtensionNames = device_extension_names_.data(),
-  };
 
-  if (vulkan_xr_) {
-    CHECK_VK(vulkan_xr_->createVulkanDevice(
-      gpu_, &device_info, nullptr, &handle_
-    ));
-  } else {
-    CHECK_VK(vkCreateDevice(
-      gpu_, &device_info, nullptr, &handle_
-    ));
+  /* Create logical device. */
+  {
+    // Convert the internal device extenstions set to a buffer.
+    std::vector<const char*> extension_names{};
+    extension_names.insert(
+      extension_names.end(),
+      device_extension_names_.cbegin(),
+      device_extension_names_.cend()
+    );
+
+    VkDeviceCreateInfo const device_info{
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext = &feature_.base,
+      .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
+      .pQueueCreateInfos = queue_create_infos.data(),
+      .enabledExtensionCount = static_cast<uint32_t>(extension_names.size()),
+      .ppEnabledExtensionNames = extension_names.data(),
+    };
+
+    if (vulkan_xr_) {
+      CHECK_VK(vulkan_xr_->createVulkanDevice(
+        gpu_, &device_info, nullptr, &handle_
+      ));
+    } else {
+      CHECK_VK(vkCreateDevice(
+        gpu_, &device_info, nullptr, &handle_
+      ));
+    }
   }
 
   /* Load device extensions. */

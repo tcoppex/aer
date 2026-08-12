@@ -3,6 +3,8 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <set>
+
 #include "aer/platform/vulkan/types.h"
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/vulkan/allocator.h"
@@ -262,13 +264,6 @@ class Context {
 
   // --- Transient Command Encoder Wrappers ---
 
-  void transitionImages(
-    std::vector<backend::Image> const& images,
-    VkImageLayout const src_layout,
-    VkImageLayout const dst_layout,
-    uint32_t layer_count = 1u
-  ) const;
-
   // (formerly 'createBufferAndUpload')
   [[nodiscard]]
   backend::Buffer transientCreateBuffer(
@@ -306,7 +301,7 @@ class Context {
   void transientUploadBuffer(
     T const& host_data,
     backend::Buffer const& device_buffer
-  ) {
+  ) const {
     auto const host_span{ std::span(host_data) };
     auto const bytesize{
       sizeof(typename decltype(host_span)::element_type) * host_span.size()
@@ -318,6 +313,18 @@ class Context {
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t const buffersize
+  ) const;
+
+  void transitionImages(
+    std::vector<backend::Image> const& images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const;
+
+  void transientUploadImage(
+    void const* host_data,
+    size_t const host_data_size,
+    backend::Image const& device_image,
+    VkExtent3D const& extent
   ) const;
 
   // --- Descriptor set ---
@@ -343,7 +350,7 @@ class Context {
     std::vector<VkExtensionProperties> const& extensions
   ) const {
     for (auto const& ext : extensions) {
-      if (strcmp(ext.extensionName, name.data()) == 0) {
+      if (ext.extensionName == name) {
         return true;
       }
     }
@@ -361,16 +368,19 @@ class Context {
       LOGI("[Vulkan] Feature extension \"{:s}\" is not available.\n", extension_name);
       return false;
     }
+    if (device_extension_names_.contains(extension_name)) {
+      LOGW("{:s} : extension {:s} already present.\n", __FUNCTION__, extension_name);
+      return false;
+    }
     feature = { .sType = sType };
     vk_utils::PushNextVKStruct(&feature_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
-        device_extension_names_.end(),
-        dependencies.begin(),
-        dependencies.end()
+        dependencies.cbegin(),
+        dependencies.cend()
       );
     }
-    device_extension_names_.push_back(extension_name);
+    device_extension_names_.insert(extension_name);
     return true;
   }
 
@@ -400,7 +410,7 @@ class Context {
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
   };
 
-  std::vector<char const*> device_extension_names_{
+  std::set<char const*> device_extension_names_{
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
     VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
@@ -413,40 +423,38 @@ class Context {
 
   struct {
     VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    // VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    // VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    // VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
-    // (to be used with later vulkan version)
-    // VkPhysicalDeviceVulkan11Features features11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    // VkPhysicalDeviceVulkan12Features features12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    // VkPhysicalDeviceVulkan13Features features13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    // VkPhysicalDeviceVulkan14Features features14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
-
-    // VK_VERSION_1_1
-    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
-    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
-    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
-    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
+    // core in VK_VERSION_1_1
     VkPhysicalDeviceMultiviewFeaturesKHR multiview{};
-    // VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchain_maintenance1{}; 
+    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
 
-    // VK_VERSION_1_2
+    // core in VK_VERSION_1_2
+    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
     VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing{};
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR buffer_device_address{};
-    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
-    // VkPhysicalDeviceRayQueryFeaturesKHR ray_query{};
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
 
-    // VK_VERSION_1_3
+    // core in VK_VERSION_1_3
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
+    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering{};
     VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2{};
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4{};
 
-    // VK_VERSION_1_4
-    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8{}; //
+    // core in VK_VERSION_1_4
+    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{}; //
     VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
+
+    // non core
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
+    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
+    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{}; //
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{}; //
 
   } feature_;
 

@@ -50,11 +50,11 @@ class Application : public EventCallbacks
 
   virtual void buildUI() {}
 
-  void drawUI(CommandEncoder const& cmd);
-
   virtual void update(float const dt) {}
 
   virtual void draw(CommandEncoder const& cmd) {}
+
+  void drawUI(CommandEncoder const& cmd);
 
  protected:
   [[nodiscard]]
@@ -68,6 +68,11 @@ class Application : public EventCallbacks
   [[nodiscard]]
   float delta_time() const noexcept {
     return frame_time_ - last_frame_time_;
+  }
+
+  [[nodiscard]]
+  uint32_t frame_index() const noexcept {
+    return frame_index_;
   }
 
  private:
@@ -115,6 +120,7 @@ class Application : public EventCallbacks
   std::chrono::time_point<std::chrono::high_resolution_clock> chrono_{};
   float frame_time_{};
   float last_frame_time_{};
+  float frame_index_{};
 
   uint32_t rng_seed_{};
 };

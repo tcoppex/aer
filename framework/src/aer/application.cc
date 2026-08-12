@@ -55,11 +55,15 @@ float Application::elapsed_time() const noexcept {
 // ----------------------------------------------------------------------------
 
 void Application::drawUI(CommandEncoder const& cmd) {
-  ui_->draw(
-    cmd,
-    renderer_.main_render_target().resolve_attachment().view,
-    renderer_.surface_size()
+  auto const& image = renderer_.main_render_target().resolve_attachment();
+
+  cmd.transitionColorImages(
+    { image },
+    VK_IMAGE_LAYOUT_UNDEFINED,
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
   );
+
+  ui_->draw(cmd, image.view, renderer_.surface_size());
 }
 
 // ----------------------------------------------------------------------------
@@ -294,6 +298,7 @@ void Application::mainloop(AppData_t app_data) {
     if (!frame()) {
       break;
     }
+    frame_index_++;
   }
 }
 

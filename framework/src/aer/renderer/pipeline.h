@@ -178,6 +178,138 @@ struct GraphicsPipelineDescriptor_t {
   VkRenderPass renderPass{};
 };
 
+struct BlendMode {
+  using Blend = GraphicsPipelineDescriptor_t::Fragment::Target::Blend;
+
+  static constexpr Blend kOpaque{
+    .enable = VK_FALSE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ZERO
+    },
+    .alpha = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ZERO
+    }
+  };
+
+  // [require sorting]
+  static constexpr Blend kAlphaTransparency{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    },
+    .alpha =  {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    }
+  };
+
+  // [require sorting]
+  static constexpr Blend kPremultipliedAlpha{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    },
+    .alpha =  {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    }
+  };
+
+  static constexpr Blend kAdditive{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstFactor = VK_BLEND_FACTOR_ONE,
+    },
+    .alpha =  {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstFactor = VK_BLEND_FACTOR_ONE,
+    }
+  };
+
+  static constexpr Blend kSubtractive{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_REVERSE_SUBTRACT,
+      .srcFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstFactor = VK_BLEND_FACTOR_ONE,
+    },
+    .alpha = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ZERO,
+      .dstFactor = VK_BLEND_FACTOR_ONE
+    }
+  };
+
+  static constexpr Blend kMult{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_DST_COLOR,
+      .dstFactor = VK_BLEND_FACTOR_ZERO,
+    },
+    .alpha =  {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_DST_COLOR,
+      .dstFactor = VK_BLEND_FACTOR_ZERO,
+    }
+  };
+
+  static constexpr Blend kScreen{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+    },
+    .alpha =  {
+      .operation = VK_BLEND_OP_ADD,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+    }
+  };
+
+  static constexpr Blend kLighten{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_MAX,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE
+    },
+    .alpha = {
+      .operation = VK_BLEND_OP_MAX,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE
+    }
+  };
+
+  static constexpr Blend kDarken{
+    .enable = VK_TRUE,
+    .color = {
+      .operation = VK_BLEND_OP_MIN,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE
+    },
+    .alpha = {
+      .operation = VK_BLEND_OP_MIN,
+      .srcFactor = VK_BLEND_FACTOR_ONE,
+      .dstFactor = VK_BLEND_FACTOR_ONE
+    }
+  };
+};
+
 // ----------------------------------------------------------------------------
 
 struct RayTracingPipelineDescriptor_t {

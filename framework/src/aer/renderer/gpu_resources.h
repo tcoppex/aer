@@ -13,12 +13,22 @@ class RayTracingFx;
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @class GPUResources
+ * 
+ * Represent Scene data on GPU to be used for rendering.
+ * (As is, using multiple instances of it is not ideal)
+ */
 struct GPUResources : scene::HostResources {
  public:
+  /* When set, will construct the internal strutucture for RayTracing. */
+  static bool constexpr kDefaultEnableRayTracing = true;
+
+  /* When set, host data will be released on upload. */
   static bool constexpr kReleaseHostDataOnUpload = true;
 
  public:
-  GPUResources(RenderContext const& context);
+  GPUResources(RenderContext const& context, bool bEnableRayTracing = kDefaultEnableRayTracing);
 
   ~GPUResources();
 
@@ -49,10 +59,18 @@ struct GPUResources : scene::HostResources {
   // -------------------------------
 
  private:
+  /* Update Global Descriptor Set bindings. */
+  void updateGlobalDescriptorSetBindings() const; //
+
   void uploadImages();
+
   void uploadBuffers();
 
+  void uploadTransforms();
+
   void updateFrameData(Camera const& camera, float elapsed_time);
+
+  void prepareRasterizationRendering(Camera const& camera);
 
  public:
   /* --- Device Data --- */
@@ -62,10 +80,10 @@ struct GPUResources : scene::HostResources {
   backend::Buffer index_buffer{};
 
  protected:
+  std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
+
   backend::Buffer frame_ubo_{};
   backend::Buffer transforms_ssbo_{};
-
-  std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};

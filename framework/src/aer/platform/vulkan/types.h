@@ -224,6 +224,9 @@ struct RTInterface {
   bool use_msaa() const noexcept {
     return sample_count() > VK_SAMPLE_COUNT_1_BIT;
   }
+  
+  // [TODO] Add an output_attachment() interface to return resolve / color depending
+  //        on MSAA, instead of depending on resolve_attachment.
 
   // -- Setters --
 
@@ -295,6 +298,19 @@ struct DescriptorSetWriteEntry {
     std::vector<VkWriteDescriptorSet> write_descriptor_sets{};
   };
 };
+
+// [wip] improvement for std::vector<DescriptorSetWriteEntry>
+// struct DescriptorSetWriteEntryPARAMS {
+//   template<typename T>
+//   struct DescriptorInfo {
+//     uint32_t binding{};
+//     std::vector<T> entries{};
+//   };
+//   std::vector<DescriptorInfo<VkDescriptorBufferInfo>> uniforms{};
+//   std::vector<DescriptorInfo<VkDescriptorBufferInfo>> storages{};
+//   std::vector<DescriptorInfo<VkDescriptorImageInfo>> samplers{};
+//   // ..etc
+// };
 
 struct VertexInputDescriptor {
   std::vector<VkVertexInputBindingDescription2EXT> bindings{};

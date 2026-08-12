@@ -73,12 +73,12 @@ class RenderTarget : public backend::RTInterface {
 
   [[nodiscard]]
   std::vector<backend::Image> resolve_attachments() const noexcept final {
-    return use_msaa() ? resolves_ : colors_;
+    return use_msaa() ? resolves_ : colors_; //
   }
 
   [[nodiscard]]
   backend::Image resolve_attachment(uint32_t i = 0u) const noexcept final {
-    return use_msaa() ? resolves_[i] : colors_[i];
+    return use_msaa() ? resolves_[i] : colors_[i]; //
   }
 
   [[nodiscard]]

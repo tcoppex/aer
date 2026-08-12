@@ -151,9 +151,9 @@ class SceneFx final : public RenderTargetFx {
     for (auto const& mesh : scene_->meshes) {
       pass.setPrimitiveTopology(mesh->vk_primitive_topology());
 
-      push_constant_.model.worldMatrix = linalg::mul(
+      push_constant_.model.worldMatrix = lina::mul(
         world_matrix_,
-        mesh->world_matrix()
+        scene_->transforms[mesh->transform_index]
       );
 
       for (auto const& submesh : mesh->submeshes) {
@@ -162,7 +162,7 @@ class SceneFx final : public RenderTargetFx {
         push_constant_.model.material_index = submesh.material_ref->material_index;
         push_constant_.model.instance_index = instance_index++;
         pushConstant(pass);
-        pass.draw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
       }
     }
   }
@@ -290,18 +290,19 @@ class SampleApp final : public Application {
       "DamagedHelmet.glb"
     };
 
-    auto gltf_scene = renderer_.loadGLTF(gltf_filename, {
-      { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
-      { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
-      { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
-    });
-
     /* Fx Pipeline. */
     toon_pipeline_.init(context_);
     toon_pipeline_.setup(renderer_.surface_size()); //
 
     if (auto sceneFx = toon_pipeline_.entry_fx(); sceneFx) {
-      sceneFx->setModel(gltf_scene);
+      auto scene = renderer_.loadGLTF(gltf_filename, {
+        { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
+        { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
+        { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
+      });
+      scene->uploadToDevice();
+
+      sceneFx->setModel(scene); //
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
     }
@@ -332,7 +333,10 @@ class SampleApp final : public Application {
     toon_pipeline_.execute(cmd);
 
     /* Blit the result directly to the current swapchain image. */
-    renderer_.blitColor(cmd, toon_pipeline_.image_output());
+    {
+      auto const& image = toon_pipeline_.image_output();
+      renderer_.blitColor(cmd, image);
+    }
 
     /* Draw UI on top. */
     drawUI(cmd);

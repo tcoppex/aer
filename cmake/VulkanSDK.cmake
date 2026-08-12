@@ -101,9 +101,8 @@ function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
     WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}
     COMMENT
-      "Converting shader ${input_glsl} to ${output_spirv}" VERBATIM
-    SOURCES
-      ${input_glsl}
+      "Converting shader ${input_glsl} to ${output_spirv}"
+    VERBATIM
   )
 
   # Forcing compilation can be tricky.

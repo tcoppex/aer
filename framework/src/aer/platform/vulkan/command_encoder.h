@@ -148,6 +148,13 @@ class GenericCommandEncoder {
     );
   }
 
+  void dispatchIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0
+  ) const {
+    vkCmdDispatchIndirect(handle_, buffer.buffer, offset);
+  }
+
   // --- Ray Tracing ---
 
   void traceRays(
@@ -209,7 +216,7 @@ class CommandEncoder : public GenericCommandEncoder {
     return copyBuffer(src, 0, dst, 0, size);
   }
 
-  void transferHostToDevice(
+  void transferBufferToDevice(
     void const* host_data,
     size_t const host_data_size,
     backend::Buffer const& device_buffer,
@@ -246,6 +253,12 @@ class CommandEncoder : public GenericCommandEncoder {
 
   void transitionImages(
     std::vector<backend::Image> const& images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const;
+
+  // [somewhat deprecated helper to transition color images]
+  void transitionColorImages(
+    std::vector<backend::Image> const& images,
     VkImageLayout const src_layout,
     VkImageLayout const dst_layout,
     uint32_t layer_count = 1u
@@ -277,11 +290,13 @@ class CommandEncoder : public GenericCommandEncoder {
 
   void blitImage2D(
     backend::Image const& src,
-    VkImageLayout src_layout,
+    VkImageLayout current_src_layout,
+    VkImageLayout final_src_layout,
     backend::Image const& dst,
-    VkImageLayout dst_layout,
+    VkImageLayout current_dst_layout,
+    VkImageLayout final_dst_layout,
     VkExtent2D const& extent,
-    uint32_t layer_count = 1u
+    uint32_t layer_count
   ) const;
 
   // --- Rendering ---
@@ -466,6 +481,15 @@ class RenderPassEncoder : public GenericCommandEncoder {
     vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
+  void drawIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0u,
+    uint32_t drawCount = 1u,
+    uint32_t stride = 0u
+  ) const {
+    vkCmdDrawIndirect(handle_, buffer.buffer, offset, drawCount, stride);
+  }
+
   void drawIndexed(
     uint32_t index_count,
     uint32_t instance_count = 1u,
@@ -483,7 +507,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     );
   }
 
-  void draw(
+  void bindAndDraw(
     DrawDescriptor const& desc,
     backend::Buffer const& vertex_buffer,
     backend::Buffer const& index_buffer

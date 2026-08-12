@@ -564,7 +564,7 @@ Pipeline RenderContext::createGraphicsPipeline(
 
 // ----------------------------------------------------------------------------
 
-void RenderContext::create_compute_pipelines(
+void RenderContext::createComputePipelines(
   VkPipelineLayout pipeline_layout,
   std::vector<backend::ShaderModule> const& modules,
   Pipeline *pipelines
@@ -607,7 +607,7 @@ Pipeline RenderContext::createComputePipeline(
   backend::ShaderModule const& module
 ) const {
   Pipeline p;
-  create_compute_pipelines(pipeline_layout, { module }, &p);
+  createComputePipelines(pipeline_layout, { module }, &p);
   return p;
 }
 
@@ -757,7 +757,7 @@ VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
   DescriptorSetLayoutParamsBuffer const& params,
   VkDescriptorSetLayoutCreateFlags flags
 ) const {
-  return descriptor_set_registry_.create_layout(params, flags);
+  return descriptor_set_registry_.createLayout(params, flags);
 }
 
 // ----------------------------------------------------------------------------
@@ -765,7 +765,7 @@ VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
 void RenderContext::destroyDescriptorSetLayout(
   VkDescriptorSetLayout &layout
 ) const {
-  descriptor_set_registry_.destroy_layout(layout);
+  descriptor_set_registry_.destroyLayout(layout);
 }
 
 // ----------------------------------------------------------------------------
@@ -808,13 +808,14 @@ bool RenderContext::loadImage2D(
 
     stbi_set_flip_vertically_on_load(false);
 
+    bool result{false};
     if (is_hdr) [[unlikely]] {
-      image_data.loadf(fr.buffer.data(), fr.buffer.size());
+      result = image_data.loadf(fr.buffer.data(), fr.buffer.size());
     } else {
-      image_data.load(fr.buffer.data(), fr.buffer.size());
+      result = image_data.load(fr.buffer.data(), fr.buffer.size());
     }
 
-    if (!image_data.pixels()) {
+    if (!result || !image_data.pixels()) {
       return false;
     }
   }
@@ -850,7 +851,7 @@ bool RenderContext::loadImage2D(
     /* Transfer staging device buffer to image memory. */
     {
       VkImageLayout const transfer_layout{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL };
-      cmd.transitionImages(
+      cmd.transitionColorImages(
         { image },
         VK_IMAGE_LAYOUT_UNDEFINED,
         transfer_layout,
@@ -859,7 +860,7 @@ bool RenderContext::loadImage2D(
 
       cmd.copyBufferToImage(staging_buffer, image, extent, transfer_layout);
 
-      cmd.transitionImages(
+      cmd.transitionColorImages(
         { image },
         transfer_layout,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

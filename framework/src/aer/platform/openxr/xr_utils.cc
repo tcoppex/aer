@@ -5,7 +5,7 @@ namespace xrutils {
 /* -------------------------------------------------------------------------- */
 
 mat4f PoseMatrix(XrPosef const& pose) {
-  return linalg::pose_matrix(
+  return lina::pose_matrix(
     reinterpret_cast<vec4f const&>(pose.orientation),
     reinterpret_cast<vec3f const&>(pose.position)
   );

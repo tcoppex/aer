@@ -57,7 +57,7 @@ class SampleApp final : public Application {
      * When a RenderPassDescriptor is passed to 'beginRendering' we need
      * to transition the images layout manually to the correct attachment.
      **/
-    cmd.transitionImages(
+    cmd.transitionColorImages(
       { current_swapchain_image },
       VK_IMAGE_LAYOUT_UNDEFINED,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -84,7 +84,7 @@ class SampleApp final : public Application {
     /* The image layout must be changed manually before being submitted to
      * the Present queue by 'end_frame'.
      */
-    cmd.transitionImages(
+    cmd.transitionColorImages(
       { current_swapchain_image },
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
