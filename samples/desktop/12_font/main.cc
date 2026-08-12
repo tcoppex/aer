@@ -332,7 +332,7 @@ class SampleApp final : public Application {
 
   struct {
     std::array<char, 128u> sampleText{
-      "C’était à Mégara, faubourg de Carthage, dans les jardins d’Hamilcar"
+      "C'était à Mégara, faubourg de Carthage, dans les jardins d'Hamilcar."
     };
     int32_t fontArrayIndex{};
     int32_t fontCurveResolution{scene::Polyline::kDefaultCurveResolution};
