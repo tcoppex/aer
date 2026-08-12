@@ -1,6 +1,5 @@
 #include "aer/renderer/fx/material/material_fx.h"
 
-// #include "aer/platform/vulkan/context.h"
 #include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
@@ -60,38 +59,39 @@ void MaterialFx::prepareDrawState(
 
   pass.bindPipeline(pipelines_[states]);
 
-  // ----------------------------
-  auto const& DSR = context_ptr_->descriptor_set_registry();
+  // Bind descriptor sets.
+  {
+    auto const& DSR = context_ptr_->descriptor_set_registry();
 
-  VkShaderStageFlags const stage_flags{
-      VK_SHADER_STAGE_VERTEX_BIT
-    | VK_SHADER_STAGE_FRAGMENT_BIT
-  };
+    VkShaderStageFlags const stage_flags{
+        VK_SHADER_STAGE_VERTEX_BIT
+      | VK_SHADER_STAGE_FRAGMENT_BIT
+    };
 
-  // Material Specific descriptor set.
-  pass.bindDescriptorSet(
-    descriptor_set_,
-    pipeline_layout_,
-    stage_flags,
-    material_shader_interop::kDescriptorSet_Internal
-  );
+    // Material Specific descriptor set.
+    pass.bindDescriptorSet(
+      descriptor_set_,
+      pipeline_layout_,
+      stage_flags,
+      material_shader_interop::kDescriptorSet_Internal
+    );
 
-  // Shared Frame descriptor set.
-  pass.bindDescriptorSet(
-    DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
-    pipeline_layout_,
-    stage_flags,
-    material_shader_interop::kDescriptorSet_Frame
-  );
+    // Shared Frame descriptor set.
+    pass.bindDescriptorSet(
+      DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
+      pipeline_layout_,
+      stage_flags,
+      material_shader_interop::kDescriptorSet_Frame
+    );
 
-  // [~] 'Shared' Scene descriptor set.
-  pass.bindDescriptorSet(
-    DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
-    pipeline_layout_,
-    stage_flags,
-    material_shader_interop::kDescriptorSet_Scene
-  );
-  // ----------------------------
+    // [~] 'Shared' Scene descriptor set.
+    pass.bindDescriptorSet(
+      DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
+      pipeline_layout_,
+      stage_flags,
+      material_shader_interop::kDescriptorSet_Scene
+    );
+  }
 }
 
 // ----------------------------------------------------------------------------

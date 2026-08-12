@@ -110,11 +110,7 @@ class Hierarchy {
   entt::entity findByName(std::string_view entity_name) const;
 
  private:
-  void updateGlobalTransform(
-    StagingGroup &group,
-    entt::entity e,
-    mat4 const& parent_matrix
-  );
+  void updateGlobalTransform(StagingGroup &group, entt::entity e, mat4 const& parent_matrix);
 };
 
 /* -------------------------------------------------------------------------- */
