@@ -348,7 +348,7 @@ class Context {
     std::vector<VkExtensionProperties> const& extensions
   ) const {
     for (auto const& ext : extensions) {
-      if (strcmp(ext.extensionName, name.data()) == 0) {
+      if (ext.extensionName == name) {
         return true;
       }
     }
