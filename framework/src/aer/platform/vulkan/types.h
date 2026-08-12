@@ -224,6 +224,9 @@ struct RTInterface {
   bool use_msaa() const noexcept {
     return sample_count() > VK_SAMPLE_COUNT_1_BIT;
   }
+  
+  // [TODO] Add an output_attachment() interface to return resolve / color depending
+  //        on MSAA, instead of depending on resolve_attachment.
 
   // -- Setters --
 
