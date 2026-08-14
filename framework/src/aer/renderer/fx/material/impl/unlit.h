@@ -28,16 +28,8 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
   }
 
  public:
-  void set_transform_index(uint32_t index) final {
-    push_constant_.transform_index = index;
-  }
-
-  void set_material_index(uint32_t index) final {
-    push_constant_.material_index = index;
-  }
-
-  void set_instance_index(uint32_t index) final {
-    push_constant_.instance_index = index;
+  void set_push_constant_generic(PushConstant_Generic const& data) final {
+    push_constant_.generic = data;
   }
 
  private:

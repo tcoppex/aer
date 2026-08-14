@@ -226,9 +226,14 @@ void GPUResources::render(RenderPassEncoder const& pass) {
         auto const& proxy = material_proxy(matref);
 
         // Submesh's pushConstants.
-        fx->set_transform_index(mesh->transform_index);
-        fx->set_material_index(matref.material_index);
-        fx->set_instance_index(instance_index++); //
+        fx->set_push_constant_generic({
+          // .transform_buffer_address = 0u,
+          // .material_buffer_address = 0u,
+          .transform_index = mesh->transform_index,
+          .material_index = matref.material_index,
+          .instance_index = instance_index++,
+        });
+
         fx->pushConstant(pass);
 
         pass.setPrimitiveTopology(mesh->vk_primitive_topology());

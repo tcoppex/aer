@@ -1,11 +1,7 @@
 #version 460
-#extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_nonuniform_qualifier : require
 
 // ----------------------------------------------------------------------------
 
-#include <material/interop.h>
 #include <material/unlit/interop.h>
 
 #include <shared/maths.glsl> // (for calculate_reorient_matrix)
@@ -103,7 +99,7 @@ void apply_billboard_xz(
 
 void main() {
   const CameraTransform camera = GetFrameCamera(uFrame);
-  const TransformSBO transform = transforms[nonuniformEXT(pushConstant.transform_index)];
+  const TransformSBO transform = GetTransform(transforms);
 
   const mat4 worldMatrix = uFrame.default_world_matrix
                          * transform.worldMatrix

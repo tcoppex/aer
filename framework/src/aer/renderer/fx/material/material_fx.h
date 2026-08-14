@@ -3,8 +3,9 @@
 
 #include "aer/core/common.h"
 #include "aer/scene/material.h"
-
 #include "aer/renderer/render_context.h"
+
+#include "aer/shaders/material/push_constant_generic.h" //
 
 /* -------------------------------------------------------------------------- */
 
@@ -71,9 +72,10 @@ class MaterialFx {
 
   // -- mesh instance push constants --
 
-  virtual void set_transform_index(uint32_t index) = 0;
-  virtual void set_material_index(uint32_t index) = 0;
-  virtual void set_instance_index(uint32_t index) = 0;
+  // virtual void set_transform_index(uint32_t index) = 0;
+  // virtual void set_material_index(uint32_t index) = 0;
+  // virtual void set_instance_index(uint32_t index) = 0;
+  virtual void set_push_constant_generic(PushConstant_Generic const& data) = 0;
 
   // -- material utils --
 

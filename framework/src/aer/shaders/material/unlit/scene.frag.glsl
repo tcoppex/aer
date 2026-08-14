@@ -1,11 +1,7 @@
 #version 460
-#extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_nonuniform_qualifier : require
 
 // ----------------------------------------------------------------------------
 
-#include <material/interop.h>
 #include <material/unlit/interop.h>
 
 // ----------------------------------------------------------------------------
@@ -49,7 +45,7 @@ vec4 sample_DiffuseColor(in Material mat) {
 // ----------------------------------------------------------------------------
 
 void main() {
-  Material mat = materials[nonuniformEXT(pushConstant.material_index)];
+  Material mat = GetMaterial(materials);
 
   const vec4 mainColor = sample_DiffuseColor(mat)
                        * mat.diffuse_factor

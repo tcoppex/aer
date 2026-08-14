@@ -34,7 +34,6 @@ const uint kCompute_Specular_kernelSize_y = 16u;
 
 // ----------------------------------------------------------------------------
 
-
 /*--
 * We only need mat3[3] - or vec3[9] - plus one float for sumWeight, but
 * to be aligned we use vec4 instead, and data[0].w for sumWeight.
@@ -49,6 +48,7 @@ struct SHMatrices {
 
 // ----------------------------------------------------------------------------
 
+// [92 bytes < 128 bytes]
 struct PushConstant {
   mat4 viewProjectionMatrix;
   uint mapResolution;

@@ -1,6 +1,15 @@
 #ifndef SHADERS_SCENE_INTEROP_H_
 #define SHADERS_SCENE_INTEROP_H_
 
+#ifndef __cplusplus
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_multiview : require
+#endif
+
 // ----------------------------------------------------------------------------
 // -- Vertex Inputs --
 
@@ -64,8 +73,7 @@ struct FrameData {
 };
 
 #ifndef __cplusplus
-#extension GL_EXT_multiview : require
-#define GetFrameCamera(FrameData) FrameData.camera[gl_ViewIndex]
+#define GetFrameCamera(FrameData)       FrameData.camera[gl_ViewIndex]
 #endif
 
 // ----------------------------------------------------------------------------
