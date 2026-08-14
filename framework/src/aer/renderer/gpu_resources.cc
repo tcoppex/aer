@@ -95,7 +95,7 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
   /* Build the Material Registry. */
   {
     material_fx_registry_->setup(material_proxies, material_refs); //
-    material_fx_registry_->pushMaterialStorageBuffers();
+    material_fx_registry_->uploadMaterialStorageBuffers();
   }
 
   /* Initialiaze the RayTracing data structure. */

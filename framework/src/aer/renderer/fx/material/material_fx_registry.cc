@@ -72,9 +72,9 @@ void MaterialFxRegistry::setup(
 
 // ----------------------------------------------------------------------------
 
-void MaterialFxRegistry::pushMaterialStorageBuffers() const {
+void MaterialFxRegistry::uploadMaterialStorageBuffers() const {
   for (auto fx : active_fx_) {
-    fx->pushMaterialStorageBuffer();
+    fx->uploadMaterialStorageBuffer();
   }
 }
 

@@ -79,7 +79,7 @@ class MaterialFx {
 
   virtual uint32_t createMaterial(scene::MaterialProxy const& material_proxy) = 0;
 
-  virtual void pushMaterialStorageBuffer() const = 0;
+  virtual void uploadMaterialStorageBuffer() const = 0;
 
  protected:
   RenderContext const* context_ptr_{};
@@ -119,7 +119,7 @@ class TMaterialFx : public MaterialFx {
     return  static_cast<uint32_t>(materials_.size() - 1u);
   }
 
-  void pushMaterialStorageBuffer() const override {
+  void uploadMaterialStorageBuffer() const override {
     LOG_CHECK(materials_.size() < kDefaultMaterialCount);
 
     if (materials_.empty()) {
