@@ -52,12 +52,14 @@ VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
     binding_flags.push_back(param.bindingFlags);
   }
 
-  VkDescriptorSetLayoutBindingFlagsCreateInfo const flags_create_info{
+  auto const flags_create_info = VkDescriptorSetLayoutBindingFlagsCreateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+    .pNext = nullptr,
     .bindingCount = static_cast<uint32_t>(binding_flags.size()),
     .pBindingFlags = binding_flags.data(),
   };
-  VkDescriptorSetLayoutCreateInfo const layout_create_info{
+
+  auto const layout_create_info = VkDescriptorSetLayoutCreateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
     .pNext = binding_flags.empty() ? nullptr : &flags_create_info,
     .flags = flags,
@@ -65,11 +67,10 @@ VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
     .pBindings = entries.data(),
   };
 
-  VkDescriptorSetLayout descriptor_set_layout;
+  VkDescriptorSetLayout descriptor_set_layout{};
   CHECK_VK(vkCreateDescriptorSetLayout(
     device_, &layout_create_info, nullptr, &descriptor_set_layout
   ));
-
   return descriptor_set_layout;
 }
 
@@ -85,8 +86,9 @@ void DescriptorSetRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
 VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
   VkDescriptorSetLayout const layout
 ) const {
-  VkDescriptorSetAllocateInfo const alloc_info{
+  auto const alloc_info = VkDescriptorSetAllocateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+    .pNext = nullptr,
     .descriptorPool = main_pool_,
     .descriptorSetCount = 1u,
     .pSetLayouts = &layout,
@@ -101,11 +103,14 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
 void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Frame].set,
-  {{
-    .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-    .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    .buffers = { { buffer.buffer } },
-  }});
+    {
+      {
+        .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
+        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .buffers = { { buffer.buffer } },
+      }
+    }
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -113,11 +118,14 @@ void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const 
 void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
-  {{
-    .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
-    .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-    .buffers = { { buffer.buffer } },
-  }});
+    {
+      {
+        .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
+        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .buffers = { { buffer.buffer } },
+      }
+    }
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -225,7 +233,7 @@ void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
     // ---------------------------------------
   };
 
-  VkDescriptorPoolCreateInfo const descriptor_pool_info{
+  auto const descriptor_pool_info = VkDescriptorPoolCreateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
     .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT
            | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
@@ -246,7 +254,7 @@ void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::initDescriptorSets() {
-  VkShaderStageFlags extra_stage_flags{
+  auto const extra_stage_flags = VkShaderStageFlags{
       VK_SHADER_STAGE_RAYGEN_BIT_KHR
     | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
@@ -277,22 +285,12 @@ void DescriptorSetRegistry::initDescriptorSets() {
         .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS
+                    | VK_SHADER_STAGE_COMPUTE_BIT
+                    ,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
                       | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
                       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
-      },
-      {
-        .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = kMaxNumTextures, //
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT
-                    | extra_stage_flags
-                    ,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-                      | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
       },
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_IBL_Prefiltered,
@@ -314,6 +312,19 @@ void DescriptorSetRegistry::initDescriptorSets() {
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+      },
+      {
+        .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = kMaxNumTextures, //
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+                    | VK_SHADER_STAGE_FRAGMENT_BIT
+                    | extra_stage_flags
+                    ,
+        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+                      | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+                      // | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+                      ,
       },
     },
     VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
@@ -355,6 +366,7 @@ void DescriptorSetRegistry::createMainSet(
   std::string const& name
 ) {
   VkDescriptorSetLayout const layout = createLayout(layout_params, layout_flags);
+
   sets_[type] = {
     .index = static_cast<uint32_t>(type),
     .set = allocateDescriptorSet(layout),

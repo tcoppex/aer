@@ -28,10 +28,10 @@ const uint kDescriptorSet_Frame_FrameUBO            = 0;
 
 const uint kDescriptorSet_Scene = 2;
 const uint kDescriptorSet_Scene_TransformSBO        = 0;
-const uint kDescriptorSet_Scene_Textures            = 1;
-const uint kDescriptorSet_Scene_IBL_Prefiltered     = 2;
-const uint kDescriptorSet_Scene_IBL_Irradiance      = 3;
-const uint kDescriptorSet_Scene_IBL_SpecularBRDF    = 4;
+const uint kDescriptorSet_Scene_IBL_Prefiltered     = 1;
+const uint kDescriptorSet_Scene_IBL_Irradiance      = 2;
+const uint kDescriptorSet_Scene_IBL_SpecularBRDF    = 3;
+const uint kDescriptorSet_Scene_Textures            = 4; // (must be last to use variable count)
 
 const uint kDescriptorSet_RayTracing = 3;
 const uint kDescriptorSet_RayTracing_TLAS           = 0;
