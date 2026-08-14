@@ -400,62 +400,39 @@ class Context {
 
   VkDebugUtilsMessengerEXT debug_utils_messenger_{VK_NULL_HANDLE};
 
-  // -----------------------------------------------
-  std::vector<VkExtensionProperties> available_device_extensions_{};
-
   std::vector<char const*> instance_layer_names_{};
-
   std::vector<char const*> instance_extension_names_{
     VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
   };
 
+  std::vector<VkExtensionProperties> available_device_extensions_{};
   std::set<char const*> device_extension_names_{
+    // (Non Core)
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-    VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
     VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-    VK_KHR_SPIRV_1_4_EXTENSION_NAME,
-    VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
+    // (Core in VK_VERSION_1_4)
+    VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
   };
-  // -----------------------------------------------
 
   struct {
-    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    // VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    // VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    // VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr};
+    VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
-    // core in VK_VERSION_1_1
-    VkPhysicalDeviceMultiviewFeaturesKHR multiview{};
-    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
-
-    // core in VK_VERSION_1_2
-    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
-    VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing{};
-    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR buffer_device_address{};
-
-    // core in VK_VERSION_1_3
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering{};
-    VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2{};
-    VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4{};
-
-    // core in VK_VERSION_1_4
+    // (Core in VK_VERSION_1_4)
     VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{}; //
     VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
 
-    // non core
+    // (Non Core)
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{}; //
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{}; //
-
   } feature_;
 
   VkInstance instance_{};

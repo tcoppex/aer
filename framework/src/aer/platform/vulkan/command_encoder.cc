@@ -11,7 +11,7 @@ void GenericCommandEncoder::bindDescriptorSet(
   VkShaderStageFlags stage_flags,
   uint32_t first_set
 ) const {
-  if (vkCmdBindDescriptorSets2KHR)
+  if (vkCmdBindDescriptorSets2)
   {
     // (requires VK_KHR_maintenance6 or VK_VERSION_1_4)
     VkBindDescriptorSetsInfoKHR const bind_desc_sets_info{
@@ -22,7 +22,7 @@ void GenericCommandEncoder::bindDescriptorSet(
       .descriptorSetCount = 1u, //
       .pDescriptorSets = &descriptor_set,
     };
-    vkCmdBindDescriptorSets2KHR(handle_, &bind_desc_sets_info);
+    vkCmdBindDescriptorSets2(handle_, &bind_desc_sets_info);
   }
   else
   {
@@ -75,7 +75,7 @@ void GenericCommandEncoder::pushDescriptorSet(
 
   // (requires VK_KHR_get_physical_device_properties2 or VK_VERSION_1_4)
   LOG_CHECK(vkCmdPushDescriptorSetKHR != nullptr);
-  vkCmdPushDescriptorSetKHR(
+  vkCmdPushDescriptorSet(
     handle_,
     pipeline.bind_point(),
     pipeline.layout(),
@@ -359,7 +359,7 @@ RenderPassEncoder CommandEncoder::beginRendering(RenderPassDescriptor const& des
     .pStencilAttachment   = &desc.stencilAttachment, //
   };
 
-  vkCmdBeginRenderingKHR(handle_, &rendering_info);
+  vkCmdBeginRendering(handle_, &rendering_info);
 
   return RenderPassEncoder(handle_, target_queue_index());
 }

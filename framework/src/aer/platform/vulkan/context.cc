@@ -517,10 +517,10 @@ void Context::initInstance(
 
   VkApplicationInfo const application_info{
     .pApplicationName = app_name.data(), //
-    .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-    .pEngineName = "vk_framework",
-    .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-    .apiVersion = VK_API_VERSION_1_1,
+    .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
+    .pEngineName = "aer",
+    .engineVersion = VK_MAKE_VERSION(0, 1, 0),
+    .apiVersion = VK_API_VERSION_1_3,
   };
 
   VkInstanceCreateInfo const instance_create_info{
@@ -658,72 +658,6 @@ bool Context::initDevice() {
 
   /* Vulkan GPU features. */
   {
-    // Core in VK_VERSION_1_1
-
-    add_device_feature(
-      VK_KHR_MULTIVIEW_EXTENSION_NAME,
-      feature_.multiview,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
-    );
-
-    add_device_feature(
-      VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-      feature_.storage_16bit,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR
-    );
-
-    // Core in VK_VERSION_1_2
-
-    add_device_feature(
-      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-      feature_.descriptor_indexing,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
-    );
-
-    add_device_feature(
-      VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-      feature_.buffer_device_address,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-      feature_.timeline_semaphore,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
-    );
-
-    // Core in VK_VERSION_1_3
-
-    add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-      feature_.extended_dynamic_state,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
-      feature_.extended_dynamic_state2,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT
-    );
-
-    add_device_feature(
-      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-      feature_.dynamic_rendering,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-      feature_.synchronization2,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR
-    );
-
-    add_device_feature(
-      VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
-      feature_.maintenance4,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR
-    );
-
     // Core in VK_VERSION_1_4
 
     add_device_feature(
@@ -744,7 +678,7 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
     );
 
-    // Not Core
+    // Non core
 
     add_device_feature(
       VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
@@ -764,8 +698,6 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
     );
 
-    // [TODO] make optionnal
-    // ------------------------
     add_device_feature(
       VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
       feature_.acceleration_structure,
@@ -779,33 +711,23 @@ bool Context::initDevice() {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
     );
 #endif
-    // ------------------------
 
+    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v11);
+    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v12);
+    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v13);
     vkGetPhysicalDeviceFeatures2(gpu_, &feature_.base);
+
+    /* Check features. */
+    if (vulkan_xr_) {
+      LOG_CHECK(feature_.v11.multiview && "Multiview required (Vulkan 1.1 core)");
+    }
+    LOG_CHECK(feature_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
+    LOG_CHECK(feature_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
+    LOG_CHECK(feature_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
+    LOG_CHECK(feature_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
+    LOG_CHECK(feature_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
   }
 
-  auto enable_feature = [](auto &feature) {
-    feature = bool(feature) ? VK_TRUE : VK_FALSE;
-  };
-
-  enable_feature(feature_.timeline_semaphore.timelineSemaphore);
-  enable_feature(feature_.descriptor_indexing.descriptorBindingPartiallyBound);
-  enable_feature(feature_.descriptor_indexing.runtimeDescriptorArray);
-  enable_feature(feature_.descriptor_indexing.shaderSampledImageArrayNonUniformIndexing);
-  enable_feature(feature_.dynamic_rendering.dynamicRendering);
-  enable_feature(feature_.synchronization2.synchronization2);
-  
-  enable_feature(feature_.vertex_input_dynamic_state.vertexInputDynamicState);
-
-#if !defined(ANDROID)
-  enable_feature(feature_.ray_tracing_pipeline.rayTracingPipeline);
-#endif
-
-  if (vulkan_xr_) {
-    LOG_CHECK(feature_.multiview.multiview);
-    enable_feature(feature_.multiview.multiview);
-  }
-  feature_.multiview.multiview = VK_TRUE;
 
   // --------------------
 
@@ -889,7 +811,6 @@ bool Context::initDevice() {
     }
   }
 
-
   /* Create logical device. */
   {
     // Convert the internal device extenstions set to a buffer.
@@ -907,16 +828,13 @@ bool Context::initDevice() {
       .pQueueCreateInfos = queue_create_infos.data(),
       .enabledExtensionCount = static_cast<uint32_t>(extension_names.size()),
       .ppEnabledExtensionNames = extension_names.data(),
+      .pEnabledFeatures = nullptr,
     };
 
     if (vulkan_xr_) {
-      CHECK_VK(vulkan_xr_->createVulkanDevice(
-        gpu_, &device_info, nullptr, &handle_
-      ));
+      CHECK_VK(vulkan_xr_->createVulkanDevice(gpu_, &device_info, nullptr, &handle_));
     } else {
-      CHECK_VK(vkCreateDevice(
-        gpu_, &device_info, nullptr, &handle_
-      ));
+      CHECK_VK(vkCreateDevice(gpu_, &device_info, nullptr, &handle_));
     }
   }
 
@@ -932,6 +850,13 @@ bool Context::initDevice() {
     bind_func(     vkCmdBeginRendering, vkCmdBeginRenderingKHR);
     bind_func(       vkCmdEndRendering, vkCmdEndRenderingKHR);
     bind_func( vkCmdBindVertexBuffers2, vkCmdBindVertexBuffers2EXT);
+    bind_func(vkGetBufferDeviceAddress, vkGetBufferDeviceAddressKHR);
+    bind_func(vkCmdBindDescriptorSets2, vkCmdBindDescriptorSets2KHR);
+    bind_func(  vkCmdPushDescriptorSet, vkCmdPushDescriptorSetKHR);
+    bind_func(     vkCmdBeginRendering, vkCmdBeginRenderingKHR);
+    bind_func(     vkCmdPushConstants2, vkCmdPushConstants2KHR);
+    bind_func(vkCmdSetPrimitiveTopology, vkCmdSetPrimitiveTopologyEXT);
+    bind_func(        vkCmdSetCullMode, vkCmdSetCullModeEXT);
   }
 
   /* Retrieved requested queues. */

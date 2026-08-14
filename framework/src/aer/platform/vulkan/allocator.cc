@@ -86,7 +86,7 @@ backend::Buffer Allocator::createBuffer(
     .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
     .buffer = buffer.buffer,
   };
-  buffer.address = vkGetBufferDeviceAddressKHR(device_, &buffer_device_addr_info);
+  buffer.address = vkGetBufferDeviceAddress(device_, &buffer_device_addr_info);
 
   return buffer;
 }

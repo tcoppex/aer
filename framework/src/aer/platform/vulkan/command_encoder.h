@@ -82,7 +82,7 @@ class GenericCommandEncoder {
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
     uint32_t const offset = 0u
   ) const {
-    if (vkCmdPushConstants2KHR)
+    if (vkCmdPushConstants2)
     {
       VkPushConstantsInfoKHR const push_info{
         .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR,
@@ -92,7 +92,7 @@ class GenericCommandEncoder {
         .size = static_cast<uint32_t>(sizeof(T)),
         .pValues = &value,
       };
-      vkCmdPushConstants2KHR(handle_, &push_info);
+      vkCmdPushConstants2(handle_, &push_info);
     }
     else
     {
@@ -406,15 +406,11 @@ class RenderPassEncoder : public GenericCommandEncoder {
   }
 
   void setPrimitiveTopology(VkPrimitiveTopology const topology) const {
-    // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
-    LOG_CHECK(vkCmdSetPrimitiveTopologyEXT);
-    vkCmdSetPrimitiveTopologyEXT(handle_, topology);
+    vkCmdSetPrimitiveTopology(handle_, topology);
   }
 
   void setCullMode(VkCullModeFlags cull_mode) const {
-    // Provided by VK_EXT_extended_dynamic_state, VK_EXT_shader_object
-    LOG_CHECK(vkCmdSetCullModeEXT);
-    vkCmdSetCullModeEXT(handle_, cull_mode);
+    vkCmdSetCullMode(handle_, cull_mode);
   }
 
   void setVertexInput(VertexInputDescriptor const& vertex_input_descriptor) const {

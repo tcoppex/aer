@@ -180,6 +180,8 @@ void RayTracingFx::createPipeline() {
 // ----------------------------------------------------------------------------
 
 void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const& desc) {
+  LOG_CHECK(vkGetRayTracingShaderGroupHandlesKHR);
+  
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR
   };
@@ -284,7 +286,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
       .buffer = sbt_storage_buffer_.buffer,
     };
 
-    VkDeviceAddress baseAddress = vkGetBufferDeviceAddressKHR(
+    VkDeviceAddress baseAddress = vkGetBufferDeviceAddress(
       context_ptr_->device(), &addrInfo
     );
     return {
