@@ -154,13 +154,32 @@ void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer)
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const {
+void DescriptorSetRegistry::updateSceneTextures(
+  std::vector<VkDescriptorImageInfo> image_infos
+) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
       .images = std::move(image_infos),
+    }}
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void DescriptorSetRegistry::updateSceneTexture(
+  uint32_t index,
+  VkDescriptorImageInfo image_info
+) const {
+  context_ptr_->updateDescriptorSet(
+    sets_[DescriptorSetRegistry::Type::Scene].set,
+    {{
+      .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
+      .arrayElement = index,
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .images = { image_info },
     }}
   );
 }

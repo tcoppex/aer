@@ -81,6 +81,7 @@ class DescriptorSetRegistry {
   void updateFrameUBO(backend::Buffer const& buffer) const;
   void updateSceneTransforms(backend::Buffer const& buffer) const;
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
+  void updateSceneTexture(uint32_t index, VkDescriptorImageInfo image_info) const;
   void updateSceneIBL(Skybox const& skybox) const;
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
   // -----------------------------------------------

@@ -283,6 +283,7 @@ using DescriptorSetLayoutParamsBuffer = std::vector<DescriptorSetLayoutParams>;
 
 struct DescriptorSetWriteEntry {
   uint32_t binding{};
+  uint32_t arrayElement{};
   VkDescriptorType type{};
   std::vector<VkDescriptorImageInfo> images{};
   std::vector<VkDescriptorBufferInfo> buffers{};
