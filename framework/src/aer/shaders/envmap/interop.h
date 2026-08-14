@@ -3,42 +3,34 @@
 
 // ----------------------------------------------------------------------------
 
-#ifdef __cplusplus
-#define UINT uint32_t
-#else
-#define UINT uint
-#endif
+const uint kAttribLocation_Position = 0;
+const uint kAttribLocation_Normal   = 1;
+const uint kAttribLocation_Texcoord = 2;
 
 // ----------------------------------------------------------------------------
 
-const UINT kAttribLocation_Position = 0;
-const UINT kAttribLocation_Normal   = 1;
-const UINT kAttribLocation_Texcoord = 2;
+const uint kDescriptorSetBinding_Sampler                            = 0;
+const uint kDescriptorSetBinding_StorageImage                       = 1;
+const uint kDescriptorSetBinding_StorageImageArray                  = 2;
+
+const uint kDescriptorSetBinding_IrradianceSHCoeff_StorageBuffer    = 3;
+const uint kDescriptorSetBinding_IrradianceSHMatrices_StorageBuffer = 4;
 
 // ----------------------------------------------------------------------------
 
-const UINT kDescriptorSetBinding_Sampler                            = 0;
-const UINT kDescriptorSetBinding_StorageImage                       = 1;
-const UINT kDescriptorSetBinding_StorageImageArray                  = 2;
+const uint kCompute_SphericalTransform_kernelSize_x = 16u;
+const uint kCompute_SphericalTransform_kernelSize_y = 16u;
 
-const UINT kDescriptorSetBinding_IrradianceSHCoeff_StorageBuffer    = 3;
-const UINT kDescriptorSetBinding_IrradianceSHMatrices_StorageBuffer = 4;
+const uint kCompute_IrradianceSHCoeff_kernelSize_x = 16u;
+const uint kCompute_IrradianceSHCoeff_kernelSize_y = 16u;
 
-// ----------------------------------------------------------------------------
+const uint kCompute_IrradianceReduceSHCoeff_kernelSize_x = 256u;
 
-const UINT kCompute_SphericalTransform_kernelSize_x = 16u;
-const UINT kCompute_SphericalTransform_kernelSize_y = 16u;
+const uint kCompute_Irradiance_kernelSize_x = 16u;
+const uint kCompute_Irradiance_kernelSize_y = 16u;
 
-const UINT kCompute_IrradianceSHCoeff_kernelSize_x = 16u;
-const UINT kCompute_IrradianceSHCoeff_kernelSize_y = 16u;
-
-const UINT kCompute_IrradianceReduceSHCoeff_kernelSize_x = 256u;
-
-const UINT kCompute_Irradiance_kernelSize_x = 16u;
-const UINT kCompute_Irradiance_kernelSize_y = 16u;
-
-const UINT kCompute_Specular_kernelSize_x = 16u;
-const UINT kCompute_Specular_kernelSize_y = 16u;
+const uint kCompute_Specular_kernelSize_x = 16u;
+const uint kCompute_Specular_kernelSize_y = 16u;
 
 // ----------------------------------------------------------------------------
 
@@ -59,18 +51,16 @@ struct SHMatrices {
 
 struct PushConstant {
   mat4 viewProjectionMatrix;
-  UINT mapResolution;
-  UINT numSamples;
-  UINT mipLevel;
+  uint mapResolution;
+  uint numSamples;
+  uint mipLevel;
   float roughnessSquared;
   //
-  UINT numElements;
-  UINT readOffset;
-  UINT writeOffset;
+  uint numElements;
+  uint readOffset;
+  uint writeOffset;
 };
 
 // ----------------------------------------------------------------------------
-
-#undef UINT
 
 #endif
