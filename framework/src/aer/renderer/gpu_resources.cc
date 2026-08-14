@@ -109,11 +109,12 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     // -----------------------------------
     // Create a ring dynamic UBO for frame data.
     // Need to be aligned to VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
-    VkDeviceSize const min_alignment = context_.gpu_properties().limits.minUniformBufferOffsetAlignment;
-    VkDeviceSize const frame_data_stride = utils::AlignTo(
+    VkDeviceSize const min_alignment = context_.gpu_properties()
+      .limits.minUniformBufferOffsetAlignment;
+    frame_data_stride_ = utils::AlignTo(
       sizeof(material_shader_interop::FrameData), min_alignment
     );
-    uint32_t const total_buffer_size = frame_data_stride * max_frames_in_flight_;
+    uint32_t const total_buffer_size = frame_data_stride_ * max_frames_in_flight_;
     // -----------------------------------
 
     frame_ubo_ = context_.createBuffer(
@@ -507,7 +508,7 @@ void GPUResources::updateFrameData(
     .default_world_matrix = context_.default_world_matrix(), //
     .cameraPos_Time = vec4(camera.position(), elapsed_time), //
     .resolution = vec2(surface_size.width, surface_size.height),
-    .frame = frame_index_++,
+    .frame = frame_index_,
     .renderer_states = 0b11111111111111111111111111111111, // XXX
   };
   
@@ -523,16 +524,26 @@ void GPUResources::updateFrameData(
     std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
   }
 
-  /* Upload buffer. */
+  /* Upload frame data to the Frame dynamic UBO. */
   {
-    // [Note]
-    // 1. We might want to double/triple buffering it to avoid race conditions.
-    // 2. Using writeBuffer() could be more efficient here if the buffer has been
-    //     setup accordingly
+    LOG_CHECK(max_frames_in_flight_ > 0);
+    LOG_CHECK(frame_data_stride_ > 0);
+
+    uint32_t const current_slot = frame_index_ % max_frames_in_flight_; //
+    size_t const offset = current_slot * frame_data_stride_;
+
+    // [writeBuffer() might be more efficient here (with the correct build flags)]
     context_.transientUploadBuffer(
-      &frame_data, sizeof(frame_data), frame_ubo_
+      &frame_data, sizeof(frame_data), frame_ubo_, offset
+    );
+
+    // Propagate the Frame UBO dynamic offset to the Descriptor Set Registry.
+    context_.descriptor_set_registry().updateFrameUBODynamicOffset(
+      static_cast<uint32_t>(offset)
     );
   }
+
+  frame_index_++;
 }
 
 // ----------------------------------------------------------------------------

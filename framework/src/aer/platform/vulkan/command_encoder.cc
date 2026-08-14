@@ -9,18 +9,31 @@ void GenericCommandEncoder::bindDescriptorSet(
   VkDescriptorSet descriptor_set,
   VkPipelineLayout pipeline_layout,
   VkShaderStageFlags stage_flags,
-  uint32_t first_set
+  uint32_t first_set,
+  std::vector<uint32_t> const* dynamicOffsets
 ) const {
+  bool const hasDynamicOffset = dynamicOffsets && !dynamicOffsets->empty();
+  uint32_t const dynamicOffsetCount = static_cast<uint32_t>(hasDynamicOffset
+    ? dynamicOffsets->size()
+    : 0u
+  );
+  uint32_t const* pDynamicOffsets = hasDynamicOffset
+    ? dynamicOffsets->data()
+    : nullptr
+    ;
+
   if (vkCmdBindDescriptorSets2)
   {
     // (requires VK_KHR_maintenance6 or VK_VERSION_1_4)
-    VkBindDescriptorSetsInfoKHR const bind_desc_sets_info{
+    auto const bind_desc_sets_info = VkBindDescriptorSetsInfoKHR{
       .sType = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO_KHR,
       .stageFlags = stage_flags,
       .layout = pipeline_layout,
       .firstSet = first_set,
-      .descriptorSetCount = 1u, //
+      .descriptorSetCount = 1u,
       .pDescriptorSets = &descriptor_set,
+      .dynamicOffsetCount = dynamicOffsetCount,
+      .pDynamicOffsets = pDynamicOffsets,
     };
     vkCmdBindDescriptorSets2(handle_, &bind_desc_sets_info);
   }
@@ -51,10 +64,10 @@ void GenericCommandEncoder::bindDescriptorSet(
       bind_point,
       pipeline_layout,
       first_set,
-      1,
+      1u,
       &descriptor_set,
-      0,
-      nullptr
+      dynamicOffsetCount,
+      pDynamicOffsets
     );
   }
 }

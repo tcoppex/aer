@@ -102,6 +102,8 @@ struct GPUResources : scene::HostResources {
 
  private:
   RenderContext const& context_;
+
+  VkDeviceSize frame_data_stride_{};
   uint32_t max_frames_in_flight_{}; //
   uint32_t frame_index_{};
 };

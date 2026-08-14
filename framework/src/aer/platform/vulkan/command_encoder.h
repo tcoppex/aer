@@ -56,7 +56,8 @@ class GenericCommandEncoder {
     VkDescriptorSet descriptor_set,
     VkPipelineLayout pipeline_layout,
     VkShaderStageFlags stage_flags,
-    uint32_t first_set = 0u
+    uint32_t first_set = 0u,
+    std::vector<uint32_t> const* dynamicOffsets = nullptr
   ) const;
 
   void bindDescriptorSet(

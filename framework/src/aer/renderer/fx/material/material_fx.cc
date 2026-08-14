@@ -68,7 +68,6 @@ void MaterialFx::prepareDrawState(
       | VK_SHADER_STAGE_FRAGMENT_BIT
     };
 
-    // Material Specific descriptor set.
     pass.bindDescriptorSet(
       descriptor_set_,
       pipeline_layout_,
@@ -76,20 +75,18 @@ void MaterialFx::prepareDrawState(
       material_shader_interop::kDescriptorSet_Internal
     );
 
-    // Shared Frame descriptor set.
-    pass.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
+    DSR.bindDescriptorSet(
+      DescriptorSetRegistry::Type::Frame,
+      pass,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Frame
+      stage_flags
     );
 
-    // [~] 'Shared' Scene descriptor set.
-    pass.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
+    DSR.bindDescriptorSet(
+      DescriptorSetRegistry::Type::Scene,
+      pass,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Scene
+      stage_flags
     );
   }
 }

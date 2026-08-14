@@ -100,14 +100,38 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
+void DescriptorSetRegistry::bindDescriptorSet(
+  Type type,
+  GenericCommandEncoder const& cmd,
+  VkPipelineLayout pipeline_layout,
+  VkShaderStageFlags const stage_flags
+) const {
+  auto const& desc = descriptor(type);
+  cmd.bindDescriptorSet(
+    desc.set,
+    pipeline_layout,
+    stage_flags,
+    desc.binding,
+    &desc.dynamicOffsets
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
     sets_[DescriptorSetRegistry::Type::Frame].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .buffers = { { buffer.buffer } },
+        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .buffers = {
+          {
+            .buffer = buffer.buffer,
+            .offset = 0,
+            .range = sizeof(material_shader_interop::FrameData)
+          }
+        },
       }
     }
   );
@@ -212,6 +236,12 @@ void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const
 }
 
 // ----------------------------------------------------------------------------
+
+void DescriptorSetRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
+  descriptor(Type::Frame).dynamicOffsets = { offset };
+}
+
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
@@ -265,13 +295,13 @@ void DescriptorSetRegistry::initDescriptorSets() {
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, //
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
                     | VK_SHADER_STAGE_FRAGMENT_BIT
                     | extra_stage_flags
                     ,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        // .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, //
       },
     },
     VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
@@ -366,15 +396,36 @@ void DescriptorSetRegistry::createMainSet(
   std::string const& name
 ) {
   VkDescriptorSetLayout const layout = createLayout(layout_params, layout_flags);
+  auto& descriptor_set = sets_[type];
 
-  sets_[type] = {
+  descriptor_set = {
     .index = static_cast<uint32_t>(type),
+    .binding = 0u,
     .set = allocateDescriptorSet(layout),
     .layout = layout,
+    .dynamicOffsets = {},
   };
 
-  vk_utils::SetDebugObjectName(device_, sets_[type].set,    "DescriptorSetRegistry::DescriptorSet::" + name);
-  vk_utils::SetDebugObjectName(device_, sets_[type].layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
+  switch (type) {
+    case Type::Frame:
+      descriptor_set.binding = material_shader_interop::kDescriptorSet_Frame;
+      descriptor_set.dynamicOffsets = { 0u };
+    break;
+
+    case Type::Scene:
+      descriptor_set.binding = material_shader_interop::kDescriptorSet_Scene;
+    break;
+
+    case Type::RayTracing:
+      descriptor_set.binding = material_shader_interop::kDescriptorSet_RayTracing;
+    break;
+
+    default:
+    break;
+  }
+
+  vk_utils::SetDebugObjectName(device_, descriptor_set.set,    "DescriptorSetRegistry::DescriptorSet::" + name);
+  vk_utils::SetDebugObjectName(device_, descriptor_set.layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
 };
 
 /* -------------------------------------------------------------------------- */

@@ -2,6 +2,7 @@
 
 #include "aer/core/common.h"
 #include "aer/platform/vulkan/types.h"
+#include "aer/platform/vulkan/command_encoder.h"
 
 class Context;
 class Skybox;
@@ -33,8 +34,10 @@ class DescriptorSetRegistry {
 
   struct DescriptorSet {
     uint32_t index{};
+    uint32_t binding{};
     VkDescriptorSet set{};
     VkDescriptorSetLayout layout{};
+    mutable std::vector<uint32_t> dynamicOffsets{};
   };
 
  public:
@@ -42,6 +45,7 @@ class DescriptorSetRegistry {
 
   /* Allocate the main DescriptorSets. */
   void init(Context const& context, uint32_t const max_sets);
+  
   void release();
 
   /* Return an internal main DescriptorSet. */
@@ -50,7 +54,6 @@ class DescriptorSetRegistry {
     return sets_[type];
   };
 
- public:
   /* Methods to allocate custom descriptor set and layout. */
 
   [[nodiscard]]
@@ -66,19 +69,23 @@ class DescriptorSetRegistry {
     VkDescriptorSetLayout const layout
   ) const;
 
- public:
+  /* Helper to bind internal descriptor sets. */
+  void bindDescriptorSet(
+    Type type,
+    GenericCommandEncoder const& cmd,
+    VkPipelineLayout pipeline_layout,
+    VkShaderStageFlags const stage_flags
+  ) const;
+
   /* Methods to update shared internal descriptor sets. */
-  // -----------------------------------------------
   void updateFrameUBO(backend::Buffer const& buffer) const;
-
   void updateSceneTransforms(backend::Buffer const& buffer) const;
-
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
-
   void updateSceneIBL(Skybox const& skybox) const;
-
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
   // -----------------------------------------------
+
+  void updateFrameUBODynamicOffset(uint32_t offset) const;
 
  private:
   void initDescriptorPool(uint32_t const max_sets);

@@ -25,25 +25,25 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
       material_shader_interop::kDescriptorSet_Internal
     );
 
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
+    DSR.bindDescriptorSet(
+      DescriptorSetRegistry::Type::Frame,
+      cmd,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Frame
+      stage_flags
     );
 
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
+    DSR.bindDescriptorSet(
+      DescriptorSetRegistry::Type::Scene,
+      cmd,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Scene
+      stage_flags
     );
 
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::RayTracing).set,
+    DSR.bindDescriptorSet(
+      DescriptorSetRegistry::Type::RayTracing,
+      cmd,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_RayTracing
+      stage_flags
     );
   }
 
