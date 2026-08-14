@@ -270,24 +270,24 @@ class SampleApp final : public Application {
     if (future_scene_.valid()
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
-      scene_->set_ray_tracing_fx(&ray_tracing_fx_);
+      scene_->setupRayTracingFx(&ray_tracing_fx_); //
       scene_->uploadToDevice(
           GPUResources::kUploadFlagBits_BuildRayTracingData
         | GPUResources::kUploadFlagBits_ReleaseHostDataOnUpload
       );
     }
 
-    if (camera_.rebuilt()) {
-      ray_tracing_fx_.resetFrameAccumulation();
-    }
-
     if (scene_) {
       scene_->update(camera_, elapsed_time());
+    }
+
+    if (camera_.rebuilt()) {
+      ray_tracing_fx_.resetFrameAccumulation();
     }
   }
 
   void draw(CommandEncoder const& cmd) final {
-    if (ray_tracing_fx_.is_enable())
+    if (ray_tracing_fx_.is_enable() && scene_)
     {
       // -- RAY TRACING --
 
