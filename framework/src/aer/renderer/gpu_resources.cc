@@ -12,19 +12,13 @@ using namespace scene;
 
 GPUResources::GPUResources(
   RenderContext const& context,
-  bool bEnableRayTracing
+  uint32_t max_frames_in_flight
 )
   : context_(context)
+  , max_frames_in_flight_(max_frames_in_flight)
 {
   material_fx_registry_ = std::make_unique<MaterialFxRegistry>();
   material_fx_registry_->init(context_);
-
-  // ---------------------------------------
-  if (bEnableRayTracing) {
-    rt_scene_ = std::make_unique<RayTracingScene>();
-    rt_scene_->init(context_);
-  }
-  // ---------------------------------------
 }
 
 // ----------------------------------------------------------------------------
@@ -90,7 +84,9 @@ void GPUResources::initializeSubmeshDescriptors(
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
+void GPUResources::uploadToDevice(UploadFlags const flags) {
+  bool const bUseRayTracing = 0 < (flags & kUploadFlagBits_BuildRayTracingData);
+
   /* Force descriptors to be up to date before uploading.
      Will invalidate previous ones.
   */
@@ -102,12 +98,26 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
     material_fx_registry_->pushMaterialStorageBuffers();
   }
 
-  // ---------------------------------
+  /* Initialiaze the RayTracing data structure. */
+  if (bUseRayTracing) {
+    rt_scene_ = std::make_unique<RayTracingScene>();
+    rt_scene_->init(context_);
+  }
 
   /* Create the shared Frame UBO */
   if (!frame_ubo_.valid()) {
+    // -----------------------------------
+    // Create a ring dynamic UBO for frame data.
+    // Need to be aligned to VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
+    VkDeviceSize const min_alignment = context_.gpu_properties().limits.minUniformBufferOffsetAlignment;
+    VkDeviceSize const frame_data_stride = utils::AlignTo(
+      sizeof(material_shader_interop::FrameData), min_alignment
+    );
+    uint32_t const total_buffer_size = frame_data_stride * max_frames_in_flight_;
+    // -----------------------------------
+
     frame_ubo_ = context_.createBuffer(
-      sizeof(material_shader_interop::FrameData),
+      total_buffer_size,
         VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       ,
@@ -126,18 +136,16 @@ void GPUResources::uploadToDevice(bool const bReleaseHostDataOnUpload) {
   if (vertex_buffer_size > 0) {
     uploadBuffers();
 
-    // ---------------------------------------
     /* Build the Raytracing acceleration structures. */
-    if (rt_scene_) {
+    if (bUseRayTracing) {
       // The global matrices buffer should have been initialized for the BLAS.
       // updateTransformsBuffer();
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
     }
-    // ---------------------------------------
   }
 
   /* Clear host data once uploaded. */
-  if (bReleaseHostDataOnUpload) {
+  if (0 < (flags & kUploadFlagBits_ReleaseHostDataOnUpload)) {
     host_images.clear();
     host_images.shrink_to_fit();
     for (auto const& mesh : meshes) {

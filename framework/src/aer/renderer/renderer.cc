@@ -251,11 +251,14 @@ GLTFScene Renderer::loadGLTF(
   std::string_view gltf_filename,
   scene::Mesh::AttributeLocationMap const& attribute_to_location
 ) {
-  if (auto scene = std::make_shared<GPUResources>(*context_ptr_); scene) {
+  uint32_t const max_frames_in_flights = swapchain_image_count(); //
+  auto scene = std::make_shared<GPUResources>(*context_ptr_, max_frames_in_flights);
+
+  if (scene) {
     scene->setup();
     if (scene->loadFile(gltf_filename)) {
       scene->initializeSubmeshDescriptors(attribute_to_location);
-      // scene->uploadToDevice(); // (do it manually instead?)
+      // scene->uploadToDevice(/*max_frames_in_flights*/); // (do it manually instead?)
       return scene;
     }
   }

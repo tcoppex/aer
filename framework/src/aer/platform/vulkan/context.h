@@ -56,9 +56,19 @@ class Context {
     return queues_[target];
   }
 
+  // [[nodiscard]]
+  // backend::GPUProperties const& properties() const noexcept {
+  //   return properties_;
+  // }
+
   [[nodiscard]]
-  backend::GPUProperties const& properties() const noexcept {
-    return properties_;
+  VkPhysicalDeviceProperties const& gpu_properties() const noexcept {
+    return properties_.gpu2.properties;
+  }
+
+  [[nodiscard]]
+  VkPhysicalDeviceMemoryProperties const& memory_properties() const noexcept {
+    return properties_.memory2.memoryProperties;
   }
 
   [[nodiscard]]

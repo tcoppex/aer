@@ -21,14 +21,21 @@ class RayTracingFx;
  */
 struct GPUResources : scene::HostResources {
  public:
-  /* When set, will construct the internal strutucture for RayTracing. */
-  static bool constexpr kDefaultEnableRayTracing = true;
+  using UploadFlags = uint32_t;
 
-  /* When set, host data will be released on upload. */
-  static bool constexpr kReleaseHostDataOnUpload = true;
+  enum UploadFlagBits : UploadFlags {
+    kUploadFlagBits_None                     = 0,
+    kUploadFlagBits_ReleaseHostDataOnUpload  = 1 << 0,
+    kUploadFlagBits_BuildRayTracingData      = 1 << 1,
+
+    kUploadFlagBits_Default = kUploadFlagBits_ReleaseHostDataOnUpload
+  };
 
  public:
-  GPUResources(RenderContext const& context, bool bEnableRayTracing = kDefaultEnableRayTracing);
+  GPUResources(
+    RenderContext const& context,
+    uint32_t max_frames_in_flight //
+  );
 
   ~GPUResources();
 
@@ -41,9 +48,7 @@ struct GPUResources : scene::HostResources {
   );
 
   /* Upload host resources to Device memory. */
-  void uploadToDevice(
-    bool const bReleaseHostDataOnUpload = kReleaseHostDataOnUpload
-  );
+  void uploadToDevice(UploadFlags const flags = kUploadFlagBits_Default);
 
   /* Construct the image info buffer for the scene textures descriptor set. */
   std::vector<VkDescriptorImageInfo> buildDescriptorImageInfos() const;
@@ -97,6 +102,7 @@ struct GPUResources : scene::HostResources {
 
  private:
   RenderContext const& context_;
+  uint32_t max_frames_in_flight_{}; //
   uint32_t frame_index_{};
 };
 
