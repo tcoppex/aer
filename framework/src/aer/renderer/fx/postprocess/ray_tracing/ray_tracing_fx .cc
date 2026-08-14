@@ -285,7 +285,6 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
       .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
       .buffer = sbt_storage_buffer_.buffer,
     };
-
     VkDeviceAddress baseAddress = vkGetBufferDeviceAddress(
       context_ptr_->device(), &addrInfo
     );

@@ -267,8 +267,8 @@ void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 50 },                 // standalone samplers
-    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024 }, // textures in materials
-    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },          // sampled images
+    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2*kMaxNumTextures }, // textures in materials
+    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },         // sampled images
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 50 },           // compute shaders
     { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 50 },    // texel buffers
     { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 50 },    // storage texel buffers
@@ -314,13 +314,12 @@ void DescriptorSetRegistry::initDescriptorSets() {
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, //
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
                     | VK_SHADER_STAGE_FRAGMENT_BIT
                     | extra_stage_flags
                     ,
-        // .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, //
       },
     },
     VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,

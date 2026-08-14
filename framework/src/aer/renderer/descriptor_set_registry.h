@@ -45,7 +45,7 @@ class DescriptorSetRegistry {
 
   /* Allocate the main DescriptorSets. */
   void init(Context const& context, uint32_t const max_sets);
-  
+
   void release();
 
   /* Return an internal main DescriptorSet. */
@@ -55,7 +55,6 @@ class DescriptorSetRegistry {
   };
 
   /* Methods to allocate custom descriptor set and layout. */
-
   [[nodiscard]]
   VkDescriptorSetLayout createLayout(
     DescriptorSetLayoutParamsBuffer const& params,
