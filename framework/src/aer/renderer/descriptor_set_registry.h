@@ -10,10 +10,6 @@ class RayTracingSceneInterface;
 
 /* -------------------------------------------------------------------------- */
 
-// class DescriptorPool {};
-
-// ----------------------------------------------------------------------------
-
 ///
 /// Handler to access the renderer global Descriptor Sets:
 ///   - Frame, for dynamic per-frame data (eg. camera matrices)

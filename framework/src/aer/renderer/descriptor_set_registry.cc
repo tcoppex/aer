@@ -22,11 +22,13 @@ void DescriptorSetRegistry::init(
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::release() {
+  vkDestroyDescriptorPool(device_, main_pool_, nullptr);
+  main_pool_ = VK_NULL_HANDLE;
+
   for (auto& set : descriptors_) {
     vkDestroyDescriptorSetLayout(device_, set.layout, nullptr);
     set = {};
   }
-  vkDestroyDescriptorPool(device_, main_pool_, nullptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -203,6 +205,8 @@ void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer)
 void DescriptorSetRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
+  LOG_CHECK(image_infos.size() <= kMaxNumTextures); //
+
   context_ptr_->updateDescriptorSet(
     descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {{
@@ -219,6 +223,8 @@ void DescriptorSetRegistry::updateSceneTexture(
   uint32_t index,
   VkDescriptorImageInfo image_info
 ) const {
+  LOG_CHECK(index <= kMaxNumTextures); //
+
   context_ptr_->updateDescriptorSet(
     descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {{
@@ -303,7 +309,8 @@ void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
-  descriptor(Type::Frame).dynamicOffsets = { offset };
+  LOG_CHECK(!descriptor(Type::Frame).dynamicOffsets.empty());
+  descriptor(Type::Frame).dynamicOffsets[0] = offset;
 }
 
 // ----------------------------------------------------------------------------
@@ -517,7 +524,7 @@ void DescriptorSetRegistry::createMainDescriptorBuffer(
     &descriptor.layoutSize,
     &descriptor.offset,
     num_elems,
-    usage_flags, //
+    usage_flags, // eg. VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
     name
   );
 };
