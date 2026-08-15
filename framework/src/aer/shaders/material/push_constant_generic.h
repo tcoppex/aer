@@ -26,8 +26,8 @@ struct PushConstant_Generic {
 // ----------------------------------------------------------------------------
 
 #ifndef __cplusplus
-#define GetTransform(TransformBuffer)   TransformBuffer[nonuniformEXT(pushConstant.generic.transform_index)]
-#define GetMaterial(MaterialBuffer)     MaterialBuffer[nonuniformEXT(pushConstant.generic.material_index)]
+#define GetTransform(TransformBuffer)   TransformBuffer[pushConstant.generic.transform_index]
+#define GetMaterial(MaterialBuffer)     MaterialBuffer[pushConstant.generic.material_index]
 #endif
 
 // ----------------------------------------------------------------------------
