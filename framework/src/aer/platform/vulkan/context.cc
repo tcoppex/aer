@@ -743,8 +743,6 @@ bool Context::initDevice() {
     LOG_CHECK(feature_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
-
-    LOG_CHECK(feature_.descriptor_buffer_features.descriptorBuffer && "Descriptor Buffer required"); //
   }
 
 

@@ -18,7 +18,7 @@ class RayTracingSceneInterface;
 ///
 class DescriptorRegistry {
  private:
-  static constexpr uint32_t kMaxNumTextures = 512u; //
+  static constexpr uint32_t kMaxNumTextures = 1 << 14; // 16384
 
  public:
   enum class Type {

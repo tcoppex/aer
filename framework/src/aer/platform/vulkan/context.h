@@ -378,7 +378,7 @@ class Context {
     std::vector<char const*> const& dependencies = {}
   ) {
     if (!has_extension(extension_name, available_device_extensions_)) {
-      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.\n", extension_name);
+      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
       return false;
     }
     if (device_extension_names_.contains(extension_name)) {
@@ -426,27 +426,27 @@ class Context {
     VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
     // (Core in VK_VERSION_1_4)
     VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
   };
 
   struct {
-    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr};
+    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
     VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
 
     // (Core in VK_VERSION_1_4)
-    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{}; //
+    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{};
     VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
-    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
+    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{}; // (not supported by Quest3)
 
     // (Non Core)
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};
-    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{}; // (not supported by Quest3)
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{}; // (not supported by Quest3)
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{}; //
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{}; //
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
   } feature_;
 
   VkInstance instance_{};
