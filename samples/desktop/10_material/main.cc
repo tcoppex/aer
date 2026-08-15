@@ -16,11 +16,6 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("10 - kavalkada materia");
 
-    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 0.0f });
-    renderer_.skybox().setup(ASSETS_DIR "textures/"
-      "rogland_clear_night_2k.hdr"
-    );
-
     /* Setup the ArcBall camera. */
     {
       arcball_controller_.set_target(vec3(-1.25f, 0.75f, 0.0f));
@@ -30,12 +25,18 @@ class SampleApp final : public Application {
       camera_.set_controller(&arcball_controller_);
     }
 
-    /* Load a glTF Scene. */
-    auto const gtlf_filename = std::string{ASSETS_DIR "models/"
-      "AlphaBlendModeTest.glb"
-    };
+    /* Setup the renderer's skybox. */
+    renderer_.skybox().setup(ASSETS_DIR "textures/"
+      "rogland_clear_night_2k.hdr"
+    );
 
-    future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
+    /* Fallback background color if the skybox is not rendered. */
+    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 1.0f });
+
+    /* Load a glTF Scene. */
+    future_scene_ = renderer_.asyncLoadGLTF(ASSETS_DIR "models/"
+      "AlphaBlendModeTest.glb"
+    );
 
     return true;
   }
@@ -67,19 +68,19 @@ class SampleApp final : public Application {
   void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.beginRendering();
     {
-      // SKYBOX.
+      /* Skybox. */
       if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
         skybox.render(pass, camera_);
       }
 
-      // SCENE.
+      /* Loaded GLTF Scene. */
       if (scene_) {
         scene_->render(pass);
       }
     }
     cmd.endRendering();
 
-    // UI.
+    /* User Interface. */
     drawUI(cmd);
   }
 
