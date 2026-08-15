@@ -86,6 +86,7 @@ void GPUResources::initializeSubmeshDescriptors(
 
 void GPUResources::uploadToDevice(UploadFlags const flags) {
   bool const bUseRayTracing = 0 < (flags & kUploadFlagBits_BuildRayTracingData);
+  bool const bReleaseHostDataOnUpload = 0 < (flags & kUploadFlagBits_ReleaseHostDataOnUpload);
 
   /* Force descriptors to be up to date before uploading.
      Will invalidate previous ones.
@@ -98,7 +99,7 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     material_fx_registry_->uploadMaterialStorageBuffers();
   }
 
-  /* Initialiaze the RayTracing data structure. */
+  /* Initialize the RayTracing data structure. */
   if (bUseRayTracing) {
     rt_scene_ = std::make_unique<RayTracingScene>();
     rt_scene_->init(context_);
@@ -139,22 +140,20 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
 
     /* Build the Raytracing acceleration structures. */
     if (bUseRayTracing) {
-      // The global matrices buffer should have been initialized for the BLAS.
+      // (The global matrices buffer should have been initialized to build the BLAS).
       // updateTransformsBuffer();
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
     }
   }
 
   /* Clear host data once uploaded. */
-  if (0 < (flags & kUploadFlagBits_ReleaseHostDataOnUpload)) {
+  if (bReleaseHostDataOnUpload) {
     host_images.clear();
     host_images.shrink_to_fit();
     for (auto const& mesh : meshes) {
       mesh->clearIndicesAndVertices(); //
     }
   }
-
-  // ---------------------------------
 
   /* Initial descriptor setup */
   updateGlobalDescriptorSetBindings(); //
@@ -433,6 +432,7 @@ void GPUResources::uploadBuffers() {
       }
     }
 
+    // (discarded as it will be transfered later on)
     // Transfer the transforms buffer in one go.
     // memcpy(
     //   device_data + vertex_buffer_size + index_buffer_size,
