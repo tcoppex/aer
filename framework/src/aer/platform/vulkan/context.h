@@ -72,6 +72,11 @@ class Context {
   }
 
   [[nodiscard]]
+  VkPhysicalDeviceDescriptorBufferPropertiesEXT const& descriptor_buffer_properties() const noexcept {
+    return properties_.descriptor_buffer_properties;
+  }
+
+  [[nodiscard]]
   backend::Allocator const& allocator() const noexcept {
     return allocator_;
   }
@@ -438,6 +443,7 @@ class Context {
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
 
     // (Non Core)
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};

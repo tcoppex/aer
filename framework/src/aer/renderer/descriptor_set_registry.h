@@ -32,12 +32,19 @@ class DescriptorSetRegistry {
     kCount,
   };
 
-  struct DescriptorSet {
+  struct Descriptor {
     uint32_t index{};
     uint32_t binding{};
-    VkDescriptorSet set{};
     VkDescriptorSetLayout layout{};
+    // -----
+    // (descriptor set rssources)
+    VkDescriptorSet set{};
     mutable std::vector<uint32_t> dynamicOffsets{};
+    // -----
+    // (descriptor buffer resources)
+    VkDeviceSize layoutSize{};
+    VkDeviceSize offset{};
+    VkBuffer buffer{};
   };
 
  public:
@@ -48,9 +55,9 @@ class DescriptorSetRegistry {
 
   void release();
 
-  /* Return an internal main DescriptorSet. */
+  /* Return an internal main Descriptor. */
   [[nodiscard]]
-  DescriptorSet const& descriptor(Type type) const noexcept {
+  Descriptor const& descriptor(Type type) const noexcept {
     return sets_[type];
   };
 
@@ -58,11 +65,13 @@ class DescriptorSetRegistry {
   [[nodiscard]]
   VkDescriptorSetLayout createLayout(
     DescriptorSetLayoutParamsBuffer const& params,
-    VkDescriptorSetLayoutCreateFlags flags
+    VkDescriptorSetLayoutCreateFlags flags,
+    std::string const& name = ""
   ) const;
 
   void destroyLayout(VkDescriptorSetLayout &layout) const;
 
+  // [[deprecated]]
   [[nodiscard]]
   VkDescriptorSet allocateDescriptorSet(
     VkDescriptorSetLayout const layout
@@ -76,7 +85,7 @@ class DescriptorSetRegistry {
     VkShaderStageFlags const stage_flags
   ) const;
 
-  /* Methods to update shared internal descriptor sets. */
+  /* [deprecated?] Methods to update shared internal descriptor sets. */
   void updateFrameUBO(backend::Buffer const& buffer) const;
   void updateSceneTransforms(backend::Buffer const& buffer) const;
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
@@ -88,11 +97,26 @@ class DescriptorSetRegistry {
   void updateFrameUBODynamicOffset(uint32_t offset) const;
 
  private:
+  // [[deprecated]]
   void initDescriptorPool(uint32_t const max_sets);
 
   void initDescriptorSets();
 
-  void createMainSet(
+  Descriptor& _intializeMainDescriptor(
+    Type const type,
+    DescriptorSetLayoutParamsBuffer const& layout_params,
+    VkDescriptorSetLayoutCreateFlags layout_flags,
+    std::string const& name
+  );
+
+  void createMainDescriptorSet(
+    Type const type,
+    DescriptorSetLayoutParamsBuffer const& layout_params,
+    VkDescriptorSetLayoutCreateFlags layout_flags,
+    std::string const& name
+  );
+
+  void createMainDescriptorBuffer(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
     VkDescriptorSetLayoutCreateFlags layout_flags,
@@ -106,7 +130,7 @@ class DescriptorSetRegistry {
   std::vector<VkDescriptorPoolSize> descriptor_pool_sizes_{};
   VkDescriptorPool main_pool_{};
 
-  EnumArray<DescriptorSet, Type> sets_{};
+  EnumArray<Descriptor, Type> sets_{};
 };
 
 /* -------------------------------------------------------------------------- */

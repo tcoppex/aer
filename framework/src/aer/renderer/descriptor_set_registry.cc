@@ -33,7 +33,8 @@ void DescriptorSetRegistry::release() {
 
 VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
   DescriptorSetLayoutParamsBuffer const& params,
-  VkDescriptorSetLayoutCreateFlags flags
+  VkDescriptorSetLayoutCreateFlags flags,
+  std::string const& name
 ) const {
   std::vector<VkDescriptorSetLayoutBinding> entries{};
   entries.reserve(params.size());
@@ -71,6 +72,10 @@ VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
   CHECK_VK(vkCreateDescriptorSetLayout(
     device_, &layout_create_info, nullptr, &descriptor_set_layout
   ));
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, descriptor_set_layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
+  }
+
   return descriptor_set_layout;
 }
 
@@ -303,13 +308,17 @@ void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::initDescriptorSets() {
-  auto const extra_stage_flags = VkShaderStageFlags{
-      VK_SHADER_STAGE_RAYGEN_BIT_KHR
+  auto const extra_stage_flags = VkShaderStageFlags{0
+    | VK_SHADER_STAGE_RAYGEN_BIT_KHR
     | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
     | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
   };
 
-  createMainSet(
+  auto const layout_flags = VkDescriptorSetLayoutCreateFlags{0
+    | VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
+  };
+
+  createMainDescriptorSet(
     Type::Frame,
     {
       {
@@ -322,13 +331,14 @@ void DescriptorSetRegistry::initDescriptorSets() {
                     ,
       },
     },
-    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+    layout_flags,
     "Frame"
   );
 
-  createMainSet(
+  createMainDescriptorSet(
     Type::Scene,
     {
+      // [TODO: remove transform SBO to make it bindless]
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -361,6 +371,7 @@ void DescriptorSetRegistry::initDescriptorSets() {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
       },
+      // [Adapt it to have variable count?]
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -375,11 +386,11 @@ void DescriptorSetRegistry::initDescriptorSets() {
                       ,
       },
     },
-    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+    layout_flags,
     "Scene"
   );
 
-  createMainSet(
+  createMainDescriptorSet(
     Type::RayTracing,
     {
       {
@@ -400,28 +411,29 @@ void DescriptorSetRegistry::initDescriptorSets() {
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },
     },
-    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+    layout_flags,
     "RayTracing"
   );
 }
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::createMainSet(
+DescriptorSetRegistry::Descriptor& DescriptorSetRegistry::_intializeMainDescriptor(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
   VkDescriptorSetLayoutCreateFlags layout_flags,
   std::string const& name
 ) {
-  VkDescriptorSetLayout const layout = createLayout(layout_params, layout_flags);
   auto& descriptor_set = sets_[type];
 
   descriptor_set = {
     .index = static_cast<uint32_t>(type),
     .binding = 0u,
-    .set = allocateDescriptorSet(layout),
-    .layout = layout,
+    .layout = createLayout(layout_params, layout_flags, name),
+    .set = {},
     .dynamicOffsets = {},
+    .layoutSize = 0u,
+    .offset = 0u,
   };
 
   switch (type) {
@@ -442,8 +454,64 @@ void DescriptorSetRegistry::createMainSet(
     break;
   }
 
-  vk_utils::SetDebugObjectName(device_, descriptor_set.set,    "DescriptorSetRegistry::DescriptorSet::" + name);
-  vk_utils::SetDebugObjectName(device_, descriptor_set.layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
+  return descriptor_set;
+}
+
+// ----------------------------------------------------------------------------
+
+void DescriptorSetRegistry::createMainDescriptorSet(
+  Type const type,
+  DescriptorSetLayoutParamsBuffer const& layout_params,
+  VkDescriptorSetLayoutCreateFlags layout_flags,
+  std::string const& name
+) {
+  LOG_CHECK(0 == (layout_flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT));
+
+  auto &descriptor_set = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+
+  descriptor_set.set = allocateDescriptorSet(descriptor_set.layout);
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, descriptor_set.set, "DescriptorSetRegistry::DescriptorSet::" + name);
+  }
+};
+
+// ----------------------------------------------------------------------------
+
+void DescriptorSetRegistry::createMainDescriptorBuffer(
+  Type const type,
+  DescriptorSetLayoutParamsBuffer const& layout_params,
+  VkDescriptorSetLayoutCreateFlags layout_flags,
+  std::string const& name
+) {
+  layout_flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+  auto &descriptor_set = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+
+  LOG_CHECK(vkGetDescriptorSetLayoutSizeEXT);
+  vkGetDescriptorSetLayoutSizeEXT(
+    device_, descriptor_set.layout, &descriptor_set.layoutSize
+  );
+
+  descriptor_set.layoutSize = utils::AlignTo(
+    descriptor_set.layoutSize,
+    context_ptr_->descriptor_buffer_properties().descriptorBufferOffsetAlignment
+  );
+
+  LOG_CHECK(vkGetDescriptorSetLayoutBindingOffsetEXT);
+  vkGetDescriptorSetLayoutBindingOffsetEXT(
+    device_, descriptor_set.layout, 0u, &descriptor_set.offset
+  );
+
+  // descriptor_set.buffer = context_ptr_->createBuffer(
+  //   descriptor_set.layoutSize * user_nelems,
+  //     VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
+  //   | user_flags
+  //   ,
+  //   VMA_MEMORY_USAGE_CPU_TO_GPU
+  // );
+  // if (!name.empty()) {
+  //   vk_utils::SetDebugObjectName(device_, descriptor_set.buffer, "DescriptorSetRegistry::DescriptorBuffer::" + name);
+  // }
 };
 
 /* -------------------------------------------------------------------------- */

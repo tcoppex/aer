@@ -683,6 +683,12 @@ bool Context::initDevice() {
     // Non core
 
     add_device_feature(
+      VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+      feature_.descriptor_buffer_features,
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
+    );
+
+    add_device_feature(
       VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
       feature_.extended_dynamic_state3,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
@@ -737,6 +743,8 @@ bool Context::initDevice() {
     LOG_CHECK(feature_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
+
+    LOG_CHECK(feature_.descriptor_buffer_features.descriptorBuffer && "Descriptor Buffer required"); //
   }
 
 
