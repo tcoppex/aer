@@ -128,12 +128,12 @@ class RayTracingFx : public PostGenericFx {
   }
 
   std::vector<VkDescriptorSetLayout> descriptor_set_layouts() const override {
-    auto const& DSR = context_ptr_->descriptor_set_registry();
+    auto const& registry = context_ptr_->descriptor_registry();
     return {
       descriptor_set_layout_,
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).layout,
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).layout,
-      DSR.descriptor(DescriptorSetRegistry::Type::RayTracing).layout,
+      registry.descriptor(DescriptorRegistry::Type::Frame).layout,
+      registry.descriptor(DescriptorRegistry::Type::Scene).layout,
+      registry.descriptor(DescriptorRegistry::Type::RayTracing).layout,
     };
   }
 

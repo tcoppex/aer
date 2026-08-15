@@ -1,4 +1,4 @@
-#include "aer/renderer/descriptor_set_registry.h"
+#include "aer/renderer/descriptor_registry.h"
 
 #include "aer/renderer/renderer.h"
 
@@ -9,7 +9,7 @@
 /* -------------------------------------------------------------------------- */
 
 /* Allocate the main DescriptorSets. */
-void DescriptorSetRegistry::init(
+void DescriptorRegistry::init(
   Context const& context,
   uint32_t const max_sets
 ) {
@@ -21,7 +21,7 @@ void DescriptorSetRegistry::init(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::release() {
+void DescriptorRegistry::release() {
   vkDestroyDescriptorPool(device_, main_pool_, nullptr);
   main_pool_ = VK_NULL_HANDLE;
 
@@ -33,7 +33,7 @@ void DescriptorSetRegistry::release() {
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
+VkDescriptorSetLayout DescriptorRegistry::createLayout(
   DescriptorSetLayoutParamsBuffer const& params,
   VkDescriptorSetLayoutCreateFlags flags,
   std::string const& name
@@ -75,7 +75,7 @@ VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
     device_, &layout_create_info, nullptr, &descriptor_set_layout
   ));
   if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set_layout, "DescriptorSetRegistry::DescriptorSetLayout::" + name);
+    vk_utils::SetDebugObjectName(device_, descriptor_set_layout, "DescriptorRegistry::DescriptorSetLayout::" + name);
   }
 
   return descriptor_set_layout;
@@ -83,14 +83,14 @@ VkDescriptorSetLayout DescriptorSetRegistry::createLayout(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
+void DescriptorRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
   vkDestroyDescriptorSetLayout(device_, layout, nullptr);
   layout = VK_NULL_HANDLE;
 }
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer DescriptorSetRegistry::allocateDescriptorBuffer(
+backend::Buffer DescriptorRegistry::allocateDescriptorBuffer(
   VkDescriptorSetLayout const layout,
   VkDeviceSize *pLayoutSize,
   VkDeviceSize *pOffset,
@@ -116,7 +116,7 @@ backend::Buffer DescriptorSetRegistry::allocateDescriptorBuffer(
   );
 
   if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorSetRegistry::DescriptorSet::" + name);
+    vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorRegistry::DescriptorSet::" + name);
   }
 
   return buffer;
@@ -124,7 +124,7 @@ backend::Buffer DescriptorSetRegistry::allocateDescriptorBuffer(
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
+VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
   VkDescriptorSetLayout const layout,
   std::string const& name
 ) const {
@@ -140,7 +140,7 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
   CHECK_VK(vkAllocateDescriptorSets(device_, &alloc_info, &descriptor_set));
 
   if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorSetRegistry::DescriptorSet::" + name);
+    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorRegistry::DescriptorSet::" + name);
   }
 
   return descriptor_set;
@@ -148,7 +148,7 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::bindDescriptorSet(
+void DescriptorRegistry::bindDescriptorSet(
   Type type,
   GenericCommandEncoder const& cmd,
   VkPipelineLayout pipeline_layout,
@@ -166,9 +166,9 @@ void DescriptorSetRegistry::bindDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
+void DescriptorRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::Frame].set,
+    descriptors_[DescriptorRegistry::Type::Frame].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
@@ -187,13 +187,13 @@ void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const 
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateSceneTextures(
+void DescriptorRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
   LOG_CHECK(image_infos.size() <= kMaxNumTextures); //
 
   context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -204,14 +204,14 @@ void DescriptorSetRegistry::updateSceneTextures(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateSceneTexture(
+void DescriptorRegistry::updateSceneTexture(
   uint32_t index,
   VkDescriptorImageInfo image_info
 ) const {
   LOG_CHECK(index <= kMaxNumTextures); //
 
   context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
       .arrayElement = index,
@@ -223,11 +223,11 @@ void DescriptorSetRegistry::updateSceneTexture(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateSceneIBL(Skybox const& skybox) const {
+void DescriptorRegistry::updateSceneIBL(Skybox const& skybox) const {
   auto const& ibl_sampler = skybox.sampler(); // ClampToEdge Linear MipMap
 
   context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorRegistry::Type::Scene].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_IBL_Prefiltered,
@@ -268,14 +268,14 @@ void DescriptorSetRegistry::updateSceneIBL(Skybox const& skybox) const {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const {
+void DescriptorRegistry::updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const {
   LOG_CHECK(rt_scene != nullptr);
 
   auto const& instance_data_buffer = rt_scene->instances_data_buffer();
   LOG_CHECK(instance_data_buffer.valid());
 
   context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::RayTracing].set,
+    descriptors_[DescriptorRegistry::Type::RayTracing].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
@@ -293,7 +293,7 @@ void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
+void DescriptorRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
   LOG_CHECK(!descriptor(Type::Frame).dynamicOffsets.empty());
   descriptor(Type::Frame).dynamicOffsets[0] = offset;
 }
@@ -301,7 +301,7 @@ void DescriptorSetRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
+void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 50 },                 // standalone samplers
@@ -335,12 +335,12 @@ void DescriptorSetRegistry::initDescriptorPool(uint32_t const max_sets) {
     nullptr, &
     main_pool_
   ));
-  vk_utils::SetDebugObjectName(device_, main_pool_, "DescriptorSetRegistry::MainPool");
+  vk_utils::SetDebugObjectName(device_, main_pool_, "DescriptorRegistry::MainPool");
 }
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::initDescriptorSets() {
+void DescriptorRegistry::initDescriptorSets() {
   auto const extra_stage_flags = VkShaderStageFlags{0
     | VK_SHADER_STAGE_RAYGEN_BIT_KHR
     | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
@@ -439,7 +439,7 @@ void DescriptorSetRegistry::initDescriptorSets() {
 
 // ----------------------------------------------------------------------------
 
-DescriptorSetRegistry::Descriptor& DescriptorSetRegistry::_intializeMainDescriptor(
+DescriptorRegistry::Descriptor& DescriptorRegistry::_intializeMainDescriptor(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
   VkDescriptorSetLayoutCreateFlags layout_flags,
@@ -480,7 +480,7 @@ DescriptorSetRegistry::Descriptor& DescriptorSetRegistry::_intializeMainDescript
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::createMainDescriptorBuffer(
+void DescriptorRegistry::createMainDescriptorBuffer(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
   VkDescriptorSetLayoutCreateFlags layout_flags,
@@ -504,7 +504,7 @@ void DescriptorSetRegistry::createMainDescriptorBuffer(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::createMainDescriptorSet(
+void DescriptorRegistry::createMainDescriptorSet(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
   VkDescriptorSetLayoutCreateFlags layout_flags,

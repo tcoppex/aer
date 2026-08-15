@@ -28,7 +28,7 @@ struct Vertex {
 // ----------------------------------------------------------------------------
 // -- Descriptor Sets --
 
-// set index as used for MaterialFx and bindings as defined in descriptor_set_registry.
+// set index as used for MaterialFx and bindings as defined in descriptor_registry.
 
 const uint kDescriptorSet_Internal = 0;
 

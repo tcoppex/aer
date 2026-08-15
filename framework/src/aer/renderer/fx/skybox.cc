@@ -1,6 +1,5 @@
 /* -------------------------------------------------------------------------- */
 
-
 #include "aer/core/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/fx/skybox.h"
@@ -151,7 +150,7 @@ void Skybox::release(RenderContext const& context) {
 bool Skybox::setup(std::string_view hdr_filename) {
   setuped_ = envmap_.setup(hdr_filename);
   if (setuped_) {
-    context_ptr_->descriptor_set_registry().updateSceneIBL(*this);
+    context_ptr_->descriptor_registry().updateSceneIBL(*this);
   }
   return setuped_;
 }

@@ -10,7 +10,7 @@
 #include "aer/renderer/targets/render_target.h"
 #include "aer/renderer/pipeline.h"
 #include "aer/renderer/sampler_pool.h"
-#include "aer/renderer/descriptor_set_registry.h" //
+#include "aer/renderer/descriptor_registry.h" //
 
 #include "aer/scene/material.h" // ~ (for scene::MaterialModel)
 
@@ -151,7 +151,7 @@ class RenderContext : public Context {
   // --- Descriptor Set Registry ---
 
   [[nodiscard]]
-  DescriptorSetRegistry const& descriptor_set_registry() const noexcept {
+  DescriptorRegistry const& descriptor_registry() const noexcept {
     return descriptor_set_registry_;
   }
 
@@ -268,7 +268,7 @@ class RenderContext : public Context {
   VkPipelineCache pipeline_cache_{};
 
   SamplerPool sampler_pool_{};
-  DescriptorSetRegistry descriptor_set_registry_{};
+  DescriptorRegistry descriptor_set_registry_{};
 
   mat4f default_world_matrix_{lina::identity};
 };

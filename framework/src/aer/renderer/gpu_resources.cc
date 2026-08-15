@@ -257,21 +257,21 @@ void GPUResources::setupRayTracingFx(RayTracingFx* fx) {
 // ----------------------------------------------------------------------------
 
 void GPUResources::updateGlobalDescriptorSetBindings() const {
-  auto const& DSR = context_.descriptor_set_registry();
+  auto const& registry = context_.descriptor_registry();
 
   // [[deprecated]]
   if (frame_ubo_.valid()) {
-    DSR.updateFrameUBO(frame_ubo_);
+    registry.updateFrameUBO(frame_ubo_);
   }
 
   // [[deprecated]]
   if (total_image_size > 0) {
-    DSR.updateSceneTextures(buildDescriptorImageInfos());
+    registry.updateSceneTextures(buildDescriptorImageInfos());
   }
 
   // ---------------------------------------
   if (rt_scene_ && (vertex_buffer_size > 0)) {
-    DSR.updateRayTracingScene(rt_scene_.get());
+    registry.updateRayTracingScene(rt_scene_.get());
   }
   // ---------------------------------------
 }
@@ -553,7 +553,7 @@ void GPUResources::updateFrameData(
     );
 
     // Propagate the Frame UBO dynamic offset to the Descriptor Set Registry.
-    context_.descriptor_set_registry().updateFrameUBODynamicOffset(
+    context_.descriptor_registry().updateFrameUBODynamicOffset(
       static_cast<uint32_t>(offset)
     );
   }

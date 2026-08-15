@@ -16,7 +16,7 @@ class RayTracingSceneInterface;
 ///   - Scene, for scene shared resources (eg. TextureAtlas, IBL)
 ///   - RayTracing, for scene data that could change (eg. raytracing instances)
 ///
-class DescriptorSetRegistry {
+class DescriptorRegistry {
  private:
   static constexpr uint32_t kMaxNumTextures = 512u; //
 
@@ -44,7 +44,7 @@ class DescriptorSetRegistry {
   };
 
  public:
-  DescriptorSetRegistry() = default;
+  DescriptorRegistry() = default;
 
   /* Allocate the main DescriptorSets. */
   void init(Context const& context, uint32_t const max_sets);
