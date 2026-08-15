@@ -22,7 +22,7 @@ void DescriptorSetRegistry::init(
 // ----------------------------------------------------------------------------
 
 void DescriptorSetRegistry::release() {
-  for (auto& set : sets_) {
+  for (auto& set : descriptors_) {
     vkDestroyDescriptorSetLayout(device_, set.layout, nullptr);
     set = {};
   }
@@ -88,8 +88,43 @@ void DescriptorSetRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
 
 // ----------------------------------------------------------------------------
 
+backend::Buffer DescriptorSetRegistry::allocateDescriptorBuffer(
+  VkDescriptorSetLayout const layout,
+  VkDeviceSize *pLayoutSize,
+  VkDeviceSize *pOffset,
+  uint32_t num_elems,
+  VkBufferUsageFlags2KHR usage_flags,
+  std::string const& name
+) const {
+  LOG_CHECK(vkGetDescriptorSetLayoutSizeEXT);
+  vkGetDescriptorSetLayoutSizeEXT(device_, layout, pLayoutSize);
+
+  auto const desc_buffer_props = context_ptr_->descriptor_buffer_properties();
+  *pLayoutSize = utils::AlignTo(*pLayoutSize, desc_buffer_props.descriptorBufferOffsetAlignment);
+
+  LOG_CHECK(vkGetDescriptorSetLayoutBindingOffsetEXT);
+  vkGetDescriptorSetLayoutBindingOffsetEXT(device_, layout, 0u, pOffset);
+
+  auto buffer = context_ptr_->createBuffer(
+    *pLayoutSize * num_elems,
+      VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
+    | usage_flags
+    ,
+    VMA_MEMORY_USAGE_CPU_TO_GPU
+  );
+
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorSetRegistry::DescriptorSet::" + name);
+  }
+
+  return buffer;
+}
+
+// ----------------------------------------------------------------------------
+
 VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
-  VkDescriptorSetLayout const layout
+  VkDescriptorSetLayout const layout,
+  std::string const& name
 ) const {
   auto const alloc_info = VkDescriptorSetAllocateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -98,8 +133,14 @@ VkDescriptorSet DescriptorSetRegistry::allocateDescriptorSet(
     .descriptorSetCount = 1u,
     .pSetLayouts = &layout,
   };
+
   VkDescriptorSet descriptor_set{};
   CHECK_VK(vkAllocateDescriptorSets(device_, &alloc_info, &descriptor_set));
+
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorSetRegistry::DescriptorSet::" + name);
+  }
+
   return descriptor_set;
 }
 
@@ -125,7 +166,7 @@ void DescriptorSetRegistry::bindDescriptorSet(
 
 void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::Frame].set,
+    descriptors_[DescriptorSetRegistry::Type::Frame].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
@@ -146,7 +187,7 @@ void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const 
 
 void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer) const {
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
@@ -163,7 +204,7 @@ void DescriptorSetRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
       .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -179,7 +220,7 @@ void DescriptorSetRegistry::updateSceneTexture(
   VkDescriptorImageInfo image_info
 ) const {
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {{
       .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
       .arrayElement = index,
@@ -195,7 +236,7 @@ void DescriptorSetRegistry::updateSceneIBL(Skybox const& skybox) const {
   auto const& ibl_sampler = skybox.sampler(); // ClampToEdge Linear MipMap
 
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::Scene].set,
+    descriptors_[DescriptorSetRegistry::Type::Scene].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_IBL_Prefiltered,
@@ -243,7 +284,7 @@ void DescriptorSetRegistry::updateRayTracingScene(RayTracingSceneInterface const
   LOG_CHECK(instance_data_buffer.valid());
 
   context_ptr_->updateDescriptorSet(
-    sets_[DescriptorSetRegistry::Type::RayTracing].set,
+    descriptors_[DescriptorSetRegistry::Type::RayTracing].set,
     {
       {
         .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
@@ -424,9 +465,9 @@ DescriptorSetRegistry::Descriptor& DescriptorSetRegistry::_intializeMainDescript
   VkDescriptorSetLayoutCreateFlags layout_flags,
   std::string const& name
 ) {
-  auto& descriptor_set = sets_[type];
+  auto& descriptor = descriptors_[type];
 
-  descriptor_set = {
+  descriptor = {
     .index = static_cast<uint32_t>(type),
     .binding = 0u,
     .layout = createLayout(layout_params, layout_flags, name),
@@ -438,24 +479,48 @@ DescriptorSetRegistry::Descriptor& DescriptorSetRegistry::_intializeMainDescript
 
   switch (type) {
     case Type::Frame:
-      descriptor_set.binding = material_shader_interop::kDescriptorSet_Frame;
-      descriptor_set.dynamicOffsets = { 0u };
+      descriptor.binding = material_shader_interop::kDescriptorSet_Frame;
+      descriptor.dynamicOffsets = { 0u };
     break;
 
     case Type::Scene:
-      descriptor_set.binding = material_shader_interop::kDescriptorSet_Scene;
+      descriptor.binding = material_shader_interop::kDescriptorSet_Scene;
     break;
 
     case Type::RayTracing:
-      descriptor_set.binding = material_shader_interop::kDescriptorSet_RayTracing;
+      descriptor.binding = material_shader_interop::kDescriptorSet_RayTracing;
     break;
 
     default:
     break;
   }
 
-  return descriptor_set;
+  return descriptor;
 }
+
+// ----------------------------------------------------------------------------
+
+void DescriptorSetRegistry::createMainDescriptorBuffer(
+  Type const type,
+  DescriptorSetLayoutParamsBuffer const& layout_params,
+  VkDescriptorSetLayoutCreateFlags layout_flags,
+  uint32_t num_elems,
+  VkBufferUsageFlags2KHR usage_flags,
+  std::string const& name
+) {
+  layout_flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+  auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+
+  descriptor.buffer = allocateDescriptorBuffer(
+    descriptor.layout,
+    &descriptor.layoutSize,
+    &descriptor.offset,
+    num_elems,
+    usage_flags, //
+    name
+  );
+};
 
 // ----------------------------------------------------------------------------
 
@@ -467,51 +532,9 @@ void DescriptorSetRegistry::createMainDescriptorSet(
 ) {
   LOG_CHECK(0 == (layout_flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT));
 
-  auto &descriptor_set = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+  auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
 
-  descriptor_set.set = allocateDescriptorSet(descriptor_set.layout);
-  if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set.set, "DescriptorSetRegistry::DescriptorSet::" + name);
-  }
-};
-
-// ----------------------------------------------------------------------------
-
-void DescriptorSetRegistry::createMainDescriptorBuffer(
-  Type const type,
-  DescriptorSetLayoutParamsBuffer const& layout_params,
-  VkDescriptorSetLayoutCreateFlags layout_flags,
-  std::string const& name
-) {
-  layout_flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-
-  auto &descriptor_set = _intializeMainDescriptor(type, layout_params, layout_flags, name);
-
-  LOG_CHECK(vkGetDescriptorSetLayoutSizeEXT);
-  vkGetDescriptorSetLayoutSizeEXT(
-    device_, descriptor_set.layout, &descriptor_set.layoutSize
-  );
-
-  descriptor_set.layoutSize = utils::AlignTo(
-    descriptor_set.layoutSize,
-    context_ptr_->descriptor_buffer_properties().descriptorBufferOffsetAlignment
-  );
-
-  LOG_CHECK(vkGetDescriptorSetLayoutBindingOffsetEXT);
-  vkGetDescriptorSetLayoutBindingOffsetEXT(
-    device_, descriptor_set.layout, 0u, &descriptor_set.offset
-  );
-
-  // descriptor_set.buffer = context_ptr_->createBuffer(
-  //   descriptor_set.layoutSize * user_nelems,
-  //     VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
-  //   | user_flags
-  //   ,
-  //   VMA_MEMORY_USAGE_CPU_TO_GPU
-  // );
-  // if (!name.empty()) {
-  //   vk_utils::SetDebugObjectName(device_, descriptor_set.buffer, "DescriptorSetRegistry::DescriptorBuffer::" + name);
-  // }
+  descriptor.set = allocateDescriptorSet(descriptor.layout, name);
 };
 
 /* -------------------------------------------------------------------------- */

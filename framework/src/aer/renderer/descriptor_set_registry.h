@@ -44,7 +44,7 @@ class DescriptorSetRegistry {
     // (descriptor buffer resources)
     VkDeviceSize layoutSize{};
     VkDeviceSize offset{};
-    VkBuffer buffer{};
+    backend::Buffer buffer{};
   };
 
  public:
@@ -58,7 +58,7 @@ class DescriptorSetRegistry {
   /* Return an internal main Descriptor. */
   [[nodiscard]]
   Descriptor const& descriptor(Type type) const noexcept {
-    return sets_[type];
+    return descriptors_[type];
   };
 
   /* Methods to allocate custom descriptor set and layout. */
@@ -71,10 +71,21 @@ class DescriptorSetRegistry {
 
   void destroyLayout(VkDescriptorSetLayout &layout) const;
 
+  [[nodiscard]]
+  backend::Buffer allocateDescriptorBuffer(
+    VkDescriptorSetLayout const layout,
+    VkDeviceSize *pLayoutSize,
+    VkDeviceSize *pOffset,
+    uint32_t num_elems,
+    VkBufferUsageFlags2KHR usage_flags,
+    std::string const& name = ""
+  ) const;
+
   // [[deprecated]]
   [[nodiscard]]
   VkDescriptorSet allocateDescriptorSet(
-    VkDescriptorSetLayout const layout
+    VkDescriptorSetLayout const layout,
+    std::string const& name = ""
   ) const;
 
   /* Helper to bind internal descriptor sets. */
@@ -102,6 +113,7 @@ class DescriptorSetRegistry {
 
   void initDescriptorSets();
 
+  [[nodiscard]]
   Descriptor& _intializeMainDescriptor(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
@@ -109,14 +121,16 @@ class DescriptorSetRegistry {
     std::string const& name
   );
 
-  void createMainDescriptorSet(
+  void createMainDescriptorBuffer(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
     VkDescriptorSetLayoutCreateFlags layout_flags,
+    uint32_t num_elems,
+    VkBufferUsageFlags2KHR usage_flags,
     std::string const& name
   );
 
-  void createMainDescriptorBuffer(
+  void createMainDescriptorSet(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
     VkDescriptorSetLayoutCreateFlags layout_flags,
@@ -130,7 +144,7 @@ class DescriptorSetRegistry {
   std::vector<VkDescriptorPoolSize> descriptor_pool_sizes_{};
   VkDescriptorPool main_pool_{};
 
-  EnumArray<Descriptor, Type> sets_{};
+  EnumArray<Descriptor, Type> descriptors_{};
 };
 
 /* -------------------------------------------------------------------------- */
