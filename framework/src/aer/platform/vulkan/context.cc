@@ -725,6 +725,15 @@ bool Context::initDevice() {
     }
     LOG_CHECK(feature_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
     LOG_CHECK(feature_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
+
+    LOG_CHECK(feature_.v12.descriptorIndexing);
+    LOG_CHECK(feature_.v12.runtimeDescriptorArray);
+    LOG_CHECK(feature_.v12.descriptorBindingPartiallyBound);
+    LOG_CHECK(feature_.v12.descriptorBindingSampledImageUpdateAfterBind);
+    LOG_CHECK(feature_.v12.descriptorBindingStorageBufferUpdateAfterBind);
+    LOG_CHECK(feature_.v12.shaderSampledImageArrayNonUniformIndexing);
+    LOG_CHECK(feature_.v12.shaderStorageBufferArrayNonUniformIndexing);
+
     LOG_CHECK(feature_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
     LOG_CHECK(feature_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
@@ -760,6 +769,9 @@ bool Context::initDevice() {
     });
 
     queue_priorities.resize(queue_family_count, {});
+    for (auto &queue_priority : queue_priorities) {
+      queue_priority.reserve(queues.size());
+    }
 
     for (size_t j = 0u; j < queues.size(); ++j) {
       auto& pair = queues[j];
