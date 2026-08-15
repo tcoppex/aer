@@ -22,7 +22,9 @@ hitAttributeEXT vec2 hitAttribs;
 
 layout(location = 0) rayPayloadInEXT HitPayload_t payload;
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_MaterialSBO)
+// -----------------------------------------------------------------------------
+
+layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_MaterialSBO)
 buffer RayTracingMaterialSBO_ {
   RayTracingMaterial materials[];
 };
@@ -30,17 +32,20 @@ buffer RayTracingMaterialSBO_ {
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
 uniform sampler2D[] uTextureChannels;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
 // -----------------------------------------------------------------------------
 
-layout(buffer_reference, scalar) buffer Vertices {
+layout(buffer_reference, scalar)
+buffer Vertices {
   Vertex v[];
 };
 
-layout(buffer_reference, scalar) buffer Indices {
+layout(buffer_reference, scalar)
+buffer Indices {
   uint u32[]; // expect uint32 indices
 };
 

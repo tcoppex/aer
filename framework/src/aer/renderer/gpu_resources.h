@@ -78,8 +78,6 @@ struct GPUResources : scene::HostResources {
   void prepareRasterizationRendering(Camera const& camera);
 
  public:
-  /* --- Device Data --- */
-
   std::vector<backend::Image> device_images{};
   backend::Buffer vertex_buffer{};
   backend::Buffer index_buffer{};
@@ -87,12 +85,15 @@ struct GPUResources : scene::HostResources {
  protected:
   std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
-  backend::Buffer frame_ubo_{};           // Dynamic UBO via Descriptor Set
-  backend::Buffer transforms_ssbo_{};     // SSBO via Buffer Device Address
+  backend::Buffer transforms_sbo_{};
+  backend::Buffer frame_sbo_{};
+
+  VkDeviceSize frame_data_stride_{};
+  VkDeviceAddress frame_data_current_address_{};
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};
-  RayTracingFx const* ray_tracing_fx_{};
+  RayTracingFx* ray_tracing_fx_{}; //
   // -------------------------------
 
   using SubMeshBuffer = std::vector<scene::Mesh::SubMesh const*>;
@@ -103,8 +104,7 @@ struct GPUResources : scene::HostResources {
  private:
   RenderContext const& context_;
 
-  VkDeviceSize frame_data_stride_{};
-
+  // [dupplicate, should probably not be stored here]
   uint32_t max_frames_in_flight_{}; //
   uint32_t frame_index_{}; //
 };

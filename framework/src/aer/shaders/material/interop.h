@@ -32,16 +32,13 @@ struct Vertex {
 
 const uint kDescriptorSet_Internal = 0; // (might be unused)
 
-const uint kDescriptorSet_Frame = 1;
-const uint kDescriptorSet_Frame_FrameUBO            = 0;
-
-const uint kDescriptorSet_Scene = 2;
+const uint kDescriptorSet_Scene = 1;
 const uint kDescriptorSet_Scene_IBL_Prefiltered     = 0;
 const uint kDescriptorSet_Scene_IBL_Irradiance      = 1;
 const uint kDescriptorSet_Scene_IBL_SpecularBRDF    = 2;
 const uint kDescriptorSet_Scene_Textures            = 3; // (must be last to use variable count)
 
-const uint kDescriptorSet_RayTracing = 3;
+const uint kDescriptorSet_RayTracing = 2;
 const uint kDescriptorSet_RayTracing_TLAS           = 0;
 const uint kDescriptorSet_RayTracing_InstanceSBO    = 1;
 
@@ -63,7 +60,7 @@ const uint kRendererState_IrradianceBit = 0x1 << 0;
 // -- Uniform Buffer(s) --
 
 struct FrameData {
-  CameraTransform camera[2];
+  CameraTransform cameras[2];
   mat4 default_world_matrix;
   vec4 cameraPos_Time;   // xxx
   vec2 resolution;
@@ -82,8 +79,11 @@ struct TransformData {
 // -- Macro helpers --
 
 #ifndef __cplusplus
-#define GetFrameCamera(FrameData)       FrameData.camera[gl_ViewIndex]
-#define GetTexture(texture_id)          uTextureChannels[nonuniformEXT(texture_id)] //
+
+#define GetFrameCamera(frameData)   frameData.cameras[gl_ViewIndex]
+
+#define GetTexture(texture_id)      uTextureChannels[nonuniformEXT(texture_id)] //
+
 #endif
 
 // ----------------------------------------------------------------------------

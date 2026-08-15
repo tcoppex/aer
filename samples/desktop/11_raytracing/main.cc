@@ -21,11 +21,11 @@ class BasicRayTracingFx : public RayTracingFx {
  public:
   BasicRayTracingFx() = default;
 
-  void resetFrameAccumulation() override {
+  void resetFrameAccumulation() final {
     push_constant_.accumulation_frame_count = 0;
   }
 
-  void setupUI() override {
+  void setupUI() final {
     bool changed = false;
 
     changed |= ImGui::Checkbox("Enable", &enabled_);
@@ -67,10 +67,15 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void execute(CommandEncoder const& cmd) const override {
+  void execute(CommandEncoder const& cmd) const final {
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
+      push_constant_.material_buffer_address = material_storage_buffer_.address; //
       RayTracingFx::execute(cmd);
     }
+  }
+
+  void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) final {
+    push_constant_.frame_buffer_address = frame_buffer_address;
   }
 
  protected:
@@ -162,7 +167,7 @@ class BasicRayTracingFx : public RayTracingFx {
     };
   }
 
-  void pushConstant(GenericCommandEncoder const &cmd) const override {
+  void pushConstant(GenericCommandEncoder const &cmd) const final {
     cmd.pushConstant(
       push_constant_,
       pipeline_layout_,
@@ -174,7 +179,7 @@ class BasicRayTracingFx : public RayTracingFx {
     push_constant_.accumulation_frame_count += 1u;
   }
 
-  void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) override {
+  void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) final {
     if (proxy_materials.empty()) {
       return;
     }
@@ -196,14 +201,15 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void const* material_buffer_data() const override {
+  void const* material_buffer_data() const final {
     return materials_.data();
   }
 
-  size_t material_buffer_size() const override {
-    return !materials_.empty() ? materials_.size() * sizeof(materials_[0])
-                               : 0
-                               ;
+  size_t material_buffer_size() const final {
+    return !materials_.empty()
+      ? materials_.size() * sizeof(materials_[0])
+      : 0
+      ;
   }
 
  private:

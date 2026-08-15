@@ -17,7 +17,7 @@ hitAttributeEXT vec2 hitAttribs;
 
 layout(location = 0) rayPayloadInEXT HitPayload_t payload;
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_MaterialSBO)
+layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_MaterialSBO)
 buffer RayTracingMaterialSBO_ {
   RayTracingMaterial materials[];
 };

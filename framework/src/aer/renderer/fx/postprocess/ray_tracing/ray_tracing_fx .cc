@@ -8,30 +8,24 @@
 void RayTracingFx::execute(CommandEncoder const& cmd) const {
   cmd.bindPipeline(pipeline_);
 
-  // [deprecrated]
   // Bind descriptor sets.
   {
-    auto const& registry = context_ptr_->descriptor_registry();
-
-    VkShaderStageFlags const stage_flags{
+    auto const stage_flags = VkShaderStageFlags{
         VK_SHADER_STAGE_RAYGEN_BIT_KHR
       | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
       | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
     };
 
-    cmd.bindDescriptorSet(
-      descriptor_set_,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Internal
-    );
+    if (descriptor_set_ != VK_NULL_HANDLE) {
+      cmd.bindDescriptorSet(
+        descriptor_set_,
+        pipeline_layout_,
+        stage_flags,
+        material_shader_interop::kDescriptorSet_Internal
+      );
+    }
 
-    registry.bindDescriptorSet(
-      DescriptorRegistry::Type::Frame,
-      cmd,
-      pipeline_layout_,
-      stage_flags
-    );
+    auto const& registry = context_ptr_->descriptor_registry();
 
     registry.bindDescriptorSet(
       DescriptorRegistry::Type::Scene,

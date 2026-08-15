@@ -6,9 +6,9 @@
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
-uniform FrameUBO_ {
-  FrameData uFrame;
+layout(buffer_reference, scalar)
+readonly buffer FrameBufferRef {
+  FrameData uFrameData;
 };
 
 layout(buffer_reference, scalar)
@@ -24,9 +24,9 @@ uniform PushConstant_ {
 // ----------------------------------------------------------------------------
 
 layout(location = kAttribLocation_Position) in vec3 inPosition;
-layout(location = kAttribLocation_Normal  ) in vec3 inNormal;
-layout(location = kAttribLocation_Texcoord) in vec2 inTexcoord;
+layout(location = kAttribLocation_Normal)   in vec3 inNormal;
 layout(location = kAttribLocation_Tangent)  in vec4 inTangent;
+layout(location = kAttribLocation_Texcoord) in vec2 inTexcoord;
 
 layout(location = 0) out vec3 vPositionWS;
 layout(location = 1) out vec3 vNormalWS;
@@ -36,9 +36,12 @@ layout(location = 3) out vec2 vTexcoord;
 // ----------------------------------------------------------------------------
 
 void main() {
+  FrameData frameData = GetFrameData();
   TransformData transform = GetTransform();
 
-  mat4 worldMatrix = uFrame.default_world_matrix
+  // -------
+
+  mat4 worldMatrix = frameData.default_world_matrix
                    * transform.worldMatrix
                    ;
   mat3 normalMatrix = mat3(worldMatrix);
@@ -46,7 +49,7 @@ void main() {
 
   // -------
 
-  gl_Position = GetFrameCamera(uFrame).viewProjMatrix * worldPos;
+  gl_Position = GetFrameCamera(frameData).viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
   vNormalWS   = normalize(normalMatrix * inNormal);
   vTangentWS  = vec4(normalize(normalMatrix * inTangent.xyz), inTangent.w);

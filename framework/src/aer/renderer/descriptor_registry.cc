@@ -166,27 +166,6 @@ void DescriptorRegistry::bindDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorRegistry::updateFrameUBO(backend::Buffer const& buffer) const {
-  context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorRegistry::Type::Frame].set,
-    {
-      {
-        .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .buffers = {
-          {
-            .buffer = buffer.buffer,
-            .offset = 0,
-            .range = sizeof(material_shader_interop::FrameData)
-          }
-        },
-      }
-    }
-  );
-}
-
-// ----------------------------------------------------------------------------
-
 void DescriptorRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
@@ -292,13 +271,6 @@ void DescriptorRegistry::updateRayTracingScene(RayTracingSceneInterface const* r
 }
 
 // ----------------------------------------------------------------------------
-
-void DescriptorRegistry::updateFrameUBODynamicOffset(uint32_t offset) const {
-  LOG_CHECK(!descriptor(Type::Frame).dynamicOffsets.empty());
-  descriptor(Type::Frame).dynamicOffsets[0] = offset;
-}
-
-// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
@@ -315,9 +287,7 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 50 },  // dynamic uniform buffers (per-frame, per-object)
     { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 50 },  // dynamic storage buffers
     { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 50 },        // subpass inputs
-    // ---------------------------------------
     { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 50 },
-    // ---------------------------------------
   };
 
   auto const descriptor_pool_info = VkDescriptorPoolCreateInfo{
@@ -352,23 +322,6 @@ void DescriptorRegistry::setupMainDescriptors() {
   };
 
   createMainDescriptorSet(
-    Type::Frame,
-    {
-      {
-        .binding = material_shader_interop::kDescriptorSet_Frame_FrameUBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT
-                    | extra_stage_flags
-                    ,
-      },
-    },
-    layout_flags,
-    "Frame"
-  );
-
-  createMainDescriptorSet(
     Type::Scene,
     {
       {
@@ -392,7 +345,6 @@ void DescriptorRegistry::setupMainDescriptors() {
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
       },
-      // [Adapt it to have variable count?]
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -458,11 +410,6 @@ DescriptorRegistry::Descriptor& DescriptorRegistry::_intializeMainDescriptor(
   };
 
   switch (type) {
-    case Type::Frame:
-      descriptor.binding = material_shader_interop::kDescriptorSet_Frame;
-      descriptor.dynamicOffsets = { 0u };
-    break;
-
     case Type::Scene:
       descriptor.binding = material_shader_interop::kDescriptorSet_Scene;
     break;

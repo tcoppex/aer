@@ -14,18 +14,24 @@
 ///
 
 struct PushConstant_Generic {
+  uint64_t frame_buffer_address;
   uint64_t transform_buffer_address;
   uint64_t material_buffer_address;
+  uint _pad0[2];
   // ----
   uint transform_index;
   uint material_index;
   uint instance_index;
-  uint _pad0[1]; //
+  uint _pad1[1];
 };
 
 // ----------------------------------------------------------------------------
 
 #ifndef __cplusplus
+
+#define GetFrameData() \
+  FrameBufferRef(pushConstant.generic.frame_buffer_address) \
+    .uFrameData
 
 #define GetTransform() \
   TransformBufferRef(pushConstant.generic.transform_buffer_address) \

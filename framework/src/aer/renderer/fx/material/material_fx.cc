@@ -81,13 +81,6 @@ void MaterialFx::prepareDrawState(
     auto const& registry = context_ptr_->descriptor_registry();
 
     registry.bindDescriptorSet(
-      DescriptorRegistry::Type::Frame,
-      pass,
-      pipeline_layout_,
-      stage_flags
-    );
-
-    registry.bindDescriptorSet(
       DescriptorRegistry::Type::Scene,
       pass,
       pipeline_layout_,
@@ -109,7 +102,6 @@ void MaterialFx::createPipelineLayout() {
   pipeline_layout_ = context_ptr_->createPipelineLayout({
     .setLayouts = {
       descriptor_set_layout_, // (might be empty)
-      registry.descriptor(DescriptorRegistry::Type::Frame).layout,
       registry.descriptor(DescriptorRegistry::Type::Scene).layout,
     },
     .pushConstantRanges = push_constant_ranges()

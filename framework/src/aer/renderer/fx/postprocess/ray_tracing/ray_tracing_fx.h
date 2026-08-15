@@ -15,8 +15,8 @@
 class RayTracingFx : public PostGenericFx {
  public:
   // -------------------------------
-  static constexpr uint kDescriptorSetBinding_ImageOutput      = 0;
-  static constexpr uint kDescriptorSetBinding_MaterialSBO      = 1;
+  static constexpr uint kDescriptorSetBinding_Sample11_AccumImage      = 0;
+  static constexpr uint kDescriptorSetBinding_Sample11_MaterialSBO     = 1;
   // -------------------------------
 
  public:
@@ -32,7 +32,7 @@ class RayTracingFx : public PostGenericFx {
     
     context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
-        .binding = kDescriptorSetBinding_ImageOutput,
+        .binding = kDescriptorSetBinding_Sample11_AccumImage,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .images = {
           {
@@ -68,7 +68,7 @@ class RayTracingFx : public PostGenericFx {
 
       context_ptr_->updateDescriptorSet(descriptor_set_, {
         {
-          .binding = kDescriptorSetBinding_MaterialSBO,
+          .binding = kDescriptorSetBinding_Sample11_MaterialSBO,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .buffers = { { material_storage_buffer_.buffer } },
         },
@@ -103,20 +103,22 @@ class RayTracingFx : public PostGenericFx {
 
   void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override {} //
 
+  virtual void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) = 0;
+
  protected:
   virtual void resetMemoryBarriers();
 
   DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const override {
     return {
       {
-        .binding = kDescriptorSetBinding_ImageOutput, //
+        .binding = kDescriptorSetBinding_Sample11_AccumImage, //
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },
       {
-        .binding = kDescriptorSetBinding_MaterialSBO,
+        .binding = kDescriptorSetBinding_Sample11_MaterialSBO,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
@@ -131,7 +133,6 @@ class RayTracingFx : public PostGenericFx {
     auto const& registry = context_ptr_->descriptor_registry();
     return {
       descriptor_set_layout_,
-      registry.descriptor(DescriptorRegistry::Type::Frame).layout,
       registry.descriptor(DescriptorRegistry::Type::Scene).layout,
       registry.descriptor(DescriptorRegistry::Type::RayTracing).layout,
     };

@@ -22,7 +22,6 @@ class DescriptorRegistry {
 
  public:
   enum class Type {
-    Frame,
     Scene,
     RayTracing,
     kCount,
@@ -33,7 +32,7 @@ class DescriptorRegistry {
     uint32_t binding{};
     VkDescriptorSetLayout layout{};
     // -----
-    // (descriptor set rssources)
+    // (descriptor set resources)
     VkDescriptorSet set{};
     mutable std::vector<uint32_t> dynamicOffsets{};
     // -----
@@ -77,7 +76,6 @@ class DescriptorRegistry {
     std::string const& name = ""
   ) const;
 
-  // [[deprecated]]
   [[nodiscard]]
   VkDescriptorSet allocateDescriptorSet(
     VkDescriptorSetLayout const layout,
@@ -93,19 +91,12 @@ class DescriptorRegistry {
   ) const;
 
 
-  /* [deprecated?] Methods to update shared internal descriptor sets. */
   void updateSceneIBL(Skybox const& skybox) const;
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
   void updateSceneTexture(uint32_t index, VkDescriptorImageInfo image_info) const;
-
-  void updateFrameUBO(backend::Buffer const& buffer) const;
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
-  // -----------------------------------------------
-
-  void updateFrameUBODynamicOffset(uint32_t offset) const;
 
  private:
-  // [[deprecated]]
   void initDescriptorPool(uint32_t const max_sets);
 
   void setupMainDescriptors();
@@ -135,8 +126,8 @@ class DescriptorRegistry {
   );
 
  private:
-  Context const* context_ptr_{}; //
-  VkDevice device_{}; //
+  Context const* context_ptr_{};
+  VkDevice device_{};
 
   std::vector<VkDescriptorPoolSize> descriptor_pool_sizes_{};
   VkDescriptorPool main_pool_{};

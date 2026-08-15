@@ -10,17 +10,15 @@
 
 layout(constant_id = 0) const bool constant_kUseAlphaCutoff = false;
 
-// -- Frame --
-
-layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
-uniform FrameUBO_ {
-  FrameData uFrame;
+layout(buffer_reference, scalar)
+readonly buffer FrameBufferRef {
+  FrameData uFrameData;
 };
 
-// -- Scene resource (Textures & Image Based Lighting) --
-
-layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
+layout(buffer_reference, scalar)
+readonly buffer MaterialBufferRef {
+  Material materials[];
+};
 
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_IBL_Prefiltered)
 uniform samplerCube uEnvMapPrefilterd;
@@ -31,19 +29,8 @@ uniform samplerCube uEnvMapIrradiance;
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_IBL_SpecularBRDF)
 uniform sampler2D uSpecularBRDF;
 
-// layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_LightSSBO)
-// buffer LightSSBO_ {
-//   LightInfo_t lights[];
-// };
-
-// -- Materials (Direct Buffer Access) --
-
-layout(buffer_reference, scalar)
-readonly buffer MaterialBufferRef {
-  Material materials[];
-};
-
-// -- Instance PushConstant --
+layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
+uniform sampler2D[] uTextureChannels;
 
 layout(push_constant, scalar) uniform PushConstant_ {
   PushConstant pushConstant;
@@ -114,7 +101,7 @@ FragInfo_t calculate_world_space_frag_info(
 }
 
 bool has_render_state(uint state_bits) {
-  return (uFrame.renderer_states & state_bits) == state_bits;
+  return (GetFrameData().renderer_states & state_bits) == state_bits;
 }
 
 PBRMetallicRoughness_Material_t calculate_pbr_material_data(
@@ -178,7 +165,10 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
 // ----------------------------------------------------------------------------
 
 void main() {
+  FrameData frameData = GetFrameData();
   Material mat = GetMaterial();
+
+  // -------
 
   /* Diffuse. */
   const vec4 mainColor = sample_DiffuseColor(mat)
@@ -202,7 +192,7 @@ void main() {
 
   /* Fragment infos.*/
   const FragInfo_t frag = calculate_world_space_frag_info(
-    uFrame.cameraPos_Time.xyz,
+    frameData.cameraPos_Time.xyz,
     vPositionWS,
     normalWS,
     vTexcoord
@@ -214,17 +204,15 @@ void main() {
     mainColor.rgb
   );
 
-  // -------------------------
   vec3 color = colorize_pbr(frag, pbr_data);
-
   if (gl_FragCoord.x > 0) {
     // color = vec3(pbr_data.BRDF, 0);
     // [TODO : explore mipmapping issue on specular !]
     // color = pbr_data.prefiltered;
   }
-
   float alpha = mainColor.a;
-  // -------------------------
+
+  // -------
 
   fragColor = vec4(color, alpha);
 }

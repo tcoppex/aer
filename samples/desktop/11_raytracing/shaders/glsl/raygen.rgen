@@ -1,38 +1,32 @@
 #version 460
-
 #extension GL_EXT_ray_tracing : require
+
+// ----------------------------------------------------------------------------
 
 // [hacky] As extension GL_EXT_multiview is not supported on raygen we must
 //         override a builtin variable to access the correct uniform buffer
 //         camera via the macro GetFrameCamera.
 #define gl_ViewIndex 0u
 
-#include <material/interop.h>
-#include <shared/random.glsl>
-
 #include "../interop.h"
+
+#include <shared/random.glsl>
 
 // ----------------------------------------------------------------------------
 
-layout(
-  rgba16f,
-  set = kDescriptorSet_Internal,
-  binding = kDescriptorSetBinding_ImageOutput
-) uniform image2D uAccumImage;
-
-layout(scalar,
-  set = kDescriptorSet_Frame,
-  binding = kDescriptorSet_Frame_FrameUBO
-) uniform FrameUBO_ {
-  FrameData uFrame;
+layout(buffer_reference, scalar)
+readonly buffer FrameBufferRef {
+  FrameData uFrameData;
 };
 
-layout(
-  set = kDescriptorSet_RayTracing,
-  binding = kDescriptorSet_RayTracing_TLAS
-) uniform accelerationStructureEXT topLevelAS;
+layout(set = kDescriptorSet_RayTracing, binding = kDescriptorSet_RayTracing_TLAS)
+uniform accelerationStructureEXT topLevelAS;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_AccumImage, rgba16f)
+uniform image2D uAccumImage;
+
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
@@ -59,10 +53,14 @@ void russianRoulette() {
 // ----------------------------------------------------------------------------
 
 void main() {
-  ivec2 pixel       = ivec2(gl_LaunchIDEXT.xy);
-  vec2 pixelCenter  = vec2(pixel) + vec2(0.5);
-  vec2 sampleSize   = 1.0f / vec2(gl_LaunchSizeEXT.xy);
-  vec2 uv           = pixelCenter * sampleSize;
+  const FrameData frameData = GetFrameData();
+
+  const ivec2 pixel       = ivec2(gl_LaunchIDEXT.xy);
+  const vec2 pixelCenter  = vec2(pixel) + vec2(0.5);
+  const vec2 sampleSize   = 1.0f / vec2(gl_LaunchSizeEXT.xy);
+  const vec2 uv           = pixelCenter * sampleSize;
+
+  // ------
 
   // Normalized device coordinates in [-1, 1]
   vec2 ndc = uv * 2.0 - 1.0;
@@ -73,7 +71,7 @@ void main() {
   uvec3 seed_params = uvec3(gl_LaunchIDEXT.xy, pushConstant.accumulation_frame_count);
   payload.rngState = xxhash32(seed_params);
 
-  const CameraTransform camera = GetFrameCamera(uFrame);
+  const CameraTransform camera = GetFrameCamera(frameData);
   const vec4 origin = camera.invViewMatrix * vec4(0, 0, 0, 1);
 
   const int numSamples = pushConstant.num_samples;
@@ -131,6 +129,8 @@ void main() {
 
   float frameCount = float(pushConstant.accumulation_frame_count + 1);
   color = mix(prevSample, newSample, 1.0 / frameCount);
+
+  // ------
 
   imageStore(uAccumImage, pixel, vec4(color, 1.0));
 }

@@ -3,8 +3,20 @@
 
 /* -------------------------------------------------------------------------- */
 
-const uint kDescriptorSetBinding_ImageOutput      = 0;
-const uint kDescriptorSetBinding_MaterialSBO      = 1;
+#ifndef __cplusplus
+
+#include <material/interop.h>
+// #include <material/push_constant_generic.h> // (not compatible yet)
+
+// (redefine the one from push_constant_generic.h)
+#define GetFrameData() FrameBufferRef(pushConstant.frame_buffer_address).uFrameData
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+const uint kDescriptorSetBinding_Sample11_AccumImage   = 0;
+const uint kDescriptorSetBinding_Sample11_MaterialSBO  = 1; // (to remove)
 
 // -----------------------------------------------------------------------------
 
@@ -21,6 +33,9 @@ struct HitPayload_t {
 // -----------------------------------------------------------------------------
 
 struct PushConstant {
+  uint64_t frame_buffer_address;
+  uint64_t material_buffer_address;
+  // ----
   int accumulation_frame_count;
   int num_samples;
   float jitter_factor;

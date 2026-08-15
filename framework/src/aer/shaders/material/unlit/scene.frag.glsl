@@ -10,18 +10,13 @@ layout(constant_id = 0) const bool constant_kUseAlphaCutoff = false;
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
-uniform FrameUBO_ {
-  FrameData uFrame;
-};
-
-layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
-
 layout(buffer_reference, scalar)
 readonly buffer MaterialBufferRef {
   Material materials[];
 };
+
+layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
+uniform sampler2D[] uTextureChannels;
 
 layout(push_constant, scalar)
 uniform PushConstant_ {

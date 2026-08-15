@@ -29,8 +29,8 @@ GPUResources::~GPUResources() {
   for (auto& img : device_images) {
     context_.destroyImage(img);
   }
-  context_.destroyBuffer(transforms_ssbo_);
-  context_.destroyBuffer(frame_ubo_);
+  context_.destroyBuffer(transforms_sbo_);
+  context_.destroyBuffer(frame_sbo_);
   context_.destroyBuffer(index_buffer);
   context_.destroyBuffer(vertex_buffer);
 
@@ -105,10 +105,10 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     rt_scene_->init(context_);
   }
 
-  /* Create the shared Frame UBO */
-  if (!frame_ubo_.valid()) {
+  /* Create the shared Frame SBO */
+  if (!frame_sbo_.valid()) {
     // -----------------------------------
-    // Create a ring dynamic UBO for frame data.
+    // Create a ring SBO for frame data.
     // Need to be aligned to VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment
     VkDeviceSize const min_alignment = context_.gpu_properties()
       .limits.minUniformBufferOffsetAlignment;
@@ -118,14 +118,15 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     uint32_t const total_buffer_size = frame_data_stride_ * max_frames_in_flight_;
     // -----------------------------------
 
-    frame_ubo_ = context_.createBuffer(
+    frame_sbo_ = context_.createBuffer(
       total_buffer_size,
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
-      | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       ,
       VMA_MEMORY_USAGE_AUTO,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-      | VMA_ALLOCATION_CREATE_MAPPED_BIT
+      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+    | VMA_ALLOCATION_CREATE_MAPPED_BIT
     );
   }
 
@@ -184,19 +185,25 @@ std::vector<VkDescriptorImageInfo> GPUResources::buildDescriptorImageInfos() con
 // ----------------------------------------------------------------------------
 
 void GPUResources::update(Camera const& camera, float elapsed_time) {
+  // [CPU bound]
+
   /* Recalculate the whole hierarchy global transform buffer. */
-  updateTransformsBuffer(); //
-
-  /* Update and upload per-frame data. */
-  updateFrameData(camera, elapsed_time);
-
-  /* Upload mesh transforms when needed. */
-  uploadTransforms();
+  updateTransformsBuffer(); // (to check / rename)
 
   /* Prepare the scenes for rasterization (sort meshes). */
   if (!ray_tracing_fx_ || !ray_tracing_fx_->is_enable()) {
     prepareRasterizationRendering(camera);
   }
+
+  // ------------
+
+  // [GPU bound]
+
+  /* Update and upload per-frame data. */
+  updateFrameData(camera, elapsed_time); // (also upload, decorelate ?)
+
+  /* Upload mesh transforms when needed. */
+  uploadTransforms();
 };
 
 // ----------------------------------------------------------------------------
@@ -225,17 +232,19 @@ void GPUResources::render(RenderPassEncoder const& pass) {
         auto const& matref = *(submesh->material_ref);
         auto const& proxy = material_proxy(matref);
 
-        // Submesh's pushConstants.
+        // Submesh's MaterialFx pushConstants.
+        // --------------------------
         fx->set_push_constant_generic({
-          .transform_buffer_address = transforms_ssbo_.address,
+          .frame_buffer_address = frame_data_current_address_,
+          .transform_buffer_address = transforms_sbo_.address,
           .material_buffer_address = material_buffer_address,
           // -----
           .transform_index = mesh->transform_index,
           .material_index = matref.material_index,
           .instance_index = instance_index++,
         });
-
         fx->pushConstant(pass);
+        // --------------------------
 
         pass.setPrimitiveTopology(mesh->vk_primitive_topology());
         pass.setCullMode(proxy.double_sided ? VK_CULL_MODE_NONE
@@ -261,12 +270,6 @@ void GPUResources::setupRayTracingFx(RayTracingFx* fx) {
 void GPUResources::updateGlobalDescriptorSetBindings() const {
   auto const& registry = context_.descriptor_registry();
 
-  // [[deprecated]]
-  if (frame_ubo_.valid()) {
-    registry.updateFrameUBO(frame_ubo_);
-  }
-
-  // [[deprecated]]
   if (total_image_size > 0) {
     registry.updateSceneTextures(buildDescriptorImageInfos());
   }
@@ -403,7 +406,7 @@ void GPUResources::uploadBuffers() {
     // [NOTEs]
     // - we might want to separate static vs dynamic transforms
     // - when update frequently, this would require max_frames_in_flights buffering
-    transforms_ssbo_ = context_.createBuffer(
+    transforms_sbo_ = context_.createBuffer(
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT //
@@ -464,7 +467,7 @@ void GPUResources::uploadBuffers() {
       );
     }
     src_offset = cmd.copyBuffer(
-      staging_buffer, src_offset, transforms_ssbo_, 0u, transforms_buffer_size
+      staging_buffer, src_offset, transforms_sbo_, 0u, transforms_buffer_size
     );
 
     std::vector<VkBufferMemoryBarrier2> barriers{
@@ -481,7 +484,7 @@ void GPUResources::uploadBuffers() {
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, //
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-        .buffer = transforms_ssbo_.buffer,
+        .buffer = transforms_sbo_.buffer,
         .size = transforms_buffer_size,
       },
     };
@@ -505,62 +508,57 @@ void GPUResources::uploadBuffers() {
 void GPUResources::uploadTransforms() {
   LOG_CHECK(transforms.size() == meshes.size()); //
 #if 1
-  context_.writeBuffer(transforms_ssbo_, transforms); // require mapping ability
+  context_.writeBuffer(transforms_sbo_, transforms); // require mapping ability
 #else
-  context_.transientUploadBuffer(transforms, transforms_ssbo_);
+  context_.transientUploadBuffer(transforms, transforms_sbo_);
 #endif
 }
 
 // ----------------------------------------------------------------------------
 
-void GPUResources::updateFrameData(
-  Camera const& camera,
-  float elapsed_time
-) {
+void GPUResources::updateFrameData(Camera const& camera, float elapsed_time) {
+
   /* Current surface size provided by the Renderer to the RenderContext,
    * in the future this might need tweaking if we use scaling. */
   auto const& surface_size = context_.default_surface_size();
 
   auto frame_data = material_shader_interop::FrameData{
-    .default_world_matrix = context_.default_world_matrix(), //
-    .cameraPos_Time = vec4(camera.position(), elapsed_time), //
+    .default_world_matrix = context_.default_world_matrix(),
+    .cameraPos_Time = vec4(camera.position(), elapsed_time),
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = frame_index_,
-    .renderer_states = 0b11111111111111111111111111111111, // XXX
+    .renderer_states = 0b11111111111111111111111111111111, //
   };
-  
   LOGW("FrameData.renderer_states use a default value, "\
        "its irradiance bit should be set by the Renderer::Skybox object state.");
 
   /* Copy the multiview CameraTransform. */
   {
-    auto const& src = camera.transforms();
-    auto& dst = frame_data.camera;
-
     static_assert(std::is_trivially_copyable_v<Camera::Transform>);
+    auto& dst = frame_data.cameras;
+    auto const& src = camera.transforms();
     std::memcpy(dst, (void*)src.data(), sizeof(Camera::Transform) * src.size());
   }
 
-  /* Upload frame data to the Frame dynamic UBO. */
-  {
-    LOG_CHECK(max_frames_in_flight_ > 0);
-    LOG_CHECK(frame_data_stride_ > 0);
+  /* Upload frame data to the device. */
+  LOG_CHECK(max_frames_in_flight_ > 0);
+  LOG_CHECK(frame_data_stride_ > 0);
 
-    uint32_t const current_slot = frame_index_ % max_frames_in_flight_; //
-    size_t const offset = current_slot * frame_data_stride_;
+  uint32_t const current_slot = frame_index_ % max_frames_in_flight_;
+  size_t const offset = current_slot * frame_data_stride_;
+  context_.writeBuffer(frame_sbo_, offset, &frame_data, 0u, sizeof(frame_data));
 
-    // [writeBuffer() might be more efficient here (with the correct build flags)]
-    context_.transientUploadBuffer(
-      &frame_data, sizeof(frame_data), frame_ubo_, offset
-    );
+  // Update the cycling Frame Buffer address.
+  frame_data_current_address_ = frame_sbo_.address + offset;
 
-    // Propagate the Frame UBO dynamic offset to the Descriptor Set Registry.
-    context_.descriptor_registry().updateFrameUBODynamicOffset(
-      static_cast<uint32_t>(offset)
-    );
+  // As ray traced scenes might be rendered externally we update the ir
+  // frame buffer address directly.
+  if (rt_scene_ && ray_tracing_fx_) {
+    ray_tracing_fx_->set_frame_buffer_address(frame_data_current_address_);
   }
 
-  frame_index_++;
+  // (probably not the best place to be updated)
+  ++frame_index_; //
 }
 
 // ----------------------------------------------------------------------------

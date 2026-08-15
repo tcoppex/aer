@@ -10,7 +10,7 @@
 // ----------------------------------------------------------------------------
 
 layout(scalar, set = 0, binding = 0) uniform UBO_ {
-  UniformCameraData uCamera[2];
+  UniformCameraData uCameras[2];
 };
 
 layout(push_constant, scalar) uniform PushConstant_ {
@@ -27,7 +27,7 @@ layout (location = 0) out vec4 outColor;
 // ----------------------------------------------------------------------------
 
 void main() {
-  UniformCameraData view = uCamera[gl_ViewIndex];
+  UniformCameraData view = uCameras[gl_ViewIndex];
   
   mat4 viewProjMatrix = view.projectionMatrix
                       * view.viewMatrix
