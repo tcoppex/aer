@@ -151,7 +151,7 @@ class Context {
     return writeBuffer(dst_buffer, host_span.data(), host_span.size_bytes());
   }
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<NonSpanConvertible T>
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     T const& host_data
@@ -286,7 +286,7 @@ class Context {
     size_t device_buffer_size = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   [[nodiscard]] backend::Buffer transientCreateBuffer(
     T const& host_data,
     VkBufferUsageFlags2KHR usage,
@@ -309,7 +309,7 @@ class Context {
     size_t const device_buffer_offset = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   void transientUploadBuffer(
     T const& host_data,
     backend::Buffer const& device_buffer

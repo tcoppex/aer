@@ -26,6 +26,9 @@ concept DerivedFrom = std::is_base_of_v<U, T>;
 template<typename T>
 concept SpanConvertible = requires(T t) { std::span(t); };
 
+template<typename T>
+concept NonSpanConvertible = !SpanConvertible<T>;
+
 // ----------------------------------------------------------------------------
 /* -- custom type -- */
 

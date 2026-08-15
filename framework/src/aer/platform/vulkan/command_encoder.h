@@ -76,7 +76,7 @@ class GenericCommandEncoder {
 
   // --- Push Constants ---
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<NonSpanConvertible T>
   void pushConstant(
     T const& value,
     VkPipelineLayout const pipeline_layout,
@@ -108,7 +108,7 @@ class GenericCommandEncoder {
     }
   }
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<NonSpanConvertible T>
   void pushConstant(
     T const& value,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
@@ -118,7 +118,7 @@ class GenericCommandEncoder {
     pushConstant(value, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   void pushConstants(
     T const& values,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
@@ -233,7 +233,7 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t const device_buffer_size = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   [[nodiscard]]
   backend::Buffer createBufferAndUpload(
     T const& host_data,
