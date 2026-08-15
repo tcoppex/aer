@@ -23,31 +23,19 @@ class SampleApp final : public Application {
 
     /* Setup the ArcBall camera. */
     {
-      camera_.makePerspective(
-        lina::radians(55.0f),
-        viewport_size_.width,
-        viewport_size_.height,
-        0.01f,
-        500.0f
-      );
-      camera_.set_controller(&arcball_controller_);
-
       arcball_controller_.set_target(vec3(-1.25f, 0.75f, 0.0f));
       arcball_controller_.set_view(lina::kPi/16.0f, lina::kPi/6.0f);
       arcball_controller_.set_dolly(5.0f);
+
+      camera_.set_controller(&arcball_controller_);
     }
 
     /* Load a glTF Scene. */
-    std::string gtlf_filename{ASSETS_DIR "models/"
+    auto const gtlf_filename = std::string{ASSETS_DIR "models/"
       "AlphaBlendModeTest.glb"
     };
 
-    if constexpr(true) {
-      future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
-    } else {
-      scene_ = renderer_.loadGLTF(gtlf_filename);
-      scene_->uploadToDevice();
-    }
+    future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
 
     return true;
   }
