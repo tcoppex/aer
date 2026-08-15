@@ -25,8 +25,6 @@ buffer RayTracingMaterialSBO_ {
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
 uniform sampler2D[] uTextureChannels;
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
 layout(push_constant, scalar) uniform PushConstant_ {
   PushConstant pushConstant;
 };
@@ -70,7 +68,7 @@ void main() {
   {
     RayTracingMaterial mat = materials[nonuniformEXT(material_id)];
 
-    vec4 color = texture(TEXTURE_ATLAS(mat.diffuse_texture_id), uv)
+    vec4 color = texture(GetTexture(mat.diffuse_texture_id), uv)
                * mat.diffuse_factor
                ;
     opacity = (color.a > mat.alpha_cutoff) ? 1.0f : 0.0f;

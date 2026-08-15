@@ -58,14 +58,12 @@ layout(location = 0) out vec4 fragColor;
 
 // ----------------------------------------------------------------------------
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
 vec4 sample_DiffuseColor(in Material mat) {
-  return texture(TEXTURE_ATLAS(mat.diffuse_texture_id), vTexcoord).rgba;
+  return texture(GetTexture(mat.diffuse_texture_id), vTexcoord).rgba;
 }
 
 vec3 sample_NormalMap(in Material mat) {
-  vec3 normal = texture(TEXTURE_ATLAS(mat.normal_texture_id), vTexcoord).rgb;
+  vec3 normal = texture(GetTexture(mat.normal_texture_id), vTexcoord).rgb;
   return normalize(normal * 2.0 - 1.0);
 }
 
@@ -128,7 +126,7 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
   data.color = mainColor;
 
   // Emissive.
-  vec4 emissive_base = texture(TEXTURE_ATLAS(mat.emissive_texture_id), frag.uv);
+  vec4 emissive_base = texture(GetTexture(mat.emissive_texture_id), frag.uv);
   data.emissive = mix(vec3(1.0f), emissive_base.xyz, emissive_base.a)
                 * mat.emissive_factor
                 ;
@@ -137,14 +135,14 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
 
   // Roughness + Metallic.
   {
-    const vec4 orm = texture(TEXTURE_ATLAS(mat.orm_texture_id), frag.uv);
+    const vec4 orm = texture(GetTexture(mat.orm_texture_id), frag.uv);
     data.roughness = mat.roughness_factor * max(orm.y, 1e-3f);
     data.metallic = mat.metallic_factor * orm.z;
   }
 
 
   // Ambient Occlusion.
-  const float ao = texture(TEXTURE_ATLAS(mat.occlusion_texture_id), frag.uv).x;
+  const float ao = texture(GetTexture(mat.occlusion_texture_id), frag.uv).x;
   data.ao = pow(ao, 1.5);
 
   // -- fragment derivative materials ---

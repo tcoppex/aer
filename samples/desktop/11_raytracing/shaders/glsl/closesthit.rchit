@@ -30,8 +30,6 @@ buffer RayTracingMaterialSBO_ {
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
 uniform sampler2D[] uTextureChannels;
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
 layout(push_constant, scalar) uniform PushConstant_ {
   PushConstant pushConstant;
 };
@@ -87,16 +85,16 @@ void main() {
   {
     RayTracingMaterial mat = materials[nonuniformEXT(material_id)];
 
-    vec4 emissive_base = texture(TEXTURE_ATLAS(mat.emissive_texture_id), v.texcoord);
+    vec4 emissive_base = texture(GetTexture(mat.emissive_texture_id), v.texcoord);
     emissive = mix(vec3(1.0f), emissive_base.rgb, emissive_base.a)
              * mat.emissive_factor
              ;
 
-    color = texture(TEXTURE_ATLAS(mat.diffuse_texture_id), v.texcoord)
+    color = texture(GetTexture(mat.diffuse_texture_id), v.texcoord)
           * mat.diffuse_factor
           ;
 
-    const vec4 orm = texture(TEXTURE_ATLAS(mat.orm_texture_id), v.texcoord);
+    const vec4 orm = texture(GetTexture(mat.orm_texture_id), v.texcoord);
     const float roughness = mat.roughness_factor * mix(1.0, max(orm.y, 1e-3f), orm.w);
     const float metallic = mat.metallic_factor * mix(1.0, orm.z, orm.w);
 

@@ -36,10 +36,8 @@ layout(location = 0) out vec4 fragColor;
 
 // ----------------------------------------------------------------------------
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
 vec4 sample_DiffuseColor(in Material mat) {
-  return texture(TEXTURE_ATLAS(mat.diffuse_texture_id), vTexcoord).rgba;
+  return texture(GetTexture(mat.diffuse_texture_id), vTexcoord).rgba;
 }
 
 // ----------------------------------------------------------------------------

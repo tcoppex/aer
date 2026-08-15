@@ -72,16 +72,20 @@ struct FrameData {
   uint renderer_states; // (wip)
 };
 
-#ifndef __cplusplus
-#define GetFrameCamera(FrameData)       FrameData.camera[gl_ViewIndex]
-#endif
-
 // ----------------------------------------------------------------------------
 // -- Storage Buffer(s) --
 
 struct TransformSBO {
   mat4 worldMatrix;
 };
+
+// ----------------------------------------------------------------------------
+// -- Macro helpers --
+
+#ifndef __cplusplus
+#define GetFrameCamera(FrameData)       FrameData.camera[gl_ViewIndex]
+#define GetTexture(texture_id)          uTextureChannels[nonuniformEXT(texture_id)] //
+#endif
 
 // ----------------------------------------------------------------------------
 
