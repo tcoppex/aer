@@ -15,19 +15,6 @@ namespace unlit_shader_interop {
 
 class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material> {
  public:
-    void setup() final {
-    TMaterialFx<unlit_shader_interop::Material>::setup();
-
-    context_ptr_->updateDescriptorSet(descriptor_set_, {
-      {
-        .binding = unlit_shader_interop::kDescriptorSet_Internal_MaterialSBO,
-        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .buffers = { { material_storage_buffer_.buffer } },
-      },
-    });
-  }
-
- public:
   void set_push_constant_generic(PushConstant_Generic const& data) final {
     push_constant_.generic = data;
   }
@@ -39,21 +26,6 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
 
   std::string vertex_shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "material/unlit/scene.vert.glsl";
-  }
-
-  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const final {
-    return {
-      {
-        .binding = unlit_shader_interop::kDescriptorSet_Internal_MaterialSBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-                      | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
-                      | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
-      },
-    };
   }
 
   std::vector<VkPushConstantRange> push_constant_ranges() const final {
@@ -68,7 +40,11 @@ class UnlitMaterialFx final : public TMaterialFx<unlit_shader_interop::Material>
   }
 
   void pushConstant(GenericCommandEncoder const &cmd) final {
-    cmd.pushConstant(push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    cmd.pushConstant(
+      push_constant_,
+      pipeline_layout_,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+    );
   }
 
  private:

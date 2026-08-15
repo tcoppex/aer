@@ -17,22 +17,6 @@ using PBRMetallicRoughnessMaterial = pbr_metallic_roughness_shader_interop::Mate
 
 class PBRMetallicRoughnessFx final : public TMaterialFx<PBRMetallicRoughnessMaterial> {
  public:
-  void setup() final {
-    TMaterialFx<PBRMetallicRoughnessMaterial>::setup();
-
-    context_ptr_->updateDescriptorSet(descriptor_set_, {
-      {
-        .binding = pbr_metallic_roughness_shader_interop::kDescriptorSet_Internal_MaterialSBO,
-        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .buffers = { { material_storage_buffer_.buffer } },
-      },
-    });
-  }
-
-  void release() final {
-    TMaterialFx<PBRMetallicRoughnessMaterial>::release();
-  }
-
   void set_push_constant_generic(PushConstant_Generic const& data) final {
     push_constant_.generic = data;
   }
@@ -44,18 +28,6 @@ class PBRMetallicRoughnessFx final : public TMaterialFx<PBRMetallicRoughnessMate
 
   std::string vertex_shader_name() const final {
     return FRAMEWORK_COMPILED_SHADERS_DIR "material/pbr_metallic_roughness/scene.vert.glsl";
-  }
-
-  DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const final {
-    return {
-      {
-        .binding = pbr_metallic_roughness_shader_interop::kDescriptorSet_Internal_MaterialSBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-    };
   }
 
   std::vector<VkPushConstantRange> push_constant_ranges() const final {
@@ -98,7 +70,7 @@ class PBRMetallicRoughnessFx final : public TMaterialFx<PBRMetallicRoughnessMate
   pbr_metallic_roughness_shader_interop::PushConstant push_constant_{};
 };
 
-}
+} // namespace fx::material
 
 /* -------------------------------------------------------------------------- */
 

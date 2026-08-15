@@ -33,9 +33,23 @@ class MaterialFx {
 
   virtual void pushConstant(GenericCommandEncoder const& cmd) = 0;
 
+  // -- mesh instance push constants --
+
+  virtual void set_push_constant_generic(PushConstant_Generic const& data) = 0;
+
+  // -- material utils --
+
+  virtual uint32_t createMaterial(scene::MaterialProxy const& material_proxy) = 0;
+  virtual void uploadMaterialStorageBuffer() const = 0;
+
   /* Check if the MaterialFx has been setup. */
   bool valid() const {
     return pipeline_layout_ != VK_NULL_HANDLE;
+  }
+
+  [[nodiscard]]
+  VkDeviceAddress material_buffer_address() const {
+    return material_storage_buffer_.address;
   }
 
  protected:
@@ -67,28 +81,12 @@ class MaterialFx {
     scene::MaterialStates const& states
   ) const;
 
- public:
-  // -- frame-wide resource descriptor --
-
-  // -- mesh instance push constants --
-
-  // virtual void set_transform_index(uint32_t index) = 0;
-  // virtual void set_material_index(uint32_t index) = 0;
-  // virtual void set_instance_index(uint32_t index) = 0;
-  virtual void set_push_constant_generic(PushConstant_Generic const& data) = 0;
-
-  // -- material utils --
-
-  virtual uint32_t createMaterial(scene::MaterialProxy const& material_proxy) = 0;
-
-  virtual void uploadMaterialStorageBuffer() const = 0;
-
  protected:
   RenderContext const* context_ptr_{};
 
-  VkDescriptorSetLayout descriptor_set_layout_{};
-  VkDescriptorSet descriptor_set_{}; //
-  VkPipelineLayout pipeline_layout_{}; //
+  VkDescriptorSetLayout descriptor_set_layout_{VK_NULL_HANDLE};
+  VkDescriptorSet descriptor_set_{VK_NULL_HANDLE}; //
+  VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE}; //
 
   std::map<scene::MaterialStates, Pipeline> pipelines_{};
   backend::Buffer material_storage_buffer_{};

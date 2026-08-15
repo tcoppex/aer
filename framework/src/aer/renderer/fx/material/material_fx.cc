@@ -62,19 +62,23 @@ void MaterialFx::prepareDrawState(
   // [deprecated]
   // Bind descriptor sets.
   {
-    auto const& registry = context_ptr_->descriptor_registry();
-
-    VkShaderStageFlags const stage_flags{
+    auto const stage_flags = VkShaderStageFlags{
         VK_SHADER_STAGE_VERTEX_BIT
       | VK_SHADER_STAGE_FRAGMENT_BIT
     };
 
-    pass.bindDescriptorSet(
-      descriptor_set_,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Internal
-    );
+    // ----------------------------
+    if (descriptor_set_ != VK_NULL_HANDLE) {
+      pass.bindDescriptorSet(
+        descriptor_set_,
+        pipeline_layout_,
+        stage_flags,
+        material_shader_interop::kDescriptorSet_Internal
+      );
+    }
+    // ----------------------------
+
+    auto const& registry = context_ptr_->descriptor_registry();
 
     registry.bindDescriptorSet(
       DescriptorRegistry::Type::Frame,
@@ -104,7 +108,7 @@ void MaterialFx::createPipelineLayout() {
   auto const& registry = context_ptr_->descriptor_registry();
   pipeline_layout_ = context_ptr_->createPipelineLayout({
     .setLayouts = {
-      descriptor_set_layout_,
+      descriptor_set_layout_, // (might be empty)
       registry.descriptor(DescriptorRegistry::Type::Frame).layout,
       registry.descriptor(DescriptorRegistry::Type::Scene).layout,
     },

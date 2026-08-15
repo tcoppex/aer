@@ -5,10 +5,6 @@
 #include <material/push_constant_generic.h>
 
 // ---------------------------------------------------------------------------
-
-const uint kDescriptorSet_Internal_MaterialSBO     = 0;
-
-// ---------------------------------------------------------------------------
 // Fx Materials SSBOs struct.
 
 struct Material {

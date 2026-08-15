@@ -10,11 +10,6 @@
 
 layout(constant_id = 0) const bool constant_kUseAlphaCutoff = false;
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSet_Internal_MaterialSBO)
-buffer MaterialSSBO_ {
-  Material materials[];
-};
-
 // -- Frame --
 
 layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
@@ -40,6 +35,13 @@ uniform sampler2D uSpecularBRDF;
 // buffer LightSSBO_ {
 //   LightInfo_t lights[];
 // };
+
+// -- Materials (Direct Buffer Access) --
+
+layout(buffer_reference, scalar)
+readonly buffer MaterialBufferRef {
+  Material materials[];
+};
 
 // -- Instance PushConstant --
 
@@ -176,7 +178,7 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
 // ----------------------------------------------------------------------------
 
 void main() {
-  Material mat = GetMaterial(materials);
+  Material mat = GetMaterial();
 
   /* Diffuse. */
   const vec4 mainColor = sample_DiffuseColor(mat)

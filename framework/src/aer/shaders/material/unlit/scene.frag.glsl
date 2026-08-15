@@ -10,11 +10,6 @@ layout(constant_id = 0) const bool constant_kUseAlphaCutoff = false;
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSet_Internal_MaterialSBO)
-buffer MaterialSSBO_ {
-  Material materials[];
-};
-
 layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
 uniform FrameUBO_ {
   FrameData uFrame;
@@ -23,7 +18,13 @@ uniform FrameUBO_ {
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
 uniform sampler2D[] uTextureChannels;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(buffer_reference, scalar)
+readonly buffer MaterialBufferRef {
+  Material materials[];
+};
+
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
@@ -43,7 +44,7 @@ vec4 sample_DiffuseColor(in Material mat) {
 // ----------------------------------------------------------------------------
 
 void main() {
-  Material mat = GetMaterial(materials);
+  Material mat = GetMaterial();
 
   const vec4 mainColor = sample_DiffuseColor(mat)
                        * mat.diffuse_factor

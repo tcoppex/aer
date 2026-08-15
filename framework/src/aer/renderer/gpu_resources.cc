@@ -209,11 +209,12 @@ void GPUResources::render(RenderPassEncoder const& pass) {
     return;
   }
 
-  // Render each Fx.
   uint32_t instance_index = 0u;
   for (auto& lookup : lookups_) {
     for (auto& [hashpair, submeshes] : lookup) {
       auto [fx, states] = hashpair;
+
+      auto const material_buffer_address = fx->material_buffer_address();
 
       // Bind pipeline & descriptor set.
       fx->prepareDrawState(pass, states);
@@ -227,6 +228,7 @@ void GPUResources::render(RenderPassEncoder const& pass) {
         // Submesh's pushConstants.
         fx->set_push_constant_generic({
           .transform_buffer_address = transforms_ssbo_.address,
+          .material_buffer_address = material_buffer_address,
           // -----
           .transform_index = mesh->transform_index,
           .material_index = matref.material_index,

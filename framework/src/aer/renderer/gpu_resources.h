@@ -87,8 +87,8 @@ struct GPUResources : scene::HostResources {
  protected:
   std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
-  backend::Buffer frame_ubo_{};           // Dynamic UBO in Descriptor Set
-  backend::Buffer transforms_ssbo_{};     // SSBO via Direct Buffer Access
+  backend::Buffer frame_ubo_{};           // Dynamic UBO via Descriptor Set
+  backend::Buffer transforms_ssbo_{};     // SSBO via Buffer Device Address
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};

@@ -30,17 +30,16 @@ struct Vertex {
 
 // set index as used for MaterialFx and bindings as defined in descriptor_registry.
 
-const uint kDescriptorSet_Internal = 0;
+const uint kDescriptorSet_Internal = 0; // (might be unused)
 
 const uint kDescriptorSet_Frame = 1;
 const uint kDescriptorSet_Frame_FrameUBO            = 0;
 
 const uint kDescriptorSet_Scene = 2;
-const uint kDescriptorSet_Scene_TransformSBO        = 0;
-const uint kDescriptorSet_Scene_IBL_Prefiltered     = 1;
-const uint kDescriptorSet_Scene_IBL_Irradiance      = 2;
-const uint kDescriptorSet_Scene_IBL_SpecularBRDF    = 3;
-const uint kDescriptorSet_Scene_Textures            = 4; // (must be last to use variable count)
+const uint kDescriptorSet_Scene_IBL_Prefiltered     = 0;
+const uint kDescriptorSet_Scene_IBL_Irradiance      = 1;
+const uint kDescriptorSet_Scene_IBL_SpecularBRDF    = 2;
+const uint kDescriptorSet_Scene_Textures            = 3; // (must be last to use variable count)
 
 const uint kDescriptorSet_RayTracing = 3;
 const uint kDescriptorSet_RayTracing_TLAS           = 0;

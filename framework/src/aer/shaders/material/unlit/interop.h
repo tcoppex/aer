@@ -6,9 +6,6 @@
 
 // ---------------------------------------------------------------------------
 
-const uint kDescriptorSet_Internal_MaterialSBO     = 0;
-const uint kDescriptorSetBinding_TransformSBO      = 1;
-
 struct Material {
   vec4 diffuse_factor;
   uint diffuse_texture_id;
