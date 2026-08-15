@@ -88,7 +88,7 @@ class Camera {
     linear_params_set_ = true;
   }
 
-  void makePerspective(float fov, ivec2 const& resolution, float znear, float zfar) {
+  void makePerspective(float fov, uvec2 const& resolution, float znear, float zfar) {
     makePerspective(fov, resolution.x, resolution.y, znear, zfar);
   }
 
@@ -99,7 +99,7 @@ class Camera {
     );
   }
 
-  void makeDefault(ivec2 const& resolution) {
+  void makeDefault(uvec2 const& resolution) {
     makePerspective(kDefaultFOV, resolution, kDefaultNear, kDefaultFar);
   }
 
