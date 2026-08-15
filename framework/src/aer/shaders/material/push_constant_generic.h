@@ -36,5 +36,4 @@ struct PushConstant_Generic {
 
 // ----------------------------------------------------------------------------
 
-
-#endif //
+#endif // SHADERS_SCENE_PUSH_CONSTANT_GENERIC_H_

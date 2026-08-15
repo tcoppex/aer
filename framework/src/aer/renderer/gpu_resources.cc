@@ -364,12 +364,12 @@ void GPUResources::uploadBuffers() {
   // ---------------------------------------
   if (rt_scene_) {
     extra_flags = extra_flags
-                // Position & Indices are needed for the BLAS.
-                | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-                // Attributes & Indices are fetched by the closeshit shaders.
-                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
-                ;
+      // Position & Indices are needed for the BLAS.
+      | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+      // Attributes & Indices are fetched by the closeshit shaders.
+      | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
+      ;
   }
   // ---------------------------------------
 
@@ -399,8 +399,8 @@ void GPUResources::uploadBuffers() {
   {
     // -----------------------------
     // [NOTEs]
-    // ideally we might want to separate static vs dynamic meshes
-    // also, when update frequently, this would require max_frames_in_flights buffer
+    // - we might want to separate static vs dynamic transforms
+    // - when update frequently, this would require max_frames_in_flights buffering
     transforms_ssbo_ = context_.createBuffer(
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
