@@ -287,7 +287,8 @@ class Context {
   ) const;
 
   template<SpanConvertible T>
-  [[nodiscard]] backend::Buffer transientCreateBuffer(
+  [[nodiscard]]
+  backend::Buffer transientCreateBuffer(
     T const& host_data,
     VkBufferUsageFlags2KHR usage,
     size_t device_buffer_offset = 0u,
@@ -341,7 +342,6 @@ class Context {
 
   // --- Descriptor set ---
 
-  // [[deprecated]]
   void updateDescriptorSet(
     VkDescriptorSet const& descriptor_set,
     std::vector<DescriptorSetWriteEntry> const& entries
