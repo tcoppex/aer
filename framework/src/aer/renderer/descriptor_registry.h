@@ -108,7 +108,7 @@ class DescriptorRegistry {
   // [[deprecated]]
   void initDescriptorPool(uint32_t const max_sets);
 
-  void initDescriptorSets();
+  void setupMainDescriptors();
 
   [[nodiscard]]
   Descriptor& _intializeMainDescriptor(

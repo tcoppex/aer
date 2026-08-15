@@ -16,7 +16,7 @@ void DescriptorRegistry::init(
   context_ptr_ = &context;
   device_ = context.device();
   initDescriptorPool(max_sets);
-  initDescriptorSets();
+  setupMainDescriptors();
 }
 
 // ----------------------------------------------------------------------------
@@ -340,7 +340,7 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorRegistry::initDescriptorSets() {
+void DescriptorRegistry::setupMainDescriptors() {
   auto const extra_stage_flags = VkShaderStageFlags{0
     | VK_SHADER_STAGE_RAYGEN_BIT_KHR
     | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
