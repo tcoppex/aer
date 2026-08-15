@@ -593,12 +593,12 @@ void Context::selectGPU() {
 
     /* Search for a discrete GPU. */
     uint32_t selected_index{0u};
-    VkPhysicalDeviceProperties2 props{
+    auto device_properties = VkPhysicalDeviceProperties2{
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
     };
     for (uint32_t i = 0u; i < gpu_count; ++i) {
-      vkGetPhysicalDeviceProperties2(gpus[i], &props);
-      if (VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU == props.properties.deviceType) {
+      vkGetPhysicalDeviceProperties2(gpus[i], &device_properties);
+      if (VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU == device_properties.properties.deviceType) {
         selected_index = i;
         break;
       }
@@ -607,6 +607,7 @@ void Context::selectGPU() {
   }
 
   /* Retrieve differents GPU properties. */
+
   vkGetPhysicalDeviceProperties2(gpu_, &properties_.gpu2);
   vkGetPhysicalDeviceMemoryProperties2(gpu_, &properties_.memory2);
 
@@ -621,17 +622,18 @@ void Context::selectGPU() {
   );
 
 #ifndef NDEBUG
+  auto& gpu_properties = properties_.gpu2.properties;
   LOGD("Selected Device:");
-  LOGD(" - Device Name    : {}", properties_.gpu2.properties.deviceName);
+  LOGD(" - Device Name    : {}", gpu_properties.deviceName);
   LOGD(" - Driver version : {}.{}.{}",
-    VK_API_VERSION_MAJOR(properties_.gpu2.properties.driverVersion),
-    VK_API_VERSION_MINOR(properties_.gpu2.properties.driverVersion),
-    VK_API_VERSION_PATCH(properties_.gpu2.properties.driverVersion)
+    VK_API_VERSION_MAJOR(gpu_properties.driverVersion),
+    VK_API_VERSION_MINOR(gpu_properties.driverVersion),
+    VK_API_VERSION_PATCH(gpu_properties.driverVersion)
   );
   LOGD(" - API version    : {}.{}.{}",
-    VK_API_VERSION_MAJOR(properties_.gpu2.properties.apiVersion),
-    VK_API_VERSION_MINOR(properties_.gpu2.properties.apiVersion),
-    VK_API_VERSION_PATCH(properties_.gpu2.properties.apiVersion)
+    VK_API_VERSION_MAJOR(gpu_properties.apiVersion),
+    VK_API_VERSION_MINOR(gpu_properties.apiVersion),
+    VK_API_VERSION_PATCH(gpu_properties.apiVersion)
   );
   LOGD(" ");
 #endif
