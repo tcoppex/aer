@@ -9,7 +9,7 @@ namespace scene {
 
 void HostResources::setup() {
   // -----------------
-  scene.setup();
+  scene_tree.setup();
   // -----------------
 
   // Create default 1x1 textures for optionnal bindings.
@@ -164,9 +164,9 @@ bool HostResources::loadGLTF(std::string_view filename) {
 
       auto taskSceneEntities = run_task_scene([
         data,
-        &_scene = this->scene
+        &_scene_tree = this->scene_tree
       ] {
-        return ExtractSceneHierarchy(data, _scene);
+        return ExtractSceneHierarchy(data, _scene_tree);
       });
 
       auto taskSamplers = run_task_sampler([
@@ -235,7 +235,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
         &taskMaterials,
         data,
         &skeletons_indices,
-        &_scene = this->scene, //
+        &_scene_tree = this->scene_tree, //
         &_material_refs = this->material_refs,
         &_skeletons = this->skeletons,
         &_meshes = this->meshes,
@@ -245,7 +245,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
         auto materials_indices = taskMaterials.get();
         ExtractMeshes(
           data,
-          _scene,
+          _scene_tree,
           entities_lut,
           materials_indices,
           _material_refs,
@@ -265,7 +265,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
     {
       /* --- Serialized version --- */
 
-      auto entities_lut       = ExtractSceneHierarchy(data, scene);
+      auto entities_lut       = ExtractSceneHierarchy(data, scene_tree);
       auto samplers_lut       = ExtractSamplers(data, samplers);
       auto skeletons_indices  = ExtractSkeletons(data, skeletons);
       auto images_indices     = ExtractImages(data, host_images);
@@ -281,7 +281,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
       );
       ExtractMeshes(
         data,
-        scene,
+        scene_tree,
         entities_lut,
         materials_indices,
         material_refs,
@@ -343,10 +343,10 @@ void HostResources::updateTransformsBuffer() {
   transforms.resize(meshes.size(), linalg::identity); //
 
   /* Update the entities hierarchy. */
-  scene.update();
+  scene_tree.update();
 
   // [wip] Copy new matrices to the local matrices buffer.
-  scene.registry
+  scene_tree.registry
     .view<scene::component::GlobalTransform, scene::component::Mesh>()
     .each([&_transforms = this->transforms](auto &global, auto &mesh) {
       _transforms[mesh.meshIndex] = global.worldMatrix;

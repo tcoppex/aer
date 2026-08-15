@@ -54,7 +54,10 @@ struct HostResources {
 
   [[nodiscard]]
   mat4 const& root_matrix() const {
-    return scene.registry.get<component::GlobalTransform>(scene.root).worldMatrix;
+    return scene_tree
+      .registry
+      .get<component::GlobalTransform>(scene_tree.root)
+      .worldMatrix;
   }
 
  protected:
@@ -66,9 +69,7 @@ struct HostResources {
   void updateTransformsBuffer();
 
  public:
-  //-----------
-  scene::Hierarchy scene{};   // [wip]
-  //-----------
+  scene::Hierarchy scene_tree{};   // [wip]
 
   /* --- Host Data --- */
 
