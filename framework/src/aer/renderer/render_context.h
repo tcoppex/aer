@@ -158,7 +158,8 @@ class RenderContext : public Context {
   [[nodiscard]]
   VkDescriptorSetLayout createDescriptorSetLayout(
     DescriptorSetLayoutParamsBuffer const& params,
-    VkDescriptorSetLayoutCreateFlags flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
+    VkDescriptorSetLayoutCreateFlags const flags =
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
   ) const;
 
   void destroyDescriptorSetLayout(VkDescriptorSetLayout& layout) const;

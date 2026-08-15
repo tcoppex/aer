@@ -755,7 +755,7 @@ void RenderContext::destroyPipeline(Pipeline const& pipeline) const {
 
 VkDescriptorSetLayout RenderContext::createDescriptorSetLayout(
   DescriptorSetLayoutParamsBuffer const& params,
-  VkDescriptorSetLayoutCreateFlags flags
+  VkDescriptorSetLayoutCreateFlags const flags
 ) const {
   return descriptor_set_registry_.createLayout(params, flags);
 }

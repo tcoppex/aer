@@ -56,7 +56,7 @@ backend::Buffer Allocator::createBuffer(
   VkBufferUsageFlags2CreateInfoKHR const usage_flag2_info{
     .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
     .usage = usage
-           | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR
+           | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR //
            ,
   };
 

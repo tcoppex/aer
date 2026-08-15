@@ -369,8 +369,8 @@ void GPUResources::uploadBuffers() {
                 // Position & Indices are needed for the BLAS.
                 | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
                 // Attributes & Indices are fetched by the closeshit shaders.
-                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
                 ;
   }
   // ---------------------------------------
@@ -404,6 +404,7 @@ void GPUResources::uploadBuffers() {
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
       ,
       VMA_MEMORY_USAGE_GPU_ONLY
     );
