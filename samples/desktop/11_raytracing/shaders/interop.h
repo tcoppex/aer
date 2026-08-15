@@ -26,7 +26,7 @@ struct PushConstant {
   float jitter_factor;
   float light_intensity;
   float sky_intensity;
-  uint _pad0[2];
+  uint _pad0[3];
 };
 
 // -----------------------------------------------------------------------------
