@@ -226,8 +226,8 @@ void GPUResources::render(RenderPassEncoder const& pass) {
 
         // Submesh's pushConstants.
         fx->set_push_constant_generic({
-          // .transform_buffer_address = 0u,
-          // .material_buffer_address = 0u,
+          .transform_buffer_address = transforms_ssbo_.address,
+          // -----
           .transform_index = mesh->transform_index,
           .material_index = matref.material_index,
           .instance_index = instance_index++,
@@ -259,16 +259,14 @@ void GPUResources::setupRayTracingFx(RayTracingFx* fx) {
 void GPUResources::updateGlobalDescriptorSetBindings() const {
   auto const& DSR = context_.descriptor_set_registry();
 
+  // [[deprecated]]
   if (frame_ubo_.valid()) {
     DSR.updateFrameUBO(frame_ubo_);
   }
 
+  // [[deprecated]]
   if (total_image_size > 0) {
     DSR.updateSceneTextures(buildDescriptorImageInfos());
-  }
-
-  if (transforms_ssbo_.valid()) {
-    DSR.updateSceneTransforms(transforms_ssbo_);
   }
 
   // ---------------------------------------
@@ -399,15 +397,19 @@ void GPUResources::uploadBuffers() {
   // Meshes transforms buffer.
   size_t const transforms_buffer_size{ transforms.size() * sizeof(transforms[0]) };
   {
-    // We assume most meshes would be static, so with unfrequent updates.
+    // -----------------------------
+    // [NOTEs]
+    // ideally we might want to separate static vs dynamic meshes
+    // also, when update frequently, this would require max_frames_in_flights buffer
     transforms_ssbo_ = context_.createBuffer(
       transforms_buffer_size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-      | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT //
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       ,
-      VMA_MEMORY_USAGE_GPU_ONLY
+      VMA_MEMORY_USAGE_CPU_TO_GPU
     );
+    // -----------------------------
   }
 
   /* Copy host mesh data to the staging buffer. */
@@ -415,12 +417,13 @@ void GPUResources::uploadBuffers() {
     vertex_buffer_size + index_buffer_size + transforms_buffer_size
   );
   {
+    std::byte* device_data{};
     size_t vertex_offset{0lu};
     size_t index_offset{vertex_buffer_size};
 
-    // Transfer the attributes & indices by ranges.
-    std::byte* device_data{};
     context_.mapMemory(staging_buffer, (void**)&device_data);
+
+    // Transfer the attributes & indices by ranges.
     for (auto const& mesh : meshes) {
       auto const& vertices = mesh->vertices();
       memcpy(device_data + vertex_offset, vertices.data(), vertices.size());
@@ -433,13 +436,15 @@ void GPUResources::uploadBuffers() {
       }
     }
 
-    // (discarded as it will be transfered later on)
     // Transfer the transforms buffer in one go.
-    // memcpy(
-    //   device_data + vertex_buffer_size + index_buffer_size,
-    //   transforms.data(),
-    //   transforms_buffer_size
-    // );
+    // (discarded as it will be transfered later on)
+    if constexpr (false) {
+      memcpy(
+        device_data + vertex_buffer_size + index_buffer_size,
+        transforms.data(),
+        transforms_buffer_size
+      );
+    }
 
     context_.unmapMemory(staging_buffer);
   }
@@ -497,7 +502,11 @@ void GPUResources::uploadBuffers() {
 
 void GPUResources::uploadTransforms() {
   LOG_CHECK(transforms.size() == meshes.size()); //
+#if 1
+  context_.writeBuffer(transforms_ssbo_, transforms); // require mapping ability
+#else
   context_.transientUploadBuffer(transforms, transforms_ssbo_);
+#endif
 }
 
 // ----------------------------------------------------------------------------

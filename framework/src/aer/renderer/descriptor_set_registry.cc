@@ -187,21 +187,6 @@ void DescriptorSetRegistry::updateFrameUBO(backend::Buffer const& buffer) const 
 
 // ----------------------------------------------------------------------------
 
-void DescriptorSetRegistry::updateSceneTransforms(backend::Buffer const& buffer) const {
-  context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorSetRegistry::Type::Scene].set,
-    {
-      {
-        .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
-        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .buffers = { { buffer.buffer } },
-      }
-    }
-  );
-}
-
-// ----------------------------------------------------------------------------
-
 void DescriptorSetRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
@@ -386,18 +371,6 @@ void DescriptorSetRegistry::initDescriptorSets() {
   createMainDescriptorSet(
     Type::Scene,
     {
-      // [TODO: remove transform SBO to make it bindless]
-      {
-        .binding = material_shader_interop::kDescriptorSet_Scene_TransformSBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS
-                    | VK_SHADER_STAGE_COMPUTE_BIT
-                    ,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-                      | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
-                      | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
-      },
       {
         .binding = material_shader_interop::kDescriptorSet_Scene_IBL_Prefiltered,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,

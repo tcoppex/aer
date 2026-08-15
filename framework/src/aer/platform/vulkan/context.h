@@ -142,24 +142,21 @@ class Context {
     return allocator_.writeBuffer(dst_buffer, host_data, bytesize);
   }
 
+  template<SpanConvertible T>
+  size_t writeBuffer(
+    backend::Buffer const& dst_buffer,
+    T const& host_data
+  ) const {
+    auto const host_span = std::span{ host_data };
+    return writeBuffer(dst_buffer, host_span.data(), host_span.size_bytes());
+  }
+
   template<typename T> requires (!SpanConvertible<T>)
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     T const& host_data
   ) const {
-    return writeBuffer(dst_buffer, &host_data, sizeof(host_data));
-  }
-
-  template<typename T> requires (SpanConvertible<T>)
-  size_t writeBuffer(
-    backend::Buffer const& dst_buffer,
-    T const& host_data
-  ) {
-    auto const host_span{ std::span(host_data) };
-    auto const bytesize{
-      sizeof(typename decltype(host_span)::element_type) * host_span.size()
-    };
-    return writeBuffer(dst_buffer, host_span.data(), bytesize);
+    return writeBuffer(dst_buffer, &host_data, sizeof(T));
   }
 
   [[nodiscard]]
@@ -344,6 +341,7 @@ class Context {
 
   // --- Descriptor set ---
 
+  // [[deprecated]]
   void updateDescriptorSet(
     VkDescriptorSet const& descriptor_set,
     std::vector<DescriptorSetWriteEntry> const& entries

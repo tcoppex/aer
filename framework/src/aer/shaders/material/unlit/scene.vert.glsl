@@ -13,9 +13,9 @@ uniform FrameUBO_ {
   FrameData uFrame;
 };
 
-layout(scalar, set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_TransformSBO)
-buffer TransformSBO_ {
-  TransformSBO transforms[];
+layout(buffer_reference, scalar)
+readonly buffer TransformBufferRef {
+  TransformData transforms[];
 };
 
 layout(scalar, push_constant) uniform PushConstant_ {
@@ -99,7 +99,7 @@ void apply_billboard_xz(
 
 void main() {
   const CameraTransform camera = GetFrameCamera(uFrame);
-  const TransformSBO transform = GetTransform(transforms);
+  const TransformData transform = GetTransform();
 
   const mat4 worldMatrix = uFrame.default_world_matrix
                          * transform.worldMatrix

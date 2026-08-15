@@ -53,7 +53,7 @@ backend::Buffer Allocator::createBuffer(
     }
   }
 
-  VkBufferUsageFlags2CreateInfoKHR const usage_flag2_info{
+  auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
     .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
     .usage = usage
            | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR //
@@ -61,20 +61,20 @@ backend::Buffer Allocator::createBuffer(
   };
 
   // Create buffer.
-  VkBufferCreateInfo const buffer_info{
+  auto const buffer_create_info = VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .pNext = &usage_flag2_info,
     .size = size,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
-  VmaAllocationCreateInfo alloc_create_info{
+  auto alloc_create_info = VmaAllocationCreateInfo{
     .flags = flags,
     .usage = memory_usage,
   };
-  VmaAllocationInfo result_alloc_info{};
+  auto result_alloc_info = VmaAllocationInfo{};
   CHECK_VK(vmaCreateBuffer(
     handle_,
-    &buffer_info,
+    &buffer_create_info,
     &alloc_create_info,
     &buffer.buffer,
     &buffer.allocation,

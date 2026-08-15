@@ -75,7 +75,7 @@ struct FrameData {
 // ----------------------------------------------------------------------------
 // -- Storage Buffer(s) --
 
-struct TransformSBO {
+struct TransformData {
   mat4 worldMatrix;
 };
 

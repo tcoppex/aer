@@ -11,18 +11,10 @@ uniform FrameUBO_ {
   FrameData uFrame;
 };
 
-// -----------------------------
-layout(scalar, set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_TransformSBO)
-buffer TransformSBO_ {
-  TransformSBO transforms[];
-};
-
-// [Work In Progress]
 layout(buffer_reference, scalar)
-readonly buffer TransformData_WIP {
-  TransformSBO transforms_bis[];
+readonly buffer TransformBufferRef {
+  TransformData transforms[];
 };
-// -----------------------------
 
 layout(scalar, push_constant)
 uniform PushConstant_ {
@@ -44,7 +36,8 @@ layout(location = 3) out vec2 vTexcoord;
 // ----------------------------------------------------------------------------
 
 void main() {
-  TransformSBO transform = GetTransform(transforms);
+  TransformData transform = GetTransform();
+
   mat4 worldMatrix = uFrame.default_world_matrix
                    * transform.worldMatrix
                    ;

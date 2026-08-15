@@ -87,8 +87,8 @@ struct GPUResources : scene::HostResources {
  protected:
   std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
-  backend::Buffer frame_ubo_{};
-  backend::Buffer transforms_ssbo_{};
+  backend::Buffer frame_ubo_{};           // Dynamic UBO in Descriptor Set
+  backend::Buffer transforms_ssbo_{};     // SSBO via Direct Buffer Access
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};
@@ -104,8 +104,9 @@ struct GPUResources : scene::HostResources {
   RenderContext const& context_;
 
   VkDeviceSize frame_data_stride_{};
+
   uint32_t max_frames_in_flight_{}; //
-  uint32_t frame_index_{};
+  uint32_t frame_index_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

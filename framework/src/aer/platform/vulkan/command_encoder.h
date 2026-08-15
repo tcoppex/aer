@@ -85,7 +85,7 @@ class GenericCommandEncoder {
   ) const {
     if (vkCmdPushConstants2)
     {
-      VkPushConstantsInfoKHR const push_info{
+      auto const push_info = VkPushConstantsInfoKHR{
         .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR,
         .layout = pipeline_layout,
         .stageFlags = stage_flags,

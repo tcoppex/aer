@@ -92,12 +92,13 @@ class DescriptorSetRegistry {
     VkShaderStageFlags const stage_flags
   ) const;
 
+
   /* [deprecated?] Methods to update shared internal descriptor sets. */
-  void updateFrameUBO(backend::Buffer const& buffer) const;
-  void updateSceneTransforms(backend::Buffer const& buffer) const;
+  void updateSceneIBL(Skybox const& skybox) const;
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
   void updateSceneTexture(uint32_t index, VkDescriptorImageInfo image_info) const;
-  void updateSceneIBL(Skybox const& skybox) const;
+
+  void updateFrameUBO(backend::Buffer const& buffer) const;
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
   // -----------------------------------------------
 
