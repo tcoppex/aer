@@ -66,7 +66,7 @@ struct HostResources {
 
   void resetInternalDescriptors();
 
-  void updateTransformsBuffer();
+  void updateSceneTreeTransforms();
 
  public:
   scene::Hierarchy scene_tree{};   //

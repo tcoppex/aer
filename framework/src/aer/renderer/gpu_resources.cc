@@ -142,7 +142,7 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     /* Build the Raytracing acceleration structures. */
     if (bUseRayTracing) {
       // (The global matrices buffer should have been initialized to build the BLAS).
-      // updateTransformsBuffer();
+      // updateSceneTreeTransforms();
 
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
       ray_tracing_fx_->set_instance_buffer_address(rt_scene_->instances_data_buffer().address);
@@ -194,7 +194,7 @@ void GPUResources::update(Camera const& camera, float elapsed_time) {
   // [CPU bound]
 
   /* Recalculate the whole hierarchy global transform buffer. */
-  updateTransformsBuffer(); // (to check / rename)
+  updateSceneTreeTransforms();
 
   /* Prepare the scenes for rasterization (sort meshes). */
   if (!ray_tracing_fx_ || !ray_tracing_fx_->is_enable()) {

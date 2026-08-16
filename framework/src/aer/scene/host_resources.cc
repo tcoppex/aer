@@ -295,7 +295,7 @@ bool HostResources::loadGLTF(std::string_view filename) {
     }
 
     /* Recalculate the scene global matrices buffer. */
-    updateTransformsBuffer();
+    updateSceneTreeTransforms();
 
     /* Wait for the host images to finish loading before using them. */
     for (auto & host_image : host_images) {
@@ -338,7 +338,7 @@ void HostResources::resetInternalDescriptors() {
 
 // ----------------------------------------------------------------------------
 
-void HostResources::updateTransformsBuffer() {
+void HostResources::updateSceneTreeTransforms() {
   /* Resize the transform buffer according to mesh count. */
   transforms.resize(meshes.size(), linalg::identity); //
 
