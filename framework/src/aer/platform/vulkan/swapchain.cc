@@ -188,6 +188,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
 #endif
   }
 
+#if 0
   /* When using timeline semaphore, we need to transition images layout to present. */
   context.transitionImages(
     images_,
@@ -203,6 +204,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
       },
     }
   );
+#endif
 
   need_rebuild_ = false;
 
