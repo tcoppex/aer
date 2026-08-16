@@ -22,7 +22,7 @@ class Context {
     kCount,
   };
 
-  struct VulkanContextFeature {
+  struct VulkanContextFeatures {
     VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
@@ -92,8 +92,8 @@ class Context {
   }
 
   [[nodiscard]]
-  VulkanContextFeature const& get_feature() const {
-    return feature_;
+  VulkanContextFeatures const& get_features() const {
+    return features_;
   }
 
   [[nodiscard]]
@@ -406,7 +406,7 @@ class Context {
       return false;
     }
     feature = { .sType = sType };
-    vk_utils::PushNextVKStruct(&feature_.base, &feature);
+    vk_utils::PushNextVKStruct(&features_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
         dependencies.cbegin(),
@@ -449,7 +449,7 @@ class Context {
     VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
   };
 
-  VulkanContextFeature feature_{};
+  VulkanContextFeatures features_{};
 
   VkInstance instance_{};
   VkPhysicalDevice gpu_{};
