@@ -48,7 +48,7 @@ private:
     renderer_.set_clear_color(vec4(0.75f, 0.15f, 0.30f, 1.0f));
 
     vertex_buffer_ = context_.transientCreateBuffer(
-      kVertices, VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+      kVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
     );
 
     auto const shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {

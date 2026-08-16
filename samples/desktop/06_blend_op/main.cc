@@ -65,7 +65,7 @@ class SampleApp final : public Application {
 
       uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       );
 
       /* We use storage buffer bit as we will access these attributes procedurally,

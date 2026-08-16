@@ -17,8 +17,8 @@ class DepthMinMax final : public ComputeFx {
     // (malformed, should use internal method to update descriptor..)
     buffers_.push_back(context_ptr_->createBuffer(
       2u * sizeof(float),
-        VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
-      | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
     ));
 
     return true;

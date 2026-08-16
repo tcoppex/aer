@@ -34,7 +34,7 @@ class SceneFx final : public RenderTargetFx {
 
     uniform_buffer_ = context_ptr_->createBuffer(
       sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     );
 

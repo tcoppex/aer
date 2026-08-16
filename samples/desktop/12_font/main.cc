@@ -57,7 +57,7 @@ class SampleApp final : public Application {
     {
       uniform_buffer_ = context_.createBuffer(
         sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU
       );
     }
@@ -170,13 +170,13 @@ class SampleApp final : public Application {
 
       vertex_buffer_ = context_.transientCreateBuffer(
         mesh.vertices(),
-        VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
 
       if (mesh.index_count() > 0) {
         index_buffer_ = context_.transientCreateBuffer(
           mesh.indices(),
-          VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         );
       }
     } else {

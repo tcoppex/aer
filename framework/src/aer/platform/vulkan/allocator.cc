@@ -104,7 +104,7 @@ backend::Buffer Allocator::createStagingBuffer(
   // Create buffer.
   backend::Buffer staging_buffer{createBuffer(
     static_cast<VkDeviceSize>(bytesize),
-    VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR,
+    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, //
     VMA_MEMORY_USAGE_CPU_TO_GPU,
     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
   )};

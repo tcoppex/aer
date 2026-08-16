@@ -62,17 +62,17 @@ class SampleApp final : public Application {
 
       uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       );
 
       /* Transfer the cube geometry (vertices attributes & indices) to the device. */
       vertex_buffer_ = cmd.createBufferAndUpload(
         cube_.vertices(),
-        VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
       index_buffer_ = cmd.createBufferAndUpload(
         cube_.indices(),
-        VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
       );
 
       /* Load a texture using the current transient command encoder. */
