@@ -22,6 +22,26 @@ class Context {
     kCount,
   };
 
+  struct VulkanContextFeature {
+    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+
+    // (Core in VK_VERSION_1_4)
+    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{};
+    VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
+    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};                           // (!Quest3)
+
+    // (Non Core)
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};       // (!Quest3)
+    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
+    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
+  };
+
  public:
   Context() = default;
 
@@ -56,11 +76,6 @@ class Context {
     return queues_[target];
   }
 
-  // [[nodiscard]]
-  // backend::GPUProperties const& properties() const noexcept {
-  //   return properties_;
-  // }
-
   [[nodiscard]]
   VkPhysicalDeviceProperties const& gpu_properties() const noexcept {
     return properties_.gpu2.properties;
@@ -74,6 +89,11 @@ class Context {
   [[nodiscard]]
   VkPhysicalDeviceDescriptorBufferPropertiesEXT const& descriptor_buffer_properties() const noexcept {
     return properties_.descriptor_buffer_properties;
+  }
+
+  [[nodiscard]]
+  VulkanContextFeature const& get_feature() const {
+    return feature_;
   }
 
   [[nodiscard]]
@@ -429,25 +449,7 @@ class Context {
     VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
   };
 
-  struct {
-    VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-
-    // (Core in VK_VERSION_1_4)
-    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{};
-    VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
-    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{}; // (not supported by Quest3)
-
-    // (Non Core)
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{}; // (not supported by Quest3)
-    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{}; // (not supported by Quest3)
-    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
-    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
-  } feature_;
+  VulkanContextFeature feature_{};
 
   VkInstance instance_{};
   VkPhysicalDevice gpu_{};
