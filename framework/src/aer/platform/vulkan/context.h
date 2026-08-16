@@ -34,12 +34,12 @@ class Context {
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};                           // (!Quest3)
 
     // (Non Core)
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};       // (!Quest3)
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
+    // VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
   };
 
  public:

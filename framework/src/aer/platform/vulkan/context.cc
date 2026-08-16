@@ -683,12 +683,6 @@ bool Context::initDevice() {
     // Non core
 
     add_device_feature(
-      VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
-      feature_.descriptor_buffer_features,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
-    );
-
-    add_device_feature(
       VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
       feature_.extended_dynamic_state3,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
@@ -711,6 +705,12 @@ bool Context::initDevice() {
       feature_.acceleration_structure,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
     );
+
+    // add_device_feature(
+    //   VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+    //   feature_.descriptor_buffer_features,
+    //   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
+    // );
 
 #if !defined(ANDROID)
     add_device_feature(

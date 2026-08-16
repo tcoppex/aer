@@ -114,37 +114,37 @@ VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-backend::Buffer DescriptorRegistry::allocateDescriptorBuffer(
-  VkDescriptorSetLayout const layout,
-  VkDeviceSize *pLayoutSize,
-  VkDeviceSize *pOffset,
-  uint32_t num_elems,
-  VkBufferUsageFlags2KHR usage_flags,
-  std::string const& name
-) const {
-  LOG_CHECK(vkGetDescriptorSetLayoutSizeEXT);
-  vkGetDescriptorSetLayoutSizeEXT(device_, layout, pLayoutSize);
+// backend::Buffer DescriptorRegistry::allocateDescriptorBuffer(
+//   VkDescriptorSetLayout const layout,
+//   VkDeviceSize *pLayoutSize,
+//   VkDeviceSize *pOffset,
+//   uint32_t num_elems,
+//   VkBufferUsageFlags2KHR usage_flags,
+//   std::string const& name
+// ) const {
+//   LOG_CHECK(vkGetDescriptorSetLayoutSizeEXT);
+//   vkGetDescriptorSetLayoutSizeEXT(device_, layout, pLayoutSize);
 
-  auto const desc_buffer_props = context_ptr_->descriptor_buffer_properties();
-  *pLayoutSize = utils::AlignTo(*pLayoutSize, desc_buffer_props.descriptorBufferOffsetAlignment);
+//   auto const desc_buffer_props = context_ptr_->descriptor_buffer_properties();
+//   *pLayoutSize = utils::AlignTo(*pLayoutSize, desc_buffer_props.descriptorBufferOffsetAlignment);
 
-  LOG_CHECK(vkGetDescriptorSetLayoutBindingOffsetEXT);
-  vkGetDescriptorSetLayoutBindingOffsetEXT(device_, layout, 0u, pOffset);
+//   LOG_CHECK(vkGetDescriptorSetLayoutBindingOffsetEXT);
+//   vkGetDescriptorSetLayoutBindingOffsetEXT(device_, layout, 0u, pOffset);
 
-  auto buffer = context_ptr_->createBuffer(
-    *pLayoutSize * num_elems,
-      VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
-    | usage_flags
-    ,
-    VMA_MEMORY_USAGE_CPU_TO_GPU
-  );
+//   auto buffer = context_ptr_->createBuffer(
+//     *pLayoutSize * num_elems,
+//       VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
+//     | usage_flags
+//     ,
+//     VMA_MEMORY_USAGE_CPU_TO_GPU
+//   );
 
-  if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorRegistry::DescriptorSet::" + name);
-  }
+//   if (!name.empty()) {
+//     vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorRegistry::DescriptorSet::" + name);
+//   }
 
-  return buffer;
-}
+//   return buffer;
+// }
 
 // ----------------------------------------------------------------------------
 
@@ -371,8 +371,8 @@ DescriptorRegistry::Descriptor& DescriptorRegistry::_intializeMainDescriptor(
     .layout = createLayout(layout_params, layout_flags, name),
     .set = {},
     .dynamicOffsets = {},
-    .layoutSize = 0u,
-    .offset = 0u,
+    // .layoutSize = 0u,
+    // .offset = 0u,
   };
 
   switch (type) {
@@ -410,26 +410,26 @@ void DescriptorRegistry::createMainDescriptorSet(
 
 // ----------------------------------------------------------------------------
 
-void DescriptorRegistry::createMainDescriptorBuffer(
-  Type const type,
-  DescriptorSetLayoutParamsBuffer const& layout_params,
-  VkDescriptorSetLayoutCreateFlags layout_flags,
-  uint32_t num_elems,
-  VkBufferUsageFlags2KHR usage_flags,
-  std::string const& name
-) {
-  layout_flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+// void DescriptorRegistry::createMainDescriptorBuffer(
+//   Type const type,
+//   DescriptorSetLayoutParamsBuffer const& layout_params,
+//   VkDescriptorSetLayoutCreateFlags layout_flags,
+//   uint32_t num_elems,
+//   VkBufferUsageFlags2KHR usage_flags,
+//   std::string const& name
+// ) {
+//   layout_flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
 
-  auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+//   auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
 
-  descriptor.buffer = allocateDescriptorBuffer(
-    descriptor.layout,
-    &descriptor.layoutSize,
-    &descriptor.offset,
-    num_elems,
-    usage_flags, // eg. VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
-    name
-  );
-};
+//   descriptor.buffer = allocateDescriptorBuffer(
+//     descriptor.layout,
+//     &descriptor.layoutSize,
+//     &descriptor.offset,
+//     num_elems,
+//     usage_flags, // eg. VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
+//     name
+//   );
+// };
 
 /* -------------------------------------------------------------------------- */

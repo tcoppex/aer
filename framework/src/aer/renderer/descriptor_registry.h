@@ -35,10 +35,10 @@ class DescriptorRegistry {
     VkDescriptorSet set{};
     mutable std::vector<uint32_t> dynamicOffsets{};
     // -----
-    // (descriptor buffer resources)
-    VkDeviceSize layoutSize{};
-    VkDeviceSize offset{};
-    backend::Buffer buffer{};
+    // // (descriptor buffer resources)
+    // VkDeviceSize layoutSize{};
+    // VkDeviceSize offset{};
+    // backend::Buffer buffer{};
   };
 
  public:
@@ -71,15 +71,15 @@ class DescriptorRegistry {
     std::string const& name = ""
   ) const;
 
-  [[nodiscard]]
-  backend::Buffer allocateDescriptorBuffer(
-    VkDescriptorSetLayout const layout,
-    VkDeviceSize *pLayoutSize,
-    VkDeviceSize *pOffset,
-    uint32_t num_elems,
-    VkBufferUsageFlags2KHR usage_flags,
-    std::string const& name = ""
-  ) const;
+  // [[nodiscard]]
+  // backend::Buffer allocateDescriptorBuffer(
+  //   VkDescriptorSetLayout const layout,
+  //   VkDeviceSize *pLayoutSize,
+  //   VkDeviceSize *pOffset,
+  //   uint32_t num_elems,
+  //   VkBufferUsageFlags2KHR usage_flags,
+  //   std::string const& name = ""
+  // ) const;
 
   void bindDescriptorSet(
     Type type,
@@ -116,14 +116,14 @@ class DescriptorRegistry {
     std::string const& name
   );
 
-  void createMainDescriptorBuffer(
-    Type const type,
-    DescriptorSetLayoutParamsBuffer const& layout_params,
-    VkDescriptorSetLayoutCreateFlags layout_flags,
-    uint32_t num_elems,
-    VkBufferUsageFlags2KHR usage_flags,
-    std::string const& name
-  );
+  // void createMainDescriptorBuffer(
+  //   Type const type,
+  //   DescriptorSetLayoutParamsBuffer const& layout_params,
+  //   VkDescriptorSetLayoutCreateFlags layout_flags,
+  //   uint32_t num_elems,
+  //   VkBufferUsageFlags2KHR usage_flags,
+  //   std::string const& name
+  // );
 
  private:
   Context const* context_ptr_{};
