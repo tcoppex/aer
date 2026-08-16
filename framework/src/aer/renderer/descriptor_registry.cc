@@ -250,9 +250,6 @@ void DescriptorRegistry::updateSceneIBL(Skybox const& skybox) const {
 void DescriptorRegistry::updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const {
   LOG_CHECK(rt_scene != nullptr);
 
-  auto const& instance_data_buffer = rt_scene->instances_data_buffer();
-  LOG_CHECK(instance_data_buffer.valid());
-
   context_ptr_->updateDescriptorSet(
     descriptors_[DescriptorRegistry::Type::RayTracing].set,
     {
@@ -260,12 +257,7 @@ void DescriptorRegistry::updateRayTracingScene(RayTracingSceneInterface const* r
         .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
         .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         .accelerationStructures = { rt_scene->tlas().handle },
-      },
-      {
-        .binding = material_shader_interop::kDescriptorSet_RayTracing_InstanceSBO,
-        .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .buffers = { { instance_data_buffer.buffer } },
-      },
+      }
     }
   );
 }
@@ -371,15 +363,6 @@ void DescriptorRegistry::setupMainDescriptors() {
         .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
-                    ,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-      },
-      {
-        .binding = material_shader_interop::kDescriptorSet_RayTracing_InstanceSBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
-                    | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
                     ,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },

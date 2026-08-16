@@ -9,16 +9,23 @@
 
 #include <material/interop.h> //
 
+// ----------------------------------------------------------------------------
+
 struct Triangle_t {
   Vertex v0;
   Vertex v1;
   Vertex v2;
 };
 
-Triangle_t unpack_triangle(uint instance_id, uint primitive_id) {
-  ObjBuffers_t obj = ObjBuffers.addr[nonuniformEXT(instance_id)];
-  Vertices vertices = Vertices(obj.vertexAddr);
-  Indices indices   = Indices(obj.indexAddr);
+Triangle_t unpack_triangle(
+  uint64_t vertexAddr,
+  uint64_t indexAddr,
+  uint primitive_id
+) {
+  Vertices vertices = Vertices(vertexAddr);
+  Indices indices   = Indices(indexAddr);
+
+  // ----------
 
   const uint base_index = 3 * primitive_id;
 

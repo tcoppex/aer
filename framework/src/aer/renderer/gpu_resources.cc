@@ -143,7 +143,10 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     if (bUseRayTracing) {
       // (The global matrices buffer should have been initialized to build the BLAS).
       // updateTransformsBuffer();
+
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
+      ray_tracing_fx_->set_instance_buffer_address(rt_scene_->instances_data_buffer().address);
+      ray_tracing_fx_->set_tlas_address(rt_scene_->tlas().address);
     }
   }
 

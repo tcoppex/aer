@@ -40,7 +40,6 @@ const uint kDescriptorSet_Scene_Textures            = 3; // (must be last to use
 
 const uint kDescriptorSet_RayTracing = 2;
 const uint kDescriptorSet_RayTracing_TLAS           = 0;
-const uint kDescriptorSet_RayTracing_InstanceSBO    = 1;
 
 // ----------------------------------------------------------------------------
 // -- Utility structs & constants --

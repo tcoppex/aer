@@ -1,43 +1,14 @@
 #version 460
-#extension GL_EXT_ray_tracing : require
-#extension GL_EXT_buffer_reference2 : require
-
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-// #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
 // -----------------------------------------------------------------------------
 
 #include "../interop.h"
 
-#include <material/interop.h>
-#include <shared/random.glsl>
 #include <shared/maths.glsl>
+#include <shared/random.glsl>
 
 // -----------------------------------------------------------------------------
-
-hitAttributeEXT vec2 hitAttribs;
-
-layout(location = 0) rayPayloadInEXT HitPayload_t payload;
-
-// -----------------------------------------------------------------------------
-
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_MaterialSBO)
-buffer RayTracingMaterialSBO_ {
-  RayTracingMaterial materials[];
-};
-
-layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
-
-layout(push_constant, scalar)
-uniform PushConstant_ {
-  PushConstant pushConstant;
-};
-
-// -----------------------------------------------------------------------------
+// Topology
 
 layout(buffer_reference, scalar)
 buffer Vertices {
@@ -46,38 +17,49 @@ buffer Vertices {
 
 layout(buffer_reference, scalar)
 buffer Indices {
-  uint u32[]; // expect uint32 indices
+  uint u32[];
 };
 
-// -----------------------------------------------------------------------------
-
-struct ObjBuffers_t {
-  uint64_t vertexAddr;
-  uint64_t indexAddr;
+layout(buffer_reference, scalar)
+buffer InstanceDataBufferRef {
+  RTInstanceData instances[];
 };
-
-layout(set = kDescriptorSet_RayTracing, binding = kDescriptorSet_RayTracing_InstanceSBO, scalar)
-buffer _scene_desc {
-  ObjBuffers_t addr[];
-} ObjBuffers;
 
 #include <shared/rt_unpack_geometry.glsl>
 
 // -----------------------------------------------------------------------------
 
+hitAttributeEXT vec2 hitAttribs;
+
+layout(location = 0) rayPayloadInEXT HitPayload_t payload;
+
+layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_MaterialSBO)
+buffer RayTracingMaterialSBO_ {
+  RayTracingMaterial materials[];
+};
+
+layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
+uniform sampler2D uTextureChannels[];
+
+layout(push_constant, scalar)
+uniform PushConstant_ {
+  PushConstant pushConstant;
+};
+
+// -----------------------------------------------------------------------------
+
 void main() {
-  const uint object_id   = uint(gl_InstanceID); //
-  const uint material_id = gl_InstanceCustomIndexEXT;
+  // ----------------------------
+  // TOPOLOGY.
 
-  // ----------------------------------------
+  const uint primitive_id = gl_PrimitiveID;
+  const uint material_id  = gl_InstanceCustomIndexEXT;
 
-  // GEOMETRY.
-
-  Triangle_t tri = unpack_triangle(gl_InstanceID, gl_PrimitiveID);
+  RTInstanceData instance = GetInstanceData();
+  Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   Vertex v = calculate_vertex(tri, hitAttribs);
 
-  // ----------------------------------------
-
+  // ----------------------------
   // MATERIAL.
 
   const uint kInvalidIndexU24 = 0x00FFFFFF;
@@ -117,8 +99,7 @@ void main() {
     }
   }
 
-  // ----------------------------------------
-
+  // ----------------------------
   // SHADING.
 
   if (material_type == kRayTracingMaterialType_Diffuse) {

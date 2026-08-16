@@ -68,6 +68,10 @@ class BasicRayTracingFx : public RayTracingFx {
   }
 
   void execute(CommandEncoder const& cmd) const final {
+    LOG_CHECK(push_constant_.frame_buffer_address != 0);
+    LOG_CHECK(push_constant_.instance_buffer_address != 0);
+    LOG_CHECK(push_constant_.tlas_address != 0);
+
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
       push_constant_.material_buffer_address = material_storage_buffer_.address; //
       RayTracingFx::execute(cmd);
@@ -76,6 +80,14 @@ class BasicRayTracingFx : public RayTracingFx {
 
   void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) final {
     push_constant_.frame_buffer_address = frame_buffer_address;
+  }
+
+  void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) final {
+    push_constant_.instance_buffer_address = instance_buffer_address;
+  }
+
+  void set_tlas_address(VkDeviceAddress const tlas_address) final {
+    push_constant_.tlas_address = tlas_address;
   }
 
  protected:
@@ -206,9 +218,9 @@ class BasicRayTracingFx : public RayTracingFx {
   }
 
   size_t material_buffer_size() const final {
-    return !materials_.empty()
-      ? materials_.size() * sizeof(materials_[0])
-      : 0
+    return materials_.empty()
+      ? size_t(0)
+      : materials_.size() * sizeof(materials_[0])
       ;
   }
 
@@ -232,7 +244,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("11 - shining through");
 
-    renderer_.set_clear_color({ 0.52f, 0.28f, 0.80f, 0.0f });
+    renderer_.set_clear_color({ 0.16f, 0.14f, 0.12f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {
@@ -250,12 +262,9 @@ class SampleApp final : public Application {
       arcball_controller_.set_dolly(3.5f);
     }
 
-    // -------------------------------
-
+    /* Setup the RayTracing effect. */
     ray_tracing_fx_.init(context_);
     ray_tracing_fx_.setup(renderer_.surface_size()); //
-
-    // -------------------------------
 
     /* Load a glTF Scene. */
     std::string gtlf_filename{ASSETS_DIR "models/"
@@ -276,11 +285,12 @@ class SampleApp final : public Application {
     if (future_scene_.valid()
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
-      scene_->setupRayTracingFx(&ray_tracing_fx_); //
+      scene_->setupRayTracingFx(&ray_tracing_fx_);
       scene_->uploadToDevice(
           GPUResources::kUploadFlagBits_BuildRayTracingData
         | GPUResources::kUploadFlagBits_ReleaseHostDataOnUpload
       );
+      future_scene_ = {};
     }
 
     if (scene_) {

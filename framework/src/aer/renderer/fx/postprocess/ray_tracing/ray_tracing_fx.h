@@ -80,6 +80,12 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void resetFrameAccumulation() = 0;
 
+  virtual void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) = 0;
+
+  virtual void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) = 0;
+
+  virtual void set_tlas_address(VkDeviceAddress const tlas_address) = 0;
+
  public:
   bool resize(VkExtent2D const dimension) override;
 
@@ -102,8 +108,6 @@ class RayTracingFx : public PostGenericFx {
   void set_image_inputs(std::vector<backend::Image> const& inputs) override {} //
 
   void set_buffer_inputs(std::vector<backend::Buffer> const& inputs) override {} //
-
-  virtual void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) = 0;
 
  protected:
   virtual void resetMemoryBarriers();

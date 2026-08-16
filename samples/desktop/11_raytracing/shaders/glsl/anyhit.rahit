@@ -1,15 +1,28 @@
 #version 460
-#extension GL_EXT_ray_tracing : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
 // -----------------------------------------------------------------------------
 
 #include "../interop.h"
-#include <material/interop.h>
+
+// -----------------------------------------------------------------------------
+// Topology
+
+layout(buffer_reference, scalar)
+buffer Vertices {
+  Vertex v[];
+};
+
+layout(buffer_reference, scalar)
+buffer Indices {
+  uint u32[];
+};
+
+layout(buffer_reference, scalar)
+buffer InstanceDataBufferRef {
+  RTInstanceData instances[];
+};
+
+#include <shared/rt_unpack_geometry.glsl>
 
 // -----------------------------------------------------------------------------
 
@@ -23,44 +36,29 @@ buffer RayTracingMaterialSBO_ {
 };
 
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
+uniform sampler2D uTextureChannels[];
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
 // -----------------------------------------------------------------------------
 
-layout(buffer_reference, scalar) buffer Vertices {
-  Vertex v[];
-};
-
-layout(buffer_reference, scalar) buffer Indices {
-  uint u32[];
-};
-
-// -----------------------------------------------------------------------------
-
-struct ObjBuffers_t {
-  uint64_t vertexAddr;
-  uint64_t indexAddr;
-};
-
-layout(set = kDescriptorSet_RayTracing, binding = kDescriptorSet_RayTracing_InstanceSBO, scalar)
-buffer _scene_desc {
-  ObjBuffers_t addr[];
-} ObjBuffers;
-
-#include <shared/rt_unpack_geometry.glsl>
-
-// -----------------------------------------------------------------------------
-
 void main() {
-  Triangle_t tri = unpack_triangle(gl_InstanceID, gl_PrimitiveID);
+  // ----------------------------
+  // TOPOLOGY.
+
+  const uint primitive_id = gl_PrimitiveID;
+  const uint material_id  = gl_InstanceCustomIndexEXT;
+  const uint kInvalidIndexU24 = 0x00FFFFFF;
+
+  RTInstanceData instance = GetInstanceData();
+  Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   vec2 uv = calculate_texcoord(tri, barycenter_from_hit(hitAttribs));
 
-  const uint material_id = gl_InstanceCustomIndexEXT;
-  const uint kInvalidIndexU24 = 0x00FFFFFF;
+  // ----------------------------
+  // SHADING.
 
   float opacity = 1.0f;
 
