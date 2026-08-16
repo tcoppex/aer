@@ -13,14 +13,15 @@ layout(location = 0) in vec3 inPosition;
 
 layout(location = 0) out vec3 outView;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
 // ----------------------------------------------------------------------------
 
 void main() {
-  const vec4 clip_pos = pushConstant.mvpMatrix[gl_ViewIndex]
+  const vec4 clip_pos = GetModelViewProjMatrix()
                       * vec4(inPosition, 1.0)
                       ;
 

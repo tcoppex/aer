@@ -171,7 +171,18 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
   auto const world_matrix = lina::remove_translation(
     context_ptr_->default_world_matrix()
   );
-  for (uint32_t i = 0; i < camera.view_count(); ++i) {
+
+  uint32_t eyes_count = camera.view_count();
+
+  // -------------------
+  // XR hacky trick
+  // To save space on the push constant struct we consider the skybox
+  // far enough not to need stereoscopic view.
+  // The alternative would be to use a dynamic uniform buffer.
+  eyes_count = 1u; //
+  // -------------------
+
+  for (uint32_t i = 0; i < eyes_count; ++i) {
     auto view = lina::remove_translation(camera.view(i));
     push_constant.mvpMatrix[i] = lina::mul(
       lina::mul(camera.proj(i), view),
