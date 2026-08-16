@@ -35,7 +35,9 @@ class Allocator {
   ) const;
 
   void destroyBuffer(backend::Buffer const& buffer) const {
-    vmaDestroyBuffer(handle_, buffer.buffer, buffer.allocation);
+    if (buffer.buffer != VK_NULL_HANDLE) {
+      vmaDestroyBuffer(handle_, buffer.buffer, buffer.allocation);
+    }
   }
 
   [[nodiscard]]
