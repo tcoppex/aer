@@ -201,8 +201,6 @@ void GPUResources::update(Camera const& camera, float elapsed_time) {
     prepareRasterizationRendering(camera);
   }
 
-  // ------------
-
   // [GPU bound]
 
   /* Update and upload per-frame data. */
@@ -356,17 +354,15 @@ void GPUResources::uploadBuffers() {
 
   VkBufferUsageFlags extra_flags{};
 
-  // ---------------------------------------
   if (rt_scene_) {
     extra_flags = extra_flags
       // Position & Indices are needed for the BLAS.
       | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
       // Attributes & Indices are fetched by the closeshit shaders.
       | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       ;
   }
-  // ---------------------------------------
 
   /* Allocate device buffers for meshes & their transforms. */
   vertex_buffer = context_.createBuffer(
@@ -498,7 +494,8 @@ void GPUResources::uploadBuffers() {
 void GPUResources::uploadTransforms() {
   LOG_CHECK(transforms.size() == meshes.size()); //
 #if 1
-  context_.writeBuffer(transforms_sbo_, transforms); // require mapping ability
+  // Only for mappable CPU to GPU buffer.
+  context_.writeBuffer(transforms_sbo_, transforms);
 #else
   context_.transientUploadBuffer(transforms, transforms_sbo_);
 #endif
