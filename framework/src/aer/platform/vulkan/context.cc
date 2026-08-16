@@ -360,7 +360,7 @@ void Context::finishTransientCommandEncoder(
 
   CHECK_VK( vkQueueSubmit2(queue(target_queue).queue, 1u, &submit_info_2, fence) );
 
-  CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, UINT64_MAX) );
+  CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, 2000000000ULL) ); // UINT64_MAX
   vkDestroyFence(handle_, fence, nullptr);
 
   VkCommandBuffer command_buffers[] = { encoder.handle() };
