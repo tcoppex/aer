@@ -59,6 +59,7 @@ class SampleApp final : public Application {
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
       scene_->uploadToDevice();
+      future_scene_ = {};
     }
     if (scene_) {
       scene_->update(camera_, elapsed_time());

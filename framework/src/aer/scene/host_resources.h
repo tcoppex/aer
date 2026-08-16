@@ -69,7 +69,7 @@ struct HostResources {
   void updateTransformsBuffer();
 
  public:
-  scene::Hierarchy scene_tree{};   // [wip]
+  scene::Hierarchy scene_tree{};   //
 
   /* --- Host Data --- */
 
@@ -80,13 +80,13 @@ struct HostResources {
   std::vector<MaterialProxy> material_proxies{};
   ResourceBuffer<MaterialRef> material_refs{}; //
 
-  // -------
   ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
 
+  // -------
   // Used to store the buffer of global transforms, caculated by the hierarchy.
   // Should not be changed directly.
-  std::vector<mat4f> transforms{};  // [move to hierarchy ?]
+  std::vector<mat4f> transforms{};  // [move to scene_tree ?]
   // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //

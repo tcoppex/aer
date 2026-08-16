@@ -90,6 +90,30 @@ void DescriptorRegistry::destroyLayout(VkDescriptorSetLayout &layout) const {
 
 // ----------------------------------------------------------------------------
 
+VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
+  VkDescriptorSetLayout const layout,
+  std::string const& name
+) const {
+  auto const alloc_info = VkDescriptorSetAllocateInfo{
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+    .pNext = nullptr,
+    .descriptorPool = main_pool_,
+    .descriptorSetCount = 1u,
+    .pSetLayouts = &layout,
+  };
+
+  VkDescriptorSet descriptor_set{};
+  CHECK_VK(vkAllocateDescriptorSets(device_, &alloc_info, &descriptor_set));
+
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorRegistry::DescriptorSet::" + name);
+  }
+
+  return descriptor_set;
+}
+
+// ----------------------------------------------------------------------------
+
 backend::Buffer DescriptorRegistry::allocateDescriptorBuffer(
   VkDescriptorSetLayout const layout,
   VkDeviceSize *pLayoutSize,
@@ -124,30 +148,6 @@ backend::Buffer DescriptorRegistry::allocateDescriptorBuffer(
 
 // ----------------------------------------------------------------------------
 
-VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
-  VkDescriptorSetLayout const layout,
-  std::string const& name
-) const {
-  auto const alloc_info = VkDescriptorSetAllocateInfo{
-    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    .pNext = nullptr,
-    .descriptorPool = main_pool_,
-    .descriptorSetCount = 1u,
-    .pSetLayouts = &layout,
-  };
-
-  VkDescriptorSet descriptor_set{};
-  CHECK_VK(vkAllocateDescriptorSets(device_, &alloc_info, &descriptor_set));
-
-  if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorRegistry::DescriptorSet::" + name);
-  }
-
-  return descriptor_set;
-}
-
-// ----------------------------------------------------------------------------
-
 void DescriptorRegistry::bindDescriptorSet(
   Type type,
   GenericCommandEncoder const& cmd,
@@ -169,7 +169,7 @@ void DescriptorRegistry::bindDescriptorSet(
 void DescriptorRegistry::updateSceneTextures(
   std::vector<VkDescriptorImageInfo> image_infos
 ) const {
-  LOG_CHECK(image_infos.size() <= kMaxNumTextures); //
+  LOG_CHECK(image_infos.size() <= kMaxNumTextures);
 
   context_ptr_->updateDescriptorSet(
     descriptors_[DescriptorRegistry::Type::Scene].set,
@@ -187,7 +187,7 @@ void DescriptorRegistry::updateSceneTexture(
   uint32_t index,
   VkDescriptorImageInfo image_info
 ) const {
-  LOG_CHECK(index <= kMaxNumTextures); //
+  LOG_CHECK(index <= kMaxNumTextures);
 
   context_ptr_->updateDescriptorSet(
     descriptors_[DescriptorRegistry::Type::Scene].set,

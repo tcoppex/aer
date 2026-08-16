@@ -67,18 +67,18 @@ class DescriptorRegistry {
   void destroyLayout(VkDescriptorSetLayout &layout) const;
 
   [[nodiscard]]
+  VkDescriptorSet allocateDescriptorSet(
+    VkDescriptorSetLayout const layout,
+    std::string const& name = ""
+  ) const;
+
+  [[nodiscard]]
   backend::Buffer allocateDescriptorBuffer(
     VkDescriptorSetLayout const layout,
     VkDeviceSize *pLayoutSize,
     VkDeviceSize *pOffset,
     uint32_t num_elems,
     VkBufferUsageFlags2KHR usage_flags,
-    std::string const& name = ""
-  ) const;
-
-  [[nodiscard]]
-  VkDescriptorSet allocateDescriptorSet(
-    VkDescriptorSetLayout const layout,
     std::string const& name = ""
   ) const;
 
@@ -94,6 +94,7 @@ class DescriptorRegistry {
   void updateSceneIBL(Skybox const& skybox) const;
   void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
   void updateSceneTexture(uint32_t index, VkDescriptorImageInfo image_info) const;
+
   void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
 
  private:
@@ -109,19 +110,19 @@ class DescriptorRegistry {
     std::string const& name
   );
 
+  void createMainDescriptorSet(
+    Type const type,
+    DescriptorSetLayoutParamsBuffer const& layout_params,
+    VkDescriptorSetLayoutCreateFlags layout_flags,
+    std::string const& name
+  );
+
   void createMainDescriptorBuffer(
     Type const type,
     DescriptorSetLayoutParamsBuffer const& layout_params,
     VkDescriptorSetLayoutCreateFlags layout_flags,
     uint32_t num_elems,
     VkBufferUsageFlags2KHR usage_flags,
-    std::string const& name
-  );
-
-  void createMainDescriptorSet(
-    Type const type,
-    DescriptorSetLayoutParamsBuffer const& layout_params,
-    VkDescriptorSetLayoutCreateFlags layout_flags,
     std::string const& name
   );
 
