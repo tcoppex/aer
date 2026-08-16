@@ -1,28 +1,24 @@
 #version 460
-#extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_nonuniform_qualifier : require
 
 // ----------------------------------------------------------------------------
 
-#include <material/interop.h>
 #include <material/unlit/interop.h>
-
 #include <shared/maths.glsl> // (for calculate_reorient_matrix)
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
-uniform FrameUBO_ {
-  FrameData uFrame;
+layout(buffer_reference, scalar)
+readonly buffer FrameBufferRef {
+  FrameData uFrameData;
 };
 
-layout(scalar, set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_TransformSBO)
-buffer TransformSBO_ {
-  TransformSBO transforms[];
+layout(buffer_reference, scalar)
+readonly buffer TransformBufferRef {
+  TransformData transforms[];
 };
 
-layout(scalar, push_constant) uniform PushConstant_ {
+layout(scalar, push_constant)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
@@ -102,10 +98,13 @@ void apply_billboard_xz(
 // ----------------------------------------------------------------------------
 
 void main() {
-  const CameraTransform camera = GetFrameCamera(uFrame);
-  const TransformSBO transform = transforms[nonuniformEXT(pushConstant.transform_index)];
+  const FrameData frameData = GetFrameData();
+  const CameraTransform camera = GetFrameCamera(frameData);
+  const TransformData transform = GetTransform();
 
-  const mat4 worldMatrix = uFrame.default_world_matrix
+  // -------
+
+  const mat4 worldMatrix = frameData.default_world_matrix
                          * transform.worldMatrix
                          ;
   const mat3 normalMatrix = mat3(worldMatrix);
@@ -128,8 +127,9 @@ void main() {
   const vec4 worldPos = worldMatrix * vec4(localPos, 1.0);
   const vec3 worldNor = normalize(normalMatrix * localNor);
 
-  gl_Position = camera.viewProjMatrix * worldPos;
+  // -------
 
+  gl_Position = camera.viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
   // vNormalWS   = worldNor.xyz;
   vTexcoord   = inTexcoord.xy;

@@ -8,42 +8,54 @@
 void RayTracingFx::execute(CommandEncoder const& cmd) const {
   cmd.bindPipeline(pipeline_);
 
-  // Bind descriptor sets.
+  // Bind Descriptor Sets (Internal + Scene data).
   {
-    auto const& DSR = context_ptr_->descriptor_set_registry();
-
-    VkShaderStageFlags const stage_flags{
+    auto const stage_flags = VkShaderStageFlags{
         VK_SHADER_STAGE_RAYGEN_BIT_KHR
       | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
       | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
     };
 
-    cmd.bindDescriptorSet(
-      descriptor_set_,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Internal
-    );
+    if (descriptor_set_ != VK_NULL_HANDLE) {
+      cmd.bindDescriptorSet(
+        descriptor_set_,
+        pipeline_layout_,
+        stage_flags,
+        material_shader_interop::kDescriptorSet_Internal
+      );
+    }
 
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
+    context_ptr_->descriptor_registry().bindDescriptorSet(
+      DescriptorRegistry::Type::Scene,
+      cmd,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Frame
+      stage_flags
     );
+  }
 
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
+  // Push Descriptor Sets (TopLevel AS).
+  {
+    LOG_CHECK(vkCmdPushDescriptorSetKHR);
+    auto desc_as_info = VkWriteDescriptorSetAccelerationStructureKHR{
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+      .accelerationStructureCount = 1,
+      .pAccelerationStructures = &tlas_.handle
+    };
+    auto write = VkWriteDescriptorSet{
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .pNext = &desc_as_info,
+      .dstBinding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+    };
+    vkCmdPushDescriptorSetKHR(
+      cmd.handle(),
+      VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Scene
-    );
-
-    cmd.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::RayTracing).set,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_RayTracing
+      material_shader_interop::kDescriptorSet_RayTracing,
+      1,
+      &write
     );
   }
 
@@ -109,7 +121,7 @@ void RayTracingFx::resetMemoryBarriers() {
       .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
                      | VK_ACCESS_2_SHADER_WRITE_BIT
                      ,
-      .oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_GENERAL,
+      .oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED,
       .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -180,6 +192,8 @@ void RayTracingFx::createPipeline() {
 // ----------------------------------------------------------------------------
 
 void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const& desc) {
+  LOG_CHECK(vkGetRayTracingShaderGroupHandlesKHR);
+  
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps{
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR
   };
@@ -283,8 +297,7 @@ void RayTracingFx::buildShaderBindingTable(RayTracingPipelineDescriptor_t const&
       .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
       .buffer = sbt_storage_buffer_.buffer,
     };
-
-    VkDeviceAddress baseAddress = vkGetBufferDeviceAddressKHR(
+    VkDeviceAddress baseAddress = vkGetBufferDeviceAddress(
       context_ptr_->device(), &addrInfo
     );
     return {

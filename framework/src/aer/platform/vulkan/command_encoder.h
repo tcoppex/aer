@@ -56,7 +56,8 @@ class GenericCommandEncoder {
     VkDescriptorSet descriptor_set,
     VkPipelineLayout pipeline_layout,
     VkShaderStageFlags stage_flags,
-    uint32_t first_set = 0u
+    uint32_t first_set = 0u,
+    std::vector<uint32_t> const* dynamicOffsets = nullptr
   ) const;
 
   void bindDescriptorSet(
@@ -75,16 +76,16 @@ class GenericCommandEncoder {
 
   // --- Push Constants ---
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<NonSpanConvertible T>
   void pushConstant(
     T const& value,
     VkPipelineLayout const pipeline_layout,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
     uint32_t const offset = 0u
   ) const {
-    if (vkCmdPushConstants2KHR)
+    if (vkCmdPushConstants2)
     {
-      VkPushConstantsInfoKHR const push_info{
+      auto const push_info = VkPushConstantsInfoKHR{
         .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO_KHR,
         .layout = pipeline_layout,
         .stageFlags = stage_flags,
@@ -92,7 +93,7 @@ class GenericCommandEncoder {
         .size = static_cast<uint32_t>(sizeof(T)),
         .pValues = &value,
       };
-      vkCmdPushConstants2KHR(handle_, &push_info);
+      vkCmdPushConstants2(handle_, &push_info);
     }
     else
     {
@@ -107,7 +108,7 @@ class GenericCommandEncoder {
     }
   }
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<NonSpanConvertible T>
   void pushConstant(
     T const& value,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
@@ -117,7 +118,7 @@ class GenericCommandEncoder {
     pushConstant(value, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   void pushConstants(
     T const& values,
     VkShaderStageFlags const stage_flags = VK_SHADER_STAGE_ALL_GRAPHICS,
@@ -232,7 +233,7 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t const device_buffer_size = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   [[nodiscard]]
   backend::Buffer createBufferAndUpload(
     T const& host_data,
@@ -406,15 +407,11 @@ class RenderPassEncoder : public GenericCommandEncoder {
   }
 
   void setPrimitiveTopology(VkPrimitiveTopology const topology) const {
-    // VK_EXT_extended_dynamic_state or VK_VERSION_1_3
-    LOG_CHECK(vkCmdSetPrimitiveTopologyEXT);
-    vkCmdSetPrimitiveTopologyEXT(handle_, topology);
+    vkCmdSetPrimitiveTopology(handle_, topology);
   }
 
   void setCullMode(VkCullModeFlags cull_mode) const {
-    // Provided by VK_EXT_extended_dynamic_state, VK_EXT_shader_object
-    LOG_CHECK(vkCmdSetCullModeEXT);
-    vkCmdSetCullModeEXT(handle_, cull_mode);
+    vkCmdSetCullMode(handle_, cull_mode);
   }
 
   void setVertexInput(VertexInputDescriptor const& vertex_input_descriptor) const {

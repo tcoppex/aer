@@ -56,9 +56,24 @@ class Context {
     return queues_[target];
   }
 
+  // [[nodiscard]]
+  // backend::GPUProperties const& properties() const noexcept {
+  //   return properties_;
+  // }
+
   [[nodiscard]]
-  backend::GPUProperties const& properties() const noexcept {
-    return properties_;
+  VkPhysicalDeviceProperties const& gpu_properties() const noexcept {
+    return properties_.gpu2.properties;
+  }
+
+  [[nodiscard]]
+  VkPhysicalDeviceMemoryProperties const& memory_properties() const noexcept {
+    return properties_.memory2.memoryProperties;
+  }
+
+  [[nodiscard]]
+  VkPhysicalDeviceDescriptorBufferPropertiesEXT const& descriptor_buffer_properties() const noexcept {
+    return properties_.descriptor_buffer_properties;
   }
 
   [[nodiscard]]
@@ -127,24 +142,21 @@ class Context {
     return allocator_.writeBuffer(dst_buffer, host_data, bytesize);
   }
 
-  template<typename T> requires (!SpanConvertible<T>)
+  template<SpanConvertible T>
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     T const& host_data
   ) const {
-    return writeBuffer(dst_buffer, &host_data, sizeof(host_data));
+    auto const host_span = std::span{ host_data };
+    return writeBuffer(dst_buffer, host_span.data(), host_span.size_bytes());
   }
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<NonSpanConvertible T>
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     T const& host_data
-  ) {
-    auto const host_span{ std::span(host_data) };
-    auto const bytesize{
-      sizeof(typename decltype(host_span)::element_type) * host_span.size()
-    };
-    return writeBuffer(dst_buffer, host_span.data(), bytesize);
+  ) const {
+    return writeBuffer(dst_buffer, &host_data, sizeof(T));
   }
 
   [[nodiscard]]
@@ -274,8 +286,9 @@ class Context {
     size_t device_buffer_size = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
-  [[nodiscard]] backend::Buffer transientCreateBuffer(
+  template<SpanConvertible T>
+  [[nodiscard]]
+  backend::Buffer transientCreateBuffer(
     T const& host_data,
     VkBufferUsageFlags2KHR usage,
     size_t device_buffer_offset = 0u,
@@ -297,7 +310,7 @@ class Context {
     size_t const device_buffer_offset = 0u
   ) const;
 
-  template<typename T> requires (SpanConvertible<T>)
+  template<SpanConvertible T>
   void transientUploadBuffer(
     T const& host_data,
     backend::Buffer const& device_buffer
@@ -365,7 +378,7 @@ class Context {
     std::vector<char const*> const& dependencies = {}
   ) {
     if (!has_extension(extension_name, available_device_extensions_)) {
-      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.\n", extension_name);
+      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
       return false;
     }
     if (device_extension_names_.contains(extension_name)) {
@@ -400,62 +413,40 @@ class Context {
 
   VkDebugUtilsMessengerEXT debug_utils_messenger_{VK_NULL_HANDLE};
 
-  // -----------------------------------------------
-  std::vector<VkExtensionProperties> available_device_extensions_{};
-
   std::vector<char const*> instance_layer_names_{};
-
   std::vector<char const*> instance_extension_names_{
     VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
   };
 
+  std::vector<VkExtensionProperties> available_device_extensions_{};
   std::set<char const*> device_extension_names_{
+    // (Non Core)
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-    VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
     VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-    VK_KHR_SPIRV_1_4_EXTENSION_NAME,
-    VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
+    // (Core in VK_VERSION_1_4)
+    VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
   };
-  // -----------------------------------------------
 
   struct {
     VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    // VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-    // VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-    // VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-    // VkPhysicalDeviceVulkan14Features v14{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES};
+    VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+    VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+    VkPhysicalDeviceVulkan13Features v13{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
 
-    // core in VK_VERSION_1_1
-    VkPhysicalDeviceMultiviewFeaturesKHR multiview{};
-    VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit{};
-
-    // core in VK_VERSION_1_2
-    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore{};
-    VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing{};
-    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR buffer_device_address{};
-
-    // core in VK_VERSION_1_3
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state{};
-    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2{};
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering{};
-    VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2{};
-    VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4{};
-
-    // core in VK_VERSION_1_4
-    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{}; //
+    // (Core in VK_VERSION_1_4)
+    VkPhysicalDeviceIndexTypeUint8FeaturesKHR index_type_uint8{};
     VkPhysicalDeviceMaintenance5FeaturesKHR maintenance5{};
-    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};
+    VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{}; // (not supported by Quest3)
 
-    // non core
-    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};
+    // (Non Core)
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{}; // (not supported by Quest3)
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{}; // (not supported by Quest3)
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{}; //
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{}; //
-
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
   } feature_;
 
   VkInstance instance_{};

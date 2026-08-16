@@ -59,37 +59,32 @@ void MaterialFx::prepareDrawState(
 
   pass.bindPipeline(pipelines_[states]);
 
+  // [deprecated]
   // Bind descriptor sets.
   {
-    auto const& DSR = context_ptr_->descriptor_set_registry();
-
-    VkShaderStageFlags const stage_flags{
+    auto const stage_flags = VkShaderStageFlags{
         VK_SHADER_STAGE_VERTEX_BIT
       | VK_SHADER_STAGE_FRAGMENT_BIT
     };
 
-    // Material Specific descriptor set.
-    pass.bindDescriptorSet(
-      descriptor_set_,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Internal
-    );
+    // ----------------------------
+    if (descriptor_set_ != VK_NULL_HANDLE) {
+      pass.bindDescriptorSet(
+        descriptor_set_,
+        pipeline_layout_,
+        stage_flags,
+        material_shader_interop::kDescriptorSet_Internal
+      );
+    }
+    // ----------------------------
 
-    // Shared Frame descriptor set.
-    pass.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).set,
-      pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Frame
-    );
+    auto const& registry = context_ptr_->descriptor_registry();
 
-    // [~] 'Shared' Scene descriptor set.
-    pass.bindDescriptorSet(
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).set,
+    registry.bindDescriptorSet(
+      DescriptorRegistry::Type::Scene,
+      pass,
       pipeline_layout_,
-      stage_flags,
-      material_shader_interop::kDescriptorSet_Scene
+      stage_flags
     );
   }
 }
@@ -103,12 +98,11 @@ void MaterialFx::createPipelineLayout() {
     descriptor_set_layout_params()
   );
 
-  auto const& DSR = context_ptr_->descriptor_set_registry();
+  auto const& registry = context_ptr_->descriptor_registry();
   pipeline_layout_ = context_ptr_->createPipelineLayout({
     .setLayouts = {
-      descriptor_set_layout_,
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).layout,
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).layout,
+      descriptor_set_layout_, // (might be empty)
+      registry.descriptor(DescriptorRegistry::Type::Scene).layout,
     },
     .pushConstantRanges = push_constant_ranges()
   });

@@ -119,7 +119,7 @@ bool RayTracingScene::buildBLAS(scene::Mesh::SubMesh const& submesh) {
     submesh.material_ref->states.alpha_mode == scene::MaterialStates::AlphaMode::Opaque
   };
 
-  VkAccelerationStructureGeometryTrianglesDataKHR const tri{
+  auto const tri = VkAccelerationStructureGeometryTrianglesDataKHR{
     .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
     .vertexFormat  = mesh.vk_format(Geometry::AttributeType::Position),
     .vertexData    = {
@@ -136,7 +136,7 @@ bool RayTracingScene::buildBLAS(scene::Mesh::SubMesh const& submesh) {
 
   uint32_t const primitiveCount = desc.indexCount / 3u;
 
-  backend::BLAS blas{
+  auto blas = backend::BLAS{
     .geometry = {
       .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
       .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
@@ -184,14 +184,14 @@ bool RayTracingScene::buildBLAS(scene::Mesh::SubMesh const& submesh) {
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   );
 
-  VkAccelerationStructureCreateInfoKHR const asInfo{
+  auto const as_info = VkAccelerationStructureCreateInfoKHR{
     .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
     .buffer = blas.buffer.buffer,
     .size   = blas.build_sizes_info.accelerationStructureSize,
     .type   = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
   };
   CHECK_VK(vkCreateAccelerationStructureKHR(
-    context_ptr_->device(), &asInfo, nullptr, &blas.handle
+    context_ptr_->device(), &as_info, nullptr, &blas.handle
   ));
 
   // C - Build the BLAS.
@@ -221,23 +221,16 @@ void RayTracingScene::buildTLAS() {
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   );
 #else
-  size_t const instances_bytesize{
-    tlas_.instances.size() * sizeof(tlas_.instances[0])
-  };
   auto instances_buffer = context_ptr_->createBuffer(
-    instances_bytesize,
+    tlas_.instances.size() * sizeof(tlas_.instances[0]),
       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     , VMA_MEMORY_USAGE_CPU_TO_GPU
   );
-  context_ptr_->writeBuffer(
-    instances_buffer,
-    tlas_.instances.data(),
-    instances_bytesize
-  );
+  context_ptr_->writeBuffer(instances_buffer, tlas_.instances);
 #endif
 
-  VkAccelerationStructureGeometryKHR const acceleration_structure_geometry{
+  auto const acceleration_structure_geometry = VkAccelerationStructureGeometryKHR{
     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
     .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
     .geometry = {
@@ -277,14 +270,14 @@ void RayTracingScene::buildTLAS() {
     VMA_MEMORY_USAGE_GPU_ONLY
   );
 
-  VkAccelerationStructureCreateInfoKHR asInfo{
+  auto const as_info = VkAccelerationStructureCreateInfoKHR{
     .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
     .buffer = tlas_.buffer.buffer,
     .size   = tlas_.build_sizes_info.accelerationStructureSize,
     .type   = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
   };
   CHECK_VK(vkCreateAccelerationStructureKHR(
-    context_ptr_->device(), &asInfo, nullptr, &tlas_.handle
+    context_ptr_->device(), &as_info, nullptr, &tlas_.handle
   ));
 
   buildAccelerationStructure(
@@ -344,7 +337,7 @@ void RayTracingScene::buildAccelerationStructure(
 
   auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Transfer);
   {
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR *> build_range_infos{
+    auto build_range_infos = std::vector<VkAccelerationStructureBuildRangeInfoKHR*>{
       &buildRangeInfo
     };
     vkCmdBuildAccelerationStructuresKHR(
@@ -354,31 +347,31 @@ void RayTracingScene::buildAccelerationStructure(
       build_range_infos.data()
     );
 
-    VkMemoryBarrier2 barrier{
+    auto const memory_barrier = VkMemoryBarrier2{
       .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
       .srcStageMask  = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
       .srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
       .dstStageMask  = dstStageMask,
       .dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR
     };
-    VkDependencyInfo depInfo{
+    auto const dependency_info = VkDependencyInfo{
       .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
       .memoryBarrierCount = 1,
-      .pMemoryBarriers = &barrier
+      .pMemoryBarriers = &memory_barrier
     };
-    vkCmdPipelineBarrier2(cmd.handle(), &depInfo);
+    vkCmdPipelineBarrier2(cmd.handle(), &dependency_info);
   }
   context_ptr_->finishTransientCommandEncoder(cmd);
 
   context_ptr_->destroyBuffer(scratch_buffer_); //
 
-  VkAccelerationStructureDeviceAddressInfoKHR addrInfo{
+  auto const address_info = VkAccelerationStructureDeviceAddressInfoKHR{
     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
     .accelerationStructure = as->handle
   };
   as->address = vkGetAccelerationStructureDeviceAddressKHR(
     context_ptr_->device(),
-    &addrInfo
+    &address_info
   );
 }
 

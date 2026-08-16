@@ -21,11 +21,11 @@ class BasicRayTracingFx : public RayTracingFx {
  public:
   BasicRayTracingFx() = default;
 
-  void resetFrameAccumulation() override {
+  void resetFrameAccumulation() final {
     push_constant_.accumulation_frame_count = 0;
   }
 
-  void setupUI() override {
+  void setupUI() final {
     bool changed = false;
 
     changed |= ImGui::Checkbox("Enable", &enabled_);
@@ -67,37 +67,39 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void execute(CommandEncoder const& cmd) const override {
+  void execute(CommandEncoder const& cmd) const final {
+    LOG_CHECK(push_constant_.frame_buffer_address != 0);
+    LOG_CHECK(push_constant_.instance_buffer_address != 0);
+    // LOG_CHECK(push_constant_.tlas_address != 0);
+
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
+      push_constant_.material_buffer_address = material_storage_buffer_.address; //
       RayTracingFx::execute(cmd);
     }
   }
 
+  void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) final {
+    push_constant_.frame_buffer_address = frame_buffer_address;
+  }
+
+  void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) final {
+    push_constant_.instance_buffer_address = instance_buffer_address;
+  }
+
  protected:
   backend::ShadersMap createShaderModules() const final {
-    auto create_modules{[&](std::vector<std::string_view> const& filenames) {
-      return context_ptr_->createShaderModules(
-        COMPILED_SHADERS_DIR,
-        filenames
-      );
+    auto make_modules{[&](backend::ShaderStage stage, std::vector<std::string_view> const& filenames) {
+      return backend::ShadersMap::value_type{
+        stage,
+        context_ptr_->createShaderModules(COMPILED_SHADERS_DIR, filenames)
+      };
     }};
+
     return {
-      {
-        backend::ShaderStage::Raygen,
-        create_modules({ "raygen.rgen" })
-      },
-      {
-        backend::ShaderStage::AnyHit,
-        create_modules({ "anyhit.rahit" })
-      },
-      {
-        backend::ShaderStage::ClosestHit,
-        create_modules({ "closesthit.rchit" })
-      },
-      {
-        backend::ShaderStage::Miss,
-        create_modules({ "miss.rmiss" })
-      },
+      make_modules( backend::ShaderStage::Raygen,     { "raygen.rgen" }),
+      make_modules( backend::ShaderStage::AnyHit,     { "anyhit.rahit" }),
+      make_modules( backend::ShaderStage::ClosestHit, { "closesthit.rchit" }),
+      make_modules( backend::ShaderStage::Miss,       { "miss.rmiss" }),
     };
   }
 
@@ -162,7 +164,7 @@ class BasicRayTracingFx : public RayTracingFx {
     };
   }
 
-  void pushConstant(GenericCommandEncoder const &cmd) const override {
+  void pushConstant(GenericCommandEncoder const &cmd) const final {
     cmd.pushConstant(
       push_constant_,
       pipeline_layout_,
@@ -174,7 +176,7 @@ class BasicRayTracingFx : public RayTracingFx {
     push_constant_.accumulation_frame_count += 1u;
   }
 
-  void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) override {
+  void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) final {
     if (proxy_materials.empty()) {
       return;
     }
@@ -196,14 +198,15 @@ class BasicRayTracingFx : public RayTracingFx {
     }
   }
 
-  void const* material_buffer_data() const override {
+  void const* material_buffer_data() const final {
     return materials_.data();
   }
 
-  size_t material_buffer_size() const override {
-    return !materials_.empty() ? materials_.size() * sizeof(materials_[0])
-                               : 0
-                               ;
+  size_t material_buffer_size() const final {
+    return materials_.empty()
+      ? size_t(0)
+      : materials_.size() * sizeof(materials_[0])
+      ;
   }
 
  private:
@@ -226,7 +229,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("11 - shining through");
 
-    renderer_.set_clear_color({ 0.52f, 0.28f, 0.80f, 0.0f });
+    renderer_.set_clear_color({ 0.16f, 0.14f, 0.12f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {
@@ -244,26 +247,16 @@ class SampleApp final : public Application {
       arcball_controller_.set_dolly(3.5f);
     }
 
-    // -------------------------------
-
+    /* Setup the RayTracing effect. */
     ray_tracing_fx_.init(context_);
     ray_tracing_fx_.setup(renderer_.surface_size()); //
-
-    // -------------------------------
 
     /* Load a glTF Scene. */
     std::string gtlf_filename{ASSETS_DIR "models/"
       "CornellBox-Original.gltf"
     };
 
-    if constexpr(true) {
-      future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
-    } else {
-      // (Alternative)
-      scene_ = renderer_.loadGLTF(gtlf_filename);
-      scene_->set_ray_tracing_fx(&ray_tracing_fx_);
-      scene_->uploadToDevice();
-    }
+    future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
 
     return true;
   }
@@ -277,21 +270,25 @@ class SampleApp final : public Application {
     if (future_scene_.valid()
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
-      scene_->set_ray_tracing_fx(&ray_tracing_fx_);
-      scene_->uploadToDevice();
-    }
-
-    if (camera_.rebuilt()) {
-      ray_tracing_fx_.resetFrameAccumulation();
+      scene_->setupRayTracingFx(&ray_tracing_fx_);
+      scene_->uploadToDevice(
+          GPUResources::kUploadFlagBits_BuildRayTracingData
+        | GPUResources::kUploadFlagBits_ReleaseHostDataOnUpload
+      );
+      future_scene_ = {};
     }
 
     if (scene_) {
       scene_->update(camera_, elapsed_time());
     }
+
+    if (camera_.rebuilt()) {
+      ray_tracing_fx_.resetFrameAccumulation();
+    }
   }
 
   void draw(CommandEncoder const& cmd) final {
-    if (ray_tracing_fx_.is_enable())
+    if (ray_tracing_fx_.is_enable() && scene_)
     {
       // -- RAY TRACING --
 

@@ -190,6 +190,9 @@ bool Application::presetup(AppData_t app_data) {
 
   LOGD("--------------------------------------------\n");
 
+  // Default camera setup.
+  camera_.makeDefault({viewport_size_.width, viewport_size_.height});
+
   return true;
 }
 

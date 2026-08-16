@@ -93,7 +93,7 @@ function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
     OUTPUT
       ${output_spirv}
     COMMAND
-      ${GLSLC} --target-spv=spv1.4 ${command} -o ${output_spirv} ${input_glsl} -I ${shader_dir} ${extra_args}
+      ${GLSLC} --target-env=vulkan1.3 ${command} -o ${output_spirv} ${input_glsl} -I ${shader_dir} ${extra_args}
     DEPENDS
       ${input_glsl}
       ${GLSLC}

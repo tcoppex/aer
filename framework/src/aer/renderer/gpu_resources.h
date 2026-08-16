@@ -21,14 +21,21 @@ class RayTracingFx;
  */
 struct GPUResources : scene::HostResources {
  public:
-  /* When set, will construct the internal strutucture for RayTracing. */
-  static bool constexpr kDefaultEnableRayTracing = true;
+  using UploadFlags = uint32_t;
 
-  /* When set, host data will be released on upload. */
-  static bool constexpr kReleaseHostDataOnUpload = true;
+  enum UploadFlagBits : UploadFlags {
+    kUploadFlagBits_None                     = 0,
+    kUploadFlagBits_ReleaseHostDataOnUpload  = 1 << 0,
+    kUploadFlagBits_BuildRayTracingData      = 1 << 1,
+
+    kUploadFlagBits_Default = kUploadFlagBits_ReleaseHostDataOnUpload
+  };
 
  public:
-  GPUResources(RenderContext const& context, bool bEnableRayTracing = kDefaultEnableRayTracing);
+  GPUResources(
+    RenderContext const& context,
+    uint32_t max_frames_in_flight //
+  );
 
   ~GPUResources();
 
@@ -41,9 +48,7 @@ struct GPUResources : scene::HostResources {
   );
 
   /* Upload host resources to Device memory. */
-  void uploadToDevice(
-    bool const bReleaseHostDataOnUpload = kReleaseHostDataOnUpload
-  );
+  void uploadToDevice(UploadFlags const flags = kUploadFlagBits_Default);
 
   /* Construct the image info buffer for the scene textures descriptor set. */
   std::vector<VkDescriptorImageInfo> buildDescriptorImageInfos() const;
@@ -55,13 +60,10 @@ struct GPUResources : scene::HostResources {
   void render(RenderPassEncoder const& pass);
 
   // -------------------------------
-  void set_ray_tracing_fx(RayTracingFx* fx); //
+  void setupRayTracingFx(RayTracingFx* fx); //
   // -------------------------------
 
  private:
-  /* Update Global Descriptor Set bindings. */
-  void updateGlobalDescriptorSetBindings() const; //
-
   void uploadImages();
 
   void uploadBuffers();
@@ -73,8 +75,6 @@ struct GPUResources : scene::HostResources {
   void prepareRasterizationRendering(Camera const& camera);
 
  public:
-  /* --- Device Data --- */
-
   std::vector<backend::Image> device_images{};
   backend::Buffer vertex_buffer{};
   backend::Buffer index_buffer{};
@@ -82,12 +82,15 @@ struct GPUResources : scene::HostResources {
  protected:
   std::unique_ptr<MaterialFxRegistry> material_fx_registry_{};
 
-  backend::Buffer frame_ubo_{};
-  backend::Buffer transforms_ssbo_{};
+  backend::Buffer transforms_sbo_{};
+  backend::Buffer frame_sbo_{};
+
+  VkDeviceSize frame_data_stride_{};
+  VkDeviceAddress frame_data_current_address_{};
 
   // -------------------------------
   std::unique_ptr<RayTracingSceneInterface> rt_scene_{};
-  RayTracingFx const* ray_tracing_fx_{};
+  RayTracingFx* ray_tracing_fx_{}; //
   // -------------------------------
 
   using SubMeshBuffer = std::vector<scene::Mesh::SubMesh const*>;
@@ -97,7 +100,10 @@ struct GPUResources : scene::HostResources {
 
  private:
   RenderContext const& context_;
-  uint32_t frame_index_{};
+
+  // [dupplicate, should probably not be stored here]
+  uint32_t max_frames_in_flight_{}; //
+  uint32_t frame_index_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

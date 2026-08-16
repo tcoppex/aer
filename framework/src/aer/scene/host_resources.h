@@ -54,7 +54,10 @@ struct HostResources {
 
   [[nodiscard]]
   mat4 const& root_matrix() const {
-    return scene.registry.get<component::GlobalTransform>(scene.root).worldMatrix;
+    return scene_tree
+      .registry
+      .get<component::GlobalTransform>(scene_tree.root)
+      .worldMatrix;
   }
 
  protected:
@@ -63,12 +66,10 @@ struct HostResources {
 
   void resetInternalDescriptors();
 
-  void updateTransformsBuffer();
+  void updateSceneTreeTransforms();
 
  public:
-  //-----------
-  scene::Hierarchy scene{};   // [wip]
-  //-----------
+  scene::Hierarchy scene_tree{};   //
 
   /* --- Host Data --- */
 
@@ -79,13 +80,13 @@ struct HostResources {
   std::vector<MaterialProxy> material_proxies{};
   ResourceBuffer<MaterialRef> material_refs{}; //
 
-  // -------
   ResourceBuffer<Mesh> meshes{};    // [todo: don't use unique_ptr for Meshes]
   IndexMap mesh_indices_map{};      // [deprecated]
 
+  // -------
   // Used to store the buffer of global transforms, caculated by the hierarchy.
   // Should not be changed directly.
-  std::vector<mat4f> transforms{};  // [move to hierarchy ?]
+  std::vector<mat4f> transforms{};  // [move to scene_tree ?]
   // -------
 
   ResourceBuffer<Skeleton> skeletons{}; //

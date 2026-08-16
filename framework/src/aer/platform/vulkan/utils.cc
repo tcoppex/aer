@@ -163,7 +163,7 @@ void TransformDescriptorSetWriteEntries(
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = descriptor_set,
       .dstBinding = entry.binding,
-      .dstArrayElement = 0u,
+      .dstArrayElement = entry.arrayElement,
       .descriptorType = entry.type,
     };
 

@@ -1,20 +1,31 @@
 #version 460
-#extension GL_EXT_ray_tracing : require
-#extension GL_EXT_buffer_reference2 : require
-
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-// #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
 // -----------------------------------------------------------------------------
 
 #include "../interop.h"
 
-#include <material/interop.h>
-#include <shared/random.glsl>
 #include <shared/maths.glsl>
+#include <shared/random.glsl>
+
+// -----------------------------------------------------------------------------
+// Topology
+
+layout(buffer_reference, scalar)
+buffer Vertices {
+  Vertex v[];
+};
+
+layout(buffer_reference, scalar)
+buffer Indices {
+  uint u32[];
+};
+
+layout(buffer_reference, scalar)
+buffer InstanceDataBufferRef {
+  RTInstanceData instances[];
+};
+
+#include <shared/rt_unpack_geometry.glsl>
 
 // -----------------------------------------------------------------------------
 
@@ -22,59 +33,33 @@ hitAttributeEXT vec2 hitAttribs;
 
 layout(location = 0) rayPayloadInEXT HitPayload_t payload;
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_MaterialSBO)
+layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_RayTracing_MaterialSBO)
 buffer RayTracingMaterialSBO_ {
   RayTracingMaterial materials[];
 };
 
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
+uniform sampler2D uTextureChannels[];
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
 // -----------------------------------------------------------------------------
 
-layout(buffer_reference, scalar) buffer Vertices {
-  Vertex v[];
-};
-
-layout(buffer_reference, scalar) buffer Indices {
-  uint u32[]; // expect uint32 indices
-};
-
-// -----------------------------------------------------------------------------
-
-struct ObjBuffers_t {
-  uint64_t vertexAddr;
-  uint64_t indexAddr;
-};
-
-layout(set = kDescriptorSet_RayTracing, binding = kDescriptorSet_RayTracing_InstanceSBO, scalar)
-buffer _scene_desc {
-  ObjBuffers_t addr[];
-} ObjBuffers;
-
-#include <shared/rt_unpack_geometry.glsl>
-
-// -----------------------------------------------------------------------------
-
 void main() {
-  const uint object_id   = uint(gl_InstanceID); //
-  const uint material_id = gl_InstanceCustomIndexEXT;
+  // ----------------------------
+  // TOPOLOGY.
 
-  // ----------------------------------------
+  const uint primitive_id = gl_PrimitiveID;
+  const uint material_id  = gl_InstanceCustomIndexEXT;
 
-  // GEOMETRY.
-
-  Triangle_t tri = unpack_triangle(gl_InstanceID, gl_PrimitiveID);
+  RTInstanceData instance = GetInstanceData();
+  Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   Vertex v = calculate_vertex(tri, hitAttribs);
 
-  // ----------------------------------------
-
+  // ----------------------------
   // MATERIAL.
 
   const uint kInvalidIndexU24 = 0x00FFFFFF;
@@ -87,16 +72,16 @@ void main() {
   {
     RayTracingMaterial mat = materials[nonuniformEXT(material_id)];
 
-    vec4 emissive_base = texture(TEXTURE_ATLAS(mat.emissive_texture_id), v.texcoord);
+    vec4 emissive_base = texture(GetTexture(mat.emissive_texture_id), v.texcoord);
     emissive = mix(vec3(1.0f), emissive_base.rgb, emissive_base.a)
              * mat.emissive_factor
              ;
 
-    color = texture(TEXTURE_ATLAS(mat.diffuse_texture_id), v.texcoord)
+    color = texture(GetTexture(mat.diffuse_texture_id), v.texcoord)
           * mat.diffuse_factor
           ;
 
-    const vec4 orm = texture(TEXTURE_ATLAS(mat.orm_texture_id), v.texcoord);
+    const vec4 orm = texture(GetTexture(mat.orm_texture_id), v.texcoord);
     const float roughness = mat.roughness_factor * mix(1.0, max(orm.y, 1e-3f), orm.w);
     const float metallic = mat.metallic_factor * mix(1.0, orm.z, orm.w);
 
@@ -114,8 +99,7 @@ void main() {
     }
   }
 
-  // ----------------------------------------
-
+  // ----------------------------
   // SHADING.
 
   if (material_type == kRayTracingMaterialType_Diffuse) {

@@ -15,8 +15,8 @@
 class RayTracingFx : public PostGenericFx {
  public:
   // -------------------------------
-  static constexpr uint kDescriptorSetBinding_ImageOutput      = 0;
-  static constexpr uint kDescriptorSetBinding_MaterialSBO      = 1;
+  static constexpr uint kDescriptorSetBinding_RayTracing_AccumImage      = 0;
+  static constexpr uint kDescriptorSetBinding_RayTracing_MaterialSBO     = 1;
   // -------------------------------
 
  public:
@@ -32,7 +32,7 @@ class RayTracingFx : public PostGenericFx {
     
     context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
-        .binding = kDescriptorSetBinding_ImageOutput,
+        .binding = kDescriptorSetBinding_RayTracing_AccumImage,
         .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .images = {
           {
@@ -68,7 +68,7 @@ class RayTracingFx : public PostGenericFx {
 
       context_ptr_->updateDescriptorSet(descriptor_set_, {
         {
-          .binding = kDescriptorSetBinding_MaterialSBO,
+          .binding = kDescriptorSetBinding_RayTracing_MaterialSBO,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .buffers = { { material_storage_buffer_.buffer } },
         },
@@ -80,21 +80,33 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void resetFrameAccumulation() = 0;
 
+  virtual void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) = 0;
+
+  virtual void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) = 0;
+
+  void set_tlas(backend::TLAS const& tlas) {
+    tlas_ = tlas;
+  }
+
  public:
   bool resize(VkExtent2D const dimension) override;
 
+  [[nodiscard]]
   backend::Image image_output(uint32_t index = 0u) const final {
     return out_images_[index];
   }
 
+  [[nodiscard]]
   std::vector<backend::Image> /*const&*/ image_outputs() const final {
     return out_images_;
   }
 
+  [[nodiscard]]
   backend::Buffer buffer_output(uint32_t index = 0u) const final {
     return out_buffers_[index];
   }
 
+  [[nodiscard]]
   std::vector<backend::Buffer> /*const&*/ buffer_outputs() const final {
     return out_buffers_;
   }
@@ -106,17 +118,20 @@ class RayTracingFx : public PostGenericFx {
  protected:
   virtual void resetMemoryBarriers();
 
+  [[nodiscard]]
   DescriptorSetLayoutParamsBuffer descriptor_set_layout_params() const override {
     return {
+      // [use pushDescriptor instead ?]
       {
-        .binding = kDescriptorSetBinding_ImageOutput, //
+        .binding = kDescriptorSetBinding_RayTracing_AccumImage,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },
+      // [use BDA instead ?]
       {
-        .binding = kDescriptorSetBinding_MaterialSBO,
+        .binding = kDescriptorSetBinding_RayTracing_MaterialSBO,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1u,
         .stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
@@ -127,18 +142,20 @@ class RayTracingFx : public PostGenericFx {
     };
   }
 
+  [[nodiscard]]
   std::vector<VkDescriptorSetLayout> descriptor_set_layouts() const override {
-    auto const& DSR = context_ptr_->descriptor_set_registry();
+    auto const& registry = context_ptr_->descriptor_registry();
     return {
       descriptor_set_layout_,
-      DSR.descriptor(DescriptorSetRegistry::Type::Frame).layout,
-      DSR.descriptor(DescriptorSetRegistry::Type::Scene).layout,
-      DSR.descriptor(DescriptorSetRegistry::Type::RayTracing).layout,
+      registry.descriptor(DescriptorRegistry::Type::Scene).layout,
+      registry.descriptor(DescriptorRegistry::Type::RayTracing).layout,
     };
   }
 
+  [[nodiscard]]
   virtual backend::ShadersMap createShaderModules() const = 0;
 
+  [[nodiscard]]
   virtual RayTracingPipelineDescriptor_t pipelineDescriptor(backend::ShadersMap const& shaders_map) = 0;
 
   void createPipeline() override;
@@ -162,10 +179,12 @@ class RayTracingFx : public PostGenericFx {
   virtual void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) {
   }
 
+  [[nodiscard]]
   virtual void const* material_buffer_data() const {
     return nullptr;
   }
 
+  [[nodiscard]]
   virtual size_t material_buffer_size() const {
     return 0;
   }
@@ -185,6 +204,8 @@ class RayTracingFx : public PostGenericFx {
   backend::RayTracingAddressRegion region_{};
 
   backend::Buffer material_storage_buffer_{};
+
+  backend::TLAS tlas_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

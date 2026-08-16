@@ -1,9 +1,8 @@
 #ifndef SHADERS_SCENE_PBR_METALLIC_ROUGHNESS_INTEROP_H_
 #define SHADERS_SCENE_PBR_METALLIC_ROUGHNESS_INTEROP_H_
 
-// ---------------------------------------------------------------------------
-
-const uint kDescriptorSet_Internal_MaterialSBO     = 0;
+#include <material/interop.h>
+#include <material/push_constant_generic.h>
 
 // ---------------------------------------------------------------------------
 // Fx Materials SSBOs struct.
@@ -27,14 +26,10 @@ struct Material {
 // ---------------------------------------------------------------------------
 // Instance PushConstants.
 
-// [80 bytes < 128 bytes]
 struct PushConstant {
-  uint transform_index;
-  uint material_index;
-  uint instance_index;
-  uint _pad0[1]; // uint dynamic_states;
+  PushConstant_Generic generic;
 };
 
 // ---------------------------------------------------------------------------
 
-#endif
+#endif // SHADERS_SCENE_PBR_METALLIC_ROUGHNESS_INTEROP_H_

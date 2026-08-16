@@ -16,38 +16,27 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("10 - kavalkada materia");
 
-    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 0.0f });
+    /* Setup the ArcBall camera. */
+    {
+      arcball_controller_.set_target(vec3(-1.25f, 0.75f, 0.0f));
+      arcball_controller_.set_view(lina::kPi/16.0f, lina::kPi/6.0f);
+      arcball_controller_.set_dolly(5.0f);
+
+      camera_.set_controller(&arcball_controller_);
+    }
+
+    /* Setup the renderer's skybox. */
     renderer_.skybox().setup(ASSETS_DIR "textures/"
       "rogland_clear_night_2k.hdr"
     );
 
-    /* Setup the ArcBall camera. */
-    {
-      camera_.makePerspective(
-        lina::radians(55.0f),
-        viewport_size_.width,
-        viewport_size_.height,
-        0.01f,
-        500.0f
-      );
-      camera_.set_controller(&arcball_controller_);
-
-      arcball_controller_.set_target(vec3(-1.25f, 0.75f, 0.0f));
-      arcball_controller_.set_view(lina::kPi/16.0f, lina::kPi/6.0f);
-      arcball_controller_.set_dolly(5.0f);
-    }
+    /* Fallback background color if the skybox is not rendered. */
+    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 1.0f });
 
     /* Load a glTF Scene. */
-    std::string gtlf_filename{ASSETS_DIR "models/"
+    future_scene_ = renderer_.asyncLoadGLTF(ASSETS_DIR "models/"
       "AlphaBlendModeTest.glb"
-    };
-
-    if constexpr(true) {
-      future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
-    } else {
-      scene_ = renderer_.loadGLTF(gtlf_filename);
-      scene_->uploadToDevice();
-    }
+    );
 
     return true;
   }
@@ -70,6 +59,7 @@ class SampleApp final : public Application {
      && future_scene_.wait_for(0ms) == std::future_status::ready) {
       scene_ = future_scene_.get();
       scene_->uploadToDevice();
+      future_scene_ = {};
     }
     if (scene_) {
       scene_->update(camera_, elapsed_time());
@@ -79,19 +69,19 @@ class SampleApp final : public Application {
   void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.beginRendering();
     {
-      // SKYBOX.
+      /* Skybox. */
       if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
         skybox.render(pass, camera_);
       }
 
-      // SCENE.
+      /* Loaded GLTF Scene. */
       if (scene_) {
         scene_->render(pass);
       }
     }
     cmd.endRendering();
 
-    // UI.
+    /* User Interface. */
     drawUI(cmd);
   }
 

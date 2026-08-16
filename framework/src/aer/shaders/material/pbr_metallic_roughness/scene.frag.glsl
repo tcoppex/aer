@@ -1,11 +1,7 @@
 #version 460
-#extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_nonuniform_qualifier : require
 
 // ----------------------------------------------------------------------------
 
-#include <material/interop.h>
 #include <material/pbr_metallic_roughness/interop.h>
 #include <shared/maths.glsl>
 #include <shared/lighting/pbr.glsl>
@@ -14,22 +10,15 @@
 
 layout(constant_id = 0) const bool constant_kUseAlphaCutoff = false;
 
-layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSet_Internal_MaterialSBO)
-buffer MaterialSSBO_ {
+layout(buffer_reference, scalar)
+readonly buffer FrameBufferRef {
+  FrameData uFrameData;
+};
+
+layout(buffer_reference, scalar)
+readonly buffer MaterialBufferRef {
   Material materials[];
 };
-
-// -- Frame --
-
-layout(scalar, set = kDescriptorSet_Frame, binding = kDescriptorSet_Frame_FrameUBO)
-uniform FrameUBO_ {
-  FrameData uFrame;
-};
-
-// -- Scene resource (Textures & Image Based Lighting) --
-
-layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
-uniform sampler2D[] uTextureChannels;
 
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_IBL_Prefiltered)
 uniform samplerCube uEnvMapPrefilterd;
@@ -40,12 +29,8 @@ uniform samplerCube uEnvMapIrradiance;
 layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_IBL_SpecularBRDF)
 uniform sampler2D uSpecularBRDF;
 
-// layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_LightSSBO)
-// buffer LightSSBO_ {
-//   LightInfo_t lights[];
-// };
-
-// -- Instance PushConstant --
+layout(set = kDescriptorSet_Scene, binding = kDescriptorSet_Scene_Textures)
+uniform sampler2D[] uTextureChannels;
 
 layout(push_constant, scalar) uniform PushConstant_ {
   PushConstant pushConstant;
@@ -62,14 +47,12 @@ layout(location = 0) out vec4 fragColor;
 
 // ----------------------------------------------------------------------------
 
-#define TEXTURE_ATLAS(i)  uTextureChannels[nonuniformEXT(i)]
-
 vec4 sample_DiffuseColor(in Material mat) {
-  return texture(TEXTURE_ATLAS(mat.diffuse_texture_id), vTexcoord).rgba;
+  return texture(GetTexture(mat.diffuse_texture_id), vTexcoord).rgba;
 }
 
 vec3 sample_NormalMap(in Material mat) {
-  vec3 normal = texture(TEXTURE_ATLAS(mat.normal_texture_id), vTexcoord).rgb;
+  vec3 normal = texture(GetTexture(mat.normal_texture_id), vTexcoord).rgb;
   return normalize(normal * 2.0 - 1.0);
 }
 
@@ -118,7 +101,7 @@ FragInfo_t calculate_world_space_frag_info(
 }
 
 bool has_render_state(uint state_bits) {
-  return (uFrame.renderer_states & state_bits) == state_bits;
+  return (GetFrameData().renderer_states & state_bits) == state_bits;
 }
 
 PBRMetallicRoughness_Material_t calculate_pbr_material_data(
@@ -132,7 +115,7 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
   data.color = mainColor;
 
   // Emissive.
-  vec4 emissive_base = texture(TEXTURE_ATLAS(mat.emissive_texture_id), frag.uv);
+  vec4 emissive_base = texture(GetTexture(mat.emissive_texture_id), frag.uv);
   data.emissive = mix(vec3(1.0f), emissive_base.xyz, emissive_base.a)
                 * mat.emissive_factor
                 ;
@@ -141,14 +124,14 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
 
   // Roughness + Metallic.
   {
-    const vec4 orm = texture(TEXTURE_ATLAS(mat.orm_texture_id), frag.uv);
+    const vec4 orm = texture(GetTexture(mat.orm_texture_id), frag.uv);
     data.roughness = mat.roughness_factor * max(orm.y, 1e-3f);
     data.metallic = mat.metallic_factor * orm.z;
   }
 
 
   // Ambient Occlusion.
-  const float ao = texture(TEXTURE_ATLAS(mat.occlusion_texture_id), frag.uv).x;
+  const float ao = texture(GetTexture(mat.occlusion_texture_id), frag.uv).x;
   data.ao = pow(ao, 1.5);
 
   // -- fragment derivative materials ---
@@ -182,7 +165,10 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
 // ----------------------------------------------------------------------------
 
 void main() {
-  Material mat = materials[nonuniformEXT(pushConstant.material_index)];
+  FrameData frameData = GetFrameData();
+  Material mat = GetMaterial();
+
+  // -------
 
   /* Diffuse. */
   const vec4 mainColor = sample_DiffuseColor(mat)
@@ -206,7 +192,7 @@ void main() {
 
   /* Fragment infos.*/
   const FragInfo_t frag = calculate_world_space_frag_info(
-    uFrame.cameraPos_Time.xyz,
+    frameData.cameraPos_Time.xyz,
     vPositionWS,
     normalWS,
     vTexcoord
@@ -218,17 +204,15 @@ void main() {
     mainColor.rgb
   );
 
-  // -------------------------
   vec3 color = colorize_pbr(frag, pbr_data);
-
   if (gl_FragCoord.x > 0) {
     // color = vec3(pbr_data.BRDF, 0);
     // [TODO : explore mipmapping issue on specular !]
     // color = pbr_data.prefiltered;
   }
-
   float alpha = mainColor.a;
-  // -------------------------
+
+  // -------
 
   fragColor = vec4(color, alpha);
 }

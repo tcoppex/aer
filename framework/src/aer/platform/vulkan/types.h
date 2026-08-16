@@ -83,11 +83,18 @@ struct Buffer : Resource {
 
 struct GPUProperties {
   VkPhysicalDeviceProperties2 gpu2{
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+    .pNext = &descriptor_buffer_properties
   };
+
   VkPhysicalDeviceMemoryProperties2 memory2{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2
   };
+
+  VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
+  };
+
   std::vector<VkQueueFamilyProperties2> queue_families2{};
 
   uint32_t get_memory_type_index(
@@ -283,6 +290,7 @@ using DescriptorSetLayoutParamsBuffer = std::vector<DescriptorSetLayoutParams>;
 
 struct DescriptorSetWriteEntry {
   uint32_t binding{};
+  uint32_t arrayElement{};
   VkDescriptorType type{};
   std::vector<VkDescriptorImageInfo> images{};
   std::vector<VkDescriptorBufferInfo> buffers{};

@@ -26,10 +26,9 @@ cmake --build build --config Release
 
  * CMake 3.22.1
  * CPM 0.40.3 (_downloaded automatically_)
- * Vulkan SDK 1.1 (_1.4.321.0 headers downloaded via CPM_)
+ * Vulkan SDK 1.3 (_1.4.321.0 headers downloaded via CPM_)
  * Volk 1.4.321.0 (_via CPM_)
  * VulkanMemoryAllocator 3.2.0 (_via CPM_)
- * KTX (Khronos Texture) Library 4.4.2 (_via CPM_)
  * GLFW 3.4 (_via CPM_)
  * libfmt 12.0.0 (_via CPM_)
  * ImGUI v1.92.3-docking (_via CPM_)
@@ -40,29 +39,23 @@ cmake --build build --config Release
  * stb\_truetype.h (_fetched_)
  * stb\_image.h (_fetched_)
 
+<!--
+* KTX (Khronos Texture) Library 4.4.2 (_via CPM_)
+-->
+
 By default, CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (either fetch from env or cmake variable). When none exist it will default to `./third_party/.cpmlocalcache/`.
 
 ##### Vulkan device extensions
 
-Here is a non exhaustive list of main Vulkan extensions use, some are non mandatory and only target specific samples.
+This project use Vulkan 1.3 alongside the following device extensions, some being non mandatory.
 
-* [VK_EXT_descriptor_indexing](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_descriptor_indexing.html)
-* [VK_EXT_extended_dynamic_state](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_extended_dynamic_state.html)
-* [VK_EXT_extended_dynamic_state2](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_extended_dynamic_state2.html)
 * [VK_EXT_extended_dynamic_state3](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_extended_dynamic_state3.html)
-* [VK_EXT_image_view_min_lod](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_image_view_min_lod.html)
 * [VK_EXT_vertex_input_dynamic_state](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_vertex_input_dynamic_state.html)
-* [VK_KHR_buffer_device_address]( https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_buffer_device_address.html)
-* [VK_KHR_create_renderpass2](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_create_renderpass2.html)
-* [VK_KHR_depth_stencil_resolve](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_depth_stencil_resolve.html)
-* [VK_KHR_dynamic_rendering](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_dynamic_rendering.html)
+* [VK_EXT_image_view_min_lod](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_EXT_image_view_min_lod.html)
+* [VK_KHR_swapchain](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_swapchain.html)
 * [VK_KHR_index_type_uint8](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_index_type_uint8.html)
-* [VK_KHR_maintenance4](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_maintenance4.html)
 * [VK_KHR_maintenance5](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_maintenance5.html)
 * [VK_KHR_maintenance6](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_maintenance6.html)
-* [VK_KHR_swapchain](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_swapchain.html)
-* [VK_KHR_synchronization2](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_synchronization2.html)
-* [VK_KHR_timeline_semaphore](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_timeline_semaphore.html)
 * [VK_KHR_acceleration_structure](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_acceleration_structure.html)
 * [VK_KHR_ray_tracing_pipeline](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_ray_tracing_pipeline.html)
 
