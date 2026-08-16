@@ -28,11 +28,22 @@ class Allocator {
 
   [[nodiscard]]
   backend::Buffer createBuffer(
+    std::string const &name,
     VkDeviceSize const size,
     VkBufferUsageFlags2KHR const usage,   // !! require maintenance5 !!
     VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     VmaAllocationCreateFlags const flags = {}
   ) const;
+
+  [[nodiscard]]
+  backend::Buffer createBuffer(
+    VkDeviceSize const size,
+    VkBufferUsageFlags2KHR const usage,   // !! require maintenance5 !!
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateFlags const flags = {}
+  ) const {
+    return createBuffer("", size, usage, memory_usage, flags);
+  }
 
   void destroyBuffer(backend::Buffer const& buffer) const {
     if (buffer.buffer != VK_NULL_HANDLE) {

@@ -39,10 +39,11 @@ void Allocator::release() {
 // ----------------------------------------------------------------------------
 
 backend::Buffer Allocator::createBuffer(
+  std::string const& name,
   VkDeviceSize size,
-  VkBufferUsageFlags2KHR usage,
-  VmaMemoryUsage memory_usage,
-  VmaAllocationCreateFlags flags
+  VkBufferUsageFlags2KHR const usage,
+  VmaMemoryUsage const memory_usage,
+  VmaAllocationCreateFlags const flags
 ) const {
   backend::Buffer buffer{};
 
@@ -64,7 +65,7 @@ backend::Buffer Allocator::createBuffer(
   auto buffer_create_info = VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 #if 0
-    .pNext = &usage_flag2_info;
+    .pNext = &usage_flag2_info,
 #else
     .usage = static_cast<uint32_t>(usage),
 #endif
@@ -86,6 +87,20 @@ backend::Buffer Allocator::createBuffer(
     &buffer.allocation,
     &result_alloc_info
   ));
+
+  // Name the buffer for debugging.
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, buffer.buffer, name);
+  }
+
+  // Retrieve the buffer address.
+  if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+    auto const buffer_device_addr_info = VkBufferDeviceAddressInfoKHR{
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
+      .buffer = buffer.buffer,
+    };
+    buffer.address = vkGetBufferDeviceAddress(device_, &buffer_device_addr_info);
+  }
 
   return buffer;
 }
