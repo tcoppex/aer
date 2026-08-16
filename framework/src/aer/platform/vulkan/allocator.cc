@@ -54,24 +54,23 @@ backend::Buffer Allocator::createBuffer(
     }
   }
 
-  // auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
-  //   .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-  //   .usage = usage
-  //          // | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
-  //           //VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR
-  //          ,
-  // };
-
   auto buffer_create_info = VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-#if 0
-    .pNext = &usage_flag2_info,
-#else
-    .usage = static_cast<uint32_t>(usage),
-#endif
+    .pNext = nullptr,
+    .size = size,
+    .usage = static_cast<VkBufferUsageFlags>(usage),
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
-  buffer_create_info.size = size;
+
+#if 0
+  // [to use maintenance5]
+  auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
+    .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+    .usage = usage,
+  };
+  buffer_create_info.pNext = &usage_flag2_info;
+  buffer_create_info.usage = VkBufferUsageFlags{0};
+#endif
 
   auto alloc_create_info = VmaAllocationCreateInfo{
     .flags = flags,

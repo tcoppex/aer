@@ -307,7 +307,6 @@ class Context {
 
   // --- Transient Command Encoder Wrappers ---
 
-  // (formerly 'createBufferAndUpload')
   [[nodiscard]]
   backend::Buffer transientCreateBuffer(
     void const* host_data,
