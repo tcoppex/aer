@@ -232,7 +232,7 @@ class Logger : public Singleton<Logger> {
 // Special aliases.
 
 #define LOG_FATAL(...)  LOGE(__VA_ARGS__); exit(-1)
-#define LOG_LINE()      LOGD("{} {}", __FUNCTION__, __LINE__)
+#define LOG_LINE()      LOGD("{} {}", __FILE__, __LINE__)
 #define LOG_CHECK(x)    assert(x)
 
 // ----------------------------------------------------------------------------
