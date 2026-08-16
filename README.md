@@ -33,7 +33,7 @@
 
 # aer
 
-A real-time rendering framework for desktop / mobile / VR / XR, inspired by WebGPU and _vk\_minimal\_latest_.
+A cross-platform real-time rendering framework, inspired by WebGPU and _vk\_minimal\_latest_.
 
 Tested on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
 
