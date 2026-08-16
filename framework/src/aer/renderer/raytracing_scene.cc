@@ -319,8 +319,10 @@ void RayTracingScene::buildInstancesDataBuffer(
   }
   instances_data_buffer_ = context_ptr_->transientCreateBuffer(
     instances,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   );
+  context_ptr_->setDebugObjectName(instances_data_buffer_.buffer, "RayTracingScene::Buffer::InstanceData");
 }
 
 // ----------------------------------------------------------------------------

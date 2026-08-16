@@ -93,7 +93,8 @@ backend::Buffer Allocator::createBuffer(
   }
 
   // Retrieve the buffer address.
-  if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+  if (VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT == (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
+  {
     auto const buffer_device_addr_info = VkBufferDeviceAddressInfoKHR{
       .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
       .buffer = buffer.buffer,
