@@ -121,7 +121,7 @@ void RayTracingFx::resetMemoryBarriers() {
       .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
                      | VK_ACCESS_2_SHADER_WRITE_BIT
                      ,
-      .oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_GENERAL,
+      .oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED,
       .newLayout     = VK_IMAGE_LAYOUT_GENERAL,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,

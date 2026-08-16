@@ -88,29 +88,18 @@ class BasicRayTracingFx : public RayTracingFx {
 
  protected:
   backend::ShadersMap createShaderModules() const final {
-    auto create_modules{[&](std::vector<std::string_view> const& filenames) {
-      return context_ptr_->createShaderModules(
-        COMPILED_SHADERS_DIR,
-        filenames
-      );
+    auto make_modules{[&](backend::ShaderStage stage, std::vector<std::string_view> const& filenames) {
+      return backend::ShadersMap::value_type{
+        stage,
+        context_ptr_->createShaderModules(COMPILED_SHADERS_DIR, filenames)
+      };
     }};
+
     return {
-      {
-        backend::ShaderStage::Raygen,
-        create_modules({ "raygen.rgen" })
-      },
-      {
-        backend::ShaderStage::AnyHit,
-        create_modules({ "anyhit.rahit" })
-      },
-      {
-        backend::ShaderStage::ClosestHit,
-        create_modules({ "closesthit.rchit" })
-      },
-      {
-        backend::ShaderStage::Miss,
-        create_modules({ "miss.rmiss" })
-      },
+      make_modules( backend::ShaderStage::Raygen,     { "raygen.rgen" }),
+      make_modules( backend::ShaderStage::AnyHit,     { "anyhit.rahit" }),
+      make_modules( backend::ShaderStage::ClosestHit, { "closesthit.rchit" }),
+      make_modules( backend::ShaderStage::Miss,       { "miss.rmiss" }),
     };
   }
 
