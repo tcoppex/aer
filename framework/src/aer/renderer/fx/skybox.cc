@@ -148,10 +148,22 @@ void Skybox::release(RenderContext const& context) {
 // ----------------------------------------------------------------------------
 
 bool Skybox::setup(std::string_view hdr_filename) {
+  if (!context_ptr_) {
+    LOGW("Skybox not initialized.");
+    return false;
+  }
+
+  if (!context_ptr_->get_features().maintenance5.maintenance5) {
+    LOGW("Skybox IBLs requires the maintenance5 device extension.");
+    return false;
+  }
+
   setuped_ = envmap_.setup(hdr_filename);
+
   if (setuped_) {
     context_ptr_->descriptor_registry().updateSceneIBL(*this);
   }
+
   return setuped_;
 }
 

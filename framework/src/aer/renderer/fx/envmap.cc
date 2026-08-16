@@ -70,7 +70,7 @@ void Envmap::init(RenderContext const& context) {
 
   /* Shared descriptor sets */
   {
-    VkDescriptorBindingFlags const kDefaultDescBindingFlags{
+    auto const kDefaultDescBindingFlags = VkDescriptorBindingFlags{
         VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
       | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
@@ -197,6 +197,11 @@ void Envmap::release() {
 // ----------------------------------------------------------------------------
 
 bool Envmap::setup(std::string_view hdr_filename) {
+  if (!context_ptr_) {
+    LOGW("Envmap not initialized.");
+    return false;
+  }
+
   if (!loadDiffuseEnvmap(hdr_filename)) {
     LOGE("Fail to load spherical map \"{}\".", hdr_filename);
     return false;

@@ -227,6 +227,13 @@ class BasicRayTracingFx : public RayTracingFx {
 class SampleApp final : public Application {
  private:
   bool setup() final {
+
+    auto const& features = context_.get_features();
+    if (!features.ray_tracing_pipeline.rayTracingPipeline) {
+      LOGW("This device does not support ray tracing pipeline.");
+      return false;
+    }
+
     wm_->set_title("11 - shining through");
 
     renderer_.set_clear_color({ 0.16f, 0.14f, 0.12f, 1.0f });
