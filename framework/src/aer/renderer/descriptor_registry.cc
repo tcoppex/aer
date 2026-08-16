@@ -248,21 +248,28 @@ void DescriptorRegistry::updateSceneIBL(Skybox const& skybox) const {
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
+  auto const& context_feature = context_ptr_->get_feature();
+
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
     { VK_DESCRIPTOR_TYPE_SAMPLER, 50 },                 // standalone samplers
     { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2*kMaxNumTextures }, // textures in materials
     { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024 },         // sampled images
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 50 },           // compute shaders
-    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 50 },    // texel buffers
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },         // compute data or large resource buffers
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 50 },  // dynamic storage buffers
     { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 50 },    // storage texel buffers
     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 200 },         // per-frame and per-object data
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },         // compute data or large resource buffers
     { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 50 },  // dynamic uniform buffers (per-frame, per-object)
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 50 },  // dynamic storage buffers
+    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 50 },    // texel buffers
     { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 50 },        // subpass inputs
-    { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 50 },
   };
+
+  if (context_feature.acceleration_structure.accelerationStructure) {
+    descriptor_pool_sizes_.push_back(
+      { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 50 }
+    );
+  }
 
   auto const descriptor_pool_info = VkDescriptorPoolCreateInfo{
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -285,6 +292,8 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::setupMainDescriptors() {
+  auto const& context_feature = context_ptr_->get_feature();
+
   createMainDescriptorSet(
     Type::Scene,
     {
@@ -328,19 +337,22 @@ void DescriptorRegistry::setupMainDescriptors() {
     "Scene"
   );
 
-  createMainDescriptorSet(
-    Type::RayTracing,
-    {
+  if (context_feature.acceleration_structure.accelerationStructure)
+  {
+    createMainDescriptorSet(
+      Type::RayTracing,
       {
-        .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
-        .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
+        {
+          .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
+          .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+          .descriptorCount = 1u,
+          .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
+        },
       },
-    },
-    VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
-    "RayTracing"
-  );
+      VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
+      "RayTracing"
+    );
+  }
 }
 
 // ----------------------------------------------------------------------------
