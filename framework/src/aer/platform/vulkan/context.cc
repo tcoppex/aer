@@ -100,6 +100,35 @@ VkSampleCountFlagBits Context::max_sample_count() const noexcept {
 
 // ----------------------------------------------------------------------------
 
+[[nodiscard]]
+backend::Buffer Context::createBuffer(
+  std::string const& name,
+  VkDeviceSize const size,
+  VkBufferUsageFlags2KHR const usage,
+  VmaMemoryUsage const memory_usage,
+  VmaAllocationCreateFlags const flags
+) const {
+  auto buffer = allocator_.createBuffer(size, usage, memory_usage, flags);
+
+  // Name the buffer for debugging.
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(handle_, buffer.buffer, name);
+  }
+
+  // Retrieve the buffer address.
+  if (usage & VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR) {
+    auto const buffer_device_addr_info = VkBufferDeviceAddressInfoKHR{
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
+      .buffer = buffer.buffer,
+    };
+    buffer.address = vkGetBufferDeviceAddress(handle_, &buffer_device_addr_info);
+  }
+
+  return buffer;
+}
+
+// ----------------------------------------------------------------------------
+
 backend::Image Context::createImage2D(
   uint32_t width,
   uint32_t height,

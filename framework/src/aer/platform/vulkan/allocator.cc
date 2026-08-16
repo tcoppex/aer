@@ -53,25 +53,31 @@ backend::Buffer Allocator::createBuffer(
     }
   }
 
-  auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
-    .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-    .usage = usage
-           | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR //
-           ,
-  };
+  // auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
+  //   .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+  //   .usage = usage
+  //          // | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT //
+  //           //VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR
+  //          ,
+  // };
 
-  // Create buffer.
-  auto const buffer_create_info = VkBufferCreateInfo{
+  auto buffer_create_info = VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .pNext = &usage_flag2_info,
-    .size = size,
+#if 0
+    .pNext = &usage_flag2_info;
+#else
+    .usage = static_cast<uint32_t>(usage),
+#endif
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
+  buffer_create_info.size = size;
+
   auto alloc_create_info = VmaAllocationCreateInfo{
     .flags = flags,
     .usage = memory_usage,
   };
   auto result_alloc_info = VmaAllocationInfo{};
+
   CHECK_VK(vmaCreateBuffer(
     handle_,
     &buffer_create_info,
@@ -80,13 +86,6 @@ backend::Buffer Allocator::createBuffer(
     &buffer.allocation,
     &result_alloc_info
   ));
-
-  // Get its GPU address.
-  VkBufferDeviceAddressInfoKHR const buffer_device_addr_info{
-    .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
-    .buffer = buffer.buffer,
-  };
-  buffer.address = vkGetBufferDeviceAddress(device_, &buffer_device_addr_info);
 
   return buffer;
 }

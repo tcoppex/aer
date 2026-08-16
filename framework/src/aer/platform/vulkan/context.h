@@ -109,12 +109,21 @@ class Context {
 
   [[nodiscard]]
   backend::Buffer createBuffer(
+    std::string const& name,
+    VkDeviceSize const size,
+    VkBufferUsageFlags2KHR const usage,
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateFlags const flags = {}
+  ) const;
+
+  [[nodiscard]]
+  backend::Buffer createBuffer(
     VkDeviceSize const size,
     VkBufferUsageFlags2KHR const usage,
     VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     VmaAllocationCreateFlags const flags = {}
   ) const {
-    return allocator_.createBuffer(size, usage, memory_usage, flags);
+    return createBuffer("", size, usage, memory_usage, flags);
   }
 
   void destroyBuffer(backend::Buffer const& buffer) const {
