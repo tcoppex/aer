@@ -27,8 +27,8 @@
 
 // -----------------------------------------------------------------------------
 
-const uint kDescriptorSetBinding_Sample11_AccumImage   = 0;
-const uint kDescriptorSetBinding_Sample11_MaterialSBO  = 1; // (to remove)
+const uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
+const uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
 
 // -----------------------------------------------------------------------------
 

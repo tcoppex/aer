@@ -23,7 +23,7 @@ readonly buffer FrameBufferRef {
   FrameData uFrameData;
 };
 
-layout(set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_Sample11_AccumImage, rgba16f)
+layout(set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_RayTracing_AccumImage, rgba16f)
 uniform image2D uAccumImage;
 
 layout(push_constant, scalar)
