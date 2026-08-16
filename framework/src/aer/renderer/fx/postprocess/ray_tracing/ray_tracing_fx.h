@@ -84,7 +84,9 @@ class RayTracingFx : public PostGenericFx {
 
   virtual void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) = 0;
 
-  virtual void set_tlas_address(VkDeviceAddress const tlas_address) = 0;
+  void set_tlas(backend::TLAS const& tlas) {
+    tlas_ = tlas;
+  }
 
  public:
   bool resize(VkExtent2D const dimension) override;
@@ -190,6 +192,8 @@ class RayTracingFx : public PostGenericFx {
   backend::RayTracingAddressRegion region_{};
 
   backend::Buffer material_storage_buffer_{};
+
+  backend::TLAS tlas_{}; //
 };
 
 /* -------------------------------------------------------------------------- */

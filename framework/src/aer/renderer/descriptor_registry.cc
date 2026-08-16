@@ -247,24 +247,6 @@ void DescriptorRegistry::updateSceneIBL(Skybox const& skybox) const {
 
 // ----------------------------------------------------------------------------
 
-void DescriptorRegistry::updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const {
-  LOG_CHECK(rt_scene != nullptr);
-
-  context_ptr_->updateDescriptorSet(
-    descriptors_[DescriptorRegistry::Type::RayTracing].set,
-    {
-      {
-        .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
-        .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-        .accelerationStructures = { rt_scene->tlas().handle },
-      }
-    }
-  );
-}
-
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
 void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
@@ -353,11 +335,10 @@ void DescriptorRegistry::setupMainDescriptors() {
         .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
         .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
       },
     },
-    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+    VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
     "RayTracing"
   );
 }
@@ -400,6 +381,23 @@ DescriptorRegistry::Descriptor& DescriptorRegistry::_intializeMainDescriptor(
 
 // ----------------------------------------------------------------------------
 
+void DescriptorRegistry::createMainDescriptorSet(
+  Type const type,
+  DescriptorSetLayoutParamsBuffer const& layout_params,
+  VkDescriptorSetLayoutCreateFlags layout_flags,
+  std::string const& name
+) {
+  LOG_CHECK(0 == (layout_flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT));
+
+  auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
+
+  if (0 == (layout_flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR)) {
+    descriptor.set = allocateDescriptorSet(descriptor.layout, name);
+  }
+};
+
+// ----------------------------------------------------------------------------
+
 void DescriptorRegistry::createMainDescriptorBuffer(
   Type const type,
   DescriptorSetLayoutParamsBuffer const& layout_params,
@@ -420,21 +418,6 @@ void DescriptorRegistry::createMainDescriptorBuffer(
     usage_flags, // eg. VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT
     name
   );
-};
-
-// ----------------------------------------------------------------------------
-
-void DescriptorRegistry::createMainDescriptorSet(
-  Type const type,
-  DescriptorSetLayoutParamsBuffer const& layout_params,
-  VkDescriptorSetLayoutCreateFlags layout_flags,
-  std::string const& name
-) {
-  LOG_CHECK(0 == (layout_flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT));
-
-  auto &descriptor = _intializeMainDescriptor(type, layout_params, layout_flags, name);
-
-  descriptor.set = allocateDescriptorSet(descriptor.layout, name);
 };
 
 /* -------------------------------------------------------------------------- */

@@ -8,7 +8,7 @@
 void RayTracingFx::execute(CommandEncoder const& cmd) const {
   cmd.bindPipeline(pipeline_);
 
-  // Bind descriptor sets.
+  // Bind Descriptor Sets (Internal + Scene data).
   {
     auto const stage_flags = VkShaderStageFlags{
         VK_SHADER_STAGE_RAYGEN_BIT_KHR
@@ -25,20 +25,37 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
       );
     }
 
-    auto const& registry = context_ptr_->descriptor_registry();
-
-    registry.bindDescriptorSet(
+    context_ptr_->descriptor_registry().bindDescriptorSet(
       DescriptorRegistry::Type::Scene,
       cmd,
       pipeline_layout_,
       stage_flags
     );
+  }
 
-    registry.bindDescriptorSet(
-      DescriptorRegistry::Type::RayTracing,
-      cmd,
+  // Push Descriptor Sets (TopLevel AS).
+  {
+    LOG_CHECK(vkCmdPushDescriptorSetKHR);
+    auto desc_as_info = VkWriteDescriptorSetAccelerationStructureKHR{
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+      .accelerationStructureCount = 1,
+      .pAccelerationStructures = &tlas_.handle
+    };
+    auto write = VkWriteDescriptorSet{
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .pNext = &desc_as_info,
+      .dstBinding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
+    };
+    vkCmdPushDescriptorSetKHR(
+      cmd.handle(),
+      VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
       pipeline_layout_,
-      stage_flags
+      material_shader_interop::kDescriptorSet_RayTracing,
+      1,
+      &write
     );
   }
 

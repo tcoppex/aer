@@ -81,7 +81,6 @@ class DescriptorRegistry {
     std::string const& name = ""
   ) const;
 
-  /* Helper to bind internal descriptor sets. */
   void bindDescriptorSet(
     Type type,
     GenericCommandEncoder const& cmd,
@@ -89,12 +88,13 @@ class DescriptorRegistry {
     VkShaderStageFlags const stage_flags
   ) const;
 
+  // -------------------------------------------------
+  void updateSceneIBL(Skybox const& skybox) const; //
 
-  void updateSceneIBL(Skybox const& skybox) const;
-  void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const;
   void updateSceneTexture(uint32_t index, VkDescriptorImageInfo image_info) const;
 
-  void updateRayTracingScene(RayTracingSceneInterface const* rt_scene) const;
+  void updateSceneTextures(std::vector<VkDescriptorImageInfo> image_infos) const; //
+  // -------------------------------------------------
 
  private:
   void initDescriptorPool(uint32_t const max_sets);

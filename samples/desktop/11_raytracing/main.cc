@@ -70,7 +70,7 @@ class BasicRayTracingFx : public RayTracingFx {
   void execute(CommandEncoder const& cmd) const final {
     LOG_CHECK(push_constant_.frame_buffer_address != 0);
     LOG_CHECK(push_constant_.instance_buffer_address != 0);
-    LOG_CHECK(push_constant_.tlas_address != 0);
+    // LOG_CHECK(push_constant_.tlas_address != 0);
 
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
       push_constant_.material_buffer_address = material_storage_buffer_.address; //
@@ -84,10 +84,6 @@ class BasicRayTracingFx : public RayTracingFx {
 
   void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) final {
     push_constant_.instance_buffer_address = instance_buffer_address;
-  }
-
-  void set_tlas_address(VkDeviceAddress const tlas_address) final {
-    push_constant_.tlas_address = tlas_address;
   }
 
  protected:

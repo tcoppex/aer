@@ -146,7 +146,7 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
 
       rt_scene_->build(meshes, transforms, vertex_buffer, index_buffer);
       ray_tracing_fx_->set_instance_buffer_address(rt_scene_->instances_data_buffer().address);
-      ray_tracing_fx_->set_tlas_address(rt_scene_->tlas().address);
+      ray_tracing_fx_->set_tlas(rt_scene_->tlas());
     }
   }
 
@@ -159,8 +159,11 @@ void GPUResources::uploadToDevice(UploadFlags const flags) {
     }
   }
 
-  /* Initial descriptor setup */
-  updateGlobalDescriptorSetBindings(); //
+  /* Initial Scene global descriptor setup */
+  if (total_image_size > 0) {
+    auto const& registry = context_.descriptor_registry();
+    registry.updateSceneTextures(buildDescriptorImageInfos());
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -268,22 +271,6 @@ void GPUResources::setupRayTracingFx(RayTracingFx* fx) {
 }
 
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
-void GPUResources::updateGlobalDescriptorSetBindings() const {
-  auto const& registry = context_.descriptor_registry();
-
-  if (total_image_size > 0) {
-    registry.updateSceneTextures(buildDescriptorImageInfos());
-  }
-
-  // ---------------------------------------
-  if (rt_scene_ && (vertex_buffer_size > 0)) {
-    registry.updateRayTracingScene(rt_scene_.get());
-  }
-  // ---------------------------------------
-}
-
 // ----------------------------------------------------------------------------
 
 void GPUResources::uploadImages() {
