@@ -38,11 +38,11 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   // ---------
 
   /* Retrieve the GPU's capabilities for this surface. */
-  VkPhysicalDeviceSurfaceInfo2KHR const surface_info2{
+  auto const surface_info2 = VkPhysicalDeviceSurfaceInfo2KHR{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
     .surface = surface,
   };
-  VkSurfaceCapabilities2KHR capabilities2{
+  auto capabilities2 = VkSurfaceCapabilities2KHR{
     .sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR
   };
   vkGetPhysicalDeviceSurfaceCapabilities2KHR(gpu_, &surface_info2, &capabilities2);
@@ -63,7 +63,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
                                                  : surface_capabilities.maxImageCount
     };
     image_count_ = std::clamp(preferred_image_count, min_image_count, max_image_count);
-    LOGD("image count : {}", image_count_);
+    LOGD("{:s} | swapchain frames in flights : {}", __FUNCTION__, image_count_);
 
     /* Select best swap surface format and present mode. */
     auto const surface_format = selectSurfaceFormat(&surface_info2).surfaceFormat;
@@ -99,12 +99,12 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
         timeline_.signal_indices[i] = i;
       }
       // Create the timeline semaphore.
-      VkSemaphoreTypeCreateInfo const semaphore_type_create_info{
+      auto const semaphore_type_create_info = VkSemaphoreTypeCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
         .initialValue = image_count_ - 1u,
       };
-      VkSemaphoreCreateInfo const semaphore_create_info{
+      auto const semaphore_create_info = VkSemaphoreCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .pNext = &semaphore_type_create_info,
       };
@@ -119,7 +119,6 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   swapchain_create_info_.oldSwapchain = handle_;
 
   // ---------
-
   /* Create the swapchain image. */
   handle_ = VK_NULL_HANDLE;
   CHECK_VK_RET(vkCreateSwapchainKHR(
@@ -138,7 +137,7 @@ bool Swapchain::init(Context const& context, VkSurfaceKHR surface) {
   images_.resize(image_count_);
   synchronizers_.resize(image_count_);
 
-  VkImageViewCreateInfo image_view_create_info{
+  auto image_view_create_info = VkImageViewCreateInfo{
     .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
     .viewType   = VK_IMAGE_VIEW_TYPE_2D,
     .format     = swapchain_create_info_.imageFormat,
@@ -252,7 +251,7 @@ bool Swapchain::acquireNextImage() {
   LOG_CHECK(handle_ != VK_NULL_HANDLE);
 
   // Wait for the GPU to have finished using this frame resources.
-  VkSemaphoreWaitInfo const semaphore_wait_info{
+  auto const semaphore_wait_info = VkSemaphoreWaitInfo{
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
     .semaphoreCount = 1u,
     .pSemaphores = &timeline_.semaphore,
@@ -279,7 +278,7 @@ bool Swapchain::acquireNextImage() {
 bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
   LOG_CHECK(handle_ != VK_NULL_HANDLE);
 
-  VkPipelineStageFlags2 constexpr kStageMask{
+  auto constexpr kStageMask = VkPipelineStageFlags2{
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
   };
 
@@ -289,7 +288,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
 
   // Semaphore(s) to wait for:
   //    - Image available.
-  std::vector<VkSemaphoreSubmitInfo> const wait_semaphores{
+  auto const wait_semaphores = std::vector<VkSemaphoreSubmitInfo>{
     {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
       .semaphore = wait_image_semaphore(),
@@ -298,7 +297,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
   };
 
   // Array of command buffers to submit (here, just one).
-  std::vector<VkCommandBufferSubmitInfo> const cb_submit_infos{
+  auto const cb_submit_infos = std::vector<VkCommandBufferSubmitInfo>{
     {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
       .commandBuffer = command_buffer,
@@ -308,7 +307,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
   // Semaphores to signal when terminating:
   //    - Ready to present,
   //    - Next frame to render,
-  std::vector<VkSemaphoreSubmitInfo> const signal_semaphores{
+  auto const signal_semaphores = std::vector<VkSemaphoreSubmitInfo>{
     {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
       .semaphore = signal_present_semaphore(),
@@ -322,7 +321,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
     },
   };
 
-  VkSubmitInfo2 const submit_info_2{
+  auto const submit_info_2 = VkSubmitInfo2{
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
     .waitSemaphoreInfoCount = static_cast<uint32_t>(wait_semaphores.size()),
     .pWaitSemaphoreInfos = wait_semaphores.data(),
@@ -341,7 +340,7 @@ bool Swapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer) {
 bool Swapchain::finishFrame(VkQueue queue) {
   auto present_semaphore = signal_present_semaphore();
 
-  VkPresentInfoKHR const present_info{
+  auto const present_info = VkPresentInfoKHR{
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .pNext = nullptr,
     .waitSemaphoreCount = 1u,
@@ -389,15 +388,15 @@ VkSurfaceFormat2KHR Swapchain::selectSurfaceFormat(
   LOGV("> End vkGetPhysicalDeviceSurfaceFormats2KHR");
 #endif
 
-  std::vector<VkSurfaceFormat2KHR> const preferred_formats{
-    VkSurfaceFormat2KHR{
+  auto const preferred_formats = std::vector<VkSurfaceFormat2KHR>{
+    {
       .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
       .surfaceFormat = {
         .format = VK_FORMAT_B8G8R8A8_UNORM,
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
       },
     },
-    VkSurfaceFormat2KHR{
+    {
       .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
       .surfaceFormat = {
         .format = VK_FORMAT_B8G8R8A8_SRGB,    //< (should probably be preferred)
