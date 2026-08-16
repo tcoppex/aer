@@ -12,9 +12,8 @@ class RayTracingSceneInterface;
 
 ///
 /// Handler to access the renderer global Descriptor Sets:
-///   - Frame, for dynamic per-frame data (eg. camera matrices)
-///   - Scene, for scene shared resources (eg. TextureAtlas, IBL)
-///   - RayTracing, for scene data that could change (eg. raytracing instances)
+///   - Scene, for scene shared resources (eg. Textures, IBL luts).
+///   - RayTracing, for the TopLevel acceleration structure.
 ///
 class DescriptorRegistry {
  private:

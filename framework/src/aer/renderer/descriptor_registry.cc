@@ -303,16 +303,6 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::setupMainDescriptors() {
-  auto const extra_stage_flags = VkShaderStageFlags{0
-    | VK_SHADER_STAGE_RAYGEN_BIT_KHR
-    | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
-    | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
-  };
-
-  auto const layout_flags = VkDescriptorSetLayoutCreateFlags{0
-    | VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT
-  };
-
   createMainDescriptorSet(
     Type::Scene,
     {
@@ -341,9 +331,10 @@ void DescriptorRegistry::setupMainDescriptors() {
         .binding = material_shader_interop::kDescriptorSet_Scene_Textures,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = kMaxNumTextures, //
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                    | VK_SHADER_STAGE_FRAGMENT_BIT
-                    | extra_stage_flags
+        .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS
+                    | VK_SHADER_STAGE_RAYGEN_BIT_KHR
+                    | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
+                    | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
                     ,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
                       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
@@ -351,7 +342,7 @@ void DescriptorRegistry::setupMainDescriptors() {
                       ,
       },
     },
-    layout_flags,
+    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
     "Scene"
   );
 
@@ -362,12 +353,11 @@ void DescriptorRegistry::setupMainDescriptors() {
         .binding = material_shader_interop::kDescriptorSet_RayTracing_TLAS,
         .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR
-                    ,
+        .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },
     },
-    layout_flags,
+    VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
     "RayTracing"
   );
 }

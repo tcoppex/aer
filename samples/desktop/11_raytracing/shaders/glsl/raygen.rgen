@@ -54,8 +54,6 @@ void russianRoulette() {
 // ----------------------------------------------------------------------------
 
 void main() {
-  accelerationStructureEXT topLevelAS = accelerationStructureEXT(pushConstant.tlas_address);
-
   const FrameData frameData = GetFrameData();
 
   const ivec2 pixel       = ivec2(gl_LaunchIDEXT.xy);
