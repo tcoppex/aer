@@ -75,7 +75,7 @@ VkDescriptorSetLayout DescriptorRegistry::createLayout(
     device_, &layout_create_info, nullptr, &descriptor_set_layout
   ));
   if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set_layout, "DescriptorRegistry::DescriptorSetLayout::" + name);
+    context_ptr_->setDebugObjectName(descriptor_set_layout, "DescriptorRegistry::DescriptorSetLayout::" + name);
   }
 
   return descriptor_set_layout;
@@ -106,7 +106,7 @@ VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
   CHECK_VK(vkAllocateDescriptorSets(device_, &alloc_info, &descriptor_set));
 
   if (!name.empty()) {
-    vk_utils::SetDebugObjectName(device_, descriptor_set, "DescriptorRegistry::DescriptorSet::" + name);
+    context_ptr_->setDebugObjectName(descriptor_set, "DescriptorRegistry::DescriptorSet::" + name);
   }
 
   return descriptor_set;
@@ -140,7 +140,7 @@ VkDescriptorSet DescriptorRegistry::allocateDescriptorSet(
 //   );
 
 //   if (!name.empty()) {
-//     vk_utils::SetDebugObjectName(device_, buffer.buffer, "DescriptorRegistry::DescriptorSet::" + name);
+//     context_ptr_->setDebugObjectName(buffer.buffer, "DescriptorRegistry::DescriptorSet::" + name);
 //   }
 
 //   return buffer;
@@ -286,7 +286,7 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
     nullptr, &
     main_pool_
   ));
-  vk_utils::SetDebugObjectName(device_, main_pool_, "DescriptorRegistry::MainPool");
+  context_ptr_->setDebugObjectName(main_pool_, "DescriptorRegistry::MainPool");
 }
 
 // ----------------------------------------------------------------------------
