@@ -95,6 +95,7 @@ class SampleApp final : public Application {
         {
           .vertex = {
             .module = shaders[0u].module,
+            // .entryPoint = "main",  // default value when unspecified.
             .buffers = {
               {
                 .stride = sizeof(Vertex_t),
@@ -134,8 +135,8 @@ class SampleApp final : public Application {
           },
           .primitive = {
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            /* By default the cull mode is set to 'none' and front face are ordered counter clockwise,
-             * so if we're not flipping the screen, triangles will not be displayed.
+            /* By default the cull mode is set to 'none' and front faces are ordered counter clockwise,
+             * so in order to display triangle we will need to flip the screen.
              * Uncomment to see the result.  */
             // .cullMode = VK_CULL_MODE_BACK_BIT,
             // .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
