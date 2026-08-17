@@ -3,24 +3,21 @@
           xmlns:android="http://schemas.android.com/apk/res/android"
     tools:ignore="ExtraText">
 
-  <!-- Tell the system this app works in either 3dof or 6dof mode -->
-  <uses-feature
-    android:name="android.hardware.vr.headtracking"
-    android:required="false"
-    android:version="1"
-    />
+  <!-- Tell the system this app targets vulkan 1.3 -->
+  <uses-feature android:name="android.hardware.vulkan.version" android:version="0x403000" android:required="true" />
+  <!-- Tell the system to target advanced hardware support -->
+  <uses-feature android:name="android.hardware.vulkan.level" android:version="1" android:required="true" />
 
-  <uses-feature
-      android:name="com.oculus.experimental.enabled"
-      android:required="true"
-      />
+  <!-- Use experimental Meta XR SDK features -->
+  <!-- <uses-feature android:name="com.oculus.experimental.enabled" android:required="true" /> -->
+
+  <!-- Tell the system this app works in either 3dof or 6dof mode -->
+  <uses-feature android:name="android.hardware.vr.headtracking" android:required="false" android:version="1" />
+
 
   <!-- Tell the system this app can handle tracked remotes and hands -->
   <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
-  <uses-feature
-      android:name="oculus.software.handtracking"
-      android:required="false"
-      />
+  <uses-feature android:name="oculus.software.handtracking" android:required="false" />
 
   <!-- Recommended for haptic feedback -->
   <uses-permission android:name="android.permission.VIBRATE" />
