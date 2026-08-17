@@ -39,10 +39,11 @@ void Allocator::release() {
 // ----------------------------------------------------------------------------
 
 backend::Buffer Allocator::createBuffer(
+  std::string const& name,
   VkDeviceSize size,
-  VkBufferUsageFlags2KHR usage,
-  VmaMemoryUsage memory_usage,
-  VmaAllocationCreateFlags flags
+  VkBufferUsageFlags2KHR const usage,
+  VmaMemoryUsage const memory_usage,
+  VmaAllocationCreateFlags const flags
 ) const {
   backend::Buffer buffer{};
 
@@ -53,25 +54,30 @@ backend::Buffer Allocator::createBuffer(
     }
   }
 
-  auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
-    .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-    .usage = usage
-           | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR //
-           ,
-  };
-
-  // Create buffer.
-  auto const buffer_create_info = VkBufferCreateInfo{
+  auto buffer_create_info = VkBufferCreateInfo{
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .pNext = &usage_flag2_info,
+    .pNext = nullptr,
     .size = size,
+    .usage = static_cast<VkBufferUsageFlags>(usage),
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
+
+#if 0
+  // [to use maintenance5]
+  auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
+    .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+    .usage = usage,
+  };
+  buffer_create_info.pNext = &usage_flag2_info;
+  buffer_create_info.usage = VkBufferUsageFlags{0};
+#endif
+
   auto alloc_create_info = VmaAllocationCreateInfo{
     .flags = flags,
     .usage = memory_usage,
   };
   auto result_alloc_info = VmaAllocationInfo{};
+
   CHECK_VK(vmaCreateBuffer(
     handle_,
     &buffer_create_info,
@@ -81,12 +87,20 @@ backend::Buffer Allocator::createBuffer(
     &result_alloc_info
   ));
 
-  // Get its GPU address.
-  VkBufferDeviceAddressInfoKHR const buffer_device_addr_info{
-    .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
-    .buffer = buffer.buffer,
-  };
-  buffer.address = vkGetBufferDeviceAddress(device_, &buffer_device_addr_info);
+  // Name the buffer for debugging.
+  if (!name.empty()) {
+    vk_utils::SetDebugObjectName(device_, buffer.buffer, name);
+  }
+
+  // Retrieve the buffer address.
+  if (VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT == (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
+  {
+    auto const buffer_device_addr_info = VkBufferDeviceAddressInfoKHR{
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
+      .buffer = buffer.buffer,
+    };
+    buffer.address = vkGetBufferDeviceAddress(device_, &buffer_device_addr_info);
+  }
 
   return buffer;
 }
@@ -105,7 +119,7 @@ backend::Buffer Allocator::createStagingBuffer(
   // Create buffer.
   backend::Buffer staging_buffer{createBuffer(
     static_cast<VkDeviceSize>(bytesize),
-    VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR,
+    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, //
     VMA_MEMORY_USAGE_CPU_TO_GPU,
     VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
   )};

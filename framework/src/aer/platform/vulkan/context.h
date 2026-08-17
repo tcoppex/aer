@@ -22,7 +22,7 @@ class Context {
     kCount,
   };
 
-  struct VulkanContextFeature {
+  struct VulkanContextFeatures {
     VkPhysicalDeviceFeatures2 base{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     VkPhysicalDeviceVulkan11Features v11{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
     VkPhysicalDeviceVulkan12Features v12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
@@ -34,12 +34,12 @@ class Context {
     VkPhysicalDeviceMaintenance6FeaturesKHR maintenance6{};                           // (!Quest3)
 
     // (Non Core)
-    VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extended_dynamic_state3{};       // (!Quest3)
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT vertex_input_dynamic_state{};
     VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
+    // VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
   };
 
  public:
@@ -92,8 +92,8 @@ class Context {
   }
 
   [[nodiscard]]
-  VulkanContextFeature const& get_feature() const {
-    return feature_;
+  VulkanContextFeatures const& get_features() const {
+    return features_;
   }
 
   [[nodiscard]]
@@ -109,12 +109,23 @@ class Context {
 
   [[nodiscard]]
   backend::Buffer createBuffer(
+    std::string const& name,
     VkDeviceSize const size,
     VkBufferUsageFlags2KHR const usage,
     VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     VmaAllocationCreateFlags const flags = {}
   ) const {
-    return allocator_.createBuffer(size, usage, memory_usage, flags);
+    return allocator_.createBuffer(name, size, usage, memory_usage, flags);
+  }
+
+  [[nodiscard]]
+  backend::Buffer createBuffer(
+    VkDeviceSize const size,
+    VkBufferUsageFlags2KHR const usage,
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
+    VmaAllocationCreateFlags const flags = {}
+  ) const {
+    return createBuffer("", size, usage, memory_usage, flags);
   }
 
   void destroyBuffer(backend::Buffer const& buffer) const {
@@ -296,7 +307,6 @@ class Context {
 
   // --- Transient Command Encoder Wrappers ---
 
-  // (formerly 'createBufferAndUpload')
   [[nodiscard]]
   backend::Buffer transientCreateBuffer(
     void const* host_data,
@@ -406,7 +416,7 @@ class Context {
       return false;
     }
     feature = { .sType = sType };
-    vk_utils::PushNextVKStruct(&feature_.base, &feature);
+    vk_utils::PushNextVKStruct(&features_.base, &feature);
     if (!dependencies.empty()) {
       device_extension_names_.insert(
         dependencies.cbegin(),
@@ -449,7 +459,7 @@ class Context {
     VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
   };
 
-  VulkanContextFeature feature_{};
+  VulkanContextFeatures features_{};
 
   VkInstance instance_{};
   VkPhysicalDevice gpu_{};

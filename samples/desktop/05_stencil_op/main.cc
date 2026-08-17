@@ -73,7 +73,7 @@ class SampleApp final : public Application {
 
       uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       );
 
       /* Map to bind vertex attributes with their shader input location. */
@@ -93,11 +93,11 @@ class SampleApp final : public Application {
 
         mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
-          VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.createBufferAndUpload(
           mesh.indices(),
-          VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         );
       }
 
@@ -112,11 +112,11 @@ class SampleApp final : public Application {
 
         mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
-          VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
         );
         mesh.index = cmd.createBufferAndUpload(
           mesh.indices(),
-          VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         );
       }
 

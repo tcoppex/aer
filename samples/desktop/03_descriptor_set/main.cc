@@ -77,17 +77,17 @@ class SampleApp final : public Application {
 
       uniform_buffer_ = cmd.createBufferAndUpload(
         &host_data_, sizeof(host_data_),
-        VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       );
 
       vertex_buffer_ = cmd.createBufferAndUpload(
         kVertices,
-        VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       );
 
       index_buffer_ = cmd.createBufferAndUpload(
         kIndices,
-        VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
       );
 
       context_.finishTransientCommandEncoder(cmd);

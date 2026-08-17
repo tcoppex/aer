@@ -179,6 +179,7 @@ bool RayTracingScene::buildBLAS(scene::Mesh::SubMesh const& submesh) {
   );
 
   blas.buffer = context_ptr_->createBuffer(
+    "RayTracingScene::Buffer::BLAS",
     blas.build_sizes_info.accelerationStructureSize,
       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -222,6 +223,7 @@ void RayTracingScene::buildTLAS() {
   );
 #else
   auto instances_buffer = context_ptr_->createBuffer(
+    "RayTracingScene::Buffer::Instances",
     tlas_.instances.size() * sizeof(tlas_.instances[0]),
       VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -265,8 +267,11 @@ void RayTracingScene::buildTLAS() {
   );
 
   tlas_.buffer = context_ptr_->createBuffer(
+    "RayTracingScene::Buffer::TLAS",
     tlas_.build_sizes_info.accelerationStructureSize,
-    VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR,
+      VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+    ,
     VMA_MEMORY_USAGE_GPU_ONLY
   );
 
@@ -314,8 +319,10 @@ void RayTracingScene::buildInstancesDataBuffer(
   }
   instances_data_buffer_ = context_ptr_->transientCreateBuffer(
     instances,
-    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   );
+  context_ptr_->setDebugObjectName(instances_data_buffer_.buffer, "RayTracingScene::Buffer::InstanceData");
 }
 
 // ----------------------------------------------------------------------------
@@ -326,6 +333,7 @@ void RayTracingScene::buildAccelerationStructure(
   VkAccelerationStructureBuildRangeInfoKHR buildRangeInfo
 ) {
   scratch_buffer_ = context_ptr_->createBuffer(
+    "RayTracingScene::Buffer::Scratch",
     as->build_sizes_info.buildScratchSize,
       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,

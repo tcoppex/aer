@@ -331,7 +331,7 @@ void Context::finishTransientCommandEncoder(
 
   CHECK_VK( vkQueueSubmit2(queue(target_queue).queue, 1u, &submit_info_2, fence) );
 
-  CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, UINT64_MAX) );
+  CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, 2000000000ULL) ); // UINT64_MAX
   vkDestroyFence(handle_, fence, nullptr);
 
   VkCommandBuffer command_buffers[] = { encoder.handle() };
@@ -664,85 +664,87 @@ bool Context::initDevice() {
 
     add_device_feature(
       VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
-      feature_.index_type_uint8,
+      features_.index_type_uint8,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT
     );
 
     add_device_feature(
       VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
-      feature_.maintenance5,
+      features_.maintenance5,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR
     );
 
     add_device_feature(
       VK_KHR_MAINTENANCE_6_EXTENSION_NAME,
-      feature_.maintenance6,
+      features_.maintenance6,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR
     );
 
     // Non core
 
     add_device_feature(
-      VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
-      feature_.descriptor_buffer_features,
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
-    );
-
-    add_device_feature(
       VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-      feature_.extended_dynamic_state3,
+      features_.extended_dynamic_state3,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT
     );
 
     add_device_feature(
       VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
-      feature_.vertex_input_dynamic_state,
+      features_.vertex_input_dynamic_state,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT
     );
 
     add_device_feature(
       VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME,
-      feature_.image_view_min_lod,
+      features_.image_view_min_lod,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT
     );
 
     add_device_feature(
       VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-      feature_.acceleration_structure,
+      features_.acceleration_structure,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR
     );
+
+    // add_device_feature(
+    //   VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+    //   features_.descriptor_buffer_features,
+    //   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
+    // );
 
 #if !defined(ANDROID)
     add_device_feature(
       VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-      feature_.ray_tracing_pipeline,
+      features_.ray_tracing_pipeline,
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR
     );
 #endif
 
-    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v11);
-    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v12);
-    vk_utils::PushNextVKStruct(&feature_.base, &feature_.v13);
-    vkGetPhysicalDeviceFeatures2(gpu_, &feature_.base);
+    vk_utils::PushNextVKStruct(&features_.base, &features_.v11);
+    vk_utils::PushNextVKStruct(&features_.base, &features_.v12);
+    vk_utils::PushNextVKStruct(&features_.base, &features_.v13);
+    vkGetPhysicalDeviceFeatures2(gpu_, &features_.base);
 
     /* Check features. */
     if (vulkan_xr_) {
-      LOG_CHECK(feature_.v11.multiview && "Multiview required (Vulkan 1.1 core)");
+      LOG_CHECK(features_.v11.multiview && "Multiview required (Vulkan 1.1 core)");
     }
-    LOG_CHECK(feature_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
-    LOG_CHECK(feature_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
 
-    LOG_CHECK(feature_.v12.descriptorIndexing);
-    LOG_CHECK(feature_.v12.runtimeDescriptorArray);
-    LOG_CHECK(feature_.v12.descriptorBindingPartiallyBound);
-    LOG_CHECK(feature_.v12.descriptorBindingSampledImageUpdateAfterBind);
-    LOG_CHECK(feature_.v12.descriptorBindingStorageBufferUpdateAfterBind);
-    LOG_CHECK(feature_.v12.shaderSampledImageArrayNonUniformIndexing);
-    LOG_CHECK(feature_.v12.shaderStorageBufferArrayNonUniformIndexing);
+    // LOG_CHECK(features_.v12.shaderFloat16);
+    LOG_CHECK(features_.v12.descriptorIndexing);
+    LOG_CHECK(features_.v12.shaderSampledImageArrayNonUniformIndexing);
+    LOG_CHECK(features_.v12.shaderStorageBufferArrayNonUniformIndexing);
+    LOG_CHECK(features_.v12.descriptorBindingPartiallyBound);
+    LOG_CHECK(features_.v12.descriptorBindingSampledImageUpdateAfterBind);
+    LOG_CHECK(features_.v12.descriptorBindingStorageBufferUpdateAfterBind);
+    LOG_CHECK(features_.v12.runtimeDescriptorArray);
+    LOG_CHECK(features_.v12.scalarBlockLayout);
+    LOG_CHECK(features_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
+    LOG_CHECK(features_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
 
-    LOG_CHECK(feature_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
-    LOG_CHECK(feature_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
-    LOG_CHECK(feature_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
+    LOG_CHECK(features_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
+    LOG_CHECK(features_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
+    LOG_CHECK(features_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
   }
 
 
@@ -808,25 +810,20 @@ bool Context::initDevice() {
 
       // When secondary queue are not found, use the main one instead.
       // (could have issue if used concurrently)
-      if (!queue_found) {
-        if (j > 0) {
-          pair.first->family_index = queues[0].first->family_index;
-          pair.first->queue_index = queues[0].first->queue_index;
-        }
+      if (!queue_found && (j > 0)) {
+        pair.first->family_index = queues[0].first->family_index;
+        pair.first->queue_index = queues[0].first->queue_index;
       }
 
       if (UINT32_MAX == pair.first->family_index) {
-        LOGE(
-          "Could not find a queue family with the requested support {:08x}.",
-          pair.second
-        );
+        LOGE("Could not find a queue family with the requested support {:08x}.", pair.second);
         return false;
       }
     }
 
-    for (uint32_t i = 0u; i < queue_family_count; ++i) {
-      if (queue_infos[i].queueCount > 0u) {
-        queue_create_infos.push_back(queue_infos[i]);
+    for (auto const& queue_info : queue_infos) {
+      if (queue_info.queueCount > 0u) {
+        queue_create_infos.push_back(queue_info);
       }
     }
   }
@@ -843,7 +840,7 @@ bool Context::initDevice() {
 
     VkDeviceCreateInfo const device_info{
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-      .pNext = &feature_.base,
+      .pNext = &features_.base,
       .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
       .pQueueCreateInfos = queue_create_infos.data(),
       .enabledExtensionCount = static_cast<uint32_t>(extension_names.size()),

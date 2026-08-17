@@ -9,10 +9,12 @@ void Envmap::init(RenderContext const& context) {
   context_ptr_ = &context;
 
   irradiance_matrices_buffer_ = context.createBuffer(
+    "Envmap::Buffer::IrradianceMatrices",
     sizeof(shader_interop::envmap::SHMatrices),
-      VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
-    | VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
-    | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+    | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   );
 
   /* Create the HDR envmaps & the BRDF LUT. */
@@ -68,7 +70,7 @@ void Envmap::init(RenderContext const& context) {
 
   /* Shared descriptor sets */
   {
-    VkDescriptorBindingFlags const kDefaultDescBindingFlags{
+    auto const kDefaultDescBindingFlags = VkDescriptorBindingFlags{
         VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
       | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
@@ -195,6 +197,11 @@ void Envmap::release() {
 // ----------------------------------------------------------------------------
 
 bool Envmap::setup(std::string_view hdr_filename) {
+  if (!context_ptr_) {
+    LOGW("Envmap not initialized.");
+    return false;
+  }
+
   if (!loadDiffuseEnvmap(hdr_filename)) {
     LOGE("Fail to load spherical map \"{}\".", hdr_filename);
     return false;
@@ -300,9 +307,11 @@ void Envmap::computeIrradianceSHCoeff() {
   auto const& diffuse = images_[ImageType::Diffuse];
 
   backend::Buffer sh_coefficient_buffer{context_ptr_->createBuffer(
+    "Envmap::Buffer::SHCoefficient",
     bufferSize * sizeof(shader_interop::envmap::SHCoeff),
-      VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT
-    | VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
   )};
 
   context_ptr_->updateDescriptorSet(descriptor_set_, {

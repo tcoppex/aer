@@ -59,13 +59,13 @@ class SampleApp final : public Application {
         /* Using an internal transient command buffer. */
         uniform_buffer_ = context_.transientCreateBuffer(
           &host_data_, sizeof(host_data_),
-          VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
         );
       } else {
         /* Or writing the data from the host via mapping operations. */
         uniform_buffer_ = context_.createBuffer(
           sizeof(host_data_),
-          VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
           VMA_MEMORY_USAGE_CPU_TO_GPU
         );
         context_.writeBuffer(uniform_buffer_, &host_data_, sizeof(host_data_));

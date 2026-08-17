@@ -367,8 +367,8 @@ void GPUResources::uploadBuffers() {
   /* Allocate device buffers for meshes & their transforms. */
   vertex_buffer = context_.createBuffer(
     vertex_buffer_size,
-      VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT
-    | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    | VK_BUFFER_USAGE_TRANSFER_DST_BIT
     | extra_flags
     ,
     VMA_MEMORY_USAGE_GPU_ONLY
@@ -377,8 +377,8 @@ void GPUResources::uploadBuffers() {
   if (index_buffer_size > 0) {
     index_buffer = context_.createBuffer(
       index_buffer_size,
-        VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT
-      | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+      | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       | extra_flags
       ,
       VMA_MEMORY_USAGE_GPU_ONLY

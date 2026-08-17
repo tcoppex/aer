@@ -346,7 +346,7 @@ backend::Buffer CommandEncoder::createBufferAndUpload(
 
   auto device_buffer{allocator_ptr_->createBuffer(
     static_cast<VkDeviceSize>(buffer_bytesize),
-    usage | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR,
+    usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
     VMA_MEMORY_USAGE_GPU_ONLY
   )};
   transferBufferToDevice(

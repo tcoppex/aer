@@ -22,10 +22,16 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
+    auto const clear_color = lina::lerp(
+      vec4{0.26f, 0.20f, 0.24f, 1.0f},
+      vec4{0.9f, 0.75f, 0.5f, 1.0f},
+      cosf(0.75f * elapsed_time()) * 0.5f + 0.5f
+    );
+
 #if 1 /* Direct method */
 
     /* Change the default Render Target clear color value. */
-    renderer_.set_clear_color({0.9f, 0.75f, 0.5f, 1.0f});
+    renderer_.set_clear_color(clear_color);
 
     /**
      * Dynamic rendering directly to the swapchain.
@@ -71,7 +77,7 @@ class SampleApp final : public Application {
           .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
           .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
-          .clearValue  = {{{0.25f, 0.75f, 0.5f, 1.0f}}},
+          .clearValue  = {{ lina::as<VkClearColorValue>(clear_color) }},
         }
       },
       .renderArea = {{0, 0}, renderer_.surface_size()},
