@@ -4,7 +4,13 @@
 # 
 # this need the Vulkan SDK installed.
 # 
+# -----------------------------------------------------------------------------
 
+## When set to TRUE, the SPIR-V binaries will remove the last extension of
+## previous source files (eg. simple.frag.glsl -> simple.frag.spv)
+set(REMOVE_ORIGINAL_SHADER_EXTENSION TRUE)
+
+# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
 ## Search for the GLSL Compiler binary.
@@ -160,7 +166,13 @@ function(compile_glsl_shaders
   foreach(glslshader IN LISTS ShadersGLSL)
     # set global output binary filename
     set(source ${GLOBAL_GLSL_DIR}/${glslshader})
-    set(binary ${GLOBAL_SPIRV_DIR}/${glslshader}.spv)
+
+    # output binary final filename
+    set(binary ${GLOBAL_SPIRV_DIR}/${glslshader})
+    if (REMOVE_ORIGINAL_SHADER_EXTENSION)
+      cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+    endif()
+    set(binary "${binary}.spv")
 
     # compile GLSL to SPIRV
     glsl2spirv(${source} ${binary} ${GLOBAL_GLSL_DIR} "${ShadersDependencies}" -I${extra_dir})
@@ -198,7 +210,7 @@ function(compile_slang_shaders
       "${shader}"
       "${output_dir}"
       SPVS_VAR
-        local_binaries
+        binary
       # HEADERS_VAR
       #   local_sources
       # CAPABILITIES
@@ -207,7 +219,13 @@ function(compile_slang_shaders
         "-I${extra_dir} -I${GLOBAL_SLANG_DIR}"
     )
 
-    list(APPEND spvBinaries ${local_binaries})
+    if (REMOVE_ORIGINAL_SHADER_EXTENSION)
+      cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+      cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+      set(binary ${binary}.spv)
+    endif()
+
+    list(APPEND spvBinaries ${binary})
   endforeach()
 
   set(${binaries} "${spvBinaries}" PARENT_SCOPE)
