@@ -35,13 +35,18 @@ function(add_sample dirname)
   )
 
   # Compile shaders dependencies.
-  compile_shaders(
-    ${SAMPLE_PATH}/shaders/glsl
-    ${SAMPLE_PATH}/shaders/spirv
-    shaders_bin
-    shaders_src
+  compile_sample_shaders(
+    # SHADERS_ROOT_DIRECTORY
+      ${SAMPLE_PATH}/shaders
+    # SPIRV_ROOT_DIRECTORY
+      ${SAMPLE_PATH}/shaders/spirv
+    # OUTPUT_BINARIES
+      shaders_bin
+      shaders_src
+    # EXTRA_INLCUDE_DIRECTORY
     ${FRAMEWORK_SHADERS_DIR}
   )
+
   set(BuildShaderTarget BuildSampleShaders_${target})
   add_custom_target(${BuildShaderTarget} ALL
     DEPENDS

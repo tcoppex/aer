@@ -114,9 +114,15 @@ function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
 endfunction(glsl2spirv)
 
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-## Compile all shader from one directory to another.
-function(compile_shaders GLOBAL_GLSL_DIR GLOBAL_SPIRV_DIR binaries sources extra_dir)
+function(compile_glsl_shaders
+  GLOBAL_GLSL_DIR
+  GLOBAL_SPIRV_DIR
+  binaries
+  sources
+  extra_dir
+)
   # Retrieve all SOURCE glsl shaders
   file(GLOB_RECURSE g_ShadersGLSL ${GLOBAL_GLSL_DIR}/*.*)
 
@@ -134,19 +140,12 @@ function(compile_shaders GLOBAL_GLSL_DIR GLOBAL_SPIRV_DIR binaries sources extra
     ${GLOBAL_GLSL_DIR}/../interop.h ##
     ${GLOBAL_GLSL_DIR}/../*.glsl
   )
-  # file(GLOB_RECURSE ShadersDependencies
-  #   ${GLOBAL_GLSL_DIR}/*.h ##
-  # )
-  # foreach(dep IN LISTS ShadersDependencies)
-  #   message(STATUS "dep ${dep}")
-  # endforeach()
 
   file(GLOB_RECURSE ShadersDependencies_bis
     ${extra_dir}/*.h
     ${extra_dir}/*.glsl
   )
   list(APPEND ShadersDependencies ${ShadersDependencies_bis})
-
 
   # Transform shader path to relative
   foreach(glslshader IN LISTS g_ShadersGLSL)
@@ -173,6 +172,112 @@ function(compile_shaders GLOBAL_GLSL_DIR GLOBAL_SPIRV_DIR binaries sources extra
 
   set(${sources} "${glslSHADERS}" PARENT_SCOPE)
   set(${binaries} "${spirvSHADERS}" PARENT_SCOPE)
+endfunction()
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# (Work In Progress)
+# -----------------------------------------------------------------------------
+
+function(compile_slang_shaders
+  GLOBAL_SLANG_DIR
+  GLOBAL_SPIRV_DIR
+  binaries
+  sources
+  extra_dir
+)
+  file(GLOB_RECURSE SHADER_SLANG_FILES FILES ${GLOBAL_SLANG_DIR}/*.slang)
+
+  # Convert each Slang shaders into a SpirV binary
+  foreach(shader IN LISTS SHADER_SLANG_FILES)
+
+    file(RELATIVE_PATH shader_rel "${GLOBAL_SLANG_DIR}" "${shader}")
+    get_filename_component(output_dir "${GLOBAL_SPIRV_DIR}/${shader_rel}" DIRECTORY)
+
+    compile_slang(
+      "${shader}"
+      "${output_dir}"
+      SPVS_VAR
+        local_binaries
+      # HEADERS_VAR
+      #   local_sources
+      # CAPABILITIES
+      #   spvDescriptorHeapEXT
+      EXTRA_FLAGS
+        "-I${extra_dir} -I${GLOBAL_SLANG_DIR}"
+    )
+
+    list(APPEND spvBinaries ${local_binaries})
+  endforeach()
+
+  set(${binaries} "${spvBinaries}" PARENT_SCOPE)
+  # set(${sources} "${local_sources}" PARENT_SCOPE)
+endfunction()
+
+# -----------------------------------------------------------------------------
+
+## Compile all shaders (glsl and slang alike) from glsl/ and slang/ subdirectories.
+## Used by the samples.
+function(compile_sample_shaders
+  GLOBAL_SHADER_DIR
+  GLOBAL_SPIRV_DIR
+  binaries
+  sources
+  extra_dir
+)
+  set(GLOBAL_GLSL_DIR   "${GLOBAL_SHADER_DIR}/glsl")
+  set(GLOBAL_SLANG_DIR  "${GLOBAL_SHADER_DIR}/slang")
+
+  set(local_binaries "")
+  set(local_sources "")
+
+  if (IS_DIRECTORY "${GLOBAL_GLSL_DIR}")
+    compile_glsl_shaders(${GLOBAL_GLSL_DIR} ${GLOBAL_SPIRV_DIR} glsl_binaries glsl_sources ${extra_dir})
+    if(glsl_binaries)
+      list(APPEND local_binaries ${glsl_binaries})
+      list(APPEND local_sources ${glsl_sources})
+    endif()
+  endif()
+
+  if (IS_DIRECTORY "${GLOBAL_SLANG_DIR}")
+    compile_slang_shaders(${GLOBAL_SLANG_DIR} ${GLOBAL_SPIRV_DIR} slang_binaries slang_sources ${extra_dir})
+    if(slang_binaries)
+      list(APPEND local_binaries ${slang_binaries})
+      list(APPEND local_sources ${slang_sources})
+    endif()
+  endif()
+
+  set(${binaries} "${local_binaries}" PARENT_SCOPE)
+  set(${sources} "${local_sources}" PARENT_SCOPE)
+endfunction()
+
+# -----------------------------------------------------------------------------
+
+## Compile all shaders (*.glsl / *.slang) from one directory to another.
+function(compile_shaders
+  GLOBAL_SHADER_DIR
+  GLOBAL_SPIRV_DIR
+  binaries
+  sources
+  extra_dir
+)
+  set(local_binaries "")
+  set(local_sources "")
+
+  compile_glsl_shaders(${GLOBAL_SHADER_DIR} ${GLOBAL_SPIRV_DIR} glsl_binaries glsl_sources ${extra_dir})
+  if(glsl_binaries)
+    list(APPEND local_binaries ${glsl_binaries})
+    list(APPEND local_sources ${glsl_sources})
+  endif()
+
+  compile_slang_shaders(${GLOBAL_SHADER_DIR} ${GLOBAL_SPIRV_DIR} slang_binaries slang_sources ${extra_dir})
+  if(slang_binaries)
+    list(APPEND local_binaries ${slang_binaries})
+    list(APPEND local_sources ${slang_sources})
+  endif()
+
+  set(${binaries} "${local_binaries}" PARENT_SCOPE)
+  set(${sources} "${local_sources}" PARENT_SCOPE)
 endfunction()
 
 # -----------------------------------------------------------------------------

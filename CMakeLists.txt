@@ -90,15 +90,15 @@ include(${CPM_DOWNLOAD_LOCATION})
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# Vulkan SDK helpers
-include(VulkanSDK)
-
-# Helpers includes (from nvpro_samples/vk_minimal_latest)
+# Helpers includes (from nvpro_samples/vk_minimal_latest).
 include(CompilerSlangShader)
 include(DownloadPackage)
 
 # Find or download Slang compiler.
 find_package(Slang REQUIRED)
+
+# Vulkan SDK helpers.
+include(VulkanSDK)
 
 # -----------------------------------------------------------------------------
 # Custom functions
