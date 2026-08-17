@@ -6,9 +6,11 @@
 # 
 # -----------------------------------------------------------------------------
 
+## (Work In Progress)
 ## When set to TRUE, the SPIR-V binaries will remove the last extension of
 ## previous source files (eg. simple.frag.glsl -> simple.frag.spv)
-set(REMOVE_ORIGINAL_SHADER_EXTENSION TRUE)
+## [!!] not working on the slang generator
+set(REMOVE_ORIGINAL_SHADER_EXTENSION FALSE)
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
