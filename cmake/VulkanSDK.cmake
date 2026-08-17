@@ -170,7 +170,10 @@ function(compile_glsl_shaders
     # output binary final filename
     set(binary ${GLOBAL_SPIRV_DIR}/${glslshader})
     if (REMOVE_ORIGINAL_SHADER_EXTENSION)
-      cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+      cmake_path(GET binary EXTENSION LAST_ONLY binary_ext)
+      if ("${binary_ext}" STREQUAL ".glsl")
+        cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+      endif()
     endif()
     set(binary "${binary}.spv")
 
