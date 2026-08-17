@@ -127,6 +127,8 @@ Each Android sample provides a set of CMake debug targets in the form `{prefix}{
 
 _Device-dependent targets (**install**, **run**, **log**) require a compatible connected Android device._
 
+_**Note:** the Gradle's cmake cache directory (`.cxx` in projects subdirectory) might require to be cleaned up manually when local configurations change (eg. Vulkan SDK directory)._
+
 #### Assets
 
 A few assets are served via `git-lfs` but most will be downloaded automatically on CMake Cache generation time.
