@@ -3,24 +3,17 @@
 
 // ---------------------------------------------------------------------------
 
-#ifdef __cplusplus
-#include <cstdint>
-#define UINT uint32_t
-#else
-#define UINT uint
-#endif
+const uint kAttribLocation_Position = 0;
 
-const UINT kAttribLocation_Position = 0;
+const uint kDescriptorSetBinding_UniformBuffer = 0;
+const uint kDescriptorSetBinding_StorageBuffer_Position = 1;
+const uint kDescriptorSetBinding_StorageBuffer_Index = 2;
+const uint kDescriptorSetBinding_StorageBuffer_DotProduct = 3;
 
-const UINT kDescriptorSetBinding_UniformBuffer = 0;
-const UINT kDescriptorSetBinding_StorageBuffer_Position = 1;
-const UINT kDescriptorSetBinding_StorageBuffer_Index = 2;
-const UINT kDescriptorSetBinding_StorageBuffer_DotProduct = 3;
-
-const UINT kCompute_Simulation_kernelSize_x = 256;
-const UINT kCompute_FillIndex_kernelSize_x = 256;
-const UINT kCompute_DotProduct_kernelSize_x = 256;
-const UINT kCompute_SortIndex_kernelSize_x = 256;
+const uint kCompute_Simulation_kernelSize_x = 256;
+const uint kCompute_FillIndex_kernelSize_x = 256;
+const uint kCompute_DotProduct_kernelSize_x = 256;
+const uint kCompute_SortIndex_kernelSize_x = 256;
 
 const float kTwoPi = 6.28318530718f;
 
@@ -54,12 +47,12 @@ struct PushConstant_Graphics {
 struct PushConstant_Compute {
   Model model;
   float time;
-  UINT numElems;
-  UINT padding_[2];
-  UINT readOffset;
-  UINT writeOffset;
-  UINT blockWidth;
-  UINT maxBlockWidth;
+  uint numElems;
+  uint padding_[2];
+  uint readOffset;
+  uint writeOffset;
+  uint blockWidth;
+  uint maxBlockWidth;
 };
 
 // ---------------------------------------------------------------------------
@@ -70,7 +63,5 @@ struct PushConstant {
 };
 
 // ---------------------------------------------------------------------------
-
-#undef UINT
 
 #endif

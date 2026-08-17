@@ -3,30 +3,22 @@
 
 // ---------------------------------------------------------------------------
 
-#ifdef __cplusplus
-#define UINT uint32_t
-#else
-#define UINT uint
-#endif
+const uint kAttribLocation_Position = 0;
+const uint kAttribLocation_Normal   = 1;
+const uint kAttribLocation_Texcoord = 2;
 
 // ---------------------------------------------------------------------------
 
-const UINT kAttribLocation_Position = 0;
-const UINT kAttribLocation_Normal   = 1;
-const UINT kAttribLocation_Texcoord = 2;
-
-// ---------------------------------------------------------------------------
-
-const UINT kDescriptorSetBinding_UniformBuffer    = 0;
-const UINT kDescriptorSetBinding_Sampler          = 1;
-const UINT kDescriptorSetBinding_IrradianceEnvMap = 2;
+const uint kDescriptorSetBinding_UniformBuffer    = 0;
+const uint kDescriptorSetBinding_Sampler          = 1;
+const uint kDescriptorSetBinding_IrradianceEnvMap = 2;
 
 // ---------------------------------------------------------------------------
 
 struct Model {
   mat4 worldMatrix;
-  UINT albedo_texture_index;
-  UINT padding_[3u];
+  uint albedo_texture_index;
+  uint padding_[3u];
 };
 
 // ---------------------------------------------------------------------------
@@ -47,7 +39,5 @@ struct PushConstant {
 };
 
 // ---------------------------------------------------------------------------
-
-#undef UINT
 
 #endif

@@ -3,20 +3,11 @@
 
 // ---------------------------------------------------------------------------
 
-#ifdef __cplusplus
-#include <cstdint>
-#define UINT uint32_t
-#else
-#define UINT uint
-#endif
+const uint kAttribLocation_Position = 0;
 
-const UINT kAttribLocation_Position = 0;
-
-const UINT kDescriptorSetBinding_UniformBuffer = 0;
-const UINT kDescriptorSetBinding_StorageBuffer_Position = 1;
-const UINT kDescriptorSetBinding_StorageBuffer_Index = 2;
-
-#undef UINT
+const uint kDescriptorSetBinding_UniformBuffer = 0;
+const uint kDescriptorSetBinding_StorageBuffer_Position = 1;
+const uint kDescriptorSetBinding_StorageBuffer_Index = 2;
 
 // ---------------------------------------------------------------------------
 

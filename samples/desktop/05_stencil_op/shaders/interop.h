@@ -3,19 +3,11 @@
 
 // ---------------------------------------------------------------------------
 
-#ifdef __cplusplus
-#define UINT uint32_t
-#else
-#define UINT uint
-#endif
+const uint kAttribLocation_Position = 0;
+const uint kAttribLocation_Normal   = 1;
+const uint kAttribLocation_Texcoord = 2;
 
-const UINT kAttribLocation_Position = 0;
-const UINT kAttribLocation_Normal   = 1;
-const UINT kAttribLocation_Texcoord = 2;
-
-const UINT kDescriptorSetBinding_UniformBuffer = 0;
-
-#undef UINT
+const uint kDescriptorSetBinding_UniformBuffer = 0;
 
 // ---------------------------------------------------------------------------
 
