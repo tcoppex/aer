@@ -1,14 +1,16 @@
 #ifndef SHADERS_SCENE_INTEROP_H_
 #define SHADERS_SCENE_INTEROP_H_
 
-#ifndef __cplusplus
+#if defined(_GLSL_)
+
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 #extension GL_EXT_multiview : require
-#endif
+
+#endif // defined(_GLSL_)
 
 // ----------------------------------------------------------------------------
 // -- Vertex Inputs --
@@ -77,7 +79,7 @@ struct TransformData {
 // ----------------------------------------------------------------------------
 // -- Macro helpers --
 
-#ifndef __cplusplus
+#if defined(_GLSL_)
 
 #define GetFrameCamera(frameData)   frameData.cameras[gl_ViewIndex]
 

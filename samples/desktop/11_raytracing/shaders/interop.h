@@ -3,7 +3,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef __cplusplus
+#if defined(_GLSL_)
 
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_buffer_reference2 : require
@@ -23,7 +23,7 @@
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
     .instances[nonuniformEXT(gl_InstanceID)];
 
-#endif
+#endif // defined(_GLSL_)
 
 // -----------------------------------------------------------------------------
 

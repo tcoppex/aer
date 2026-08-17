@@ -41,7 +41,7 @@ struct PushConstant {
   uint numElements;
 };
 
-#ifndef __cplusplus
+#if defined(_GLSL_)
 #define GetModelViewProjMatrix() pushConstant.mvpMatrix[0*gl_ViewIndex]
 #endif
 
