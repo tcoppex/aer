@@ -493,7 +493,7 @@ void GPUResources::uploadBuffers() {
 
 void GPUResources::uploadTransforms() {
   LOG_CHECK(transforms.size() == meshes.size()); //
-#if 1
+#if 0
   // Only for mappable CPU to GPU buffer.
   context_.writeBuffer(transforms_sbo_, transforms);
 #else
@@ -533,7 +533,11 @@ void GPUResources::updateFrameData(Camera const& camera, float elapsed_time) {
 
   uint32_t const current_slot = frame_index_ % max_frames_in_flight_;
   size_t const offset = current_slot * frame_data_stride_;
+#if 0
   context_.writeBuffer(frame_sbo_, offset, &frame_data, 0u, sizeof(frame_data));
+#else
+  context_.transientUploadBuffer(&frame_data, sizeof(frame_data), frame_sbo_, offset);
+#endif
 
   // Update the cycling Frame Buffer address.
   frame_data_current_address_ = frame_sbo_.address + offset;
