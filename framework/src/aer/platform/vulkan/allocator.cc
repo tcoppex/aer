@@ -58,15 +58,15 @@ backend::Buffer Allocator::createBuffer(
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .pNext = nullptr,
     .size = size,
-    .usage = static_cast<VkBufferUsageFlags>(usage),
+    // .usage = static_cast<VkBufferUsageFlags>(usage) | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
 
-#if 0
+#if 1
   // [to use maintenance5]
   auto const usage_flag2_info = VkBufferUsageFlags2CreateInfoKHR{
     .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-    .usage = usage,
+    .usage = usage | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
   };
   buffer_create_info.pNext = &usage_flag2_info;
   buffer_create_info.usage = VkBufferUsageFlags{0};
@@ -93,7 +93,6 @@ backend::Buffer Allocator::createBuffer(
   }
 
   // Retrieve the buffer address.
-  if (VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT == (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
   {
     auto const buffer_device_addr_info = VkBufferDeviceAddressInfoKHR{
       .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
