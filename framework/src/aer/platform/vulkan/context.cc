@@ -729,16 +729,18 @@ bool Context::initDevice() {
     if (vulkan_xr_) {
       LOG_CHECK(features_.v11.multiview && "Multiview required (Vulkan 1.1 core)");
     }
-    LOG_CHECK(features_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
-    LOG_CHECK(features_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
 
+    // LOG_CHECK(features_.v12.shaderFloat16);
     LOG_CHECK(features_.v12.descriptorIndexing);
-    LOG_CHECK(features_.v12.runtimeDescriptorArray);
+    LOG_CHECK(features_.v12.shaderSampledImageArrayNonUniformIndexing);
+    LOG_CHECK(features_.v12.shaderStorageBufferArrayNonUniformIndexing);
     LOG_CHECK(features_.v12.descriptorBindingPartiallyBound);
     LOG_CHECK(features_.v12.descriptorBindingSampledImageUpdateAfterBind);
     LOG_CHECK(features_.v12.descriptorBindingStorageBufferUpdateAfterBind);
-    LOG_CHECK(features_.v12.shaderSampledImageArrayNonUniformIndexing);
-    LOG_CHECK(features_.v12.shaderStorageBufferArrayNonUniformIndexing);
+    LOG_CHECK(features_.v12.runtimeDescriptorArray);
+    LOG_CHECK(features_.v12.scalarBlockLayout);
+    LOG_CHECK(features_.v12.timelineSemaphore && "Timeline semaphore required (Vulkan 1.2 core)");
+    LOG_CHECK(features_.v12.bufferDeviceAddress && "Buffer device address required (Vulkan 1.2 core)");
 
     LOG_CHECK(features_.v13.synchronization2 && "Synchronization2 required (Vulkan 1.3 core)");
     LOG_CHECK(features_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
@@ -808,25 +810,20 @@ bool Context::initDevice() {
 
       // When secondary queue are not found, use the main one instead.
       // (could have issue if used concurrently)
-      if (!queue_found) {
-        if (j > 0) {
-          pair.first->family_index = queues[0].first->family_index;
-          pair.first->queue_index = queues[0].first->queue_index;
-        }
+      if (!queue_found && (j > 0)) {
+        pair.first->family_index = queues[0].first->family_index;
+        pair.first->queue_index = queues[0].first->queue_index;
       }
 
       if (UINT32_MAX == pair.first->family_index) {
-        LOGE(
-          "Could not find a queue family with the requested support {:08x}.",
-          pair.second
-        );
+        LOGE("Could not find a queue family with the requested support {:08x}.", pair.second);
         return false;
       }
     }
 
-    for (uint32_t i = 0u; i < queue_family_count; ++i) {
-      if (queue_infos[i].queueCount > 0u) {
-        queue_create_infos.push_back(queue_infos[i]);
+    for (auto const& queue_info : queue_infos) {
+      if (queue_info.queueCount > 0u) {
+        queue_create_infos.push_back(queue_info);
       }
     }
   }
