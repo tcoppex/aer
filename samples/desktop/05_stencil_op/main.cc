@@ -162,22 +162,20 @@ class SampleApp final : public Application {
       },
     });
 
-    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-      "simple.vert.glsl",
-      "instanced.vert.glsl",
-      "simple.frag.glsl",
-    })};
+    auto shader = context_.createShaderModule(COMPILED_SHADERS_DIR, "main.slang");
 
     /* Setup the pipelines. */
     {
       /* Pipeline descriptor "shared" between the stencil and the depth mask pipelines. */
       auto mask_pipeline_descriptor = GraphicsPipelineDescriptor_t{
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shader.module,
+          .entryPoint = "vertexMain",
           .buffers = plane_.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
-          .module = shaders[2u].module,
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
           .targets = { {.writeMask = 0u} },
         },
         .depthStencil = {
@@ -190,8 +188,8 @@ class SampleApp final : public Application {
             .passOp = VK_STENCIL_OP_REPLACE,
             .depthFailOp = VK_STENCIL_OP_REPLACE,
             .compareOp = VK_COMPARE_OP_ALWAYS,
-            .compareMask = 0xff,
-            .writeMask = 0xff,
+            .compareMask = 0xFF,
+            .writeMask = 0xFF,
             .reference = 1u,
           },
         },
@@ -211,11 +209,19 @@ class SampleApp final : public Application {
         pipeline_layout_,
         {
           .vertex = {
-            .module = shaders[1u].module,
+            .module = shader.module,
+            .entryPoint = "vertexMain",
+            .specializationConstants = {
+              {
+                shader_interop::kSpecializationConstant_TransformPosition,
+                VK_TRUE
+              },
+            },
             .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
           .fragment = {
-            .module = shaders[2u].module,
+            .module = shader.module,
+            .entryPoint = "fragmentMain",
             .targets = {
               {
                 .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -259,11 +265,13 @@ class SampleApp final : public Application {
         pipeline_layout_,
         {
           .vertex = {
-            .module = shaders[0u].module,
+            .module = shader.module,
+            .entryPoint = "vertexMain",
             .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
           .fragment = {
-            .module = shaders[2u].module,
+            .module = shader.module,
+            .entryPoint = "fragmentMain",
             .targets = {
               {
                 .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -287,7 +295,7 @@ class SampleApp final : public Application {
       );
     }
 
-    context_.releaseShaderModules(shaders);
+    context_.releaseShaderModule(shader);
 
     return true;
   }
