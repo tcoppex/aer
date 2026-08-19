@@ -70,9 +70,9 @@ cmake --build build --config Release
 * **[00_hello](samples/desktop/00_hello/main.cc)**: Display a surface and clear its color (_Device, Swapchain, dynamic rendering_).
 * **[01_triangle](samples/desktop/01_triangle/main.cc)**: Display a simple triangle (_Shader, Graphics Pipeline, Vertex Buffer, Commands_).
 * **[02_push_constant](samples/desktop/02_push_constant/main.cc)**: Update per-frame values via push constants and dynamic states (_Push Constant_).
-* **[03_descriptor_set](samples/desktop/03_descriptor_set/main.cc)**: Initialize & update a descriptor set on a single uniform buffer (_Descriptor Set_).
+* **[03_descriptor_set](samples/desktop/03_descriptor_set/main.cc)**: Initialize & update a descriptor set on a single uniform buffer (_Descriptor Set, Uniform/Constant Buffer_).
 * **[04_texturing](samples/desktop/04_texturing/main.cc)**: Display a textured cube with a linear sampler (_Image, Sampler_).
-* **[05_stencil_op](samples/desktop/05_stencil_op/main.cc)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, instancing_).
+* **[05_stencil_op](samples/desktop/05_stencil_op/main.cc)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, Instancing, Specialization Constants_).
 * **[06_blend_op](samples/desktop/06_blend_op/main.cc)**: Fast & simple billboarded GPU particles with additive blending (_Blending_).
 * **[07_compute](samples/desktop/07_compute/main.cc)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Buffer Barriers_).
 * **[08_hdr_envmap](samples/desktop/08_hdr_envmap/main.cc)**: Compute Image-Based Lighting from a HDR environment map (_Texture Barriers_).
