@@ -159,20 +159,19 @@ class SampleApp final : public Application {
 
     /* Setup the graphics pipeline. */
     {
-      auto shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-        "simple.vert.glsl",
-        "simple.frag.glsl",
-      })};
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
       /* Setup a pipeline with additive blend and no depth buffer. */
       graphics_.pipeline = context_.createGraphicsPipeline(
         graphics_.pipeline_layout,
         {
           .vertex = {
-            .module = shaders[0u].module,
+            .module = shader.module,
+            .entryPoint = "vertexMain",
           },
           .fragment = {
-            .module = shaders[1u].module,
+            .module = shader.module,
+            .entryPoint = "fragmentMain",
             .targets = {
               {
                 .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -208,7 +207,7 @@ class SampleApp final : public Application {
         }
       );
 
-      context_.releaseShaderModules(shaders);
+      context_.releaseShaderModule(shader);
     }
 
     return true;
@@ -226,10 +225,10 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    mat4 const world_matrix(
+    float4x4 const world_matrix(
       lina::mul(
         lina::rotation_matrix_y(0.25f * frame_time()),
-        lina::scaling_matrix(vec3(4.0f))
+        lina::scaling_matrix(float3(4.0f))
       )
     );
 
