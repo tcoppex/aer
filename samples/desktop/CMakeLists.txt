@@ -24,7 +24,7 @@ function(add_sample dirname)
   set_target_output_directory(${target} ${PROJECT_BINARY_DIR})
 
   set(SAMPLE_SPIRV_DIR
-    "${FRAMEWORK_COMPILED_SHADERS_DIR}/samples/${dirname}"
+    "${FRAMEWORK_COMPILED_SHADERS_DIR}/samples/${dirname}/"
       # "${SAMPLE_PATH}/shaders/spirv/"
   )
 
