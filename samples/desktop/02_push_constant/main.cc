@@ -68,11 +68,6 @@ class SampleApp final : public Application {
       // context_.finishTransientCommandEncoder(cmd);
     }
 
-    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-      "simple.vert.glsl",
-      "simple.frag.glsl",
-    })};
-
     /* Setup the graphics pipeline. */
     {
       /**
@@ -90,12 +85,14 @@ class SampleApp final : public Application {
         },
       };
 
+      auto shader = context_.createShaderModule(COMPILED_SHADERS_DIR, "simple.slang");
+
       graphics_pipeline_ = context_.createGraphicsPipeline(
         layout_desc,
         {
           .vertex = {
-            .module = shaders[0u].module,
-            // .entryPoint = "main",  // default value when unspecified.
+            .module = shader.module,
+            .entryPoint = "vertexMain",
             .buffers = {
               {
                 .stride = sizeof(Vertex_t),
@@ -115,7 +112,8 @@ class SampleApp final : public Application {
             }
           },
           .fragment = {
-            .module = shaders[1u].module,
+            .module = shader.module,
+            .entryPoint = "fragmentMain",
             .targets = {
               {
                 .format = context_.default_color_format(),
@@ -143,8 +141,9 @@ class SampleApp final : public Application {
           }
         }
       );
+
+      context_.releaseShaderModule(shader);
     }
-    context_.releaseShaderModules(shaders);
 
     return true;
   }
