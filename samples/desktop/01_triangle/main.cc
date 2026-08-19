@@ -2,9 +2,9 @@
 //
 //    01 - Hello Triangle
 //
-//    Demonstrates how to render a triangle, using:
+//    Demonstrates how to render a triangle manually, using:
 //        - Graphics Pipeline,
-//        - Slang / GLSL shader loading,
+//        - SPIR-V binary shader loading,
 //        - Vertex buffer,
 //        - Transient command buffer,
 //        - RenderPassEncoder commands:
