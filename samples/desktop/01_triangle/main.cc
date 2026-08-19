@@ -74,7 +74,7 @@ class SampleApp final : public Application {
     }
 
     /* Load the precompiled shader modules (the '.spv' prefix is omitted). */
-    auto const shaders = context_.createShaderModules(COMPILED_SHADERS_DIR, {
+    auto const shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
       // Separated GLSL version.
       "simple.vert.glsl",
       "simple.frag.glsl",

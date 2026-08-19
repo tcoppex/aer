@@ -157,7 +157,7 @@ class SampleApp final : public Application {
       }
     });
 
-    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
+    auto shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
       "simple.vert.glsl",
       "simple.frag.glsl",
     })};

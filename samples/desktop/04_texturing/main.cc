@@ -143,7 +143,7 @@ class SampleApp final : public Application {
         },
       });
 
-      auto shader = context_.createShaderModule(COMPILED_SHADERS_DIR, "main.slang");
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .vertex = {

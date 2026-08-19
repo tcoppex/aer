@@ -55,11 +55,11 @@ class SceneFx final : public RenderTargetFx {
 
  protected:
   std::string vertex_shader_name() const final {
-    return COMPILED_SHADERS_DIR "scene.vert.glsl";
+    return SAMPLE_SPIRV_DIR "scene.vert.glsl";
   }
 
   std::string shader_name() const final {
-    return COMPILED_SHADERS_DIR "scene.frag.glsl";
+    return SAMPLE_SPIRV_DIR "scene.frag.glsl";
   }
 
   void createRenderTarget(VkExtent2D const dimension) final {
@@ -225,7 +225,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
  public:
   class ToonComposition final : public RenderTargetFx {
     std::string shader_name() const final {
-      return COMPILED_SHADERS_DIR "toon.frag.glsl";
+      return SAMPLE_SPIRV_DIR "toon.frag.glsl";
     }
   };
 

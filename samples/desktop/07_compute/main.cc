@@ -200,7 +200,7 @@ class SampleApp final : public Application {
 
     /* Create the compute pipelines. */
     {
-      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR "sort/", {
+      auto shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR "sort/", {
         "simulation.comp.glsl",
         "fill_indices.comp.glsl",
         "calculate_dot_product.comp.glsl",
@@ -214,7 +214,7 @@ class SampleApp final : public Application {
 
     /* Create the graphics pipeline. */
     {
-      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
+      auto shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "simple.vert.glsl",
         "simple.frag.glsl",
       })};

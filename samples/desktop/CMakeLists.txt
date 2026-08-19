@@ -23,6 +23,11 @@ function(add_sample dirname)
 
   set_target_output_directory(${target} ${PROJECT_BINARY_DIR})
 
+  set(SAMPLE_SPIRV_DIR
+    "${FRAMEWORK_COMPILED_SHADERS_DIR}/samples/${dirname}"
+      # "${SAMPLE_PATH}/shaders/spirv/"
+  )
+
   helpers_setupTarget(
     TARGET
       ${target}
@@ -31,7 +36,7 @@ function(add_sample dirname)
     LIBRARIES
       ${FRAMEWORK_LIBRARIES}
     DEFINITIONS
-      COMPILED_SHADERS_DIR="${SAMPLE_PATH}/shaders/spirv/"
+      SAMPLE_SPIRV_DIR="${SAMPLE_SPIRV_DIR}"
   )
 
   # Compile shaders dependencies.
@@ -39,7 +44,7 @@ function(add_sample dirname)
     # SHADERS_ROOT_DIRECTORY
       ${SAMPLE_PATH}/shaders
     # SPIRV_ROOT_DIRECTORY
-      ${SAMPLE_PATH}/shaders/spirv
+      ${SAMPLE_SPIRV_DIR}
     # OUTPUT_BINARIES
       shaders_bin
       shaders_src

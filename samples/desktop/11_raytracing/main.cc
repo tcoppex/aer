@@ -91,7 +91,7 @@ class BasicRayTracingFx : public RayTracingFx {
     auto make_modules{[&](backend::ShaderStage stage, std::vector<std::string_view> const& filenames) {
       return backend::ShadersMap::value_type{
         stage,
-        context_ptr_->createShaderModules(COMPILED_SHADERS_DIR, filenames)
+        context_ptr_->createShaderModules(SAMPLE_SPIRV_DIR, filenames)
       };
     }};
 

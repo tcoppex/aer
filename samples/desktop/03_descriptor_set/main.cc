@@ -125,7 +125,7 @@ class SampleApp final : public Application {
 
     /* Setup the graphics pipeline. */
     {
-      auto shader = context_.createShaderModule(COMPILED_SHADERS_DIR, "main.slang");
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
       /* Here we create the the pipeline layout externally. */
       pipeline_layout_ = context_.createPipelineLayout({

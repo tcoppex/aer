@@ -85,7 +85,7 @@ class SampleApp final : public Application {
         },
       };
 
-      auto shader = context_.createShaderModule(COMPILED_SHADERS_DIR, "simple.slang");
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "simple.slang");
 
       graphics_pipeline_ = context_.createGraphicsPipeline(
         layout_desc,
