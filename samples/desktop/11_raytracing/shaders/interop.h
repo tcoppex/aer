@@ -1,5 +1,5 @@
-#ifndef SHADER_INTEROP_H_
-#define SHADER_INTEROP_H_
+#ifndef SHADERS_INTEROP_H_
+#define SHADERS_INTEROP_H_
 
 /* -------------------------------------------------------------------------- */
 
@@ -87,4 +87,4 @@ struct RTInstanceData {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // SHADER_INTEROP_H_
+#endif // SHADERS_INTEROP_H_
