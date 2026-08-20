@@ -223,6 +223,7 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
 
   set(_CORE_FLAGS
     -emit-spirv-directly
+    # Matrices accessors are still row-major !
     -matrix-layout-column-major # -matrix-layout-row-major
     -force-glsl-scalar-layout
     -fvk-use-entrypoint-name
