@@ -79,7 +79,7 @@ class SampleApp final : public Application {
 
     /* Load glTF Scene / Scene. */
     {
-      std::string const gltf_filename{ASSETS_DIR "models/"
+      auto const gltf_filename = std::string{ASSETS_DIR "models/"
         "suzanne.glb"
       };
 
@@ -157,10 +157,6 @@ class SampleApp final : public Application {
       }
     });
 
-    auto shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-      "simple.vert.glsl",
-      "simple.frag.glsl",
-    })};
 
     /* Setup the graphics pipeline. */
     {
@@ -176,16 +172,20 @@ class SampleApp final : public Application {
         },
       });
 
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
+
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .dynamicStates = {
           VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
           VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
         },
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shader.module,
+          .entryPoint = "vertexMain",
         },
         .fragment = {
-          .module = shaders[1u].module,
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
           .targets = {
             {
               .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -205,9 +205,10 @@ class SampleApp final : public Application {
           .cullMode = VK_CULL_MODE_BACK_BIT,
         }
       });
+
+      context_.releaseShaderModule(shader);
     }
 
-    context_.releaseShaderModules(shaders);
 
     return true;
   }
