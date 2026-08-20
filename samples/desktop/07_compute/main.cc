@@ -19,7 +19,9 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
   // The sorting algorithm used support power-of-two sized buffer only.
-  static constexpr uint32_t kPointGridSize{ 1024u };
+  static constexpr uint32_t kPointGridSize{ 1 << 9 };
+
+  // Total number of particles.
   static constexpr uint32_t kPointGridResolution{ kPointGridSize * kPointGridSize };
 
   using HostData_t = shader_interop::UniformData;

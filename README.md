@@ -74,7 +74,7 @@ cmake --build build --config Release
 * **[04_texturing](samples/desktop/04_texturing/main.cc)**: Display a textured cube with a linear sampler (_Image, Sampler_).
 * **[05_stencil_op](samples/desktop/05_stencil_op/main.cc)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, Instancing, Specialization Constants_).
 * **[06_blend_op](samples/desktop/06_blend_op/main.cc)**: Fast & simple billboarded GPU particles with additive blending (_Blending_).
-* **[07_compute](samples/desktop/07_compute/main.cc)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Buffer Barriers_).
+* **[07_compute](samples/desktop/07_compute/main.cc)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Push Constants Range, Buffer Barriers_).
 * **[08_hdr_envmap](samples/desktop/08_hdr_envmap/main.cc)**: Compute Image-Based Lighting from a HDR environment map (_Texture Barriers_).
 * **[09_post_process](samples/desktop/09_post_process/main.cc)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
 * **[10_material](samples/desktop/10_material/main.cc)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).

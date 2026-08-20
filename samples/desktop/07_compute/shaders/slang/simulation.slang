@@ -9,12 +9,6 @@ ConstantBuffer<UniformData> uData;
 
 // ---------------
 
-// [[vk::binding(kDescriptorBinding_SBO_Positions, 0)]]
-// StructuredBuffer<float4> r_Positions;
-
-// [[vk::binding(kDescriptorBinding_SBO_DotProducts, 0)]]
-// StructuredBuffer<float> r_DotProducts;
-
 [[vk::binding(kDescriptorBinding_SBO_Positions, 0)]]
 RWStructuredBuffer<float4> rw_Positions;
 
