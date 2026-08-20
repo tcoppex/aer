@@ -79,6 +79,15 @@ using SpecializationConstants = std::vector<SpecializationConstant32_t::Entry>;
 
 // ----------------------------------------------------------------------------
 
+struct ShaderStageDescriptor {
+  backend::ShaderModule shader{};
+  std::string entryPoint{};
+};
+
+using ShaderStageDescriptors = std::vector<ShaderStageDescriptor>;
+
+// ----------------------------------------------------------------------------
+
 struct GraphicsPipelineCreateInfoData_t {
   std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments{};
 
@@ -313,13 +322,6 @@ struct BlendMode {
 // ----------------------------------------------------------------------------
 
 struct RayTracingPipelineDescriptor_t {
-  // struct ShaderStageDesc {
-  //   VkShaderModule module{};
-  //   std::string entryPoint{};
-  //   // SpecializationConstants specializationConstants{};
-  // };
-  using ShaderStageDesc = backend::ShaderModule; //
-
   struct ShaderGroup {
     VkRayTracingShaderGroupTypeKHR type{};
     uint32_t generalShader{VK_SHADER_UNUSED_KHR};
@@ -330,12 +332,12 @@ struct RayTracingPipelineDescriptor_t {
   using ShaderGroups = std::vector<ShaderGroup>;
 
   struct Shaders {
-    std::vector<ShaderStageDesc> raygens{};
-    std::vector<ShaderStageDesc> anyHits{};
-    std::vector<ShaderStageDesc> closestHits{};
-    std::vector<ShaderStageDesc> misses{};
-    std::vector<ShaderStageDesc> intersections{};
-    std::vector<ShaderStageDesc> callables{};
+    backend::ShaderModules raygens{};
+    backend::ShaderModules anyHits{};
+    backend::ShaderModules closestHits{};
+    backend::ShaderModules misses{};
+    backend::ShaderModules intersections{};
+    backend::ShaderModules callables{};
   } shaders{};
 
   struct {

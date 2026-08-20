@@ -128,6 +128,8 @@ struct ShaderModule {
   std::string basename{};
 };
 
+using ShaderModules = std::vector<ShaderModule>;
+
 enum class ShaderStage {
   Vertex        ,
   Fragment      ,
