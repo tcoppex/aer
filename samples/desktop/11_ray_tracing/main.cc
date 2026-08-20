@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------- */
 //
-//    11 - raytracing
+//    11 - ray tracing
 //
 //  Where we illuminates the scene one ray at a time.
 //

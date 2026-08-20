@@ -74,7 +74,7 @@ add_sample(07_compute)
 add_sample(08_hdr_envmap)
 add_sample(09_post_process)
 add_sample(10_material)
-add_sample(11_raytracing)
+add_sample(11_ray_tracing)
 add_sample(12_font)
 
 # -----------------------------------------------------------------------------
