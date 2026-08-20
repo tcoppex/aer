@@ -11,10 +11,11 @@
 
 // ----------------------------------------------------------------------------
 
-layout(set = 0, binding = kDescriptorSetBinding_Sampler) uniform sampler2D[] uTextureChannels;
-// layout(set = 0, binding = kDescriptorSetBinding_IrradianceEnvMap) uniform samplerCube uIrradianceEnvMap;
+layout(set = 0, binding = kDescriptorSetBinding_Sampler)
+uniform sampler2D[] uTextureChannels;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 
@@ -42,12 +43,6 @@ void main() {
   fragData.xy = encodeNormal(normalize(vNormal));
   fragData.z = depth;
   fragData.w = intBitsToFloat(int(pushConstant.model.instance_index) + 1);
-
-  // [debug]
-  // vec3 normalColor = 0.5f * (vNormal + 1.0f);
-  // fragColor = vec4(normalColor, 1.0f);
-  // fragColor = vec4(vTexcoord.xy, 0.0, 1.0);
-  // fragColor.rgb = vec3(depth);
 }
 
 // ----------------------------------------------------------------------------
