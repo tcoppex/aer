@@ -187,7 +187,7 @@ class SampleApp final : public Application {
       .pushConstantRanges = {
         {
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
-                      | VK_SHADER_STAGE_COMPUTE_BIT
+                      | VK_SHADER_STAGE_FRAGMENT_BIT
                       ,
           .offset = offsetof(shader_interop::PushConstant, graphics),
           .size = sizeof(push_constant_.graphics),
@@ -453,7 +453,7 @@ class SampleApp final : public Application {
       push_constant_.graphics.model.worldMatrix = world_matrix;
       pass.pushConstant(
         push_constant_.graphics,
-        VK_SHADER_STAGE_VERTEX_BIT,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         offsetof(shader_interop::PushConstant, graphics)
       );
 
