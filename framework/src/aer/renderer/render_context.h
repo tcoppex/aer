@@ -128,17 +128,29 @@ class RenderContext : public Context {
 
   // --- Compute Pipelines ---
 
+  // Create Compute Pipeline from {ShaderModule, EntryPoint} associations.
+  void createComputePipelines(
+    VkPipelineLayout pipeline_layout,
+    ShaderStageDescriptors const& shader_stage_descriptors,
+    Pipeline *pipelines
+  ) const;
+
+  // [[deprecated]]
+  // ------------------------
+  // Create Compute Pipelines from a vector of ShaderModule (default entrypoint).
   void createComputePipelines(
     VkPipelineLayout pipeline_layout,
     std::vector<backend::ShaderModule> const& modules,
     Pipeline *pipelines
   ) const;
 
+  // Create a single Compute Pipeline from a ShaderModule (default entrypoint).
   [[nodiscard]]
   Pipeline createComputePipeline(
     VkPipelineLayout pipeline_layout,
     backend::ShaderModule const& module
   ) const;
+  // ------------------------
 
   // --- Ray Tracing Pipelines ---
 
