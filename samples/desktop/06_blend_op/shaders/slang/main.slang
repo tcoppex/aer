@@ -31,31 +31,32 @@ struct VSOutput {
 
 // ----------------------------------------------------------------------------
 
+static const float kTwoPi = 6.28318530718;
+
+static const float2 kSpriteSize = float2(0.035);
+
+static const float2 kLocalOffsets[6] = {
+  float2(-0.5, -0.5),
+  float2( 0.5, -0.5),
+  float2(-0.5,  0.5),
+
+  float2(-0.5,  0.5),
+  float2( 0.5, -0.5),
+  float2( 0.5,  0.5)
+};
+
+static const float2 kLocalTexCoords[6] = {
+  float2(0.0, 0.0),
+  float2(1.0, 0.0),
+  float2(0.0, 1.0),
+
+  float2(0.0, 1.0),
+  float2(1.0, 0.0),
+  float2(1.0, 1.0)
+};
+
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-   const float kTwoPi = 6.28318530718;
-  const float2 kSpriteSize = float2(0.035);
-
-  const float2 kLocalOffsets[6] = {
-    float2(-0.5, -0.5),
-    float2( 0.5, -0.5),
-    float2(-0.5,  0.5),
-
-    float2(-0.5,  0.5),
-    float2( 0.5, -0.5),
-    float2( 0.5,  0.5)
-  };
-
-  const float2 kLocalTexCoords[6] = {
-    float2(0.0, 0.0),
-    float2(1.0, 0.0),
-    float2(0.0, 1.0),
-
-    float2(0.0, 1.0),
-    float2(1.0, 0.0),
-    float2(1.0, 1.0)
-  };
-
   const float4x4 projection = uData.scene.camera.projectionMatrix;
   const float4x4 view       = uData.scene.camera.viewMatrix;
   const float4x4 world      = pushConstant.model.worldMatrix;

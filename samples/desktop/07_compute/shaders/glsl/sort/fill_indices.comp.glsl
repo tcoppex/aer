@@ -8,7 +8,7 @@
 
 //-----------------------------------------------------------------------------
 
-layout(scalar, binding = kDescriptorSetBinding_StorageBuffer_Index)
+layout(scalar, binding = kDescriptorBinding_SBO_Indices)
 writeonly buffer SBO_indices_ {
   uint Indices[];
 };
