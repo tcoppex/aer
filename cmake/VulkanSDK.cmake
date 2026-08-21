@@ -1,17 +1,14 @@
-# 
-# CMake helpers commands to find and build GLSL file directly to spirv,
-# with include handling and shader stage detection (based on prefix / suffix).
-# 
-# this need the Vulkan SDK installed.
-# 
 # -----------------------------------------------------------------------------
-
-## (Work In Progress)
-## When set to TRUE, the SPIR-V binaries will remove the last extension of
-## previous source files (eg. simple.frag.glsl -> simple.frag.spv)
-## [!!] not working on the slang generator
-set(REMOVE_ORIGINAL_SHADER_EXTENSION FALSE)
-
+#
+# CMake helpers commands to build GLSL and Slang shaders to spir-v.
+# (bit of a janky mess atm)
+#
+# - GLSL expects 'glslc' and detects the shader stage automatically based
+#     its the filename.
+#
+# - Slang use 'slangc' and will convert any shaders in a "shared" subfolder to
+#     slang modules.
+#
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
@@ -36,10 +33,10 @@ endif()
 
 # -----------------------------------------------------------------------------
 
-## Custom function to generate binary shaders from GLSL.
+## Custom function to generate binary shaders using GLSL.
 function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
   # Retrieve the input file name
-  get_filename_component(fn ${input_glsl} NAME)
+  get_filename_component(fn "${input_glsl}" NAME)
   
   # Detects shader type based on its suffix or prefix
   if (${fn} MATCHES "((vert|vs)_.+\\.glsl)|(.+\\.(vert|vs)(\\.glsl)?)")
@@ -65,7 +62,7 @@ function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
     # return()
   endif()
 
-  get_filename_component(output_dir ${output_spirv} DIRECTORY)
+  get_filename_component(output_dir "${output_spirv}" DIRECTORY)
 
   # ----------------------------
   # Create an identifer for the Output directory.
@@ -128,7 +125,7 @@ function(compile_glsl_shaders
   extra_dir
 )
   # Retrieve all SOURCE glsl shaders
-  file(GLOB_RECURSE g_ShadersGLSL ${GLOBAL_GLSL_DIR}/*.*)
+  file(GLOB_RECURSE g_ShadersGLSL "${GLOBAL_GLSL_DIR}/*.*")
 
   # Only keep shaders of the form "filename.stage.glsl"
   set(RaytraceShadersREGEX ".+\\.rgen$|.+\\.rmiss$|.+\\.rchit|.+\\.rahit$")
@@ -141,13 +138,13 @@ function(compile_glsl_shaders
   )
 
   file(GLOB_RECURSE ShadersDependencies
-    ${GLOBAL_GLSL_DIR}/../interop.h ##
-    ${GLOBAL_GLSL_DIR}/../*.glsl
+    "${GLOBAL_GLSL_DIR}/../interop.h" ##
+    "${GLOBAL_GLSL_DIR}/../*.glsl"
   )
 
   file(GLOB_RECURSE ShadersDependencies_bis
-    ${extra_dir}/*.h
-    ${extra_dir}/*.glsl
+    "${extra_dir}/*.h"
+    "${extra_dir}/*.glsl"
   )
   list(APPEND ShadersDependencies ${ShadersDependencies_bis})
 
@@ -163,16 +160,18 @@ function(compile_glsl_shaders
   # Convert each GLSL shaders into a SpirV binary
   foreach(glslshader IN LISTS ShadersGLSL)
     # set global output binary filename
-    set(source ${GLOBAL_GLSL_DIR}/${glslshader})
+    set(source "${GLOBAL_GLSL_DIR}/${glslshader}")
 
     # output binary final filename
-    set(binary ${GLOBAL_SPIRV_DIR}/${glslshader})
-    if (REMOVE_ORIGINAL_SHADER_EXTENSION)
-      cmake_path(GET binary EXTENSION LAST_ONLY binary_ext)
-      if ("${binary_ext}" STREQUAL ".glsl")
-        cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
-      endif()
-    endif()
+    set(binary "${GLOBAL_SPIRV_DIR}/${glslshader}")
+
+    # if (REMOVE_ORIGINAL_SHADER_EXTENSION)
+    #   cmake_path(GET binary EXTENSION LAST_ONLY binary_ext)
+    #   if ("${binary_ext}" STREQUAL ".glsl")
+    #     cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+    #   endif()
+    # endif()
+
     set(binary "${binary}.spv")
 
     # compile GLSL to SPIRV
@@ -201,33 +200,49 @@ macro(slang2spirv shader)
     ${ARGN}
   )
 
+  # Default target.
   if(NOT SLANG_TARGET)
     set(SLANG_TARGET "spirv")
   endif()
 
+  # Determine output dir from relative path.
   file(RELATIVE_PATH shader_rel "${GLOBAL_SLANG_DIR}" "${shader}")
   get_filename_component(output_dir "${GLOBAL_SPIRV_DIR}/${shader_rel}" DIRECTORY)
 
-  compile_slang(
-    "${shader}"
-    "${output_dir}"
-    SPVS_VAR
-      binary
-    TARGET
-      "${SLANG_TARGET}"
-    # HEADERS_VAR
-    #   local_sources
-    # CAPABILITIES
-    #   spvDescriptorHeapEXT
-    EXTRA_FLAGS
-      "-I${extra_dir} -I${GLOBAL_SLANG_DIR}"
-  )
+  # Add Framework + user defined dir as include path.
+  # (do not put in quotes)
+  set(EXTRA_INCLUDE_DIRS -I${GLOBAL_SLANG_DIR} -I${extra_dir}) # -I${GLOBAL_SPIRV_DIR}
 
-  if (REMOVE_ORIGINAL_SHADER_EXTENSION)
-    cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
-    cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
-    set(binary "${binary}.spv")
+  if(SLANG_TARGET STREQUAL "slang-module")
+    # special custom target to slang module.
+    compile_slang(
+      "${shader}"
+      "${output_dir}"
+      SLANG_MODULES_VAR
+        binary #!!
+      EXTRA_FLAGS
+        "${EXTRA_INCLUDE_DIRS}"
+      # VERBOSE ON
+    )
+  else()
+    compile_slang(
+      "${shader}"
+      "${output_dir}"
+      TARGET
+        "${SLANG_TARGET}"
+      SPVS_VAR
+        binary
+      EXTRA_FLAGS
+        "${EXTRA_INCLUDE_DIRS}"
+      # VERBOSE ON
+    )
   endif()
+
+  # if (REMOVE_ORIGINAL_SHADER_EXTENSION)
+  #   cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+  #   cmake_path(REMOVE_EXTENSION binary LAST_ONLY)
+  #   set(binary "${binary}.spv")
+  # endif()
 
   list(APPEND spvBinaries "${binary}")
 endmacro()
@@ -241,37 +256,46 @@ function(compile_slang_shaders
   sources
   extra_dir
 )
-  # All framework's slang shader.
-  # file(GLOB_RECURSE SHADER_SLANG_FILES FILES "${GLOBAL_SLANG_DIR}/*.slang")
+  if (FALSE)
 
-  set(SHARED_SHADER_DIRNAME "shared")
+    # # All framework's slang shader.
+    # file(GLOB_RECURSE SHADER_SLANG_FILES FILES "${GLOBAL_SLANG_DIR}/*.slang")
 
-  # All shared/'module' slang shaders
-  file(GLOB_RECURSE SHADER_SLANG_SHARED_FILES
-    "${GLOBAL_SLANG_DIR}/${SHARED_SHADER_DIRNAME}/*.slang"
-  )
+    # foreach(shader IN LISTS SHADER_SLANG_FILES)
+    #   slang2spirv("${shader}")
+    # endforeach()
 
-  # Every shaders relative path.
-  file(GLOB_RECURSE SHADER_SLANG_OTHER_FILES RELATIVE "${GLOBAL_SLANG_DIR}"
-    "${GLOBAL_SLANG_DIR}/*.slang"
-  )
-  # Exclude shared / modules.
-  list(FILTER SHADER_SLANG_OTHER_FILES EXCLUDE REGEX
-    "^${SHARED_SHADER_DIRNAME}/"
-  )
-  # All non shared shader global path.
-  list(TRANSFORM SHADER_SLANG_OTHER_FILES PREPEND "${GLOBAL_SLANG_DIR}/")
+  else()
 
-  # Main shaders
-  foreach(shader IN LISTS SHADER_SLANG_OTHER_FILES)
-    slang2spirv("${shader}" TARGET spirv)
-  endforeach()
+    set(SHARED_SHADER_DIRNAME "shared")
 
-  # Module shaders
-  foreach(shader IN LISTS SHADER_SLANG_SHARED_FILES)
-    # slang2spirv("${shader}" TARGET slang-ir)
-  endforeach()
+    # All shared/'module' slang shaders
+    file(GLOB_RECURSE SHADER_SLANG_SHARED_FILES
+      "${GLOBAL_SLANG_DIR}/${SHARED_SHADER_DIRNAME}/*.slang"
+    )
 
+    # Every shaders relative path.
+    file(GLOB_RECURSE SHADER_SLANG_OTHER_FILES RELATIVE "${GLOBAL_SLANG_DIR}"
+      "${GLOBAL_SLANG_DIR}/*.slang"
+    )
+    # Exclude shared / modules.
+    list(FILTER SHADER_SLANG_OTHER_FILES EXCLUDE REGEX
+      "^${SHARED_SHADER_DIRNAME}/"
+    )
+    # All non shared shader global path.
+    list(TRANSFORM SHADER_SLANG_OTHER_FILES PREPEND "${GLOBAL_SLANG_DIR}/")
+
+    # Slang-Modules (first).
+    # foreach(module IN LISTS SHADER_SLANG_SHARED_FILES)
+    #   slang2spirv("${module}" TARGET slang-module)
+    # endforeach()
+
+    # SPIR-Vs.
+    foreach(shader IN LISTS SHADER_SLANG_OTHER_FILES)
+      slang2spirv("${shader}" TARGET spirv)
+    endforeach()
+
+  endif()
 
   set(${binaries} "${spvBinaries}" PARENT_SCOPE)
   # set(${sources} "${local_sources}" PARENT_SCOPE)
