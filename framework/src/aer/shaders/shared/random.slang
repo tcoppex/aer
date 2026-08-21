@@ -1,6 +1,13 @@
 module random;
 
-import constants;
+public int foo(int a)
+{
+    return a + 1;
+}
+
+#if 0
+
+namespace random {
 
 // ----------------------------------------------------------------------------
 
@@ -10,9 +17,8 @@ import constants;
 // (originally from NVPRO/vk_min_samples)
 public uint xxhash32(uint3 p)
 {
-  const uint4 primes = uint4(2246822519U, 3266489917U, 668265263U, 374761393U);
-  uint        h32;
-  h32 = p.z + primes.w + p.x * primes.y;
+  let primes = uint4(2246822519U, 3266489917U, 668265263U, 374761393U);
+  var h32 = p.z + primes.w + p.x * primes.y;
   h32 = primes.z * ((h32 << 17) | (h32 >> (32 - 17)));
   h32 += p.y * primes.y;
   h32 = primes.z * ((h32 << 17) | (h32 >> (32 - 17)));
@@ -25,9 +31,9 @@ public uint xxhash32(uint3 p)
 // Input - pixel.x, pixel.y, frame_nb
 public uint tea(uint3 p)
 {
-  uint v0 = p.x + p.y * p.x;
-  uint v1 = p.z;
-  uint s0 = 0u;
+  var v0 = p.x + p.y * p.x;
+  var v1 = p.z;
+  var s0 = 0u;
   for (uint n = 0u; n < 16u; n++) {
     s0 += 0x9e3779b9u;
     v0 += ((v1 << 4) + 0xa341316cu) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4u);
@@ -41,21 +47,23 @@ public uint tea(uint3 p)
 // https://www.pcg-random.org/
 public uint pcg(inout uint state)
 {
-  uint prev = state * 747796405u + 2891336453u;
-  uint word = ((prev >> ((prev >> 28u) + 4u)) ^ prev) * 277803737u;
-  state     = prev;
+  let prev = state * 747796405u + 2891336453u;
+  let word = ((prev >> ((prev >> 28u) + 4u)) ^ prev) * 277803737u;
+  state = prev;
   return (word >> 22u) ^ word;
 }
 
 // ----------------------------------------------------------------------------
 
 #if 1
+[ForceInline]
 public float randf(inout uint seed)
 {
-  uint r = pcg(seed);
+  let r = pcg(seed);
   return float(r) * (1.0f / float(0xffffffffu));
 }
 #else
+[ForceInline]
 public float randf(inout uint seed) {
   seed ^= (seed << 13);
   seed ^= (seed >> 17);
@@ -64,6 +72,7 @@ public float randf(inout uint seed) {
 }
 #endif
 
+[ForceInline]
 public float2 rand2f(inout uint seed)
 {
   return float2(randf(seed), randf(seed));
@@ -84,3 +93,7 @@ public float3 random_pcg3d(uint3 v)
 }
 
 // ----------------------------------------------------------------------------
+
+} // namespace random
+
+#endif

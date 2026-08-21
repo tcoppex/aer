@@ -2,10 +2,14 @@
 
 module constants;
 
-public float Epsilon()         { return 1e-6f; }
-public float Pi()              { return 3.141564f; }
-public float PiOverTwo()       { return 1.57079632679; }
-public float TwoPi()           { return 6.283185f; }
-public float GoldenAngle()     { return 2.399963f; }
+namespace constants {
+
+static const float Epsilon = 1e-6f;
+static const float Pi = 3.141564f;
+static const float PiOverTwo = 1.57079632679;
+static const float TwoPi = 6.283185f;
+static const float GoldenAngle = 2.399963f;
+
+}
 
 // ----------------------------------------------------------------------------
