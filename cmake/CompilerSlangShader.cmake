@@ -124,6 +124,7 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
     OPTIMIZATION_LEVEL
     HEADERS_VAR
     SPVS_VAR
+    SLANG_MODULES_VAR
     NAME_SUFFIX
     VERBOSE
     SHOW_TIMING
@@ -163,6 +164,7 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
   # Determine what to generate based on which output variables were provided
   set(_GENERATE_HEADER FALSE)
   set(_GENERATE_SPV FALSE)
+  set(_GENERATE_SLANG_MODULE FALSE)
 
   if(DEFINED COMPILE_SHADER_HEADERS_VAR AND NOT "${COMPILE_SHADER_HEADERS_VAR}" STREQUAL "")
     set(_GENERATE_HEADER TRUE)
@@ -172,8 +174,12 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
     set(_GENERATE_SPV TRUE)
   endif()
 
-  if(NOT _GENERATE_HEADER AND NOT _GENERATE_SPV)
-    message(FATAL_ERROR "compile_slang: At least one of HEADERS_VAR or SPVS_VAR must be provided.")
+  if(DEFINED COMPILE_SHADER_SLANG_MODULES_VAR AND NOT "${COMPILE_SHADER_SLANG_MODULES_VAR}" STREQUAL "")
+    set(_GENERATE_SLANG_MODULE TRUE)
+  endif()
+
+  if(NOT _GENERATE_HEADER AND NOT _GENERATE_SPV AND NOT _GENERATE_SLANG_MODULE)
+    message(FATAL_ERROR "compile_slang: At least one of HEADERS_VAR, SPVS_VAR, or SLANG_MODULES_VAR must be provided.")
   endif()
 
   foreach(_shader_file ${SHADER_FILES})
@@ -222,17 +228,21 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
   set(SHADER_SPVS "")
 
   set(_CORE_FLAGS
-    -emit-spirv-directly
     # Matrices accessors are still row-major !
     -matrix-layout-column-major # -matrix-layout-row-major
     -force-glsl-scalar-layout
-    -fvk-use-entrypoint-name
   )
 
   set(_CONFIGURABLE_FLAGS
     -lang ${COMPILE_SHADER_LANGUAGE}
     -profile ${COMPILE_SHADER_PROFILE}
     -target ${COMPILE_SHADER_TARGET}
+  )
+
+  set(_SPV_FLAGS
+    -emit-spirv-directly
+    -fvk-use-entrypoint-name
+    ${_CONFIGURABLE_FLAGS}
   )
 
   set(_OPTIONAL_FLAGS "")
@@ -248,7 +258,14 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
   # User flags listed last so they can override earlier settings
   set(_SLANG_FLAGS
     ${_CORE_FLAGS}
-    ${_CONFIGURABLE_FLAGS}
+    ${_SPV_FLAGS}
+    ${_OPTIONAL_FLAGS}
+    ${_BUILD_FLAGS}
+    ${COMPILE_SHADER_EXTRA_FLAGS}
+  )
+  set(_SLANG_MODULES_FLAGS
+    ${_CORE_FLAGS}
+    -emit-ir
     ${_OPTIONAL_FLAGS}
     ${_BUILD_FLAGS}
     ${COMPILE_SHADER_EXTRA_FLAGS}
@@ -269,6 +286,7 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
     set(OUTPUT_H_FILE "${OUTPUT_FILE}.h")
     set(OUTPUT_SPV_FILE "${OUTPUT_FILE}.spv")
     set(OUTPUT_DEP_FILE "${OUTPUT_FILE}.dep")
+    set(OUTPUT_SLANG_MODULE_FILE "${OUTPUT_FILE}-module")
 
     set(_COMMANDS)
     set(_OUTPUT_FILES)
@@ -327,6 +345,32 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
       list(APPEND SHADER_SPVS "${OUTPUT_SPV_FILE}")
     endif()
 
+    # Generate Slang module (.slang-module)
+    if(_GENERATE_SLANG_MODULE)
+      set(_COMMAND_SM ${Slang_SLANGC_EXECUTABLE}
+        ${_SLANG_MODULES_FLAGS}
+        -o "${OUTPUT_SLANG_MODULE_FILE}"
+        ${SHADER}
+      )
+      if(NOT _DEPFILE_ADDED)
+        list(INSERT _COMMAND_SM 1 -depfile "${OUTPUT_DEP_FILE}")
+      endif()
+
+      list(APPEND _COMMANDS COMMAND ${CMAKE_COMMAND} -E echo "  Generating Slang module: ${SHADER_NAME}.slang-module")
+      if(COMPILE_SHADER_VERBOSE)
+        string(REPLACE ";" " " _COMMAND_SM_STR "${_COMMAND_SM}")
+        list(APPEND _COMMANDS COMMAND ${CMAKE_COMMAND} -E echo "  ${_COMMAND_SM_STR}")
+      endif()
+      if(COMPILE_SHADER_SHOW_TIMING)
+        list(APPEND _COMMANDS COMMAND ${CMAKE_COMMAND} -E time ${_COMMAND_SM})
+      else()
+        list(APPEND _COMMANDS COMMAND ${_COMMAND_SM})
+      endif()
+
+      list(APPEND _OUTPUT_FILES "${OUTPUT_SLANG_MODULE_FILE}")
+      list(APPEND SHADER_SLANG_MODULES "${OUTPUT_SLANG_MODULE_FILE}")
+    endif()
+
     # Single custom command per shader: all outputs built together so that
     # VS right-click "Compile" on a .slang file produces everything.
     # Cross-shader parallelism is still achieved since each shader has its own command.
@@ -353,6 +397,10 @@ function(compile_slang SHADER_FILES OUTPUT_DIR)
 
   if(_GENERATE_SPV)
     set(${COMPILE_SHADER_SPVS_VAR} ${SHADER_SPVS} PARENT_SCOPE)
+  endif()
+
+  if(_GENERATE_SLANG_MODULE)
+    set(${COMPILE_SHADER_SLANG_MODULES_VAR} ${SHADER_SLANG_MODULES} PARENT_SCOPE)
   endif()
 
 endfunction()
