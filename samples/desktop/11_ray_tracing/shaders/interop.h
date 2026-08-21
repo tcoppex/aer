@@ -11,6 +11,12 @@
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 
+#define float4x4  mat4
+#define float4    vec4
+#define float3    vec3
+
+#define STATIC_CONST const
+
 #include <material/interop.h>
 // #include <material/push_constant_generic.h> // (not compatible yet)
 
@@ -23,12 +29,17 @@
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
     .instances[nonuniformEXT(gl_InstanceID)];
 
+#else
+
+#define STATIC_CONST static const
+
 #endif // defined(_GLSL_)
+
 
 // -----------------------------------------------------------------------------
 
-const uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
-const uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
+STATIC_CONST uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
+STATIC_CONST uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
 
 // -----------------------------------------------------------------------------
 
@@ -49,10 +60,10 @@ struct PushConstant {
 // -----------------------------------------------------------------------------
 
 struct HitPayload_t {
-  vec3 origin;
-  vec3 direction;
-  vec3 radiance;
-  vec3 throughput;
+  float3 origin;
+  float3 direction;
+  float3 radiance;
+  float3 throughput;
   int done;
   int depth;
   uint rngState;
@@ -62,14 +73,14 @@ struct HitPayload_t {
 
 // Simple RayTracing proxy material.
 
-const uint kRayTracingMaterialType_Diffuse  = 0;
-const uint kRayTracingMaterialType_Mirror   = 1;
-const uint kRayTracingMaterialType_Emissive = 2;
+STATIC_CONST uint kRayTracingMaterialType_Diffuse  = 0;
+STATIC_CONST uint kRayTracingMaterialType_Mirror   = 1;
+STATIC_CONST uint kRayTracingMaterialType_Emissive = 2;
 
 struct RayTracingMaterial {
-  vec3 emissive_factor;
+  float3 emissive_factor;
   uint emissive_texture_id;
-  vec4 diffuse_factor;
+  float4 diffuse_factor;
   uint diffuse_texture_id;
   uint orm_texture_id;
   float metallic_factor;

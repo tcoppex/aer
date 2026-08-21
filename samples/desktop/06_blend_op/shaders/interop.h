@@ -4,21 +4,21 @@
 #if defined(_GLSL_)
 
 #define float4x4 mat4
-#define SLANG_STATIC
+#define STATIC_CONST const
 
 #else
 
-#define SLANG_STATIC static
+#define STATIC_CONST static const
 
 #endif
 
 // ---------------------------------------------------------------------------
 
-SLANG_STATIC const uint kAttribLocation_Position = 0;
+STATIC_CONST uint kAttribLocation_Position = 0;
 
-SLANG_STATIC const uint kDescriptorSetBinding_UniformBuffer          = 0;
-SLANG_STATIC const uint kDescriptorSetBinding_StorageBuffer_Position = 1;
-SLANG_STATIC const uint kDescriptorSetBinding_StorageBuffer_Index    = 2;
+STATIC_CONST uint kDescriptorSetBinding_UniformBuffer          = 0;
+STATIC_CONST uint kDescriptorSetBinding_StorageBuffer_Position = 1;
+STATIC_CONST uint kDescriptorSetBinding_StorageBuffer_Index    = 2;
 
 // ---------------------------------------------------------------------------
 
