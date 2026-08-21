@@ -47,8 +47,8 @@ endif()
 # The "d4i3qtqj3r0z5.cloudfront.net" address is the public Omniverse Packman
 # server; it is not private.
 set(Slang_URLS
-    "https://d4i3qtqj3r0z5.cloudfront.net/slang%40v${Slang_VERSION}-${SLANG_OS}-${PACKMAN_ARCH}-release.zip"
     "https://github.com/shader-slang/slang/releases/download/v${Slang_VERSION}/slang-${Slang_VERSION}-${SLANG_OS}-${GITHUB_ARCH}.zip"
+    "https://d4i3qtqj3r0z5.cloudfront.net/slang%40v${Slang_VERSION}-${SLANG_OS}-${PACKMAN_ARCH}-release.zip"
 )
 
 include(DownloadPackage)
