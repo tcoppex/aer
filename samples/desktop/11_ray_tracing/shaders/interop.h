@@ -44,7 +44,10 @@
   *(FrameData*)(pushConstant.frame_buffer_address)
 
 #define GetRTInstanceData() \
-  *(RTInstanceData*)(pushConstant.instance_buffer_address)
+  ((RTInstanceData*)(pushConstant.instance_buffer_address))[InstanceID()]
+
+#define GetRayTracingMaterial(material_id) \
+  ((RayTracingMaterial*)(pushConstant.material_buffer_address))[material_id]
 
 #endif
 

@@ -1,7 +1,6 @@
 // ----------------------------------------------------------------------------
 
 #include "../interop.h"
-#include <shared/rt_unpack_geometry.glsl>
 
 import shared.random;
 
@@ -9,13 +8,28 @@ import shared.random;
 
 RWTexture2D<float4> uAccumImage;
 
-[[vk::binding(kDescriptorSet_Scene_Textures, kDescriptorSet_Scene)]]
-Sampler2D uTextureChannels[];
-
+[[vk::binding(kDescriptorSet_RayTracing_TLAS, kDescriptorSet_RayTracing)]]
 RaytracingAccelerationStructure topLevelAS;
 
 [[vk::push_constant]]
 PushConstant pushConstant;
+
+// ----------------------------------------------------------------------------
+
+void russianRoulette(inout HitPayload_t payload) {
+  if (payload.depth > 4) {
+    float p = max(payload.throughput.r,
+                  max(payload.throughput.g, payload.throughput.b));
+    p = clamp(p, 0.05, 0.95);
+
+    if (random.randf(payload.rngState) > p) {
+      payload.done = 1;
+      return;
+    } else {
+      payload.throughput /= p;
+    }
+  }
+}
 
 // ----------------------------------------------------------------------------
 
@@ -116,86 +130,6 @@ void main() {
   // ------
 
   uAccumImage[pixel] = float4(color, 1.0);
-}
-
-void russianRoulette(inout HitPayload_t payload) {
-  if (payload.depth > 4) {
-    float p = max(payload.throughput.r,
-                  max(payload.throughput.g, payload.throughput.b));
-    p = clamp(p, 0.05, 0.95);
-
-    if (random.randf(payload.rngState) > p) {
-      payload.done = 1;
-      return;
-    } else {
-      payload.throughput /= p;
-    }
-  }
-}
-
-// ----------------------------------------------------------------------------
-
-[shader("anyhit")]
-void anyhitMain(
-  inout HitPayload_t payload,
-  BuiltInTriangleIntersectionAttributes attr
-) {
-  let kInvalidIndexU24 = 0x00FFFFFF;
-  let materialID  = InstanceIndex();
-  let primitiveID = PrimitiveIndex();
-  let instance = GetRTInstanceData();
-
-  let tri = unpack_triangle(
-    instance.vertexAddr, instance.indexAddr, primitiveID
-  );
-
-  let uv = calculate_texcoord(tri, barycenter_from_hit(attr.barycentrics));
-
-  var opacity = 1.0f;
-
-  if (materialID != kInvalidIndexU24) {
-    let mat = *(RayTracingMaterial*)(pushConstant.material_buffer_address + materialID);
-
-    let color = GetTexture(mat.diffuse_texture_id).Sample(uv)
-              * mat.diffuse_factor
-              ;
-    opacity = (color.a > mat.alpha_cutoff) ? 1.0f : 0.0;
-  }
-
-  if (opacity < 0.99f) {
-    IgnoreHit();
-  }
-}
-
-
-// ----------------------------------------------------------------------------
-
-[shader("closesthit")]
-void closesthitMain(
-  inout HitPayload_t payload,
-  BuiltInTriangleIntersectionAttributes attr
-) {
-  // TODO
-}
-
-// ----------------------------------------------------------------------------
-
-[shader("miss")]
-void missMain(
-  inout HitPayload_t payload
-) {
-  let rayDirection = WorldRayDirection();
-
-  let dawn = float3(1.0, 0.45, 0.05);
-  let sky  = float3(0.2, 0.40, 0.80);
-  let t    = pow(0.5 * (rayDirection.y + 1.0), 0.7);
-
-  let skyColor = lerp(dawn, sky, t)
-               * pushConstant.sky_intensity
-               ;
-
-  payload.radiance += skyColor * payload.throughput;
-  payload.done = 1;
 }
 
 // ----------------------------------------------------------------------------
