@@ -35,13 +35,21 @@ typealias vec2 = float2;
 // ----------------------------------------------------------------------------
 // -- Macro helpers --
 
-#if defined(_GLSL_) || defined(__SLANG__)
+#if defined(_GLSL_)
 
-#define GetFrameCamera(frameData) \
-  frameData.cameras[gl_ViewIndex]
+#define GetCameraData(frameData, viewIndex) \
+  frameData.cameras[viewIndex]
 
 #define GetTexture(texture_id) \
-  uTextureChannels[nonuniformEXT(texture_id)] //
+  uTextureChannels[nonuniformEXT(texture_id)]
+
+#elif defined(__SLANG__)
+
+#define GetCameraData(frameData, viewIndex) \
+  frameData.cameras[viewIndex]
+
+#define GetTexture(texture_id) \
+  uTextureChannels[texture_id]
 
 #endif
 
@@ -80,7 +88,7 @@ STATIC_CONST uint kDescriptorSet_RayTracing_TLAS           = 0;
 // -- Utility structs & constants --
 
 // [hacky] the order *must* match the Camera::Transform struct.
-struct CameraTransform {
+struct CameraData {
   mat4 projectionMatrix;
   mat4 invProjectionMatrix;
   mat4 viewMatrix;
@@ -94,7 +102,7 @@ STATIC_CONST uint kRendererState_IrradianceBit = 0x1 << 0;
 // -- Uniform Buffer(s) --
 
 struct FrameData {
-  CameraTransform cameras[2];
+  CameraData cameras[2];
   mat4 default_world_matrix;
   vec4 cameraPos_Time;   // xxx
   vec2 resolution;

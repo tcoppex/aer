@@ -99,7 +99,7 @@ void apply_billboard_xz(
 
 void main() {
   const FrameData frameData = GetFrameData();
-  const CameraTransform camera = GetFrameCamera(frameData);
+  const CameraData camera = GetCameraData(frameData, gl_ViewIndex);
   const TransformData transform = GetTransform();
 
   // -------
