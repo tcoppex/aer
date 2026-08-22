@@ -19,9 +19,10 @@ struct VSOutput {
 
 // ----------------------------------------------------------------------------
 
+[ForceInline]
 float3 rotateZ(float3 pt, float theta) {
-  float c = cos(theta);
-  float s = sin(theta);
+  let c = cos(theta);
+  let s = sin(theta);
   return float3(
     dot(pt.xy, float2(c, -s)),
     dot(pt.xy, float2(s, c)),
@@ -35,7 +36,7 @@ float3 rotateZ(float3 pt, float theta) {
 VSOutput vertexMain(VSInput input) {
   VSOutput vertex;
 
-  float3 pos = rotateZ(input.position.xyz, pushConstant.time);
+  let pos = rotateZ(input.position.xyz, pushConstant.time);
 
   vertex.position = float4(pos, 1.0f);
   vertex.color = input.color;

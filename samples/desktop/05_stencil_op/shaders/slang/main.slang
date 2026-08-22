@@ -27,14 +27,13 @@ struct VSOutput {
 };
 
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 
 float3 transformPosition(float3 position, uint instanceID) {
   const float di = instanceID / 256.0;
   const float ystep = 0.092f;
   const float scale = (1.0 - 0.65 * di);
 
-  float3 offset = float3(
+  let offset = float3(
     0.14 * sin(13.4 * di * 6.283),
     -(2.0 + instanceID) * ystep,
     0.13 * cos(17.0 * di * 6.283)
@@ -47,14 +46,14 @@ float3 transformPosition(float3 position, uint instanceID) {
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-  const float4x4 projection = uData.scene.camera.projectionMatrix;
-  const float4x4 view       = uData.scene.camera.viewMatrix;
-  const float4x4 world      = pushConstant.model.worldMatrix;
+  let projection = uData.scene.camera.projectionMatrix;
+  let view       = uData.scene.camera.viewMatrix;
+  let world      = pushConstant.model.worldMatrix;
 
-  const float4x4 modelViewProj = mul(mul(projection, view), world);
-  const float3 normal = normalize(mul(float3x3(world), input.normal));
+  let modelViewProj = mul(mul(projection, view), world);
+  let normal = normalize(mul(float3x3(world), input.normal));
 
-  float3 pos = input.position;
+  var pos = input.position;
 
   // Instanced "internal space" rings change their transform based on their ID.
   if (sc_transformPosition) {

@@ -26,15 +26,14 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-  const float4x4 projection = uData.scene.camera.projectionMatrix;
-  const float4x4 view       = uData.scene.camera.viewMatrix;
-  const float4x4 world      = pushConstant.model.worldMatrix;
+  let projection = uData.scene.camera.projectionMatrix;
+  let view       = uData.scene.camera.viewMatrix;
+  let world      = pushConstant.model.worldMatrix;
 
-  float4x4 modelViewProj = mul(mul(projection, view), world);
-  float3x3 normalWorld = float3x3(world);
+  let modelViewProj = mul(mul(projection, view), world);
+  let normalWorld = float3x3(world);
 
   VSOutput vertex;
-
   vertex.position = mul(modelViewProj, input.position);
   vertex.normal = normalize(mul(normalWorld, input.normal));
 
@@ -45,10 +44,10 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  const float3 kLightDir = normalize(float3(2.0, 5.0, 4.0));
+  let kLightDir = normalize(float3(2.0, 5.0, 4.0));
 
-  float3 nor = normalize(input.normal);
-  float3 normalColor = 0.5 * (nor + 1.0);
+  let nor = normalize(input.normal);
+  let normalColor = 0.5 * (nor + 1.0);
 
   // Fake normal, fake light.
   float3 color = smoothstep(-1.2, 1.0, dot(nor, kLightDir)) - normalColor;

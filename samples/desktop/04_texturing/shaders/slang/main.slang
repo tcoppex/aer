@@ -28,14 +28,13 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-  const float4x4 projection = uData.scene.camera.projectionMatrix;
-  const float4x4 view       = uData.scene.camera.viewMatrix;
-  const float4x4 world      = pushConstant.model.worldMatrix;
+  let projection = uData.scene.camera.projectionMatrix;
+  let view       = uData.scene.camera.viewMatrix;
+  let world      = pushConstant.model.worldMatrix;
 
-  float4x4 modelViewProj = mul(mul(projection, view), world);
+  let modelViewProj = mul(mul(projection, view), world);
 
   VSOutput vertex;
-
   vertex.position = mul(modelViewProj, float4(input.position, 1.0));
   vertex.texCoord = float2(input.texCoord.x, 1.0 - input.texCoord.y);
 
@@ -46,7 +45,7 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  float3 color = uAlbedoTexture.Sample(input.texCoord).xyz;
+  let color = uAlbedoTexture.Sample(input.texCoord).xyz;
   return float4(color, 1.0);
 }
 

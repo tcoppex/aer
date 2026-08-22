@@ -49,37 +49,36 @@ static const float2 kLocalTexCoords[4] = {
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-  const float4x4 projection = uData.scene.camera.projectionMatrix;
-  const float4x4 view       = uData.scene.camera.viewMatrix;
-  const float4x4 world      = pushConstant.model.worldMatrix;
+  let projection = uData.scene.camera.projectionMatrix;
+  let view       = uData.scene.camera.viewMatrix;
+  let world      = pushConstant.model.worldMatrix;
 
-  const float4x4 viewProj = mul(projection, view);
+  let viewProj   = mul(projection, view);
 
   // --------------------
 
-  const float4 particle = Positions[Indices[input.instanceID]];
-  const float3 center   = particle.xyz;
-  const float2 scale    = float2(particle.w * 0.15f);
+  let particle = Positions[Indices[input.instanceID]];
+  let center   = particle.xyz;
+  let scale    = float2(particle.w * 0.15f);
 
-  const float2 quad_offset = kLocalOffsets[input.vertexID] * scale;
+  let quad_offset = kLocalOffsets[input.vertexID] * scale;
 
   /* Create a 'billboard' quad from the particle position. */
   // Important: in Slang, matrices accessors are always row major (different than)
-  const float3 quad_right = normalize(float3(view[0][0], view[0][1], view[0][2]));
-  const float3 quad_up    = normalize(float3(view[1][0], view[1][1], view[1][2]));
+  let quad_right = normalize(float3(view[0][0], view[0][1], view[0][2]));
+  let quad_up    = normalize(float3(view[1][0], view[1][1], view[1][2]));
 
-  const float3 vertex_offset = quad_offset.x * quad_right
-                             + quad_offset.y * quad_up
-                             ;
+  let vertex_offset = quad_offset.x * quad_right
+                    + quad_offset.y * quad_up
+                    ;
 
-  const float3 worldPos = mul(world, float4(center, 1.0)).xyz
-                        + vertex_offset
-                        ;
+  let worldPos = mul(world, float4(center, 1.0)).xyz
+               + vertex_offset
+               ;
 
   // --------------------
 
   VSOutput vertex = VSOutput(0);
-
   vertex.position   = mul(viewProj, float4(worldPos, 1.0));
   vertex.positionWS = worldPos;
   vertex.texCoord   = kLocalTexCoords[input.vertexID];
@@ -91,18 +90,18 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  const float dLimit = 207.0;
-  const float dRange = 5.0;
+  let dLimit = 207.0;
+  let dRange = 5.0;
 
-  float d = dot(input.positionWS, input.positionWS);
-  float borderAlpha = 1.0 - smoothstep(dLimit - dRange, dLimit + dRange, d);
+  let d = dot(input.positionWS, input.positionWS);
+  let borderAlpha = 1.0 - smoothstep(dLimit - dRange, dLimit + dRange, d);
 
-  float2 pt = 2.0f * (input.texCoord - 0.5f);
-  float l = 1.0f - abs(dot(pt, pt));
+  let pt = 2.0f * (input.texCoord - 0.5f);
+  let l = 1.0f - abs(dot(pt, pt));
 
-  float alpha = borderAlpha * smoothstep(0.65f, 0.85f, l);
+  let alpha = borderAlpha * smoothstep(0.65f, 0.85f, l);
 
-  float4 color = float4(float3(l), alpha);
+  var color = float4(float3(l), alpha);
 
   color *= float4(
     0.15,
