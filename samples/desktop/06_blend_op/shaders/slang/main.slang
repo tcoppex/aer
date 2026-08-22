@@ -5,7 +5,7 @@
 // ----------------------------------------------------------------------------
 
 [[vk::constant_id(0)]]
-constexpr bool sc_faceCamera = false;
+const bool sc_faceCamera = false;
 
 [[vk::binding(kDescriptorSetBinding_UniformBuffer, 0)]]
 ConstantBuffer<UniformData> uData;
@@ -57,16 +57,15 @@ static const float2 kLocalTexCoords[6] = {
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput input) {
-  const float4x4 projection = uData.scene.camera.projectionMatrix;
-  const float4x4 view       = uData.scene.camera.viewMatrix;
-  const float4x4 world      = pushConstant.model.worldMatrix;
-
-  const float4x4 viewProj = mul(projection, view);
+  let projection : float4x4 = uData.scene.camera.projectionMatrix;
+  let view       : float4x4 = uData.scene.camera.viewMatrix;
+  let world      : float4x4 = pushConstant.model.worldMatrix;
+  let viewProj   : float4x4 = mul(projection, view);
 
   // --------------------
 
-  float3 center = Positions[Indices[input.instanceID]].xyz;
-  float2 quad_offset = kLocalOffsets[input.vertexID] * kSpriteSize;
+  let quad_offset : float2 = kLocalOffsets[input.vertexID] * kSpriteSize;
+  var center : float3 = Positions[Indices[input.instanceID]].xyz;
 
   /* Simulate particles. */
   ///
@@ -78,11 +77,11 @@ VSOutput vertexMain(VSInput input) {
   ///
 
   /* Move Points on a sphere. */
-  const float phi = center.x * kTwoPi * (1.0f - 1.0f/512.0f);
-  const float theta = center.z * kTwoPi * 0.5;
-  const float ct = cos(theta);
+  let phi = center.x * kTwoPi * (1.0f - 1.0f/512.0f);
+  let theta = center.z * kTwoPi * 0.5;
+  let ct = cos(theta);
 
-  float3 normal = float3(
+  let normal = float3(
     ct * cos(phi),
     sin(theta),
     ct * sin(phi)
@@ -90,7 +89,7 @@ VSOutput vertexMain(VSInput input) {
   center += normal;
 
   /* Move along the normal */
-  float factor = 0.2f * sin(8.0f * dot(center, center) + 0.75f * pushConstant.time);
+  let factor = 0.2f * sin(8.0f * dot(center, center) + 0.75f * pushConstant.time);
   center = factor * normal;
 
   /* Make a Billboard quad out of the particle position. */
@@ -105,7 +104,7 @@ VSOutput vertexMain(VSInput input) {
   else
   {
     /* Face a forward vector (need back culling off). */
-    float3 quad_front = mul(world, float4(-normal, 1.0f)).xyz;
+    let quad_front : float3 = mul(world, float4(-normal, 1.0f)).xyz;
     quad_right = normalize(cross(quad_front, float3(0.0, 1.0, 0.0)));
     quad_up    = normalize(cross(quad_right, quad_front));
   }

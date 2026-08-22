@@ -5,7 +5,7 @@
 // ----------------------------------------------------------------------------
 
 [[vk::constant_id(kSpecializationConstant_TransformPosition)]]
-constexpr bool sc_transformPosition = false;
+const bool sc_transformPosition = false;
 
 [[vk::binding(kDescriptorSetBinding_UniformBuffer, 0)]]
 ConstantBuffer<UniformData> uData;
