@@ -15,7 +15,7 @@
 # Slang version. Bump this to track the latest Slang release (this sample is
 # meant to demonstrate the latest tooling). If you change this and have run
 # CMake before, delete the other Slang_* cache variables.
-set(Slang_VERSION "2026.5.2" CACHE STRING "Slang version")
+set(Slang_VERSION "2026.16" CACHE STRING "Slang version")
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ARCH_PROC)
 if(ARCH_PROC MATCHES "^(arm|aarch64)")
