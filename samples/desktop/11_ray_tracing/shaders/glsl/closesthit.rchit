@@ -56,8 +56,15 @@ void main() {
   const uint material_id  = gl_InstanceCustomIndexEXT;
 
   RTInstanceData instance = GetRTInstanceData();
+
   Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
-  Vertex v = calculate_vertex(tri, hitAttribs);
+  
+  Vertex v = calculate_vertex(
+    tri,
+    hitAttribs,
+    gl_ObjectToWorldEXT,
+    gl_WorldToObjectEXT
+  );
 
   // ----------------------------
   // MATERIAL.
