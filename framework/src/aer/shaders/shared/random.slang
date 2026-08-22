@@ -1,12 +1,5 @@
 module random;
 
-public int foo(int a)
-{
-    return a + 1;
-}
-
-#if 0
-
 namespace random {
 
 // ----------------------------------------------------------------------------
@@ -55,22 +48,20 @@ public uint pcg(inout uint state)
 
 // ----------------------------------------------------------------------------
 
-#if 1
-[ForceInline]
+// [ForceInline]
 public float randf(inout uint seed)
 {
   let r = pcg(seed);
   return float(r) * (1.0f / float(0xffffffffu));
 }
-#else
-[ForceInline]
-public float randf(inout uint seed) {
-  seed ^= (seed << 13);
-  seed ^= (seed >> 17);
-  seed ^= (seed << 5);
-  return float(seed & 0x00FFFFFFu) / float(0x01000000u);
-}
-#endif
+
+// [ForceInline]
+// public float randf(inout uint seed) {
+//   seed ^= (seed << 13);
+//   seed ^= (seed >> 17);
+//   seed ^= (seed << 5);
+//   return float(seed & 0x00FFFFFFu) / float(0x01000000u);
+// }
 
 [ForceInline]
 public float2 rand2f(inout uint seed)
@@ -95,5 +86,3 @@ public float3 random_pcg3d(uint3 v)
 // ----------------------------------------------------------------------------
 
 } // namespace random
-
-#endif

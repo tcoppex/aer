@@ -9,7 +9,6 @@
 #else
 
 #define STATIC_CONST static const
-// typealias mat4 = float4x4;
 
 #endif
 

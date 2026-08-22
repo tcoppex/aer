@@ -211,7 +211,14 @@ macro(slang2spirv shader)
 
   # Add Framework + user defined dir as include path.
   # (do not put in quotes)
-  set(EXTRA_INCLUDE_DIRS -I${GLOBAL_SLANG_DIR} -I${extra_dir}) # -I${GLOBAL_SPIRV_DIR}
+  set(EXTRA_INCLUDE_DIRS
+    # For local includes / imports.
+    -I${extra_dir}
+    # For framework includes / import.
+    -I${GLOBAL_SLANG_DIR}
+    # For compiled modules [check dependencies]
+    # -I${GLOBAL_SPIRV_DIR}
+  )
 
   if(SLANG_TARGET STREQUAL "slang-module")
     # special custom target to slang module.
