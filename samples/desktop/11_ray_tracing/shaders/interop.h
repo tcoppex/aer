@@ -4,21 +4,30 @@
 /* -------------------------------------------------------------------------- */
 
 #if defined(_GLSL_)
-
 #extension GL_EXT_ray_tracing : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_nonuniform_qualifier : enable
+#endif // defined(_GLSL_)
 
-#define float4x4  mat4
-#define float4    vec4
-#define float3    vec3
+// ----------------------------------------------------------------------------
 
+#if !defined(STATIC_CONST)
+
+#if defined(_GLSL_)
 #define STATIC_CONST const
+#else
+#define STATIC_CONST static const
+#endif
 
+#endif
+
+// -----------------------------------------------------------------------------
+
+#if defined(_GLSL_) || defined(__SLANG__)
 #include <material/interop.h>
-// #include <material/push_constant_generic.h> // (not compatible yet)
+#endif
+
+// -----------------------------------------------------------------------------
+
+#if defined(_GLSL_)
 
 // (redefine the one from push_constant_generic.h)
 #define GetFrameData() \
@@ -27,14 +36,17 @@
 
 #define GetInstanceData() \
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
-    .instances[nonuniformEXT(gl_InstanceID)];
+    .instances[nonuniformEXT(gl_InstanceID)]
 
-#else
+#elif defined(__SLANG__)
 
-#define STATIC_CONST static const
+#define GetFrameData() \
+    *(FrameData*)(pushConstant.frame_buffer_address)
 
-#endif // defined(_GLSL_)
+#define GetInstanceData() \
+    *(InstanceData*)(pushConstant.instance_buffer_address)
 
+#endif
 
 // -----------------------------------------------------------------------------
 
@@ -60,10 +72,10 @@ struct PushConstant {
 // -----------------------------------------------------------------------------
 
 struct HitPayload_t {
-  float3 origin;
-  float3 direction;
-  float3 radiance;
-  float3 throughput;
+  vec3 origin;
+  vec3 direction;
+  vec3 radiance;
+  vec3 throughput;
   int done;
   int depth;
   uint rngState;
@@ -78,9 +90,9 @@ STATIC_CONST uint kRayTracingMaterialType_Mirror   = 1;
 STATIC_CONST uint kRayTracingMaterialType_Emissive = 2;
 
 struct RayTracingMaterial {
-  float3 emissive_factor;
+  vec3 emissive_factor;
   uint emissive_texture_id;
-  float4 diffuse_factor;
+  vec4 diffuse_factor;
   uint diffuse_texture_id;
   uint orm_texture_id;
   float metallic_factor;
