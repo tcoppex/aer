@@ -662,11 +662,33 @@ Pipeline RenderContext::createRayTracingPipeline(
       s.anyHits.size() + s.intersections.size() + s.callables.size()
     );
 
-    auto entry_point{[](auto const& stage) {
+    auto entry_point{[](auto stage_flag) {
       return kDefaulShaderEntryPoint;
-      // return stage.entryPoint.empty() ? kDefaulShaderEntryPoint
-      //                                 : stage.entryPoint.c_str()
-      //                                 ;
+
+      // switch (stage_flag)
+      // {
+      //   case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+      //     return "raygenMain";
+
+      //   case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
+      //     return "anyhitMain";
+
+      //   case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+      //     return "closestMain";
+
+      //   case VK_SHADER_STAGE_MISS_BIT_KHR:
+      //     return "missMain";
+
+      //   case VK_SHADER_STAGE_INTERSECTION_BIT_KHR:
+      //     return "intersectionMain";
+
+      //   case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+      //     return "callableMain";
+
+      //   default:
+      //     LOGW("RayTracing entry_point flag not found.");
+      //     return kDefaulShaderEntryPoint;
+      // }
     }};
 
     auto insert_shaders{[&](auto const& stages, VkShaderStageFlagBits flag) {
@@ -675,7 +697,7 @@ Pipeline RenderContext::createRayTracingPipeline(
           .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
           .stage  = flag,
           .module = stage.module,
-          .pName  = entry_point(stage),
+          .pName  = entry_point(flag),
         });
       }
     }};

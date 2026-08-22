@@ -126,6 +126,7 @@ struct Queue {
 struct ShaderModule {
   VkShaderModule module{};
   std::string basename{};
+  // std::string entryPoint{};
 };
 
 using ShaderModules = std::vector<ShaderModule>;
