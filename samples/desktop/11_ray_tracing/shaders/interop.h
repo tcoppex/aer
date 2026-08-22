@@ -34,7 +34,7 @@
   FrameBufferRef(pushConstant.frame_buffer_address) \
     .uFrameData
 
-#define GetInstanceData() \
+#define GetRTInstanceData() \
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
     .instances[nonuniformEXT(gl_InstanceID)]
 
@@ -43,8 +43,8 @@
 #define GetFrameData() \
     *(FrameData*)(pushConstant.frame_buffer_address)
 
-#define GetInstanceData() \
-    *(InstanceData*)(pushConstant.instance_buffer_address)
+#define GetRTInstanceData() \
+    *(RTInstanceData*)(pushConstant.instance_buffer_address)
 
 #endif
 

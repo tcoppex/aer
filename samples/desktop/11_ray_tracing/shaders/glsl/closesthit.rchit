@@ -55,7 +55,7 @@ void main() {
   const uint primitive_id = gl_PrimitiveID;
   const uint material_id  = gl_InstanceCustomIndexEXT;
 
-  RTInstanceData instance = GetInstanceData();
+  RTInstanceData instance = GetRTInstanceData();
   Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   Vertex v = calculate_vertex(tri, hitAttribs);
 

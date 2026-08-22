@@ -53,7 +53,7 @@ void main() {
   const uint material_id  = gl_InstanceCustomIndexEXT;
   const uint kInvalidIndexU24 = 0x00FFFFFF;
 
-  RTInstanceData instance = GetInstanceData();
+  RTInstanceData instance = GetRTInstanceData();
   Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   vec2 uv = calculate_texcoord(tri, barycenter_from_hit(hitAttribs));
 
