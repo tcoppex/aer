@@ -22,7 +22,7 @@ void russianRoulette(inout HitPayload_t payload) {
                   max(payload.throughput.g, payload.throughput.b));
     p = clamp(p, 0.05, 0.95);
 
-    if (random.randf(payload.rngState) > p) {
+    if (random::randf(payload.rngState) > p) {
       payload.done = 1;
       return;
     } else {
@@ -56,7 +56,7 @@ void main() {
 
   // Initialize RNG for the pixel.
   var seed_params = uint3(raysIndex.xy, pushConstant.accumulation_frame_count);
-  payload.rngState = random.xxhash32(seed_params);
+  payload.rngState = random::xxhash32(seed_params);
 
   // Normalized device coordinates in [-1, 1]
   var ndc: float2 = uv * 2.0 - 1.0;
@@ -68,7 +68,7 @@ void main() {
   for (int s = 0; s < numSamples; s++)
   {
     let jitter: float2 = pushConstant.jitter_factor
-                       * (random.rand2f(payload.rngState) - 0.5)
+                       * (random::rand2f(payload.rngState) - 0.5)
                        * sampleSize
                        ;
 

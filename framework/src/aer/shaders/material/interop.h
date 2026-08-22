@@ -8,7 +8,6 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
-// #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_multiview : require
 
 #elif defined(__SLANG__)
@@ -54,6 +53,13 @@ typealias vec2 = float2;
 
 #endif
 
+
+#if defined(__SLANG__)
+#define SLANG_PUBLIC public
+#else
+#define SLANG_PUBLIC
+#endif
+
 // ----------------------------------------------------------------------------
 // -- Vertex Inputs --
 
@@ -62,11 +68,12 @@ STATIC_CONST uint kAttribLocation_Normal   = 1;
 STATIC_CONST uint kAttribLocation_Texcoord = 2;
 STATIC_CONST uint kAttribLocation_Tangent  = 3;
 
+SLANG_PUBLIC
 struct Vertex {
-  vec3 position; float _pad0[1];
-  vec3 normal;   float _pad1[1];
-  vec4 tangent;
-  vec2 texcoord; float _pad2[2];
+  SLANG_PUBLIC vec3 position; float _pad0[1];
+  SLANG_PUBLIC vec3 normal;   float _pad1[1];
+  SLANG_PUBLIC vec4 tangent;
+  SLANG_PUBLIC vec2 texcoord; float _pad2[2];
 };
 
 // ----------------------------------------------------------------------------

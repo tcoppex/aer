@@ -2,7 +2,7 @@
 
 #include "../interop.h"
 
-#include <shared/rt_unpack_geometry.glsl> //
+import shared.rt_geometry;
 
 // ----------------------------------------------------------------------------
 
@@ -24,11 +24,13 @@ void main(
   let primitiveID = PrimitiveIndex();
   let instance = GetRTInstanceData();
 
-  let tri = unpack_triangle(
+  let tri = rt_geometry::unpack_triangle(
     instance.vertexAddr, instance.indexAddr, primitiveID
   );
 
-  let uv = calculate_texcoord(tri, barycenter_from_hit(attr.barycentrics));
+  let uv = rt_geometry::calculate_texcoord(
+    tri, rt_geometry::barycenter_from_hit(attr.barycentrics)
+  );
 
   var opacity = 1.0f;
 

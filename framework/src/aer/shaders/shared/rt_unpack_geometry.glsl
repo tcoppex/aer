@@ -22,20 +22,7 @@ Triangle_t unpack_triangle(
   uint64_t indexAddr,
   uint primitive_id
 ) {
-#if defined(__SLANG__)
-  uint32_t* indices = (uint32_t*)indexAddr;
-  Vertex* vertices = (Vertex*)vertexAddr;
 
-  let base_index = 3 * primitive_id;
-  let i0 = indices[base_index + 0];
-  let i1 = indices[base_index + 1];
-  let i2 = indices[base_index + 2];
-
-  Triangle_t tri = Triangle_t(0);
-  tri.v0 = vertices[i0];
-  tri.v1 = vertices[i1];
-  tri.v2 = vertices[i2];
-#else
   Vertices vertices = Vertices(vertexAddr);
   Indices indices   = Indices(indexAddr);
 
@@ -48,7 +35,6 @@ Triangle_t unpack_triangle(
   tri.v0 = vertices.v[i0];
   tri.v1 = vertices.v[i1];
   tri.v2 = vertices.v[i2];
-#endif
 
   return tri;
 }
@@ -83,28 +69,6 @@ vec2 calculate_texcoord(in Triangle_t tri, in vec3 barycentrics) {
 
 // ----------------------------------------------------------------------------
 
-#if defined(__SLANG__)
-
-Vertex calculate_vertex(
-  in Triangle_t tri,
-  in vec2 attribs,
-  in float3x4 worldMatrix,
-  in float3x4 invWorldMatrix
-) {
-  let barycentrics = barycenter_from_hit(attribs);
-  let pos = calculate_local_position(tri, barycentrics);
-  let nor = calculate_world_normal(tri, barycentrics);
-
-  Vertex v;
-  v.position = mul(worldMatrix, vec4(pos, 1.0f)).xyz;
-  v.normal   = normalize(mul(nor, invWorldMatrix).xyz);
-  v.texcoord = calculate_texcoord(tri, barycentrics);
-
-  return v;
-}
-
-#else
-
 Vertex calculate_vertex(
   in Triangle_t tri,
   in vec2 attribs,
@@ -122,8 +86,6 @@ Vertex calculate_vertex(
 
   return v;
 }
-
-#endif
 
 // ----------------------------------------------------------------------------
 

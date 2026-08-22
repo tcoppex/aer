@@ -2,8 +2,7 @@
 
 #include "../interop.h"
 
-#include <shared/rt_unpack_geometry.glsl> //
-
+import shared.rt_geometry;
 import shared.random;
 import shared.constants;
 
@@ -28,7 +27,7 @@ void build_tangent_basis(in float3 N, out float3 T, out float3 B) {
 
 float3 sample_hemisphere_cosine(float2 u) {
   let r = sqrt(u.x);
-  let theta = constants.TwoPi * u.y;
+  let theta = constants::TwoPi * u.y;
   return float3(r * cos(theta), r * sin(theta), sqrt(max(0.0, 1.0 - u.x)));
 }
 
@@ -48,11 +47,11 @@ void main(
 
   let instance = GetRTInstanceData();
 
-  let tri = unpack_triangle(
+  let tri = rt_geometry::unpack_triangle(
     instance.vertexAddr, instance.indexAddr, primitiveID
   );
 
-  let v = calculate_vertex(
+  let v = rt_geometry::calculate_vertex(
     tri,
     attr.barycentrics,
     ObjectToWorld(),
@@ -130,7 +129,7 @@ void main(
     float3 tangent, bitangent;
     build_tangent_basis(N, tangent, bitangent);
 
-    let localDir = sample_hemisphere_cosine(random.rand2f(payload.rngState));
+    let localDir = sample_hemisphere_cosine(random::rand2f(payload.rngState));
     let newDir = normalize(localDir.x * tangent +
                            localDir.y * bitangent +
                            localDir.z * N);
