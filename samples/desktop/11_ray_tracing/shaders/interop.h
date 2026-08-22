@@ -41,10 +41,10 @@
 #elif defined(__SLANG__)
 
 #define GetFrameData() \
-    *(FrameData*)(pushConstant.frame_buffer_address)
+  *(FrameData*)(pushConstant.frame_buffer_address)
 
 #define GetRTInstanceData() \
-    *(RTInstanceData*)(pushConstant.instance_buffer_address)
+  *(RTInstanceData*)(pushConstant.instance_buffer_address)
 
 #endif
 

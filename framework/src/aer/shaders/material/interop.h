@@ -14,6 +14,7 @@
 #elif defined(__SLANG__)
 
 typealias mat4 = float4x4;
+typealias mat4x3 = float4x3;
 typealias vec4 = float4;
 typealias vec3 = float3;
 typealias vec2 = float2;

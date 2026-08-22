@@ -1,12 +1,16 @@
 // ----------------------------------------------------------------------------
 
 #include "../interop.h"
+#include <shared/rt_unpack_geometry.glsl>
 
 import shared.random;
 
 // ----------------------------------------------------------------------------
 
 RWTexture2D<float4> uAccumImage;
+
+[[vk::binding(kDescriptorSet_Scene_Textures, kDescriptorSet_Scene)]]
+Sampler2D uTextureChannels[];
 
 RaytracingAccelerationStructure topLevelAS;
 
@@ -17,31 +21,33 @@ PushConstant pushConstant;
 
 [shader("raygeneration")]
 void main() {
+  let raysIndex: uint3      = DispatchRaysIndex();
+  let raysDimension: uint3  = DispatchRaysDimensions();
+
+  let frameData             = GetFrameData();
+  let camera                = GetCameraData(frameData, 0);
+  let origin                = mul(camera.invViewMatrix, float4(0, 0, 0, 1));
+
+  let pixel                 = int2(raysIndex.xy);
+  let pixelCenter           = float2(pixel) + float2(0.5);
+  let sampleSize            = 1.0f / float2(raysDimension.xy);
+  let uv                    = pixelCenter * sampleSize;
+
+  let numSamples: int       = pushConstant.num_samples;
+  let maxDepth: int         = 16;
+
+  // ----------
+
   HitPayload_t payload;
 
-  let numSamples: int = pushConstant.num_samples;
-  let maxDepth: int = 16;
-
-  let frameData = GetFrameData();
-  let camera = GetCameraData(frameData, 0);
-  let origin = mul(camera.invViewMatrix, float4(0, 0, 0, 1));
-
-  let raysIndex: uint3 = DispatchRaysIndex();
-  let raysDimension: uint3 = DispatchRaysDimensions();
-
-  let pixel        = int2(raysIndex.xy);
-  let pixelCenter  = float2(pixel) + float2(0.5);
-  let sampleSize   = 1.0f / float2(raysDimension.xy);
-  let uv           = pixelCenter * sampleSize;
+  // Initialize RNG for the pixel.
+  var seed_params = uint3(raysIndex.xy, pushConstant.accumulation_frame_count);
+  payload.rngState = random.xxhash32(seed_params);
 
   // Normalized device coordinates in [-1, 1]
   var ndc: float2 = uv * 2.0 - 1.0;
   // (flip Y to be consistent with the rasterizer viewport flip..)
   ndc.y = -ndc.y;
-
-  // Initialize RNG for the pixel.
-  var seed_params = uint3(raysIndex.xy, pushConstant.accumulation_frame_count);
-  payload.rngState = random.xxhash32(seed_params);
 
   var color = float3(0.0);
 
@@ -101,15 +107,10 @@ void main() {
   }
   color /= numSamples;
 
-  var prevSample: float3 = uAccumImage[pixel].rgb;
-
-  // To avoid having to clear the initial buffer.
-  prevSample = max(float3(0.0f), prevSample);
-
-  var newSample: float3 = color;
-  newSample = clamp(newSample, 0.0f, 100.0f);
-
+  let prevSample: float3 = max(float3(0.0f), uAccumImage[pixel].rgb);
+  let newSample: float3  = clamp(color, 0.0f, 100.0f);
   let frameCount = pushConstant.accumulation_frame_count + 1;
+
   color = lerp(prevSample, newSample, 1.0 / frameCount);
 
   // ------
@@ -139,8 +140,33 @@ void anyhitMain(
   inout HitPayload_t payload,
   BuiltInTriangleIntersectionAttributes attr
 ) {
-  // TODO
+  let kInvalidIndexU24 = 0x00FFFFFF;
+  let materialID  = InstanceIndex();
+  let primitiveID = PrimitiveIndex();
+  let instance = GetRTInstanceData();
+
+  let tri = unpack_triangle(
+    instance.vertexAddr, instance.indexAddr, primitiveID
+  );
+
+  let uv = calculate_texcoord(tri, barycenter_from_hit(attr.barycentrics));
+
+  var opacity = 1.0f;
+
+  if (materialID != kInvalidIndexU24) {
+    let mat = *(RayTracingMaterial*)(pushConstant.material_buffer_address + materialID);
+
+    let color = GetTexture(mat.diffuse_texture_id).Sample(uv)
+              * mat.diffuse_factor
+              ;
+    opacity = (color.a > mat.alpha_cutoff) ? 1.0f : 0.0;
+  }
+
+  if (opacity < 0.99f) {
+    IgnoreHit();
+  }
 }
+
 
 // ----------------------------------------------------------------------------
 
@@ -158,14 +184,15 @@ void closesthitMain(
 void missMain(
   inout HitPayload_t payload
 ) {
-  const float3 rayDirection = WorldRayDirection();
+  let rayDirection = WorldRayDirection();
 
-  const float3 dawn = float3(1.0, 0.45, 0.05);
-  const float3 sky  = float3(0.2, 0.4, 0.8);
+  let dawn = float3(1.0, 0.45, 0.05);
+  let sky  = float3(0.2, 0.40, 0.80);
+  let t    = pow(0.5 * (rayDirection.y + 1.0), 0.7);
 
-  float t = pow(0.5 * (rayDirection.y + 1.0), 0.7);
-
-  float3 skyColor = lerp(dawn, sky, t) * pushConstant.sky_intensity ;
+  let skyColor = lerp(dawn, sky, t)
+               * pushConstant.sky_intensity
+               ;
 
   payload.radiance += skyColor * payload.throughput;
   payload.done = 1;
