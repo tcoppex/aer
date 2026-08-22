@@ -1,4 +1,5 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
 
 // -----------------------------------------------------------------------------
 
@@ -28,7 +29,8 @@ buffer InstanceDataBufferRef {
 
 hitAttributeEXT vec2 hitAttribs;
 
-layout(location = 0) rayPayloadInEXT HitPayload_t payload;
+layout(location = 0)
+rayPayloadInEXT HitPayload_t payload;
 
 layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_RayTracing_MaterialSBO)
 buffer RayTracingMaterialSBO_ {

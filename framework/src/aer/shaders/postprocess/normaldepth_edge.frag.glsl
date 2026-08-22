@@ -1,4 +1,5 @@
-#version 450
+#version 460
+#extension GL_GOOGLE_include_directive : require
 
 // ----------------------------------------------------------------------------
 /*
@@ -7,6 +8,7 @@
   Ref: https://www.cs.princeton.edu/courses/archive/fall00/cs597b/papers/saito90.pdf
 */
 // ----------------------------------------------------------------------------
+
 
 #include <shared/maths.glsl>
 #include <shared/linearize_depth.glsl>
