@@ -24,7 +24,7 @@ uniform PushConstant_ {
 
 // ----------------------------------------------------------------------------
 
-shared vec4 sharedData[gl_WorkGroupSize.x];
+shared vec4 sharedData[kCompute_IrradianceReduceSHCoeff_kernelSize_x];
 
 void main() {
   const uint localId = gl_LocalInvocationID.x;
