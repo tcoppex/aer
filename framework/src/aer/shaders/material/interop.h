@@ -3,7 +3,6 @@
 
 #if defined(_GLSL_)
 
-#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference2 : require
@@ -32,6 +31,12 @@ typealias vec2 = float2;
 
 #endif
 
+#if defined(__SLANG__)
+#define SLANG_PUBLIC public
+#else
+#define SLANG_PUBLIC
+#endif
+
 // ----------------------------------------------------------------------------
 // -- Macro helpers --
 
@@ -51,13 +56,6 @@ typealias vec2 = float2;
 #define GetTexture(texture_id) \
   uTextureChannels[texture_id]
 
-#endif
-
-
-#if defined(__SLANG__)
-#define SLANG_PUBLIC public
-#else
-#define SLANG_PUBLIC
 #endif
 
 // ----------------------------------------------------------------------------
