@@ -11,7 +11,7 @@
 
 // ----------------------------------------------------------------------------
 
-layout(set = 0, binding = kDescriptorSetBinding_Sampler)
+layout(set = 0, binding = kDescriptorSetBinding_Scene_Textures)
 uniform sampler2D[] uTextureChannels;
 
 layout(push_constant, scalar)
