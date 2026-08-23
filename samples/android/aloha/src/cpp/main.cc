@@ -51,7 +51,7 @@ private:
       kVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
     );
 
-    auto const shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
+    auto const shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
       "simple.vert",
       "simple.frag",
     })};

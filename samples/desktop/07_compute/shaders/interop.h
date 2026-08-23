@@ -1,38 +1,42 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
-// ---------------------------------------------------------------------------
+#if defined(_GLSL_)
 
-#ifdef __cplusplus
-#include <cstdint>
-#define UINT uint32_t
+#define float4x4 mat4
+#define STATIC_CONST const
+
 #else
-#define UINT uint
+
+#define STATIC_CONST static const
+
 #endif
 
-const UINT kAttribLocation_Position = 0;
+// ---------------------------------------------------------------------------
 
-const UINT kDescriptorSetBinding_UniformBuffer = 0;
-const UINT kDescriptorSetBinding_StorageBuffer_Position = 1;
-const UINT kDescriptorSetBinding_StorageBuffer_Index = 2;
-const UINT kDescriptorSetBinding_StorageBuffer_DotProduct = 3;
+STATIC_CONST uint kAttribLocation_Position = 0;
 
-const UINT kCompute_Simulation_kernelSize_x = 256;
-const UINT kCompute_FillIndex_kernelSize_x = 256;
-const UINT kCompute_DotProduct_kernelSize_x = 256;
-const UINT kCompute_SortIndex_kernelSize_x = 256;
+STATIC_CONST uint kDescriptorBinding_UBO_Data = 0;
+STATIC_CONST uint kDescriptorBinding_SBO_Positions    = 1;
+STATIC_CONST uint kDescriptorBinding_SBO_Indices      = 2;
+STATIC_CONST uint kDescriptorBinding_SBO_DotProducts  = 3;
 
-const float kTwoPi = 6.28318530718f;
+STATIC_CONST uint kCompute_Simulation_kernelSize_x  = 256;
+STATIC_CONST uint kCompute_FillIndex_kernelSize_x   = 256;
+STATIC_CONST uint kCompute_DotProduct_kernelSize_x  = 256;
+STATIC_CONST uint kCompute_SortIndex_kernelSize_x   = 256;
+
+STATIC_CONST float kTwoPi = 6.28318530718f;
 
 // ---------------------------------------------------------------------------
 
 struct Camera {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
+  float4x4 viewMatrix;
+  float4x4 projectionMatrix;
 };
 
 struct Model {
-  mat4 worldMatrix;
+  float4x4 worldMatrix;
 };
 
 // ---------------------------------------------------------------------------
@@ -54,12 +58,12 @@ struct PushConstant_Graphics {
 struct PushConstant_Compute {
   Model model;
   float time;
-  UINT numElems;
-  UINT padding_[2];
-  UINT readOffset;
-  UINT writeOffset;
-  UINT blockWidth;
-  UINT maxBlockWidth;
+  uint numElems;
+  uint padding_[2];
+  uint readOffset;
+  uint writeOffset;
+  uint blockWidth;
+  uint maxBlockWidth;
 };
 
 // ---------------------------------------------------------------------------
@@ -70,7 +74,5 @@ struct PushConstant {
 };
 
 // ---------------------------------------------------------------------------
-
-#undef UINT
 
 #endif

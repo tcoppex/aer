@@ -1,6 +1,7 @@
 #ifndef SHADERS_SHARED_INC_RANDOM_GLSL_
 #define SHADERS_SHARED_INC_RANDOM_GLSL_
 
+#extension GL_GOOGLE_include_directive : require
 #include <shared/constants.glsl>
 
 

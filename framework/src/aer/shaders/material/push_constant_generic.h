@@ -27,7 +27,7 @@ struct PushConstant_Generic {
 
 // ----------------------------------------------------------------------------
 
-#ifndef __cplusplus
+#if defined(_GLSL_)
 
 #define GetFrameData() \
   FrameBufferRef(pushConstant.generic.frame_buffer_address) \

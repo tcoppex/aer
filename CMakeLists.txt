@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 
+cmake_policy(SET CMP0169 OLD) #!
+
 # -----------------------------------------------------------------------------
 # Project.
 # -----------------------------------------------------------------------------
@@ -53,16 +55,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED     ON)
 set(CMAKE_CXX_EXTENSIONS            OFF)
 
 # -----------------------------------------------------------------------------
-# CMake includes
+# Dependencies management
 # -----------------------------------------------------------------------------
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-# Vulkan SDK helpers
-include(VulkanSDK)
+## Currently using CMake Package Manager (CPM)
+## but planning on switching to FetchContent.
+# include(FetchContent)
 
 # Download CPM.cmake
-set(CPM_DOWNLOAD_VERSION 0.40.3)
+set(CPM_DOWNLOAD_VERSION 0.43.1)
 set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
 
 if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
@@ -84,6 +85,22 @@ if(NOT DEFINED CPM_SOURCE_CACHE)
 endif()
 
 include(${CPM_DOWNLOAD_LOCATION})
+
+# -----------------------------------------------------------------------------
+# CMake includes
+# -----------------------------------------------------------------------------
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Helpers includes (from nvpro_samples/vk_minimal_latest).
+include(CompilerSlangShader)
+include(DownloadPackage)
+
+# Find or download Slang compiler.
+find_package(Slang REQUIRED)
+
+# Vulkan SDK helpers.
+include(VulkanSDK)
 
 # -----------------------------------------------------------------------------
 # Custom functions

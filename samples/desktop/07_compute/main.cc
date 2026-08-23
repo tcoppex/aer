@@ -19,7 +19,9 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
   // The sorting algorithm used support power-of-two sized buffer only.
-  static constexpr uint32_t kPointGridSize{ 1024u };
+  static constexpr uint32_t kPointGridSize{ 1 << 9 };
+
+  // Total number of particles.
   static constexpr uint32_t kPointGridResolution{ kPointGridSize * kPointGridSize };
 
   using HostData_t = shader_interop::UniformData;
@@ -113,7 +115,7 @@ class SampleApp final : public Application {
 
     /* Create the shared descriptor set and its layout. */
     {
-      VkDescriptorBindingFlags const kDefaultDescBindingFlags{
+      auto const kDefaultDescBindingFlags = VkDescriptorBindingFlags{
           VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
         | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
         | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
@@ -121,7 +123,7 @@ class SampleApp final : public Application {
 
       descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
-          .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
+          .binding = shader_interop::kDescriptorBinding_UBO_Data,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -130,7 +132,7 @@ class SampleApp final : public Application {
           .bindingFlags = kDefaultDescBindingFlags,
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
+          .binding = shader_interop::kDescriptorBinding_SBO_Positions,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -139,7 +141,7 @@ class SampleApp final : public Application {
           .bindingFlags = kDefaultDescBindingFlags,
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
+          .binding = shader_interop::kDescriptorBinding_SBO_Indices,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .descriptorCount = 2u,
           .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -148,7 +150,7 @@ class SampleApp final : public Application {
           .bindingFlags = kDefaultDescBindingFlags,
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_DotProduct,
+          .binding = shader_interop::kDescriptorBinding_SBO_DotProducts,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
@@ -159,22 +161,22 @@ class SampleApp final : public Application {
 
       descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
-          .binding = shader_interop::kDescriptorSetBinding_UniformBuffer,
+          .binding = shader_interop::kDescriptorBinding_UBO_Data,
           .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .buffers = { { uniform_buffer_.buffer } }
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Position,
+          .binding = shader_interop::kDescriptorBinding_SBO_Positions,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .buffers = { { point_grid_.vertex.buffer } }
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_Index,
+          .binding = shader_interop::kDescriptorBinding_SBO_Indices,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .buffers = { { point_grid_.index.buffer } }
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_StorageBuffer_DotProduct,
+          .binding = shader_interop::kDescriptorBinding_SBO_DotProducts,
           .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .buffers = { { dot_product_buffer_.buffer } }
         },
@@ -186,7 +188,9 @@ class SampleApp final : public Application {
       .setLayouts = { descriptor_set_layout_ },
       .pushConstantRanges = {
         {
-          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+                      | VK_SHADER_STAGE_FRAGMENT_BIT
+                      ,
           .offset = offsetof(shader_interop::PushConstant, graphics),
           .size = sizeof(push_constant_.graphics),
         },
@@ -198,33 +202,54 @@ class SampleApp final : public Application {
       },
     });
 
-    /* Create the compute pipelines. */
+    // Pipelines
     {
-      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR "sort/", {
+      auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
+        "simulation.slang",
+        "rendering.slang",
+      });
+
+#if 1
+      context_.createComputePipelines(
+        pipeline_layout_,
+        ShaderStageDescriptors{
+          { shaders[0], "compute_Simulation" },
+          { shaders[0], "compute_FillIndices" },
+          { shaders[0], "compute_DotProduct" },
+          { shaders[0], "compute_SortIndices" },
+        },
+        compute_pipelines_.data()
+      );
+#else
+    {
+      auto cs_shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR "sort/", {
         "simulation.comp.glsl",
         "fill_indices.comp.glsl",
         "calculate_dot_product.comp.glsl",
         "sort_indices.comp.glsl",
       })};
+
+      /* Create the compute pipelines. */
       context_.createComputePipelines(
-        pipeline_layout_, shaders, compute_pipelines_.data()
+        pipeline_layout_, cs_shaders, compute_pipelines_.data()
       );
-      context_.releaseShaderModules(shaders);
+      context_.releaseShaderModules(cs_shaders);
     }
+#endif
+      // auto cg_shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
+      //   "simple.vert.glsl",
+      //   "simple.frag.glsl",
+      // });
 
-    /* Create the graphics pipeline. */
-    {
-      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-        "simple.vert.glsl",
-        "simple.frag.glsl",
-      })};
-
+      /* Create the graphics pipeline. */
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shaders[1u].module,
+          .entryPoint = "vertexMain",
         },
         .fragment = {
           .module = shaders[1u].module,
+          .entryPoint = "fragmentMain",
           .targets = {
             {
               .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -430,7 +455,7 @@ class SampleApp final : public Application {
       push_constant_.graphics.model.worldMatrix = world_matrix;
       pass.pushConstant(
         push_constant_.graphics,
-        VK_SHADER_STAGE_VERTEX_BIT,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         offsetof(shader_interop::PushConstant, graphics)
       );
 

@@ -6,17 +6,17 @@
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_UniformBuffer)
+layout(scalar, set = 0, binding = kDescriptorBinding_UBO_Data)
 uniform UBO_ {
   UniformData uData;
 };
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_Position)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_Positions)
 readonly buffer SBO_positions_ {
   vec4 WorldPositions[];
 };
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_DotProduct)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_DotProducts)
 writeonly buffer SBO_dot_products_ {
   float DotProducts[];
 };

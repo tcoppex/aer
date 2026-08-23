@@ -1,4 +1,5 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
 
 // -----------------------------------------------------------------------------
 
@@ -28,7 +29,8 @@ buffer InstanceDataBufferRef {
 
 hitAttributeEXT vec2 hitAttribs;
 
-layout(location = 0) rayPayloadInEXT HitPayload_t payload;
+layout(location = 0)
+rayPayloadInEXT HitPayload_t payload;
 
 layout(scalar, set = kDescriptorSet_Internal, binding = kDescriptorSetBinding_RayTracing_MaterialSBO)
 buffer RayTracingMaterialSBO_ {
@@ -53,7 +55,7 @@ void main() {
   const uint material_id  = gl_InstanceCustomIndexEXT;
   const uint kInvalidIndexU24 = 0x00FFFFFF;
 
-  RTInstanceData instance = GetInstanceData();
+  RTInstanceData instance = GetRTInstanceData();
   Triangle_t tri = unpack_triangle(instance.vertexAddr, instance.indexAddr, primitive_id);
   vec2 uv = calculate_texcoord(tri, barycenter_from_hit(hitAttribs));
 

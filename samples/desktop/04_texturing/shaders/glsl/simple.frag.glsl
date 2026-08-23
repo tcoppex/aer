@@ -8,13 +8,16 @@
 // ----------------------------------------------------------------------------
 
 // Uniforms
-layout (set = 0, binding = kDescriptorSetBinding_Sampler) uniform sampler2D uSamplerAlbedo;
+layout(set = 0, binding = kDescriptorSetBinding_Sampler)
+uniform sampler2D uSamplerAlbedo;
 
 // Inputs
-layout (location = 0) in vec2 vTexcoord;
+layout(location = 0)
+in vec2 vTexcoord;
 
 // Outputs
-layout (location = 0) out vec4 fragColor;
+layout(location = 0)
+out vec4 fragColor;
 
 // ----------------------------------------------------------------------------
 

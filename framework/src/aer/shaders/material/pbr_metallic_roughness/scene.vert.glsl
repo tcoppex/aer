@@ -1,5 +1,7 @@
 #version 460
 
+#extension GL_GOOGLE_include_directive : require
+
 // ----------------------------------------------------------------------------
 
 #include <material/pbr_metallic_roughness/interop.h>
@@ -36,8 +38,9 @@ layout(location = 3) out vec2 vTexcoord;
 // ----------------------------------------------------------------------------
 
 void main() {
-  FrameData frameData = GetFrameData();
-  TransformData transform = GetTransform();
+  const FrameData frameData = GetFrameData();
+  const CameraData camera = GetCameraData(frameData, gl_ViewIndex);
+  const TransformData transform = GetTransform();
 
   // -------
 
@@ -49,7 +52,7 @@ void main() {
 
   // -------
 
-  gl_Position = GetFrameCamera(frameData).viewProjMatrix * worldPos;
+  gl_Position = camera.viewProjMatrix * worldPos;
   vPositionWS = worldPos.xyz;
   vNormalWS   = normalize(normalMatrix * inNormal);
   vTangentWS  = vec4(normalize(normalMatrix * inTangent.xyz), inTangent.w);

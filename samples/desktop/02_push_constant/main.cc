@@ -68,11 +68,6 @@ class SampleApp final : public Application {
       // context_.finishTransientCommandEncoder(cmd);
     }
 
-    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-      "simple.vert.glsl",
-      "simple.frag.glsl",
-    })};
-
     /* Setup the graphics pipeline. */
     {
       /**
@@ -90,11 +85,14 @@ class SampleApp final : public Application {
         },
       };
 
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "simple.slang");
+
       graphics_pipeline_ = context_.createGraphicsPipeline(
         layout_desc,
         {
           .vertex = {
-            .module = shaders[0u].module,
+            .module = shader.module,
+            .entryPoint = "vertexMain",
             .buffers = {
               {
                 .stride = sizeof(Vertex_t),
@@ -114,7 +112,8 @@ class SampleApp final : public Application {
             }
           },
           .fragment = {
-            .module = shaders[1u].module,
+            .module = shader.module,
+            .entryPoint = "fragmentMain",
             .targets = {
               {
                 .format = context_.default_color_format(),
@@ -134,16 +133,17 @@ class SampleApp final : public Application {
           },
           .primitive = {
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            /* By default the cull mode is set to 'none' and front face are ordered counter clockwise,
-             * so if we're not flipping the screen, triangles will not be displayed.
+            /* By default the cull mode is set to 'none' and front faces are ordered counter clockwise,
+             * so in order to display triangle we will need to flip the screen.
              * Uncomment to see the result.  */
             // .cullMode = VK_CULL_MODE_BACK_BIT,
             // .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
           }
         }
       );
+
+      context_.releaseShaderModule(shader);
     }
-    context_.releaseShaderModules(shaders);
 
     return true;
   }

@@ -8,7 +8,7 @@
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_Position)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_Positions)
 buffer SBO_positions_ {
   vec4 Positions[];
 };

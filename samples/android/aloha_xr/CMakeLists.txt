@@ -51,7 +51,7 @@ helpers_setupTarget(
     # android_native_app_glue
 
   DEFINITIONS
-    COMPILED_SHADERS_DIR="shaders/"
+    SAMPLE_SPIRV_DIR="shaders/"
     AER_USE_OPENXR=1
 )
 

@@ -2,14 +2,14 @@
 //
 //    01 - Hello Triangle
 //
-//    Demonstrates how to render a triangle, using:
+//    Demonstrates how to render a triangle manually, using:
 //        - Graphics Pipeline,
+//        - SPIR-V binary shader loading,
 //        - Vertex buffer,
 //        - Transient command buffer,
 //        - RenderPassEncoder commands:
 //            * Dynamic Viewport / Scissor states,
 //            * bindPipeline / bindVertexBuffer / draw.
-//
 //
 /* -------------------------------------------------------------------------- */
 
@@ -19,15 +19,25 @@
 
 class SampleApp final : public Application {
  public:
+  // By default the pipeline will use the Slang binary shader.
+  static constexpr bool kUseSlang = true;
+
+ public:
   struct Vertex_t {
     float Position[4];
     float Color[4];
   };
 
   enum AttributeLocation {
-    Position = 0,
-    Color    = 1,
+    kPosition = 0,
+    kColor    = 1,
     kAttributeLocationCount
+  };
+
+  enum ShaderModuleID {
+    kGLSLVertexShader     = 0,
+    kGLSLFragmentShader   = 1,
+    kSlangShader          = 2,
   };
 
   std::vector<Vertex_t> const kVertices{
@@ -38,7 +48,7 @@ class SampleApp final : public Application {
 
  public:
   SampleApp() = default;
-  ~SampleApp() {}
+  ~SampleApp() = default;
 
  private:
   bool setup() final {
@@ -64,9 +74,12 @@ class SampleApp final : public Application {
     }
 
     /* Load the precompiled shader modules (the '.spv' prefix is omitted). */
-    auto const shaders = context_.createShaderModules(COMPILED_SHADERS_DIR, {
+    auto const shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
+      // Separated GLSL version.
       "simple.vert.glsl",
       "simple.frag.glsl",
+      // Merged Slang version.
+      "simple.slang",
     });
 
     /* Setup the graphics pipeline.
@@ -77,18 +90,19 @@ class SampleApp final : public Application {
      **/
     graphics_pipeline_ = context_.createGraphicsPipeline({
       .vertex = {
-        .module = shaders[0u].module,
+        .module = shaders[kUseSlang ? kSlangShader : kGLSLVertexShader].module,
+        .entryPoint = kUseSlang ? "vertexMain" : "main",
         .buffers = {
           {
             .stride = sizeof(Vertex_t),
             .attributes =  {
               {
-                .location = AttributeLocation::Position,
+                .location = AttributeLocation::kPosition,
                 .format = VK_FORMAT_R32G32B32A32_SFLOAT,
                 .offset = offsetof(Vertex_t, Position),
               },
               {
-                .location = AttributeLocation::Color,
+                .location = AttributeLocation::kColor,
                 .format = VK_FORMAT_R32G32B32A32_SFLOAT,
                 .offset = offsetof(Vertex_t, Color),
               },
@@ -97,7 +111,8 @@ class SampleApp final : public Application {
         }
       },
       .fragment = {
-        .module = shaders[1u].module,
+        .module = shaders[kUseSlang ? kSlangShader : kGLSLFragmentShader].module,
+        .entryPoint = kUseSlang ? "fragmentMain" : "main",
         .targets = {
           {
             .format = context_.default_color_format(),

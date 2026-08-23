@@ -1,22 +1,33 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
+#if defined(_GLSL_)
+
+#define float4x4 mat4
+#define STATIC_CONST const
+
+#else
+
+#define STATIC_CONST static const
+
+#endif
+
 // ---------------------------------------------------------------------------
 
-const uint kAttribLocation_Position = 0;
+STATIC_CONST uint kAttribLocation_Position = 0;
 
-const uint kDescriptorSetBinding_UniformBuffer = 0;
-const uint kDescriptorSetBinding_Sampler       = 1;
+STATIC_CONST uint kDescriptorSetBinding_UniformBuffer = 0;
+STATIC_CONST uint kDescriptorSetBinding_Sampler       = 1;
 
 // ---------------------------------------------------------------------------
 
 struct Camera {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
+  float4x4 viewMatrix;
+  float4x4 projectionMatrix;
 };
 
 struct Model {
-  mat4 worldMatrix;
+  float4x4 worldMatrix;
 };
 
 // ---------------------------------------------------------------------------
@@ -26,6 +37,10 @@ struct UniformData {
 };
 
 struct PushConstant {
+  float elapsedTime;
+  bool animate;
+  uint instanceID;
+  uint _pad0[1];
   Model model;
 };
 

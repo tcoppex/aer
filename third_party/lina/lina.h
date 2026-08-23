@@ -1,4 +1,4 @@
-//  lina.h - v0.10.0
+//  lina.h - v0.11.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -9,41 +9,50 @@
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER)
 #define _MSC_VER 1901
 #define UNDEF_MSC_VER
 #endif
 
 #include "linalg.h" // v2.2
 
-#ifdef UNDEF_MSC_VER
+#if defined(UNDEF_MSC_VER)
 #undef _MSC_VER
 #undef UNDEF_MSC_VER
 #endif
 
 #include <limits>
 
+#if defined(LINA_OSTREAM)
+#include <iostream>
+#endif
+
 /* -------------------------------------------------------------------------- */
 
-#ifdef LINA_NO_NAMESPACE
+#define LINA_DEFINE_ALIASES_SLANG     1
+#define LINA_DEFINE_ALIASES_GLSL      1
+
+/* -------------------------------------------------------------------------- */
+
+#if defined(LINA_NO_NAMESPACE)
 
 #define BEGIN_LINA_NAMESPACE  namespace {
 #define END_LINA_NAMESPACE    }
 
 #else
 
-#ifndef LINA_NAMESPACE
+#if !defined(LINA_NAMESPACE)
 #define LINA_NAMESPACE lina
-#endif // LINA_NAMESPACE
+#endif
 
 #define BEGIN_LINA_NAMESPACE  namespace LINA_NAMESPACE {
 #define END_LINA_NAMESPACE    }
 
-#endif // LINA_NO_NAMESPACE
+#endif
 
 /* -------------------------------------------------------------------------- */
 
-#ifdef LINA_USE_DOUBLE_PRECISION
+#if defined(LINA_USE_DOUBLE_PRECISION)
 #define LINA_FP double
 #else
 #define LINA_FP float
@@ -66,9 +75,14 @@ template<class T> using vec2_t = vec<T,2>;
 template<class T> using vec3_t = vec<T,3>;
 template<class T> using vec4_t = vec<T,4>;
 
+// Custom
 using vec2f = vec2_t<LINA_FP>;
 using vec3f = vec3_t<LINA_FP>;
 using vec4f = vec4_t<LINA_FP>;
+
+using vec2d = vec2_t<double>;
+using vec3d = vec3_t<double>;
+using vec4d = vec4_t<double>;
 
 using vec2i = vec2_t<int32_t>;
 using vec3i = vec3_t<int32_t>;
@@ -78,32 +92,69 @@ using vec2u = vec2_t<uint32_t>;
 using vec3u = vec3_t<uint32_t>;
 using vec4u = vec4_t<uint32_t>;
 
-using mat3f = mat<LINA_FP, 3, 3>;
-using mat4f = mat<LINA_FP, 4, 4>;
+using mat2f   = mat<LINA_FP, 2, 2>;
+using mat3f   = mat<LINA_FP, 3, 3>;
 using mat3x4f = mat<LINA_FP, 3, 4>;
-// using mat3x3f = mat3f;
-// using mat4x4f = mat4f;
+using mat4x2f = mat<LINA_FP, 4, 2>;
+using mat4x3f = mat<LINA_FP, 4, 3>;
+using mat4f   = mat<LINA_FP, 4, 4>;
 
-using quat = vec4f;
+using quat = vec4f; //
 
-// GLSL types
+// Slang
+#if defined(LINA_DEFINE_ALIASES_SLANG)
+
+using float2 = vec2f;
+using float3 = vec3f;
+using float4 = vec4f;
+
+using double2 = vec2d;
+using double3 = vec3d;
+using double4 = vec4d;
+
+using int2 = vec2i;
+using int3 = vec3i;
+using int4 = vec4i;
+
+using uint2 = vec2u;
+using uint3 = vec3u;
+using uint4 = vec4u;
+
+using float2x2 = mat2f;
+using float3x3 = mat3f;
+using float3x4 = mat3x4f;
+using float4x2 = mat4x2f;
+using float4x3 = mat4x3f;
+using float4x4 = mat4f;
+
+#endif
+
+// GLSL
+#if defined(LINA_DEFINE_ALIASES_GLSL)
+
 using vec2 = vec2f;
 using vec3 = vec3f;
 using vec4 = vec4f;
 
-using uvec2 = vec2u;
-using uvec3 = vec3u;
-using uvec4 = vec4u;
+using dvec2 = vec2d;
+using dvec3 = vec3d;
+using dvec4 = vec4d;
 
 using ivec2 = vec2i;
 using ivec3 = vec3i;
 using ivec4 = vec4i;
 
+using uvec2 = vec2u;
+using uvec3 = vec3u;
+using uvec4 = vec4u;
+
 using mat3 = mat3f;
 using mat4 = mat4f;
-using mat3x3 = mat3;
+using mat3x3 = mat3f;
 using mat3x4 = mat3x4f;
-using mat4x4 = mat4;
+using mat4x4 = mat4f;
+
+#endif
 
 } // namespace "aliases"
 
@@ -501,8 +552,6 @@ template<class T> struct converter<vec<T, 4>, identity_t> {
 //
 
 #if defined(LINA_OSTREAM)
-
-#include <iostream>
 
 template<class T> std::ostream &operator<<(std::ostream& o, vec<T,2> const& v) {
   return o << "(" << v.x << ", " << v.y << ")";

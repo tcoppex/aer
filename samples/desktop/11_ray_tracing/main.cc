@@ -1,6 +1,6 @@
 /* -------------------------------------------------------------------------- */
 //
-//    11 - raytracing
+//    11 - ray tracing
 //
 //  Where we illuminates the scene one ray at a time.
 //
@@ -91,15 +91,15 @@ class BasicRayTracingFx : public RayTracingFx {
     auto make_modules{[&](backend::ShaderStage stage, std::vector<std::string_view> const& filenames) {
       return backend::ShadersMap::value_type{
         stage,
-        context_ptr_->createShaderModules(COMPILED_SHADERS_DIR, filenames)
+        context_ptr_->createShaderModules(SAMPLE_SPIRV_DIR, filenames)
       };
     }};
 
     return {
-      make_modules( backend::ShaderStage::Raygen,     { "raygen.rgen" }),
-      make_modules( backend::ShaderStage::AnyHit,     { "anyhit.rahit" }),
-      make_modules( backend::ShaderStage::ClosestHit, { "closesthit.rchit" }),
-      make_modules( backend::ShaderStage::Miss,       { "miss.rmiss" }),
+      make_modules( backend::ShaderStage::Raygen,     { "raygen.slang" }),
+      make_modules( backend::ShaderStage::ClosestHit, { "closesthit.slang" }),
+      make_modules( backend::ShaderStage::AnyHit,     { "anyhit.slang" }),
+      make_modules( backend::ShaderStage::Miss,       { "miss.slang" }),
     };
   }
 
@@ -131,20 +131,20 @@ class BasicRayTracingFx : public RayTracingFx {
         // Raygen Groups
         .raygens = {{
           .type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR,
-          .generalShader = shader_index("raygen.rgen"),
+          .generalShader = shader_index("raygen.slang"),
         }},
 
         // Miss Groups
         .misses = {{
           .type           = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR,
-          .generalShader  = shader_index("miss.rmiss"),
+          .generalShader  = shader_index("miss.slang"),
         }},
 
         // Hit Groups
         .hits = {{
           .type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR,
-          .closestHitShader   = shader_index("closesthit.rchit"),
-          .anyHitShader       = shader_index("anyhit.rahit"),
+          .closestHitShader   = shader_index("closesthit.slang"),
+          .anyHitShader       = shader_index("anyhit.slang"),
           .intersectionShader = VK_SHADER_UNUSED_KHR, // only on PROCEDURAL type
         }},
       }

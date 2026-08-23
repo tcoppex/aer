@@ -1,15 +1,20 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
+// [deprecated, to be used by the GLSL shaders]
+#if defined(_GLSL_)
+#define float4x4 mat4
+#endif
+
 // ---------------------------------------------------------------------------
 
 struct Camera {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
+  float4x4 viewMatrix;
+  float4x4 projectionMatrix;
 };
 
 struct Model {
-  mat4 worldMatrix;
+  float4x4 worldMatrix;
 };
 
 // ---------------------------------------------------------------------------

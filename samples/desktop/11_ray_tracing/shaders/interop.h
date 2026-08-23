@@ -1,34 +1,60 @@
-#ifndef SHADER_INTEROP_H_
-#define SHADER_INTEROP_H_
+#ifndef SHADERS_INTEROP_H_
+#define SHADERS_INTEROP_H_
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef __cplusplus
-
+#if defined(_GLSL_)
 #extension GL_EXT_ray_tracing : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_nonuniform_qualifier : enable
+#endif // defined(_GLSL_)
 
+// ----------------------------------------------------------------------------
+
+#if !defined(STATIC_CONST)
+
+#if defined(_GLSL_)
+#define STATIC_CONST const
+#else
+#define STATIC_CONST static const
+#endif
+
+#endif
+
+// -----------------------------------------------------------------------------
+
+#if defined(_GLSL_) || defined(__SLANG__)
 #include <material/interop.h>
-// #include <material/push_constant_generic.h> // (not compatible yet)
+#endif
+
+// -----------------------------------------------------------------------------
+
+#if defined(_GLSL_)
 
 // (redefine the one from push_constant_generic.h)
 #define GetFrameData() \
   FrameBufferRef(pushConstant.frame_buffer_address) \
     .uFrameData
 
-#define GetInstanceData() \
+#define GetRTInstanceData() \
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
-    .instances[nonuniformEXT(gl_InstanceID)];
+    .instances[nonuniformEXT(gl_InstanceID)]
+
+#elif defined(__SLANG__)
+
+#define GetFrameData() \
+  *(FrameData*)(pushConstant.frame_buffer_address)
+
+#define GetRTInstanceData() \
+  ((RTInstanceData*)(pushConstant.instance_buffer_address))[InstanceID()]
+
+#define GetRayTracingMaterial(material_id) \
+  ((RayTracingMaterial*)(pushConstant.material_buffer_address))[material_id]
 
 #endif
 
 // -----------------------------------------------------------------------------
 
-const uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
-const uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
+STATIC_CONST uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
+STATIC_CONST uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
 
 // -----------------------------------------------------------------------------
 
@@ -62,9 +88,9 @@ struct HitPayload_t {
 
 // Simple RayTracing proxy material.
 
-const uint kRayTracingMaterialType_Diffuse  = 0;
-const uint kRayTracingMaterialType_Mirror   = 1;
-const uint kRayTracingMaterialType_Emissive = 2;
+STATIC_CONST uint kRayTracingMaterialType_Diffuse  = 0;
+STATIC_CONST uint kRayTracingMaterialType_Mirror   = 1;
+STATIC_CONST uint kRayTracingMaterialType_Emissive = 2;
 
 struct RayTracingMaterial {
   vec3 emissive_factor;
@@ -87,4 +113,4 @@ struct RTInstanceData {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // SHADER_INTEROP_H_
+#endif // SHADERS_INTEROP_H_

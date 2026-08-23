@@ -67,19 +67,19 @@ cmake --build build --config Release
 
 ### Samples
 
-* **[00_hello](samples/desktop/00_hello/main.cc)**: Display a surface and clear its color (_Device, Swapchain, dynamic rendering_).
-* **[01_triangle](samples/desktop/01_triangle/main.cc)**: Display a simple triangle (_Shader, Graphics Pipeline, Vertex Buffer, Commands_).
-* **[02_push_constant](samples/desktop/02_push_constant/main.cc)**: Update per-frame values via push constants and dynamic states (_Push Constant_).
-* **[03_descriptor_set](samples/desktop/03_descriptor_set/main.cc)**: Initialize & update a descriptor set on a single uniform buffer (_Descriptor Set_).
-* **[04_texturing](samples/desktop/04_texturing/main.cc)**: Display a textured cube with a linear sampler (_Image, Sampler_).
-* **[05_stencil_op](samples/desktop/05_stencil_op/main.cc)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, instancing_).
-* **[06_blend_op](samples/desktop/06_blend_op/main.cc)**: Fast & simple billboarded GPU particles with additive blending (_Blending_).
-* **[07_compute](samples/desktop/07_compute/main.cc)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Buffer Barriers_).
-* **[08_hdr_envmap](samples/desktop/08_hdr_envmap/main.cc)**: Compute Image-Based Lighting from a HDR environment map (_Texture Barriers_).
-* **[09_post_process](samples/desktop/09_post_process/main.cc)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
-* **[10_material](samples/desktop/10_material/main.cc)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
-* **[11_raytracing](samples/desktop/11_raytracing/main.cc)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
-* **[12_font](samples/desktop/12_font/main.cc)**: Dynamic 2D/3D text generation from a font file.
+* **[00_hello](samples/desktop/00_hello/)**: Display a surface and clear its color (_Device, Swapchain, dynamic rendering_).
+* **[01_triangle](samples/desktop/01_triangle/)**: Display a simple triangle (_Shader, Graphics Pipeline, Vertex Buffer, Commands_).
+* **[02_push_constant](samples/desktop/02_push_constant/)**: Update per-frame values via push constants and dynamic states (_Push Constant_).
+* **[03_descriptor_set](samples/desktop/03_descriptor_set/)**: Initialize & update a descriptor set on a single uniform buffer (_Descriptor Set, Uniform/Constant Buffer_).
+* **[04_texturing](samples/desktop/04_texturing/)**: Display a textured cube with a linear sampler (_Image, Sampler_).
+* **[05_stencil_op](samples/desktop/05_stencil_op/)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, Instancing, Specialization Constants_).
+* **[06_blend_op](samples/desktop/06_blend_op/)**: Fast & simple billboarded GPU particles with additive blending (_Blending_).
+* **[07_compute](samples/desktop/07_compute/)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Push Constants Range, Buffer Barriers_).
+* **[08_hdr_envmap](samples/desktop/08_hdr_envmap/)**: Compute Image-Based Lighting from a HDR environment map (_Texture Barriers_).
+* **[09_post_process](samples/desktop/09_post_process/)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
+* **[10_material](samples/desktop/10_material/)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
+* **[11_ray_tracing](samples/desktop/11_ray_tracing/)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
+* **[12_font](samples/desktop/12_font/)**: Dynamic 2D/3D text generation from a font file.
 
 Samples are linear in progression: when a feature is introduced the
 first version uses a somewhat verbose semantic before switching to simpler ones in subsequent examples.

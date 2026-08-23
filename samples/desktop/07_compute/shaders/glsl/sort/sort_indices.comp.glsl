@@ -14,12 +14,12 @@
 
 //-----------------------------------------------------------------------------
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_DotProduct)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_DotProducts)
 readonly buffer SBO_dot_products_ {
   float Keys[];
 };
 
-layout(scalar, binding = kDescriptorSetBinding_StorageBuffer_Index)
+layout(scalar, binding = kDescriptorBinding_SBO_Indices)
 buffer SBO_indices_ {
   uint Indices[];
 };

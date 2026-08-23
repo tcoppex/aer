@@ -75,7 +75,7 @@ class SampleApp final : public Application {
       }});
     }
 
-    auto const shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
+    auto const shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
       "simple.vert",
       "simple.frag",
     })};

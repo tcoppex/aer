@@ -9,10 +9,14 @@
 
 // ----------------------------------------------------------------------------
 
-layout(set = 0, binding = kDescriptorSetBinding_Sampler) uniform sampler2D[] uTexturesMap;
-layout(set = 0, binding = kDescriptorSetBinding_IrradianceEnvMap) uniform samplerCube uIrradianceEnvMap;
+layout(set = 0, binding = kDescriptorSetBinding_Sampler)
+uniform sampler2D[] uTexturesMap;
 
-layout(push_constant, scalar) uniform PushConstant_ {
+layout(set = 0, binding = kDescriptorSetBinding_IrradianceEnvMap)
+uniform samplerCube uIrradianceEnvMap;
+
+layout(push_constant, scalar)
+uniform PushConstant_ {
   PushConstant pushConstant;
 };
 

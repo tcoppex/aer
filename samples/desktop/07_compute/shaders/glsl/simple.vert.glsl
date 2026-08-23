@@ -8,17 +8,17 @@
 
 // ----------------------------------------------------------------------------
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_UniformBuffer)
+layout(scalar, set = 0, binding = kDescriptorBinding_UBO_Data)
 uniform UBO_ {
   UniformData uData;
 };
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_Position)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_Positions)
 readonly buffer SBO_positions_ {
   vec4 Positions[];
 };
 
-layout(scalar, set = 0, binding = kDescriptorSetBinding_StorageBuffer_Index)
+layout(scalar, set = 0, binding = kDescriptorBinding_SBO_Indices)
 readonly buffer SBO_indices_ {
   uint Indices[];
 };

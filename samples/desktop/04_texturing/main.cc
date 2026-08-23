@@ -21,7 +21,7 @@ class SampleApp final : public Application {
 
  public:
   SampleApp() = default;
-  ~SampleApp() {}
+  ~SampleApp()  = default;
 
  private:
   bool setup() final {
@@ -131,11 +131,6 @@ class SampleApp final : public Application {
       });
     }
 
-    auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-      "simple.vert.glsl",
-      "simple.frag.glsl",
-    })};
-
     /* Setup the graphics pipeline. */
     {
       VkPipelineLayout const pipeline_layout = context_.createPipelineLayout({
@@ -148,9 +143,12 @@ class SampleApp final : public Application {
         },
       });
 
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
+
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shader.module,
+          .entryPoint = "vertexMain",
           /* Get buffer descriptors compatible with the mesh vertex inputs.
            *
            * Most Geometry::MakeX functions used the same interleaved layout,
@@ -158,7 +156,8 @@ class SampleApp final : public Application {
           .buffers = cube_.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
-          .module = shaders[1u].module,
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
           .targets = {
             {
               /* When specifying no format, the default one will be used. */
@@ -183,9 +182,10 @@ class SampleApp final : public Application {
           .cullMode = VK_CULL_MODE_BACK_BIT,
         }
       });
+
+      context_.releaseShaderModule(shader);
     }
 
-    context_.releaseShaderModules(shaders);
 
     return true;
   }

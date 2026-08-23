@@ -23,6 +23,11 @@ function(add_sample dirname)
 
   set_target_output_directory(${target} ${PROJECT_BINARY_DIR})
 
+  set(SAMPLE_SPIRV_DIR
+    "${FRAMEWORK_COMPILED_SHADERS_DIR}/samples/${dirname}/"
+      # "${SAMPLE_PATH}/shaders/spirv/"
+  )
+
   helpers_setupTarget(
     TARGET
       ${target}
@@ -31,17 +36,22 @@ function(add_sample dirname)
     LIBRARIES
       ${FRAMEWORK_LIBRARIES}
     DEFINITIONS
-      COMPILED_SHADERS_DIR="${SAMPLE_PATH}/shaders/spirv/"
+      SAMPLE_SPIRV_DIR="${SAMPLE_SPIRV_DIR}"
   )
 
   # Compile shaders dependencies.
-  compile_shaders(
-    ${SAMPLE_PATH}/shaders/glsl
-    ${SAMPLE_PATH}/shaders/spirv
-    shaders_bin
-    shaders_src
+  compile_sample_shaders(
+    # SHADERS_ROOT_DIRECTORY
+      ${SAMPLE_PATH}/shaders
+    # SPIRV_ROOT_DIRECTORY
+      ${SAMPLE_SPIRV_DIR}
+    # OUTPUT_BINARIES
+      shaders_bin
+      shaders_src
+    # EXTRA_INLCUDE_DIRECTORY
     ${FRAMEWORK_SHADERS_DIR}
   )
+
   set(BuildShaderTarget BuildSampleShaders_${target})
   add_custom_target(${BuildShaderTarget} ALL
     DEPENDS
@@ -64,7 +74,7 @@ add_sample(07_compute)
 add_sample(08_hdr_envmap)
 add_sample(09_post_process)
 add_sample(10_material)
-add_sample(11_raytracing)
+add_sample(11_ray_tracing)
 add_sample(12_font)
 
 # -----------------------------------------------------------------------------

@@ -98,21 +98,20 @@ class SampleApp final : public Application {
         },
       });
 
-      auto shaders{context_.createShaderModules(COMPILED_SHADERS_DIR, {
-        "simple.vert.glsl",
-        "simple.frag.glsl",
-      })};
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .dynamicStates = {
           VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
         },
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shader.module,
+          .entryPoint = "vertexMain",
           .buffers = mesh.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
-          .module = shaders[1u].module,
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
           .targets = {
             {
               .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -136,7 +135,7 @@ class SampleApp final : public Application {
         }
       });
 
-      context_.releaseShaderModules(shaders);
+      context_.releaseShaderModule(shader);
     }
 
     return true;
@@ -240,17 +239,15 @@ class SampleApp final : public Application {
       {
         pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
 
-        for (size_t i=0; i < text_draw_info_.glyphs.size(); ++i) {
+        push_constant_.elapsedTime = elapsed_time();
+        push_constant_.animate = ui_.enableAnimation;
+
+        for (size_t i = 0; i < text_draw_info_.glyphs.size(); ++i) {
           auto const& glyph_draw_info = text_draw_info_.glyphs[i];
-          auto const waveMatrix = ui_.enableAnimation ?
-            lina::translation_matrix(vec3(
-              0.0f,
-              12.0f * sin(i + 4.2f * elapsed_time()),
-              85.0f * cos(i + 2.1f * elapsed_time())
-            )) : lina::identity;
+          push_constant_.instanceID = static_cast<uint32_t>(i);
           push_constant_.model.worldMatrix = lina::mul(
             worldMatrix,
-            lina::mul(glyph_draw_info.matrix, waveMatrix)
+            glyph_draw_info.matrix
           );
           pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
           for (auto const& submesh : glyph_draw_info.submeshes) {

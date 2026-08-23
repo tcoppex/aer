@@ -1,31 +1,36 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
-// ---------------------------------------------------------------------------
+#if defined(_GLSL_)
 
-#ifdef __cplusplus
-#define UINT uint32_t
+#define float4x4 mat4
+#define STATIC_CONST const
+
 #else
-#define UINT uint
+
+#define STATIC_CONST static const
+
 #endif
 
-const UINT kAttribLocation_Position = 0;
-const UINT kAttribLocation_Normal   = 1;
-const UINT kAttribLocation_Texcoord = 2;
+// ---------------------------------------------------------------------------
 
-const UINT kDescriptorSetBinding_UniformBuffer = 0;
+STATIC_CONST uint kAttribLocation_Position = 0;
+STATIC_CONST uint kAttribLocation_Normal   = 1;
+STATIC_CONST uint kAttribLocation_Texcoord = 2;
 
-#undef UINT
+STATIC_CONST uint kDescriptorSetBinding_UniformBuffer = 0;
+
+STATIC_CONST uint kSpecializationConstant_TransformPosition = 0;
 
 // ---------------------------------------------------------------------------
 
 struct Camera {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
+  float4x4 viewMatrix;
+  float4x4 projectionMatrix;
 };
 
 struct Model {
-  mat4 worldMatrix;
+  float4x4 worldMatrix;
 };
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@
 
 namespace {
 
-char const* kDefaulShaderEntryPoint{ "main" };
+char const* kDefaulShaderEntryPoint{ "main" }; //
 
 }
 
@@ -566,25 +566,33 @@ Pipeline RenderContext::createGraphicsPipeline(
 
 void RenderContext::createComputePipelines(
   VkPipelineLayout pipeline_layout,
-  std::vector<backend::ShaderModule> const& modules,
+  ShaderStageDescriptors const& shader_stage_descriptors,
   Pipeline *pipelines
 ) const {
   LOG_CHECK(pipelines != nullptr);
 
-  std::vector<VkComputePipelineCreateInfo> pipeline_infos(modules.size(), {
-    .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-    .stage = {
-      .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-      .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
-      .module = VK_NULL_HANDLE,
-      .pName  = kDefaulShaderEntryPoint,
-    },
-    .layout = pipeline_layout,
-  });
-  for (size_t i = 0; i < modules.size(); ++i) {
-    pipeline_infos[i].stage.module = modules[i].module;
+  auto pipeline_infos = std::vector<VkComputePipelineCreateInfo>(
+    shader_stage_descriptors.size(),
+    {
+      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      .stage = {
+        .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = VK_NULL_HANDLE,
+        .pName  = nullptr,
+      },
+      .layout = pipeline_layout,
+    }
+  );
+  for (size_t i = 0; i < shader_stage_descriptors.size(); ++i) {
+    auto const& desc = shader_stage_descriptors[i];
+    auto const& name = desc.entryPoint;
+    auto &stage = pipeline_infos[i].stage;
+    stage.module = desc.shader.module;
+    stage.pName = name.empty() ? kDefaulShaderEntryPoint : name.c_str();
   }
-  std::vector<VkPipeline> pips(modules.size());
+
+  auto out_pipelines = std::vector<VkPipeline>(shader_stage_descriptors.size());
 
   CHECK_VK(vkCreateComputePipelines(
     device(),
@@ -592,23 +600,49 @@ void RenderContext::createComputePipelines(
     static_cast<uint32_t>(pipeline_infos.size()),
     pipeline_infos.data(),
     nullptr,
-    pips.data()
+    out_pipelines.data()
   ));
 
-  for (size_t i = 0; i < pips.size(); ++i) {
-    pipelines[i] = Pipeline(pipeline_layout, pips[i], VK_PIPELINE_BIND_POINT_COMPUTE);
+  for (size_t i = 0; i < out_pipelines.size(); ++i) {
+    pipelines[i] = Pipeline(
+      pipeline_layout, out_pipelines[i], VK_PIPELINE_BIND_POINT_COMPUTE
+    );
+    auto const& desc = shader_stage_descriptors[i];
+    setDebugObjectName(out_pipelines[i],
+      "ComputePipeline::" + desc.shader.basename + "::" + desc.entryPoint
+    );
   }
 }
 
 // ----------------------------------------------------------------------------
 
+void RenderContext::createComputePipelines(
+  VkPipelineLayout pipeline_layout,
+  std::vector<backend::ShaderModule> const& shader_modules,
+  Pipeline *pipelines
+) const {
+  auto descs = ShaderStageDescriptors(
+    shader_modules.size(),
+    { .entryPoint = kDefaulShaderEntryPoint }
+  );
+  for (size_t i = 0; i < shader_modules.size(); ++i) {
+    descs[i].shader = shader_modules[i];
+  }
+  createComputePipelines(pipeline_layout, descs, pipelines);
+}
+
+[[nodiscard]]
 Pipeline RenderContext::createComputePipeline(
   VkPipelineLayout pipeline_layout,
-  backend::ShaderModule const& module
+  backend::ShaderModule const& shader_module
 ) const {
-  Pipeline p;
-  createComputePipelines(pipeline_layout, { module }, &p);
-  return p;
+  Pipeline pipeline{};
+  createComputePipelines(
+    pipeline_layout,
+    {{ .shader = shader_module, .entryPoint = kDefaulShaderEntryPoint }},
+    &pipeline
+  );
+  return pipeline;
 }
 
 // ----------------------------------------------------------------------------
@@ -628,11 +662,33 @@ Pipeline RenderContext::createRayTracingPipeline(
       s.anyHits.size() + s.intersections.size() + s.callables.size()
     );
 
-    auto entry_point{[](auto const& stage) {
+    auto entry_point{[](auto stage_flag) {
       return kDefaulShaderEntryPoint;
-      // return stage.entryPoint.empty() ? kDefaulShaderEntryPoint
-      //                                 : stage.entryPoint.c_str()
-      //                                 ;
+
+      // switch (stage_flag)
+      // {
+      //   case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+      //     return "raygenMain";
+
+      //   case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
+      //     return "anyhitMain";
+
+      //   case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+      //     return "closestMain";
+
+      //   case VK_SHADER_STAGE_MISS_BIT_KHR:
+      //     return "missMain";
+
+      //   case VK_SHADER_STAGE_INTERSECTION_BIT_KHR:
+      //     return "intersectionMain";
+
+      //   case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+      //     return "callableMain";
+
+      //   default:
+      //     LOGW("RayTracing entry_point flag not found.");
+      //     return kDefaulShaderEntryPoint;
+      // }
     }};
 
     auto insert_shaders{[&](auto const& stages, VkShaderStageFlagBits flag) {
@@ -641,7 +697,7 @@ Pipeline RenderContext::createRayTracingPipeline(
           .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
           .stage  = flag,
           .module = stage.module,
-          .pName  = entry_point(stage),
+          .pName  = entry_point(flag),
         });
       }
     }};

@@ -40,6 +40,11 @@ FragLight_t get_fraglight_params(in LightInfo_t light_info, in FragInfo_t frag_i
     light.L             = - light_info.direction.xyz; // (assumed normalized)
     light.radiance      = light_info.color.rgb;
   }
+  else
+  {
+    // debuggish
+    light.radiance      = vec3(0.1);
+  }
   
   // Apply intensity to radiance.
   light.radiance *= light_info.color.w;

@@ -55,11 +55,11 @@ class SceneFx final : public RenderTargetFx {
 
  protected:
   std::string vertex_shader_name() const final {
-    return COMPILED_SHADERS_DIR "scene.vert.glsl";
+    return shader_name();
   }
 
   std::string shader_name() const final {
-    return COMPILED_SHADERS_DIR "scene.frag.glsl";
+    return SAMPLE_SPIRV_DIR "main.slang";
   }
 
   void createRenderTarget(VkExtent2D const dimension) final {
@@ -92,7 +92,7 @@ class SceneFx final : public RenderTargetFx {
                       | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
       },
       {
-        .binding = shader_interop::kDescriptorSetBinding_Sampler,
+        .binding = shader_interop::kDescriptorSetBinding_Scene_Textures,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = kMaxNumTextures,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -124,9 +124,11 @@ class SceneFx final : public RenderTargetFx {
       },
       .vertex = {
         .module = shaders[0u].module,
+        .entryPoint = "vertexMain",
       },
       .fragment = {
         .module = shaders[1u].module,
+        .entryPoint = "fragmentMain",
         .targets = {
           { .format = render_target_->resolve_attachment(0).format },
           { .format = render_target_->resolve_attachment(1).format }
@@ -176,7 +178,7 @@ class SceneFx final : public RenderTargetFx {
     /* Update the Sampler Atlas descriptor with the currently loaded textures. */
     context_ptr_->updateDescriptorSet(descriptor_set_, {
       {
-        .binding = shader_interop::kDescriptorSetBinding_Sampler,
+        .binding = shader_interop::kDescriptorSetBinding_Scene_Textures,
         .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .images = scene_->buildDescriptorImageInfos()
       }
@@ -225,7 +227,7 @@ class ToonFxPipeline final : public TPostFxPipeline<SceneFx> {
  public:
   class ToonComposition final : public RenderTargetFx {
     std::string shader_name() const final {
-      return COMPILED_SHADERS_DIR "toon.frag.glsl";
+      return SAMPLE_SPIRV_DIR "toon.slang";
     }
   };
 

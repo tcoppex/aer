@@ -1,38 +1,41 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
-// ---------------------------------------------------------------------------
+#if defined(_GLSL_)
 
-#ifdef __cplusplus
-#define UINT uint32_t
+#define STATIC_CONST const
+#define float4x4 mat4 //
+
 #else
-#define UINT uint
+
+#define STATIC_CONST static const
+
 #endif
 
 // ---------------------------------------------------------------------------
 
-const UINT kAttribLocation_Position = 0;
-const UINT kAttribLocation_Normal   = 1;
-const UINT kAttribLocation_Texcoord = 2;
+STATIC_CONST uint kAttribLocation_Position = 0;
+STATIC_CONST uint kAttribLocation_Normal   = 1;
+STATIC_CONST uint kAttribLocation_Texcoord = 2;
 
 // ---------------------------------------------------------------------------
 
-const UINT kDescriptorSetBinding_UniformBuffer    = 0;
-const UINT kDescriptorSetBinding_Sampler          = 1;
-const UINT kDescriptorSetBinding_IrradianceEnvMap = 2;
+STATIC_CONST uint kDescriptorSetBinding_UniformBuffer    = 0;
+STATIC_CONST uint kDescriptorSetBinding_Sampler          = 1;
+STATIC_CONST uint kDescriptorSetBinding_IrradianceEnvMap = 2;
 
 // ---------------------------------------------------------------------------
 
 struct Model {
-  mat4 worldMatrix;
-  UINT albedo_texture_index;
-  UINT padding_[3u];
+  float4x4 worldMatrix;
+  uint albedo_texture_index;
+  uint padding_[3u];
 };
 
 // ---------------------------------------------------------------------------
 
 struct Scene {
-  mat4 projectionMatrix;
+  float4x4 projectionMatrix;
 };
 
 // ---------------------------------------------------------------------------
@@ -43,11 +46,9 @@ struct UniformData {
 
 struct PushConstant {
   Model model;
-  mat4 viewMatrix;
+  float4x4 viewMatrix;
 };
 
 // ---------------------------------------------------------------------------
-
-#undef UINT
 
 #endif

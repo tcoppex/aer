@@ -1,5 +1,7 @@
 #version 460
 
+#extension GL_GOOGLE_include_directive : require
+
 // ----------------------------------------------------------------------------
 
 #include <material/unlit/interop.h>
@@ -99,7 +101,7 @@ void apply_billboard_xz(
 
 void main() {
   const FrameData frameData = GetFrameData();
-  const CameraTransform camera = GetFrameCamera(frameData);
+  const CameraData camera = GetCameraData(frameData, gl_ViewIndex);
   const TransformData transform = GetTransform();
 
   // -------

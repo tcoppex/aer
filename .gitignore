@@ -6,6 +6,7 @@ build
 bin
 imgui.ini
 *.spv
+*.slang.dep
 *.dev.md
 .*
 

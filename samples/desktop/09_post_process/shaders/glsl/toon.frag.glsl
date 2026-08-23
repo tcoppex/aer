@@ -2,7 +2,8 @@
 
 // ----------------------------------------------------------------------------
 
-layout (set = 0, binding = 0) uniform sampler2D inChannels[];
+layout (set = 0, binding = 0)
+uniform sampler2D inChannels[];
 
 layout (location = 0) in vec2 vTexcoord;
 
