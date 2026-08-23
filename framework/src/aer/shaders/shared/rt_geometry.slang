@@ -84,4 +84,4 @@ Vertex calculate_vertex(
   return v;
 }
 
-}
+} // namespace "rt_geometry"

@@ -122,7 +122,7 @@ void main(
     payload.origin = v.position + N * 1e-3;
     payload.direction = reflDir;
   }
-  else // default
+  else
   if (material_type == kRayTracingMaterialType_Diffuse)
   {
     // Cosine-weighted hemisphere sampling
