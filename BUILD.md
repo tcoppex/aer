@@ -25,14 +25,15 @@ cmake --build build --config Release
 ##### Third parties
 
  * CMake 3.22.1
- * CPM 0.40.3 (_downloaded automatically_)
+ * CPM 0.40.3 (_fetched_)
  * Vulkan SDK 1.3 (_1.4.321.0 headers downloaded via CPM_)
  * Volk 1.4.321.0 (_via CPM_)
  * VulkanMemoryAllocator 3.2.0 (_via CPM_)
- * Slang 2026.5.2 (_downloaded automatically_)
+ * Slang 2026.5.2 (_fetched_)
  * GLFW 3.4 (_via CPM_)
  * libfmt 12.0.0 (_via CPM_)
  * ImGUI v1.92.3-docking (_via CPM_)
+ * miniply 1.10 (_via CPM_)
  * MikkTSpace (_via CPM_)
  * linalg v2.2 (_via CPM_)
  * earcut v2.2.4 (_via CPM_)
