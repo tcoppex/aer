@@ -12,7 +12,6 @@ static const uint kMaxWavesPerWorkgroup = kWorkgroupSize / kMinWaveSize;
 PushConstant pushConstant;
 
 groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
-groupshared uint32_t s_workgroupTotalSum;
 
 // ----------------------------------------------------------------------------
 
@@ -24,9 +23,11 @@ groupshared uint32_t s_workgroupTotalSum;
 void localPrefixSum(
   uint gid : SV_DispatchThreadID,   // global thread index
   uint tid : SV_GroupIndex,         // local thread index
-  uint groupID : SV_GroupID,
+  uint3 workgroupID : SV_GroupID,
 )
 {
+  let groupID = workgroupID.x;
+
   uint val = 0;
 
   // When using subgroup we cannot have diverging branches (ie. can't return).
@@ -36,8 +37,8 @@ void localPrefixSum(
   }
 
   // -----------------------------------------
-  let laneCount = WaveGetLaneCount();
-  let waveCount = (kWorkgroupSize + laneCount - 1) / laneCount;
+  let laneCount     = WaveGetLaneCount();
+  let waveCount     = (kWorkgroupSize + laneCount - 1) / laneCount;
 
   let wavePrefix    = WavePrefixSum(val); // offset inside the wave
   let waveSum       = WaveActiveSum(val);
@@ -58,13 +59,6 @@ void localPrefixSum(
 
   // local thread offset inside its workgroup.
   let localPrefix = wavePrefix + s_waveSums[waveID];
-
-  // Capture the workgroup total offset
-  // (possible because we zero padded excess workgroup size)
-  if (tid == kWorkgroupSize -1) {
-    s_workgroupTotalSum = localPrefix + val;
-  }
-  GroupMemoryBarrierWithGroupSync();
   // -----------------------------------------
 
   // Store the thread local offset.
@@ -74,9 +68,9 @@ void localPrefixSum(
   }
 
   // Store the WorkGroup last thread offset to continue the scan further more.
-  if (tid == 0) {
+  if (tid == kWorkgroupSize - 1) {
     uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr;
-    groupSums[groupID] = s_workgroupTotalSum;
+    groupSums[groupID] = localPrefix + val;
   }
 }
 
