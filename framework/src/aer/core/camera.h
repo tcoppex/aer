@@ -5,6 +5,9 @@
 
 /* -------------------------------------------------------------------------- */
 
+//
+// Camera using right-handed, -Z forward, column-major layout
+//
 class Camera {
  public:
   static constexpr float kDefaultFOV = lina::radians(60.0f);
@@ -242,13 +245,13 @@ class Camera {
 
   // [[nodiscard]]
   // mat4 const& world() const noexcept {
-  //   return transform_.world;
+  //   return transforms_[view_id].world;
   // }
 
-  // [[nodiscard]]
-  // mat4 const& viewproj() const noexcept {
-  //   return transform_.view_projection;
-  // }
+  [[nodiscard]]
+  mat4 const& viewproj(uint32_t view_id = 0u) const noexcept {
+    return transforms_[view_id].view_projection;
+  }
 
   // -------------------------------
 
@@ -267,6 +270,24 @@ class Camera {
     return controller_ ? controller_->target()
                        : position(view_id) + 3.0f * direction(view_id) //
                        ;
+  }
+
+  [[nodiscard]]
+  vec2 tan_fovs() const {
+    auto const tan_half_fovy = std::tan(fov() * 0.5f);
+    return {
+      aspect() * tan_half_fovy,
+      tan_half_fovy
+    };
+  }
+
+  [[nodiscard]]
+  vec2 focals() const {
+    auto const tf = tan_fovs();
+    return {
+      0.5f * static_cast<float>(width_) / tf.x,
+      0.5f * static_cast<float>(height_) / tf.y
+    };
   }
 
   // -------------------------------
