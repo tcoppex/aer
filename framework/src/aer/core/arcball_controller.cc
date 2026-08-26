@@ -145,6 +145,7 @@ void ArcBallController::calculateViewMatrix(mat4 *m, uint32_t /*view_id*/) {
 
 #else
   // This matrix will always orbit around the space center.
+  // (check handeness)
 
   //   view.setToIdentity();
   //   view.translate(tx_, ty_, -dolly_);

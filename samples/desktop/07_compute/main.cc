@@ -209,7 +209,6 @@ class SampleApp final : public Application {
         "rendering.slang",
       });
 
-#if 1
       context_.createComputePipelines(
         pipeline_layout_,
         ShaderStageDescriptors{
@@ -220,26 +219,6 @@ class SampleApp final : public Application {
         },
         compute_pipelines_.data()
       );
-#else
-    {
-      auto cs_shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR "sort/", {
-        "simulation.comp.glsl",
-        "fill_indices.comp.glsl",
-        "calculate_dot_product.comp.glsl",
-        "sort_indices.comp.glsl",
-      })};
-
-      /* Create the compute pipelines. */
-      context_.createComputePipelines(
-        pipeline_layout_, cs_shaders, compute_pipelines_.data()
-      );
-      context_.releaseShaderModules(cs_shaders);
-    }
-#endif
-      // auto cg_shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-      //   "simple.vert.glsl",
-      //   "simple.frag.glsl",
-      // });
 
       /* Create the graphics pipeline. */
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
