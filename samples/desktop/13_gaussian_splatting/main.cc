@@ -21,7 +21,8 @@ namespace shader_interop {
 class SampleApp final : public Application {
   public:
   enum GSCompute {
-    GSCompute_Preprocess = 0,
+    GSCompute_Preprocess  = 0,
+    GSCompute_PrefixSum   = 1,
 
     GSCompute_kCount,
   };
@@ -135,7 +136,25 @@ class SampleApp final : public Application {
       );
 
       tile_sbo_ = context_.createBuffer(
-        gaussians_count_ * sizeof(shader_interop::SplatOutput),
+        gaussians_count_ * sizeof(shader_interop::SplatTileInfo),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      );
+
+      uint32_t const kPrefixWorkGroupSize = shader_interop::kCompute_PrefixSum_kernelSize_x;
+      uint32_t const kMaxPrefixSum = ceil(gaussians_count_ / kPrefixWorkGroupSize);
+      // LOG_CHECK(kMaxPrefixSum < kPrefixWorkGroupSize); //
+
+      LOGW("prefix sum buffer size is {}", kMaxPrefixSum);
+
+      workgroupSums_sbo_ = context_.createBuffer(
+        kMaxPrefixSum * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      );
+
+      scannedSums_sbo_ = context_.createBuffer(
+        kPrefixWorkGroupSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
@@ -154,11 +173,15 @@ class SampleApp final : public Application {
 
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "gaussian_preprocess.slang",
+        "prefix_sum.slang",
       });
 
       context_.createComputePipelines(
         pipeline_layout_,
-        ShaderStageDescriptors{{ shaders[GSCompute_Preprocess] }},
+        ShaderStageDescriptors{
+          { shaders[GSCompute_Preprocess] },
+          // { shaders[GSCompute_PrefixSum], "localPrefixSum" },
+        },
         compute_pipelines_.data()
       );
 
@@ -177,11 +200,14 @@ class SampleApp final : public Application {
       uniform_buffer_,
       gaussian_sbo_,
       splat_sbo_,
-      tile_sbo_
+      tile_sbo_,
+      workgroupSums_sbo_,
+      scannedSums_sbo_
     );
   }
 
   void update(float const dt) final {
+    // Camera Uniform Data.
     host_data_.viewMatrix       = camera_.view();
     host_data_.projectionMatrix = camera_.proj();
     host_data_.tanFov           = camera_.tan_fovs();
@@ -197,6 +223,8 @@ class SampleApp final : public Application {
     push_constant_.gaussian_addr    = gaussian_sbo_.address;
     push_constant_.splat_addr       = splat_sbo_.address;
     push_constant_.tile_addr        = tile_sbo_.address;
+    push_constant_.workgroupSums_addr = workgroupSums_sbo_.address;
+    push_constant_.scannedSums_addr   = scannedSums_sbo_.address;
   }
 
   void draw(CommandEncoder const& cmd) final {
@@ -226,6 +254,12 @@ class SampleApp final : public Application {
       });
     }
 
+    // Run a PrefixSum (Scan) on the tile info structure to calculate offsets
+    // via hardware subgroups !
+    {
+
+    }
+
     auto pass = cmd.beginRendering();
     {
     }
@@ -245,6 +279,9 @@ class SampleApp final : public Application {
   backend::Buffer gaussian_sbo_{};
   backend::Buffer splat_sbo_{};
   backend::Buffer tile_sbo_{};
+
+  backend::Buffer workgroupSums_sbo_{};
+  backend::Buffer scannedSums_sbo_{};
 
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};

@@ -218,6 +218,9 @@ macro(slang2spirv shader)
         binary
       EXTRA_FLAGS
         "${EXTRA_INCLUDE_DIRS}"
+      CAPABILITIES
+        spvGroupNonUniform
+        spvGroupNonUniformArithmetic
       # VERBOSE ON
     )
   endif()

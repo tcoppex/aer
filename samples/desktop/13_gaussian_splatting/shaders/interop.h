@@ -18,7 +18,8 @@
 
 // ---------------------------------------------------------------------------
 
-STATIC_CONST uint kCompute_Preprocess_kernelSize_x = 256;
+STATIC_CONST uint kCompute_Preprocess_kernelSize_x  = 256;
+STATIC_CONST uint kCompute_PrefixSum_kernelSize_x   = 1024;
 
 // ---------------------------------------------------------------------------
 
@@ -41,12 +42,16 @@ struct UniformBufferData {
 };
 
 struct PushConstant {
+  uint32_t numElems;
+  uint32_t pad0_[3];
+  // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
   uint64_t splat_addr;
   uint64_t tile_addr;
-  uint32_t numElems;
-  uint32_t pad0_[3];
+  // ----
+  uint64_t workgroupSums_addr;
+  uint64_t scannedSums_addr;
 };
 
 // ---------------------------------------------------------------------------
