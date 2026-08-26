@@ -76,5 +76,6 @@ add_sample(09_post_process)
 add_sample(10_material)
 add_sample(11_ray_tracing)
 add_sample(12_font)
+add_sample(13_gaussian_splatting)
 
 # -----------------------------------------------------------------------------
