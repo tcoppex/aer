@@ -33,6 +33,7 @@ cmake --build build --config Release
  * GLFW 3.4 (_via CPM_)
  * libfmt 12.0.0 (_via CPM_)
  * ImGUI v1.92.3-docking (_via CPM_)
+ * cgltf 1.15 (_via CPM_)
  * miniply 1.10 (_via CPM_)
  * MikkTSpace (_via CPM_)
  * linalg v2.2 (_via CPM_)

@@ -240,7 +240,7 @@ set(VMA_INCLUDE_DIR  ${VulkanMemoryAllocator_SOURCE_DIR}/include)
 CPMAddPackage(
   NAME cgltf
   GITHUB_REPOSITORY jkuhlmann/cgltf
-  GIT_TAG v1.14
+  GIT_TAG v1.15
 )
 set(CGLTF_INCLUDE_DIR ${cgltf_SOURCE_DIR})
 
