@@ -17,6 +17,7 @@ float3x3 quaternionToMatrix(
   let z = qrot.z;
   let r = qrot.w; //
 
+  // Column major layout
   return float3x3(
     1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y - r*z),       2.0 * (x*z + r*y),
           2.0 * (x*y + r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z - r*x),
@@ -49,7 +50,7 @@ float3x3 computeJacobian(
   in float2 focal
 ) {
   // force tz positive to represent distance along forward
-  let tz = abs(position.z);
+  let tz = -position.z;
 
   // Limit position to avoid distortion artifacts on screen edges
   let limx = 1.3f * tanFov.x;
@@ -57,14 +58,12 @@ float3x3 computeJacobian(
   let txtz = clamp(position.x / tz, -limx, limx);
   let tytz = clamp(position.y / tz, -limy, limy);
 
-  // Derivative matrix to approximate a 2D projection
-  let J = float3x3(
-    focal.x / tz,   0.0f,           -(focal.x * txtz) / tz,
-    0.0f,           focal.y / tz,   -(focal.y * tytz) / tz,
+  // Partial derivative matrix to approximate a 2D projection
+  return float3x3(
+    focal.x / tz,   0.0f,           - (focal.x * txtz) / tz,
+    0.0f,           focal.y / tz,   - (focal.y * tytz) / tz,
     0.0f,           0.0f,           0.0f
   );
-
-  return J;
 }
 
 // ----------------------------------------------------------------------------
@@ -81,25 +80,39 @@ void main( uint gid : SV_DispatchThreadID )
   const float kNDCMargin        = 0.3f;
   const float kCovariance2DBlur = 0.3f;
   const float kMaxSplatRadius   = 1024.0f;
+  const float kTileSize         = 16.0f;
 
-  // Retrieve the thread's Gaussian.
-  let gaussian = ((GaussianData*)pushConstant.gaussian_addr_)[gid];
+  // ----
 
-  // Gaussian mean (/ world position).
-  let g_mean: float3 = gaussian.position.xyz;
+  // Inputs.
+
+  let uData    = *((UniformBufferData*)pushConstant.uniform_addr);
+  let gaussian = ((GaussianData*)pushConstant.gaussian_addr)[gid];
 
   // Camera's data.
-  let viewMatrix: float4x4 = pushConstant.viewMatrix;
-  let projMatrix: float4x4 = pushConstant.projectionMatrix;
+  let viewMatrix: float4x4 = uData.viewMatrix;
+  let projMatrix: float4x4 = uData.projectionMatrix;
+  let resolution: float2   = uData.resolution;
 
-  // Transform to view space.
-  let pos_view = mul(viewMatrix, float4(g_mean, 1.0));
+  // Gaussian's mean (world position).
+  let g_mean: float3 = gaussian.position.xyz;
+
+  // Outputs.
+
+  SplatOutput *output     = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
+  SplatTileInfo *tileInfo = &(((SplatTileInfo*)pushConstant.tile_addr)[gid]);
+
+  // Reset tile overlapped count.
+  tileInfo.count = 0;
 
   // ----
 
   // 1. Culling.
 
-  // Near cull (left-handed system)
+  // Transform to view space.
+  let pos_view = mul(viewMatrix, float4(g_mean, 1.0));
+
+  // Near cull (-Z forward).
   if (pos_view.z > kNearZCull) {
     return;
   }
@@ -115,18 +128,20 @@ void main( uint gid : SV_DispatchThreadID )
 
   // ----
 
-  // 2. Calculate Covariances
+  // 2. Calculate Covariances.
 
   // (eq. 6) Ellipsoid covariance matrix of a 3D Gaussian.
   let cov3D = computeCovariance3D(gaussian.scale.xyz, gaussian.rotation);
 
-  // (eq. 5) Project the 3D Gaussian to 2D (EWA splatting).
-  let J = computeJacobian(pos_view.xyz, pushConstant.tanFov, pushConstant.focal);
+  // Extract upper 3x3 rotation from column-major ViewMatrix.
   let W = float3x3(
-    viewMatrix[0].xyz,  // right
-    viewMatrix[1].xyz,  // up
-    viewMatrix[2].xyz   // forward (-z)
+    viewMatrix[0].x, viewMatrix[1].x, viewMatrix[2].x,
+    viewMatrix[0].y, viewMatrix[1].y, viewMatrix[2].y,
+    viewMatrix[0].z, viewMatrix[1].z, viewMatrix[2].z
   );
+
+  // (eq. 5) Project the 3D Gaussian to 2D.
+  let J = computeJacobian(pos_view.xyz, uData.tanFov, uData.focal);
   let T = mul(J, W);
   let cov2D = mul(T, mul(cov3D, transpose(T)));
 
@@ -144,32 +159,51 @@ void main( uint gid : SV_DispatchThreadID )
   if (det == 0.0f) {
     return;
   }
-  let inv_det = 1.0f / det;
-  let conic = inv_det * float3(cov_c, -cov_b, cov_a);
+  let conic = (1.0f / det) * float3(cov_c, -cov_b, cov_a);
 
   // ----
 
-  // 4. Screen radius via eigenvalues
+  // 4. Screen radius via eigenvalues.
 
-  // half the matrix trace, representing the center point of the eigenvalues.
-  let mid = 0.5f * (cov_a + cov_c);
-  // square root discriminant, filtered to prevent FP rounding errors.
-  let term = sqrt(max(0.1f, mid * mid - det));
-  // magnitude of maximimum variance along the Gaussian's primary axis
+  let mid     = 0.5f * (cov_a + cov_c);
+  let term    = sqrt(max(0.1f, mid * mid - det));
   let lambda1 = mid + term;
+  let lambda2 = mid - term;
+  let radius  = ceil(3.0f * sqrt(max(lambda1, lambda2)));
 
-  // 3-sigma radius (capture >99% of the gaussian's total probability energy)
-  let radius = ceil(3.0f * sqrt(lambda1));
-
-  // Guard against extrem splat sizes.
   if (radius <= 0.0f || radius > kMaxSplatRadius) {
     return;
   }
 
-  // TO CONTINUE
+  // ----
 
-  // Outputs : position2D, depth (/ sortkey), covariance2D, RGBA color+opacity
-  // binned ?
+  // 5. Determine tiles coverage.
+
+  let pos_screen = (pos_ndc.xy * 0.5f + 0.5f) * resolution;
+  let minPixel = pos_screen - radius;
+  let maxPixel = pos_screen + radius;
+
+  // Find tiles bounds [minTile, maxTile)
+  let tile_grid_size = ceil(resolution / kTileSize);
+  let minTile = uint2(clamp(floor(minPixel / kTileSize), float2(0.0f), tile_grid_size - 1.0f));
+  let maxTile = uint2(clamp(ceil(maxPixel / kTileSize), float2(0.0f), tile_grid_size));
+
+  // Cull splats outside the grid.
+  if (any(minTile >= maxTile)) {
+    return;
+  }
+
+  tileInfo->count  = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
+  tileInfo->offset = 0; //
+
+  // ----
+
+  // TODO : compute color from Spherical Harmonics.
+
+  output->color       = gaussian.color; // (redundant)
+  output->conic       = conic;
+  output->depth       = -pos_view.z;
+  output->screen_pos  = pos_screen;
 }
 
 // ----------------------------------------------------------------------------

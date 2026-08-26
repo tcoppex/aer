@@ -31,30 +31,37 @@ struct /*alignas(16)*/ GaussianData {
 
 // ---------------------------------------------------------------------------
 
-// > 128bytes,
-// would need to separate the matrices in a UBO
-
-struct PushConstant {
+struct UniformBufferData {
   float4x4 viewMatrix;
   float4x4 projectionMatrix;
-  // ----
-  float4 position;
   float2 tanFov;
   float2 focal;
   float2 resolution;
-  uint64_t gaussian_addr_;
-  uint64_t splat_addr_;
+  uint32_t pad0_[2];
+};
+
+struct PushConstant {
+  uint64_t uniform_addr;
+  uint64_t gaussian_addr;
+  uint64_t splat_addr;
+  uint64_t tile_addr;
   uint32_t numElems;
+  uint32_t pad0_[3];
 };
 
 // ---------------------------------------------------------------------------
 
 struct SplatOutput {
-  float2 position2D;
-  float depth;
+  float4 color;
   float3 conic;
-  uint32_t colorPacked;
-  uint2 tileBounds;
+  float depth;
+  float2 screen_pos;
+  uint32_t pad0_[2];
+};
+
+struct SplatTileInfo {
+  uint count;
+  uint offset;
 };
 
 // ---------------------------------------------------------------------------
