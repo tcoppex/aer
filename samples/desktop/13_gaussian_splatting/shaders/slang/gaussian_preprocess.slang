@@ -82,35 +82,25 @@ void main( uint gid : SV_DispatchThreadID )
   const float kMaxSplatRadius   = 1024.0f;
   const float kTileSize         = 16.0f;
 
-  // ----
-
-  // Inputs.
-
+  // Inputs
   let uData    = *((UniformBufferData*)pushConstant.uniform_addr);
   let gaussian = ((GaussianData*)pushConstant.gaussian_addr)[gid];
 
-  // Camera's data.
   let viewMatrix: float4x4 = uData.viewMatrix;
   let projMatrix: float4x4 = uData.projectionMatrix;
   let resolution: float2   = uData.resolution;
 
-  // Gaussian's mean (world position).
-  let g_mean: float3 = gaussian.position.xyz;
-
-  // Outputs.
-
+  // Output
   SplatOutput *output     = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
   SplatTileInfo *tileInfo = &(((SplatTileInfo*)pushConstant.tile_addr)[gid]);
 
   // Reset tile overlapped count.
   tileInfo.count = 0;
 
-  // ----
-
   // 1. Culling.
 
   // Transform to view space.
-  let pos_view = mul(viewMatrix, float4(g_mean, 1.0));
+  let pos_view = mul(viewMatrix, float4(gaussian.position.xyz, 1.0));
 
   // Near cull (-Z forward).
   if (pos_view.z > kNearZCull) {

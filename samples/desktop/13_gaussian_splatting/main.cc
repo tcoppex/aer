@@ -144,7 +144,6 @@ class SampleApp final : public Application {
     /* Create the Compute Pipelines */
     {
       pipeline_layout_ = context_.createPipelineLayout({
-        // .setLayouts = { descriptor_set_layout_ },
         .pushConstantRanges = {
           {
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
