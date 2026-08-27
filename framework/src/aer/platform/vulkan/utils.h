@@ -59,6 +59,12 @@ constexpr uint32_t GetKernelGridDim(uint32_t numCells, uint32_t blockDim) {
 
 // ----------------------------------------------------------------------------
 
+constexpr uint32_t GetPaddingCount(uint32_t numCells, uint32_t blockDim) {
+  return (numCells + blockDim - numCells % blockDim);
+}
+
+// ----------------------------------------------------------------------------
+
 template <typename T, typename N>
 void PushNextVKStruct(T* baseStruct, N* nextStruct) {
   nextStruct->pNext = baseStruct->pNext;
