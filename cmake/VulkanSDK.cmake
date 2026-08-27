@@ -203,6 +203,7 @@ macro(slang2spirv shader)
     spvFragmentFullyCoveredEXT
     spvGroupNonUniform
     spvGroupNonUniformArithmetic
+    spvGroupNonUniformShuffle
     spvImageGatherExtended
     spvImageQuery
     spvMinLod
