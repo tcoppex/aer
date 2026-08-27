@@ -271,7 +271,7 @@ bool Envmap::loadDiffuseEnvmap(std::string_view hdr_filename) {
       push_constant_.mapResolution = kDiffuseResolution; //
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      cmd.dispatch<
+      cmd.runKernel<
         shader_interop::envmap::kCompute_SphericalTransform_kernelSize_x,
         shader_interop::envmap::kCompute_SphericalTransform_kernelSize_y
       >(push_constant_.mapResolution, push_constant_.mapResolution, 6u);
@@ -344,7 +344,7 @@ void Envmap::computeIrradianceSHCoeff() {
     {
       push_constant_.mapResolution = kDiffuseResolution;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
-      cmd.dispatch<
+      cmd.runKernel<
         shader_interop::envmap::kCompute_IrradianceSHCoeff_kernelSize_x,
         shader_interop::envmap::kCompute_IrradianceSHCoeff_kernelSize_y
       >(kDiffuseResolution, kDiffuseResolution);
@@ -389,7 +389,7 @@ void Envmap::computeIrradianceSHCoeff() {
       push_constant_.writeOffset = write_offset;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      cmd.dispatch<reduceKernelSize>(nelems);
+      cmd.runKernel<reduceKernelSize>(nelems);
 
       nelems = ngroups;
       buffer_binding ^= 1u;
@@ -466,7 +466,7 @@ void Envmap::computeIrradiance() {
       push_constant_.mapResolution = kIrradianceResolution;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      cmd.dispatch<
+      cmd.runKernel<
         shader_interop::envmap::kCompute_Irradiance_kernelSize_x,
         shader_interop::envmap::kCompute_Irradiance_kernelSize_y
       >(push_constant_.mapResolution, push_constant_.mapResolution, 6u);
@@ -555,7 +555,7 @@ void Envmap::computeSpecular() {
       push_constant_.mipLevel = level;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      cmd.dispatch<
+      cmd.runKernel<
         shader_interop::envmap::kCompute_Specular_kernelSize_x,
         shader_interop::envmap::kCompute_Specular_kernelSize_y,
         1u

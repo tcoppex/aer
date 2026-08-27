@@ -57,7 +57,7 @@ void ComputeFx::execute(CommandEncoder const& cmd) const {
   pushConstant(cmd);
 
   // -------------------------
-  cmd.dispatch<32u, 32u>(
+  cmd.runKernel<32u, 32u>(
     static_cast<uint32_t>(dimension_.width),
     static_cast<uint32_t>(dimension_.height)
   );

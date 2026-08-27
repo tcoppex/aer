@@ -315,11 +315,11 @@ class SampleApp final : public Application {
 
       /// 1) Simulate a simple particle system (Wave simulations).
       cmd.bindPipeline(compute_pipelines_.at(Compute_Simulation));
-      cmd.dispatch<shader_interop::kCompute_Simulation_kernelSize_x>(nelems);
+      cmd.runKernel<shader_interop::kCompute_Simulation_kernelSize_x>(nelems);
 
       /// 2) Fill the first part of the indices buffer with continuous indices.
       cmd.bindPipeline(compute_pipelines_.at(Compute_FillIndices));
-      cmd.dispatch<shader_interop::kCompute_FillIndex_kernelSize_x>(nelems);
+      cmd.runKernel<shader_interop::kCompute_FillIndex_kernelSize_x>(nelems);
 
       cmd.pipelineBufferBarriers({
         {
@@ -333,7 +333,7 @@ class SampleApp final : public Application {
 
       /// 3) Compute the particles dot products against the camera view direction.
       cmd.bindPipeline(compute_pipelines_.at(Compute_DotProduct));
-      cmd.dispatch<shader_interop::kCompute_DotProduct_kernelSize_x>(nelems);
+      cmd.runKernel<shader_interop::kCompute_DotProduct_kernelSize_x>(nelems);
 
       cmd.pipelineBufferBarriers({
         {
@@ -385,7 +385,7 @@ class SampleApp final : public Application {
               offsetof(shader_interop::PushConstant, compute)
             );
 
-            cmd.dispatch<shader_interop::kCompute_SortIndex_kernelSize_x>(nelems / 2u);
+            cmd.runKernel<shader_interop::kCompute_SortIndex_kernelSize_x>(nelems / 2u);
 
             cmd.pipelineBufferBarriers({
               {
