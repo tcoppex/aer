@@ -145,8 +145,9 @@ class Context {
     allocator_.clearStagingBuffers();
   }
 
-  void mapMemory(backend::Buffer const& buffer, void **data) const {
-    allocator_.mapMemory(buffer, data);
+  template<typename T>
+  void mapMemory(backend::Buffer const& buffer, T **data) const {
+    allocator_.mapMemory(buffer, (void**)data);
   }
 
   void unmapMemory(backend::Buffer const& buffer) const {
