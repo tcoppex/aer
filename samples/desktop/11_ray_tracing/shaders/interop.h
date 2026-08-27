@@ -36,7 +36,7 @@
 
 #define GetRTInstanceData() \
   InstanceDataBufferRef(pushConstant.instance_buffer_address) \
-    .instances[nonuniformEXT(gl_InstanceID)]
+    .instances[gl_InstanceID]
 
 #elif defined(__SLANG__)
 
@@ -47,7 +47,7 @@
   ((RTInstanceData*)(pushConstant.instance_buffer_address))[InstanceID()]
 
 #define GetRayTracingMaterial(material_id) \
-  ((RayTracingMaterial*)(pushConstant.material_buffer_address))[material_id]
+  ((RayTracingMaterial*)(pushConstant.material_buffer_address))[NonUniformResourceIndex(material_id)]
 
 #endif
 

@@ -197,6 +197,18 @@ macro(slang2spirv shader)
     # -I${GLOBAL_SPIRV_DIR}
   )
 
+  set(EXTRA_CAPABILITIES
+    SPV_GOOGLE_user_type
+    spvDerivativeControl
+    spvFragmentFullyCoveredEXT
+    spvGroupNonUniform
+    spvGroupNonUniformArithmetic
+    spvImageGatherExtended
+    spvImageQuery
+    spvMinLod
+    spvSparseResidency
+  )
+
   if(SLANG_TARGET STREQUAL "slang-module")
     # special custom target to slang module.
     compile_slang(
@@ -206,6 +218,8 @@ macro(slang2spirv shader)
         binary #!!
       EXTRA_FLAGS
         "${EXTRA_INCLUDE_DIRS}"
+      CAPABILITIES
+        ${EXTRA_CAPABILITIES}
       # VERBOSE ON
     )
   else()
@@ -219,8 +233,7 @@ macro(slang2spirv shader)
       EXTRA_FLAGS
         "${EXTRA_INCLUDE_DIRS}"
       CAPABILITIES
-        spvGroupNonUniform
-        spvGroupNonUniformArithmetic
+        ${EXTRA_CAPABILITIES}
       # VERBOSE ON
     )
   endif()

@@ -54,7 +54,7 @@ typealias vec2 = float2;
   frameData.cameras[viewIndex]
 
 #define GetTexture(texture_id) \
-  uTextureChannels[texture_id]
+  uTextureChannels[NonUniformResourceIndex(texture_id)]
 
 #endif
 
