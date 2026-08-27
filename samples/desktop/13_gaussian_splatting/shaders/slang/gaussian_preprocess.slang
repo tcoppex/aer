@@ -70,7 +70,9 @@ float3x3 computeJacobian(
 
 [shader("compute")]
 [numthreads(kCompute_Preprocess_kernelSize_x, 1, 1)]
-void main( uint gid : SV_DispatchThreadID )
+void main(
+  uint gid : SV_DispatchThreadID
+)
 {
   if (gid >= pushConstant.numElems) {
     return;

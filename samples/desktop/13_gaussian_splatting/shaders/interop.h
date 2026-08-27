@@ -52,6 +52,11 @@ struct PushConstant {
   // ----
   uint64_t workgroupSums_addr;
   uint64_t scannedSums_addr;
+
+  // (todo instead)
+  // uint64_t scan_input_addr;
+  // uint64_t scan_output_local_addr;
+  // uint64_t scan_output_group_addr; // << recursively become input
 };
 
 // ---------------------------------------------------------------------------

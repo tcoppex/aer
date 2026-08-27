@@ -115,6 +115,7 @@ void scanWorkgroupSums(
 [shader("compute")]
 [numthreads(kWorkgroupSize, 1, 1)]
 void downSweep(
+  uint3 workgroupID : SV_GroupID,
   uint gid : SV_DispatchThreadID
 )
 {
@@ -124,7 +125,7 @@ void downSweep(
 
   // Read the workgroup offset.
   uint32_t* groupOffsets = (uint32_t*)pushConstant.scannedSums_addr; //
-  let blockOffset = groupOffsets[groupId];
+  let blockOffset = groupOffsets[workgroupID.x];
 
   // Add it to the local element offset.
   SplatTileInfo* tileInfo = &((SplatTileInfo*)pushConstant.tile_addr)[gid]; //
