@@ -23,7 +23,7 @@ uint blockScanAndExtractOffset(uint val, uint tid) {
   let waveSum       = WaveActiveSum(val);
   let waveID        = WaveGetWaveIndex();
 
-  // Store the sum of each wave.
+  // Store the sum of each wave. (first thread of each wave)
   if (WaveIsFirstLane()) {
     s_waveSums[waveID] = waveSum;
   }
@@ -32,7 +32,7 @@ uint blockScanAndExtractOffset(uint val, uint tid) {
   // Calculate the Workgroup offset at the start of each wave.
   if (waveID == 0) {
     let waveVal = (tid < waveCount) ? s_waveSums[tid] : 0;
-    s_waveSums[tid] = WavePrefixSum(waveVal);
+    s_waveSums[tid] = WavePrefixSum(waveVal); //
   }
   GroupMemoryBarrierWithGroupSync();
 
@@ -56,23 +56,33 @@ void localPrefixSum(
   uint tid : SV_GroupIndex,         // local thread index
 )
 {
-  // Threads outside boundaries will be padded with '0'.
+  //---------------
+  // Without the following boolean value
+  // the last element would be correct only if we are assured to have complete
+  // block at the end which require each buffer to be padded accordingly
+  // and that pushConstant.numElems took those extra elements.
+  // Thus the inputs should also be padded with 0.
+  //---------------
+  let isLastGID = (gid == (pushConstant.numElems -1));
+
   uint val = 0;
 
-  if (gid < pushConstant.numElems) {
+  if (gid < pushConstant.numElems)
+  {
     val = ((uint32_t*)pushConstant.scan_input_addr)[gid];
   }
 
   let localPrefix = blockScanAndExtractOffset(val, tid);
 
   // Store the thread local offset.
-  if (gid < pushConstant.numElems) {
+  if (gid < pushConstant.numElems)
+  {
     uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
     localOffsets[gid] = localPrefix;
   }
 
   // Store the WorkGroup last thread offset to continue the scan further more.
-  if (tid == kWorkgroupSize - 1) {
+  if (isLastGID || (!isLastGID && (tid == kWorkgroupSize - 1))) {
     uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
     groupOffsets[workgroupID.x] = localPrefix + val;
   }
@@ -96,7 +106,7 @@ void addBlockOffsets(
 
   // Read the workgroup offset.
   uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
-  let blockOffset = groupOffsets[workgroupID.x];
+  let blockOffset = (workgroupID.x > 0) ? groupOffsets[workgroupID.x - 1] : 0;
 
   // Add it to the local element offset.
   uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
