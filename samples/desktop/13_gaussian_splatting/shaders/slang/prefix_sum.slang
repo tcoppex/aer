@@ -15,28 +15,7 @@ groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
 
 // ----------------------------------------------------------------------------
 
-// Pass 1 : Up-Sweep (Local prefix sum).
-// Dispatch ceil(numGaussians / kWorkgroupSize) workgroups
-
-[shader("compute")]
-[numthreads(kWorkgroupSize, 1, 1)]
-void localPrefixSum(
-  uint gid : SV_DispatchThreadID,   // global thread index
-  uint tid : SV_GroupIndex,         // local thread index
-  uint3 workgroupID : SV_GroupID,
-)
-{
-  let groupID = workgroupID.x;
-
-  uint val = 0;
-
-  // When using subgroup we cannot have diverging branches (ie. can't return).
-  if (gid < pushConstant.numElems) {
-    let tileInfo = ((SplatTileInfo*)pushConstant.tile_addr)[gid];
-    val = tileInfo.count;
-  }
-
-  // -----------------------------------------
+uint blockScanAndExtractOffset(uint val, uint tid) {
   let laneCount     = WaveGetLaneCount();
   let waveCount     = (kWorkgroupSize + laneCount - 1) / laneCount;
 
@@ -59,7 +38,33 @@ void localPrefixSum(
 
   // local thread offset inside its workgroup.
   let localPrefix = wavePrefix + s_waveSums[waveID];
-  // -----------------------------------------
+
+  return localPrefix;
+}
+
+
+// ----------------------------------------------------------------------------
+
+// Pass 1 : Up-Sweep (Local prefix sum).
+// Dispatch ceil(numGaussians / kWorkgroupSize) workgroups
+
+[shader("compute")]
+[numthreads(kWorkgroupSize, 1, 1)]
+void localPrefixSum(
+  uint3 workgroupID : SV_GroupID,   // workgroup coords
+  uint gid : SV_DispatchThreadID,   // global thread index
+  uint tid : SV_GroupIndex,         // local thread index
+)
+{
+  uint val = 0;
+
+  // When using subgroup we cannot have diverging branches (ie. can't return).
+  if (gid < pushConstant.numElems) {
+    let tileInfo = ((SplatTileInfo*)pushConstant.tile_addr)[gid];
+    val = tileInfo.count;
+  }
+
+  let localPrefix = blockScanAndExtractOffset(val, tid);
 
   // Store the thread local offset.
   if (gid < pushConstant.numElems) {
@@ -70,13 +75,15 @@ void localPrefixSum(
   // Store the WorkGroup last thread offset to continue the scan further more.
   if (tid == kWorkgroupSize - 1) {
     uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr;
-    groupSums[groupID] = localPrefix + val;
+    groupSums[workgroupID.x] = localPrefix + val;
   }
 }
 
 // ----------------------------------------------------------------------------
 
 // Pass 2 : Workgroup sums scan.
+// Apply a scan on previously calculate workgroup offset to determine their
+// global offset.
 
 [shader("compute")]
 [numthreads(kWorkgroupSize, 1, 1)]
@@ -85,19 +92,19 @@ void scanWorkgroupSums(
   uint tid : SV_GroupIndex
 )
 {
-  // uint val = 0;
+  uint val = 0;
 
-  // if (gid < pushConstant.numElems) {
-  //   uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr;
-  //   val = groupSums[gid];
-  // }
+  if (gid < pushConstant.numElems) {
+    uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr; //
+    val = groupSums[gid];
+  }
 
-  // TODO
+  let localPrefix = blockScanAndExtractOffset(val, tid);
 
-  // if (gid < pushConstant.numElems) {
-  //   uint32_t* scannedSums = (uint32_t*)pushConstant.scannedSums_addr;
-  //   scannedSums[gid] = localSum;
-  // }
+  if (gid < pushConstant.numElems) {
+    uint32_t* groupOffsets = (uint32_t*)pushConstant.scannedSums_addr; //
+    groupOffsets[gid] = localPrefix;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -115,11 +122,13 @@ void downSweep(
     return;
   }
 
-  // uint32_t* scannedSums = (uint32_t*)pushConstant.scannedSums_addr;
-  // let globalBaseOffset = scannedSums[groupId];
+  // Read the workgroup offset.
+  uint32_t* groupOffsets = (uint32_t*)pushConstant.scannedSums_addr; //
+  let blockOffset = groupOffsets[groupId];
 
-  // SplatTileInfo* tileInfo = &((SplatTileInfo*)pushConstant.tile_addr)[gid];
-  // tileInfo->offset += globalBaseOffset;
+  // Add it to the local element offset.
+  SplatTileInfo* tileInfo = &((SplatTileInfo*)pushConstant.tile_addr)[gid]; //
+  tileInfo->offset += blockOffset;
 }
 
 // ----------------------------------------------------------------------------
