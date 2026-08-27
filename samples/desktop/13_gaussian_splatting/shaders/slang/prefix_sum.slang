@@ -2,14 +2,17 @@
 
 #include "../interop.h" //
 
-static const uint kWorkgroupSize = kCompute_PrefixSum_kernelSize_x;
-static const uint kMinWaveSize = 32;
-static const uint kMaxWavesPerWorkgroup = kWorkgroupSize / kMinWaveSize;
-
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
 PushConstant pushConstant;
+
+[[vk::constant_id(0)]] const uint kWaveSize = 32;
+
+static const uint kWorkgroupSize = kCompute_PrefixSum_kernelSize_x;
+static const uint kMaxWavesPerWorkgroup = kWorkgroupSize / kWaveSize;
+
+// ----------------------------------------------------------------------------
 
 groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
 
@@ -51,38 +54,27 @@ uint blockScanAndExtractOffset(uint val, uint tid) {
 [shader("compute")]
 [numthreads(kWorkgroupSize, 1, 1)]
 void localPrefixSum(
-  uint3 workgroupID : SV_GroupID,   // workgroup coords
-  uint gid : SV_DispatchThreadID,   // global thread index
-  uint tid : SV_GroupIndex,         // local thread index
+  uint3 workgroupID : SV_GroupID,         // workgroup coords
+  uint gid : SV_DispatchThreadID,         // global thread index
+  uint tid : SV_GroupIndex,               // local thread index
 )
 {
-  //---------------
-  // Without the following boolean value
-  // the last element would be correct only if we are assured to have complete
-  // block at the end which require each buffer to be padded accordingly
-  // and that pushConstant.numElems took those extra elements.
-  // Thus the inputs should also be padded with 0.
-  //---------------
-  let isLastGID = (gid == (pushConstant.numElems -1));
-
   uint val = 0;
 
-  if (gid < pushConstant.numElems)
-  {
+  if (gid < pushConstant.numElems) {
     val = ((uint32_t*)pushConstant.scan_input_addr)[gid];
   }
 
   let localPrefix = blockScanAndExtractOffset(val, tid);
 
   // Store the thread local offset.
-  if (gid < pushConstant.numElems)
-  {
+  if (gid < pushConstant.numElems) {
     uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
     localOffsets[gid] = localPrefix;
   }
 
   // Store the WorkGroup last thread offset to continue the scan further more.
-  if (isLastGID || (!isLastGID && (tid == kWorkgroupSize - 1))) {
+  if (tid == kWorkgroupSize - 1) {
     uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
     groupOffsets[workgroupID.x] = localPrefix + val;
   }
