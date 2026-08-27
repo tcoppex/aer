@@ -56,65 +56,36 @@ void localPrefixSum(
   uint tid : SV_GroupIndex,         // local thread index
 )
 {
+  // Threads outside boundaries will be padded with '0'.
   uint val = 0;
 
-  // When using subgroup we cannot have diverging branches (ie. can't return).
   if (gid < pushConstant.numElems) {
-    let tileInfo = ((SplatTileInfo*)pushConstant.tile_addr)[gid];
-    val = tileInfo.count;
+    val = ((uint32_t*)pushConstant.scan_input_addr)[gid];
   }
 
   let localPrefix = blockScanAndExtractOffset(val, tid);
 
   // Store the thread local offset.
   if (gid < pushConstant.numElems) {
-    SplatTileInfo* tileInfo = &((SplatTileInfo*)pushConstant.tile_addr)[gid];
-    tileInfo->offset = localPrefix;
+    uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
+    localOffsets[gid] = localPrefix;
   }
 
   // Store the WorkGroup last thread offset to continue the scan further more.
   if (tid == kWorkgroupSize - 1) {
-    uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr;
-    groupSums[workgroupID.x] = localPrefix + val;
+    uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
+    groupOffsets[workgroupID.x] = localPrefix + val;
   }
 }
 
 // ----------------------------------------------------------------------------
 
-// Pass 2 : Workgroup sums scan.
-// Apply a scan on previously calculate workgroup offset to determine their
-// global offset.
-
-[shader("compute")]
-[numthreads(kWorkgroupSize, 1, 1)]
-void scanWorkgroupSums(
-  uint gid : SV_DispatchThreadID,
-  uint tid : SV_GroupIndex
-)
-{
-  uint val = 0;
-
-  if (gid < pushConstant.numElems) {
-    uint32_t* groupSums = (uint32_t*)pushConstant.workgroupSums_addr; //
-    val = groupSums[gid];
-  }
-
-  let localPrefix = blockScanAndExtractOffset(val, tid);
-
-  if (gid < pushConstant.numElems) {
-    uint32_t* groupOffsets = (uint32_t*)pushConstant.scannedSums_addr; //
-    groupOffsets[gid] = localPrefix;
-  }
-}
-
-// ----------------------------------------------------------------------------
-
-// Pass 3 : Down-Sweep.
+// Pass 2 : Down-Sweep.
 // dispatch ceil(numGaussians / kWorkgroupSize) workgroups
 
 [shader("compute")]
 [numthreads(kWorkgroupSize, 1, 1)]
-void downSweep(
+void addBlockOffsets(
   uint3 workgroupID : SV_GroupID,
   uint gid : SV_DispatchThreadID
 )
@@ -124,12 +95,12 @@ void downSweep(
   }
 
   // Read the workgroup offset.
-  uint32_t* groupOffsets = (uint32_t*)pushConstant.scannedSums_addr; //
+  uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
   let blockOffset = groupOffsets[workgroupID.x];
 
   // Add it to the local element offset.
-  SplatTileInfo* tileInfo = &((SplatTileInfo*)pushConstant.tile_addr)[gid]; //
-  tileInfo->offset += blockOffset;
+  uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
+  localOffsets[gid] += blockOffset;
 }
 
 // ----------------------------------------------------------------------------

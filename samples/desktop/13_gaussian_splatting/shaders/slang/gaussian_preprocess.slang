@@ -94,10 +94,10 @@ void main(
 
   // Output
   SplatOutput *output     = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
-  SplatTileInfo *tileInfo = &(((SplatTileInfo*)pushConstant.tile_addr)[gid]);
+  uint32_t *tileCount     = &(((uint32_t*)pushConstant.scan_input_addr)[gid]);
 
   // Reset tile overlapped count.
-  tileInfo.count = 0;
+  *tileCount = 0;
 
   // 1. Culling.
 
@@ -185,8 +185,8 @@ void main(
     return;
   }
 
-  tileInfo->count  = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
-  tileInfo->offset = 0; //
+  *tileCount = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
+  // tileInfo->offset = 0; //
 
   // ----
 

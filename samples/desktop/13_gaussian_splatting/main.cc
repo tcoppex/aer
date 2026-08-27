@@ -123,6 +123,8 @@ class SampleApp final : public Application {
 
       /* Allocate device buffers. */
 
+      LOGI(">>> Start allocating Gaussian Splat buffers");
+
       gaussian_sbo_ = context_.transientCreateBuffer(
         gaussians,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -135,29 +137,31 @@ class SampleApp final : public Application {
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 
-      tile_sbo_ = context_.createBuffer(
-        gaussians_count_ * sizeof(shader_interop::SplatTileInfo),
-          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-      );
-
       uint32_t const kPrefixWorkGroupSize = shader_interop::kCompute_PrefixSum_kernelSize_x;
-      uint32_t const kMaxPrefixSum = ceil(gaussians_count_ / kPrefixWorkGroupSize);
-      // LOG_CHECK(kMaxPrefixSum < kPrefixWorkGroupSize); //
-
+      uint32_t const kMaxPrefixSum = vk_utils::GetKernelGridDim(gaussians_count_, kPrefixWorkGroupSize);
       LOGW("prefix sum buffer size is {}", kMaxPrefixSum);
 
-      workgroupSums_sbo_ = context_.createBuffer(
+      //--------------
+      prefix_count_sbo_ = context_.createBuffer(
         kMaxPrefixSum * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 
-      scannedSums_sbo_ = context_.createBuffer(
+      prefix_output_local_sbo_ = context_.createBuffer(
+        kMaxPrefixSum * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      );
+
+      prefix_output_group_sbo_ = context_.createBuffer(
         kPrefixWorkGroupSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
+      //--------------
+
+      LOGI("<<< End allocating Gaussian Splat buffers");
     }
 
     /* Create the Compute Pipelines */
@@ -200,9 +204,10 @@ class SampleApp final : public Application {
       uniform_buffer_,
       gaussian_sbo_,
       splat_sbo_,
-      tile_sbo_,
-      workgroupSums_sbo_,
-      scannedSums_sbo_
+
+      prefix_count_sbo_,
+      prefix_output_local_sbo_,
+      prefix_output_group_sbo_
     );
   }
 
@@ -222,9 +227,12 @@ class SampleApp final : public Application {
     push_constant_.uniform_addr     = uniform_buffer_.address;
     push_constant_.gaussian_addr    = gaussian_sbo_.address;
     push_constant_.splat_addr       = splat_sbo_.address;
-    push_constant_.tile_addr        = tile_sbo_.address;
-    push_constant_.workgroupSums_addr = workgroupSums_sbo_.address;
-    push_constant_.scannedSums_addr   = scannedSums_sbo_.address;
+
+    //--------------
+    push_constant_.scan_input_addr        = prefix_count_sbo_.address;
+    push_constant_.scan_output_local_addr = prefix_output_local_sbo_.address;
+    push_constant_.scan_output_group_addr = prefix_output_group_sbo_.address;
+    //--------------
   }
 
   void draw(CommandEncoder const& cmd) final {
@@ -278,10 +286,10 @@ class SampleApp final : public Application {
 
   backend::Buffer gaussian_sbo_{};
   backend::Buffer splat_sbo_{};
-  backend::Buffer tile_sbo_{};
 
-  backend::Buffer workgroupSums_sbo_{};
-  backend::Buffer scannedSums_sbo_{};
+  backend::Buffer prefix_count_sbo_{}; //
+  backend::Buffer prefix_output_local_sbo_{}; //
+  backend::Buffer prefix_output_group_sbo_{}; //
 
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};
