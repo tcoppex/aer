@@ -84,15 +84,21 @@ struct Buffer : Resource {
 struct GPUProperties {
   VkPhysicalDeviceProperties2 gpu2{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-    .pNext = &descriptor_buffer_properties
+    .pNext = &subgroup
+  };
+
+  VkPhysicalDeviceSubgroupProperties subgroup{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+    .pNext = &descriptor_buffer
+  };
+
+  VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
+    .pNext = nullptr
   };
 
   VkPhysicalDeviceMemoryProperties2 memory2{
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2
-  };
-
-  VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties{
-    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
   };
 
   std::vector<VkQueueFamilyProperties2> queue_families2{};

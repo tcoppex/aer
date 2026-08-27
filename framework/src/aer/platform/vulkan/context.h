@@ -82,13 +82,18 @@ class Context {
   }
 
   [[nodiscard]]
-  VkPhysicalDeviceMemoryProperties const& memory_properties() const noexcept {
-    return properties_.memory2.memoryProperties;
+  VkPhysicalDeviceSubgroupProperties const& subgroup_properties() const noexcept {
+    return properties_.subgroup;
   }
 
   [[nodiscard]]
   VkPhysicalDeviceDescriptorBufferPropertiesEXT const& descriptor_buffer_properties() const noexcept {
-    return properties_.descriptor_buffer_properties;
+    return properties_.descriptor_buffer;
+  }
+
+  [[nodiscard]]
+  VkPhysicalDeviceMemoryProperties const& memory_properties() const noexcept {
+    return properties_.memory2.memoryProperties;
   }
 
   [[nodiscard]]
