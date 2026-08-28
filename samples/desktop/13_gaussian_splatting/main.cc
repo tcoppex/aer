@@ -187,6 +187,7 @@ class SampleApp final : public Application {
         prefixDescriptorBufferSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       );
     }
 
@@ -253,7 +254,7 @@ class SampleApp final : public Application {
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
 
     // Clear both descriptor flags and atomic counter.
-    cmd.fillBuffer(descriptor, 0u, tileCounterOffset + 1, 0u);
+    cmd.fillBuffer(descriptor, 0u);
 
     cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixSum]);
     cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -262,7 +263,7 @@ class SampleApp final : public Application {
       {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
         .srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
         .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
                        | VK_ACCESS_2_SHADER_WRITE_BIT
@@ -274,6 +275,64 @@ class SampleApp final : public Application {
     });
 
     context_.finishTransientCommandEncoder(cmd);
+  }
+
+  void update(float const dt) final {
+    // Camera Uniform Data.
+    host_data_.viewMatrix       = camera_.view();
+    host_data_.projectionMatrix = camera_.proj();
+    host_data_.tanFov           = camera_.tan_fovs();
+    host_data_.focal            = camera_.focals();
+    host_data_.resolution       = float2(
+      static_cast<float>(camera_.width()),
+      static_cast<float>(camera_.height())
+    );
+    context_.writeBuffer(uniform_buffer_, host_data_);
+
+    // PushConstant buffers address.
+    push_constant_.uniform_addr     = uniform_buffer_.address;
+    push_constant_.gaussian_addr    = gaussian_sbo_.address;
+    push_constant_.splat_addr       = splat_sbo_.address;
+    push_constant_.scan_input_addr  = splat_tilecount_sbo_.address;
+
+    // -------------------------------------------
+
+#if 0
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+    {
+      // Preprocess
+      {
+        push_constant_.numElems = gaussians_count_;
+        cmd.pushConstant(
+          push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+
+        cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
+
+        cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
+
+        cmd.pipelineBufferBarriers({
+          {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                           | VK_ACCESS_2_SHADER_WRITE_BIT,
+            .buffer = splat_sbo_.buffer,
+          }
+        });
+      }
+    }
+    context_.finishTransientCommandEncoder(cmd);
+#endif
+
+    dispatchPrefixSum(
+      gaussians_count_,
+      splat_tilecount_sbo_,
+      prefix_output_sbo_,
+      prefix_descriptor_sbo_
+    );
 
     // ---------------
 
@@ -303,62 +362,6 @@ class SampleApp final : public Application {
     //   fprintf(stderr, "\n");
     // context_.unmapMemory(prefix_descriptor_sbo_);
     // -------------------------------------------
-  }
-
-  void update(float const dt) final {
-    // Camera Uniform Data.
-    host_data_.viewMatrix       = camera_.view();
-    host_data_.projectionMatrix = camera_.proj();
-    host_data_.tanFov           = camera_.tan_fovs();
-    host_data_.focal            = camera_.focals();
-    host_data_.resolution       = float2(
-      static_cast<float>(camera_.width()),
-      static_cast<float>(camera_.height())
-    );
-    context_.writeBuffer(uniform_buffer_, host_data_);
-
-    // PushConstant buffers address.
-    push_constant_.uniform_addr     = uniform_buffer_.address;
-    push_constant_.gaussian_addr    = gaussian_sbo_.address;
-    push_constant_.splat_addr       = splat_sbo_.address;
-
-    //--------------
-    // push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
-    // push_constant_.scan_output_addr       = prefix_output_sbo_.address;
-    // push_constant_.scan_output_group_addr = prefix_descriptor_sbo_.address;
-    //--------------
-
-    // -------------------------------------------
-
-#if 0
-    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Main);
-    {
-      // Preprocess
-      {
-        push_constant_.numElems = gaussians_count_;
-        cmd.pushConstant(
-          push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
-        );
-
-        cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
-
-        cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
-
-        cmd.pipelineBufferBarriers({
-          {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
-                           | VK_ACCESS_2_SHADER_WRITE_BIT,
-            .buffer = splat_sbo_.buffer,
-          }
-        });
-      }
-    }
-    context_.finishTransientCommandEncoder(cmd);
-#endif
   }
 
   void draw(CommandEncoder const& cmd) final {
