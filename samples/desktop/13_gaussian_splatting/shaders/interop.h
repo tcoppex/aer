@@ -18,8 +18,8 @@
 
 // ---------------------------------------------------------------------------
 
-STATIC_CONST uint kCompute_Preprocess_kernelSize_x  = 256;
-STATIC_CONST uint kCompute_PrefixSum_kernelSize_x   = 256;
+STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x  = 256;
+STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
 
 // ---------------------------------------------------------------------------
 

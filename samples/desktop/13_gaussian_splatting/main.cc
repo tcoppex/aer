@@ -20,7 +20,7 @@ namespace shader_interop {
 // peut avoir des bugs avec un kernel de 64 bits, probleme due à un prefix sum
 // sur des waves inexistantes
 
-uint32_t const kDebugCount = 321;
+uint32_t const kDebugCount = 278;
 
 class SampleApp final : public Application {
   public:
@@ -127,7 +127,6 @@ class SampleApp final : public Application {
 
       /* Allocate device buffers. */
 
-      LOGI(">>> Start allocating Gaussian Splat buffers");
       gaussian_sbo_ = context_.transientCreateBuffer(
         gaussians,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -139,22 +138,22 @@ class SampleApp final : public Application {
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
-      LOGI("<<< End allocating Gaussian Splat buffers");
     }
-
-    // ----------------------------------------
 
     /* Allocate the PrefixSum buffers */
     {
-#if 0
+#if 1
       splat_tilecount_sbo_ = context_.createBuffer(
         gaussians_count_ * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 #else
+      gaussians_count_ = kDebugCount; // XXX XXX XXX XXX
+
       // DEBUG BUFFER
       std::vector<uint32_t> counts(gaussians_count_, 0);
+
 
       for (size_t i = 0; (i<kDebugCount) && (i<counts.size()); ++i) {
         counts[i] = 1;
@@ -255,10 +254,6 @@ class SampleApp final : public Application {
 
     // Clear both descriptor flags and atomic counter.
     cmd.fillBuffer(descriptor, 0u);
-
-    cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixSum]);
-    cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
-    cmd.dispatch(groupCount);
     cmd.pipelineBufferBarriers({
       {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
@@ -269,10 +264,12 @@ class SampleApp final : public Application {
                        | VK_ACCESS_2_SHADER_WRITE_BIT
                        ,
         .buffer = descriptor.buffer,
-        .offset = 0,
-        .size = VK_WHOLE_SIZE,
       },
     });
+
+    cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixSum]);
+    cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+    cmd.dispatch(groupCount);
 
     context_.finishTransientCommandEncoder(cmd);
   }
@@ -334,33 +331,26 @@ class SampleApp final : public Application {
       prefix_descriptor_sbo_
     );
 
-    // ---------------
+    // -------------------------------------------1
+    if constexpr(false) {
+      uint32_t *outputs = nullptr;
+      context_.mapMemory(prefix_output_sbo_, &outputs);
 
-    // -------------------------------------------
-    // uint32_t *outputs = nullptr;
+      LOGI("> mapping prefix local output");
+      for (uint32_t i = 0; i < push_constant_.numElems; ++i) {
+        if (i > 0 && (0 == i%shader_interop::kCompute_PrefixSum_kernelSize_x)) {
+          fprintf(stderr, "| \n");
+        }
+        fprintf(stderr, "(%d) %d %s\n",
+          i,outputs[i], (i != outputs[i]) ? "X" : ""
+        );
+      }
+      fprintf(stderr, "\n");
 
-    // LOGI("> mapping prefix local output");
-    // context_.mapMemory(prefix_output_sbo_, &outputs);
-    //   for (uint32_t i = 0; i < push_constant_.numElems; ++i) {
-    //     if (i > 0 && (0 == i%shader_interop::kCompute_PrefixSum_kernelSize_x)) {
-    //       fprintf(stderr, "| \n");
-    //     }
-    //     fprintf(stderr, "(%d) %d %s\n", i, outputs[i],
-    //       (i%shader_interop::kCompute_PrefixSum_kernelSize_x != outputs[i])
-    //         ? "X" : ""
-    //     );
-    //   }
-    //   fprintf(stderr, "\n");
-    // context_.unmapMemory(prefix_output_sbo_);
+      context_.unmapMemory(prefix_output_sbo_);
 
-    // uint32_t const N = ceil(push_constant_.numElems / (float)shader_interop::kCompute_PrefixSum_kernelSize_x);
-    // LOGI("> mapping prefix group output (N = {})", N);
-    // context_.mapMemory(prefix_descriptor_sbo_, &outputs);
-    //   for (uint32_t i = 0; i < N; ++i) {
-    //     fprintf(stderr, "%d ", outputs[i]);
-    //   }
-    //   fprintf(stderr, "\n");
-    // context_.unmapMemory(prefix_descriptor_sbo_);
+      exit(-1);
+    }
     // -------------------------------------------
   }
 

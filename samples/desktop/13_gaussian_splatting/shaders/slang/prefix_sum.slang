@@ -33,12 +33,16 @@ enum DescFlag {
   PREFIX,
 };
 
+DescFlag atomicLoad(uint32_t *ptr) {
+  return (DescFlag)((Atomic<uint32_t>*)ptr)->load();
+}
+
 void atomicExchange(uint32_t *ptr, DescFlag flag) {
   ((Atomic<uint32_t>*)ptr)->exchange((uint32_t)flag);
 }
 
-DescFlag atomicOr(uint32_t *ptr, DescFlag flag) {
-  return (DescFlag)((Atomic<uint32_t>*)ptr)->or((uint32_t)flag);
+uint32_t atomicAdd(uint32_t *ptr, uint32_t value) {
+  return ((Atomic<uint32_t>*)ptr)->add(value);
 }
 
 // ----------------------------------------------------------------------------
@@ -79,7 +83,7 @@ uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
 void main(uint tid : SV_GroupIndex)
 {
   if (tid == 0) {
-    s_tileID = ((Atomic<uint32_t>*)pushConstant.scan_counter_addr)->add(1);
+    s_tileID = atomicAdd(((uint32_t*)pushConstant.scan_counter_addr), 1u);
   }
   GroupMemoryBarrierWithGroupSync();
 
@@ -123,7 +127,7 @@ void main(uint tid : SV_GroupIndex)
       uint32_t* prevDescriptor = ((uint32_t*)pushConstant.scan_descriptor_addr)
                                + lookbackIndex * 2;
 
-      let flag = atomicOr(prevDescriptor, DescFlag::NOT_READY);
+      let flag = atomicLoad(prevDescriptor);
 
       if (flag == DescFlag::PREFIX)
       {
