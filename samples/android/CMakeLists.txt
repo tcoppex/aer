@@ -10,15 +10,15 @@ set(LOGGER_ANDROID_TAG    VkFramework) #!
 
 # -----------------------------------------------------------------------------
 
-if(NOT DEFINED ENV{ANDROID_SDK})
-  message(STATUS "Environment variable ANDROID_SDK is not set.")
+if(NOT DEFINED ENV{ANDROID_HOME})
+  message(STATUS "Environment variable ANDROID_HOME is not set.")
 endif()
 
 # -----------------------------------------------------------------------------
 
 function(add_activity_target suffix)
-  if(DEFINED ENV{ANDROID_SDK})
-    set(ADB_CMD $ENV{ANDROID_SDK}/platform-tools/adb)
+  if(DEFINED ENV{ANDROID_HOME})
+    set(ADB_CMD $ENV{ANDROID_HOME}/platform-tools/adb)
 
     set(PACKAGE_NAME ${SAMPLES_PACKAGE_NAME}.${suffix})
     set(ADB_RESOLVE_CMD

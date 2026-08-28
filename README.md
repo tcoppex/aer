@@ -33,9 +33,9 @@
 
 # aer
 
-A cross-platform real-time rendering framework, inspired by WebGPU and _vk\_minimal\_latest_.
+A cross-platform real-time rendering framework, for both desktop & XR, inspired by WebGPU and _vk\_minimal\_latest_.
 
-Tested on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
+Runs on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
 
 <details>
   <summary><strong>Quick start & run!</strong></summary>
@@ -44,8 +44,8 @@ Tested on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md]
 # [Optional] Retrieve system build dependencies with Synaptic.
 # sudo apt install git git-lfs build-essential cmake vulkan-sdk
 
-# [Optionnal] Specify the ANDROID_SDK path to create Android targets.
-# export ANDROID_SDK=~/Android/Sdk
+# [Optionnal] Specify the ANDROID_HOME path to create Android targets.
+# export ANDROID_HOME=~/Android/Sdk
 
 # Clone the repository.
 git clone https://github.com/tcoppex/aer

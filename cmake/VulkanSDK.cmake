@@ -3,7 +3,7 @@
 # CMake helpers commands to build GLSL and Slang shaders to spir-v.
 # (bit of a janky mess atm)
 #
-# - GLSL expects 'glslangValidator' and detects the shader stage automatically based
+# - GLSL expects 'glslc' and detects the shader stage automatically based
 #     its the filename.
 #
 # - Slang use 'slangc' and will convert any shaders in a "shared" subfolder to
@@ -12,10 +12,32 @@
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-## Custom function to generate binary shaders using GLSL.
+## Search for the GLSL Compiler binary.
+## (!! don't switch to glslangvalidator, as windows build can be broken with it)
+if (WIN32)
+  if (CMAKE_CL_64)
+    find_program(GLSLC glslc
+      "$ENV{VULKAN_SDK}/Bin"
+      "$ENV{VK_SDK_PATH}/Bin"
+    )
+  else()
+    find_program(GLSLC glslc
+      "$ENV{VULKAN_SDK}/Bin32"
+      "$ENV{VK_SDK_PATH}/Bin32"
+    )
+  endif()
+else()
+    find_program(GLSLC glslc
+      "$ENV{VULKAN_SDK}/bin"
+    )
+endif()
+
+# -----------------------------------------------------------------------------
+
+## Custom function to generate binary shaders from GLSL, with include handling.
 function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
   # Retrieve the input file name
-  get_filename_component(fn "${input_glsl}" NAME)
+  get_filename_component(fn ${input_glsl} NAME)
 
   # Detects shader type based on its suffix or prefix
   if (${fn} MATCHES "((vert|vs)_.+\\.glsl)|(.+\\.(vert|vs)(\\.glsl)?)")
@@ -41,48 +63,51 @@ function(glsl2spirv input_glsl output_spirv shader_dir deps extra_args)
     # return()
   endif()
 
-  get_filename_component(output_dir "${output_spirv}" DIRECTORY)
+  get_filename_component(output_dir ${output_spirv} DIRECTORY)
 
   # ----------------------------
-  # Create an identifer for the Output directory.
+
+  # Destroy the output directory on clean if it was not created by the user
+  # beforehand.
+
   string(MAKE_C_IDENTIFIER "${output_dir}" output_dir_id)
   set(var_name "${output_dir_id}_CREATED_BY_CMAKE")
+
   if(NOT DEFINED ${var_name})
     set(${var_name} OFF CACHE INTERNAL "Did CMake create ${output_dir}?")
   endif()
 
-  # Create the Output directory.
   if(NOT IS_DIRECTORY "${output_dir}")
     file(MAKE_DIRECTORY "${output_dir}")
     set(${var_name} ON CACHE INTERNAL "Did CMake create ${output_dir}?")
   endif()
 
-  # Mark it to be cleaned when it was not created by the user beforehand.
   if(${var_name})
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${output_dir}")
   endif()
+
   # ----------------------------
 
   if(NOT stage OR stage STREQUAL "")
     set(command "")
   else()
-    set(command -S ${stage})
+    set(command "-fshader-stage=${stage}")
   endif()
 
+  # Compile to SPIR-V with include directory set to shaderdir
   add_custom_command(
     OUTPUT
       ${output_spirv}
     COMMAND
-      ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} --target-env vulkan1.3 -o ${output_spirv} -D_GLSL_ ${command} -I${shader_dir} ${extra_args}  ${input_glsl}
+      ${GLSLC} --target-env=vulkan1.3 ${command} -o ${output_spirv} ${input_glsl} -I ${shader_dir} ${extra_args} -D_GLSL_
     DEPENDS
       ${input_glsl}
+      ${GLSLC}
       ${deps}
     WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}
     COMMENT
       "Converting shader ${input_glsl} to ${output_spirv}"
-    MAIN_DEPENDENCY
-      ${input_glsl}
     VERBATIM
   )
 
