@@ -128,6 +128,12 @@ class GenericCommandEncoder {
     pushConstants(values, currently_bound_pipeline_->layout(), stage_flags, offset);
   }
 
+  // --- Buffers ---
+
+  void fillBuffer(backend::Buffer const& buffer, VkDeviceSize offset, VkDeviceSize bytesize, uint32_t data) const noexcept {
+    vkCmdFillBuffer(handle_, buffer.buffer, offset, bytesize, data);
+  }
+
   // --- Pipeline Barrier ---
 
   void pipelineBufferBarriers(std::vector<VkBufferMemoryBarrier2> barriers) const;

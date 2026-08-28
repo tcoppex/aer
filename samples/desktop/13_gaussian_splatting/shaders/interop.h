@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 STATIC_CONST uint kCompute_Preprocess_kernelSize_x  = 256;
-STATIC_CONST uint kCompute_PrefixSum_kernelSize_x   = 1024;
+STATIC_CONST uint kCompute_PrefixSum_kernelSize_x   = 256;
 
 // ---------------------------------------------------------------------------
 
@@ -51,7 +51,8 @@ struct PushConstant {
   // ----
   uint64_t scan_input_addr;
   uint64_t scan_output_addr;
-  uint64_t scan_output_group_addr; // (next input)
+  uint64_t scan_descriptor_addr;
+  uint64_t scan_counter_addr;
 };
 
 // ---------------------------------------------------------------------------

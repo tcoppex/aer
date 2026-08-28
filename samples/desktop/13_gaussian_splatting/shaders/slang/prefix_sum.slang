@@ -1,4 +1,10 @@
 // ----------------------------------------------------------------------------
+//
+// Reference:
+//   " Single-pass Parallel Prefix Scan with Decoupled Look-back "
+//      from Duane Merrill & Michael Garland
+//
+// ----------------------------------------------------------------------------
 
 #include "../interop.h" //
 
@@ -7,22 +13,41 @@
 [[vk::push_constant]]
 PushConstant pushConstant;
 
-[[vk::constant_id(0)]] const uint kWaveSize = 32;
+[[vk::constant_id(0)]]
+const uint32_t kWaveSize = 32; // TODO
 
-static const uint kWorkgroupSize = kCompute_PrefixSum_kernelSize_x;
-static const uint kMaxWavesPerWorkgroup = kWorkgroupSize / kWaveSize;
+static const uint32_t kWorkgroupSize = kCompute_PrefixSum_kernelSize_x;
+static const uint32_t kMaxWavesPerWorkgroup = kWorkgroupSize / kWaveSize;
 
 // ----------------------------------------------------------------------------
 
 groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
+groupshared uint32_t s_tileID;
+groupshared uint32_t s_prevInclusivePrefix;
 
 // ----------------------------------------------------------------------------
 
-uint blockScanAndExtractOffset(uint val, uint tid) {
+enum DescFlag {
+  NOT_READY,
+  AGGREGATE,
+  PREFIX,
+};
+
+void atomicExchange(uint32_t *ptr, DescFlag flag) {
+  ((Atomic<uint32_t>*)ptr)->exchange((uint32_t)flag);
+}
+
+DescFlag atomicOr(uint32_t *ptr, DescFlag flag) {
+  return (DescFlag)((Atomic<uint32_t>*)ptr)->or((uint32_t)flag);
+}
+
+// ----------------------------------------------------------------------------
+
+uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
   let laneCount     = WaveGetLaneCount();
   let waveCount     = (kWorkgroupSize + laneCount - 1) / laneCount;
 
-  let wavePrefix    = WavePrefixSum(val); // offset inside the wave
+  let wavePrefix    = WavePrefixSum(val);
   let waveSum       = WaveActiveSum(val);
   let waveID        = WaveGetWaveIndex();
 
@@ -39,70 +64,87 @@ uint blockScanAndExtractOffset(uint val, uint tid) {
   }
   GroupMemoryBarrierWithGroupSync();
 
-  // local thread offset inside its workgroup.
-  let localPrefix = wavePrefix + s_waveSums[waveID];
-
-  return localPrefix;
+  return wavePrefix + s_waveSums[waveID];
 }
-
 
 // ----------------------------------------------------------------------------
 
-// Pass 1 : Up-Sweep (Local prefix sum).
-// Dispatch ceil(numGaussians / kWorkgroupSize) workgroups
-
 [shader("compute")]
 [numthreads(kWorkgroupSize, 1, 1)]
-void localPrefixSum(
-  uint3 workgroupID : SV_GroupID,         // workgroup coords
-  uint gid : SV_DispatchThreadID,         // global thread index
-  uint tid : SV_GroupIndex,               // local thread index
-)
+void main(uint tid : SV_GroupIndex)
 {
-  uint val = 0;
-
-  if (gid < pushConstant.numElems) {
-    val = ((uint32_t*)pushConstant.scan_input_addr)[gid];
+  if (tid == 0) {
+    s_tileID = ((Atomic<uint32_t>*)pushConstant.scan_counter_addr)->add(1);
   }
+  GroupMemoryBarrierWithGroupSync();
 
+  let tileID      = s_tileID;
+  let baseIndex   = tileID * kWorkgroupSize;
+  let globalIndex = baseIndex + tid;
+  let laneCount   = WaveGetLaneCount();
+
+  let val = (globalIndex < pushConstant.numElems)
+    ? ((uint32_t*)pushConstant.scan_input_addr)[globalIndex]
+    : 0;
   let localPrefix = blockScanAndExtractOffset(val, tid);
 
-  // Store the thread local offset.
-  if (gid < pushConstant.numElems) {
-    uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_addr);
-    localOffsets[gid] = localPrefix;
-  }
+  let wavePrefix = WaveActiveSum((tid >= (kWorkgroupSize - laneCount)) ? val : 0);
+  let localAggregate = s_waveSums[kWorkgroupSize / laneCount - 1]
+                     + wavePrefix;
 
-  // Store the WorkGroup last thread offset to continue the scan further more.
-  if (tid == kWorkgroupSize - 1) {
-    uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
-    groupOffsets[workgroupID.x] = localPrefix + val;
-  }
-}
+  uint32_t *tileDescriptor = ((uint32_t*)pushConstant.scan_descriptor_addr)
+                           + tileID * 2;
 
-// ----------------------------------------------------------------------------
-
-// Pass 2 : Down-Sweep.
-// dispatch ceil(numGaussians / kWorkgroupSize) workgroups
-
-[shader("compute")]
-[numthreads(kWorkgroupSize, 1, 1)]
-void addBlockOffsets(
-  uint3 workgroupID : SV_GroupID,
-  uint gid : SV_DispatchThreadID
-)
-{
-  if (gid >= pushConstant.numElems) {
+  if (tileID == 0) {
+    if (globalIndex < pushConstant.numElems) {
+      ((uint32_t*)pushConstant.scan_output_addr)[globalIndex] = localPrefix;
+    }
+    if (tid == 0) {
+      tileDescriptor[1] = localAggregate;
+      AllMemoryBarrier();
+      atomicExchange(tileDescriptor, DescFlag::PREFIX);
+    }
     return;
   }
 
-  // Read the workgroup offset.
-  uint32_t* groupOffsets = ((uint32_t*)pushConstant.scan_output_group_addr);
-  let blockOffset = (workgroupID.x > 0) ? groupOffsets[workgroupID.x - 1] : 0;
+  if (tid == 0) {
+    tileDescriptor[1] = localAggregate;
+    AllMemoryBarrier();
+    atomicExchange(tileDescriptor, DescFlag::AGGREGATE);
 
-  // Add it to the local element offset.
-  uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_addr);
-  localOffsets[gid] += blockOffset;
+    uint lookbackIndex = tileID - 1;
+    uint exclusivePrefix = 0;
+
+    while (true) {
+      uint32_t* prevDescriptor = ((uint32_t*)pushConstant.scan_descriptor_addr)
+                               + lookbackIndex * 2;
+
+      let flag = atomicOr(prevDescriptor, DescFlag::NOT_READY);
+
+      if (flag == DescFlag::PREFIX)
+      {
+        exclusivePrefix += prevDescriptor[1];
+        break;
+      }
+      else if (flag == DescFlag::AGGREGATE)
+      {
+        exclusivePrefix += prevDescriptor[1];
+        lookbackIndex--;
+      }
+    }
+
+    s_prevInclusivePrefix = exclusivePrefix;
+
+    tileDescriptor[1] = exclusivePrefix + localAggregate;
+    AllMemoryBarrier();
+    atomicExchange(tileDescriptor, DescFlag::PREFIX);
+  }
+  GroupMemoryBarrierWithGroupSync();
+
+  if (globalIndex < pushConstant.numElems) {
+    let scanResult = localPrefix + s_prevInclusivePrefix;
+    ((uint32_t*)pushConstant.scan_output_addr)[globalIndex] = scanResult;
+  }
 }
 
 // ----------------------------------------------------------------------------
