@@ -43,15 +43,15 @@ struct UniformBufferData {
 
 struct PushConstant {
   uint32_t numElems;
-  uint32_t pad0_[3];
+  uint32_t pad0_[1];
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
   uint64_t splat_addr;
   // ----
-  uint64_t scan_input_addr;         // size = N
-  uint64_t scan_output_local_addr;  // size = N
-  uint64_t scan_output_group_addr;  // size = N / kBlockDim << recursively become input
+  uint64_t scan_input_addr;
+  uint64_t scan_output_addr;
+  uint64_t scan_output_group_addr; // (next input)
 };
 
 // ---------------------------------------------------------------------------

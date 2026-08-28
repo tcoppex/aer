@@ -69,7 +69,7 @@ void localPrefixSum(
 
   // Store the thread local offset.
   if (gid < pushConstant.numElems) {
-    uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
+    uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_addr);
     localOffsets[gid] = localPrefix;
   }
 
@@ -101,7 +101,7 @@ void addBlockOffsets(
   let blockOffset = (workgroupID.x > 0) ? groupOffsets[workgroupID.x - 1] : 0;
 
   // Add it to the local element offset.
-  uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_local_addr);
+  uint32_t* localOffsets = ((uint32_t*)pushConstant.scan_output_addr);
   localOffsets[gid] += blockOffset;
 }
 

@@ -4,7 +4,6 @@
 //
 //  Where we go beyond the triangle.
 //
-
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
@@ -18,11 +17,17 @@ namespace shader_interop {
 
 // ----------------------------------------------------------------------------
 
+// peut avoir des bugs avec un kernel de 64 bits, probleme due à un prefix sum
+// sur des waves inexistantes
+
+uint32_t const kDebugCount = 83;
+
 class SampleApp final : public Application {
   public:
   enum GSCompute {
     GSCompute_Preprocess  = 0,
-    GSCompute_PrefixSum   = 1,
+    GSCompute_ScanUp,
+    GSCompute_ScanDown,
 
     GSCompute_kCount,
   };
@@ -124,7 +129,6 @@ class SampleApp final : public Application {
       /* Allocate device buffers. */
 
       LOGI(">>> Start allocating Gaussian Splat buffers");
-
       gaussian_sbo_ = context_.transientCreateBuffer(
         gaussians,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -136,33 +140,72 @@ class SampleApp final : public Application {
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
+      LOGI("<<< End allocating Gaussian Splat buffers");
+    }
 
+    /* Allocate the PrefixSum buffers */
+    {
       uint32_t const kPrefixWorkGroupSize = shader_interop::kCompute_PrefixSum_kernelSize_x;
-      uint32_t const kMaxPrefixSum = vk_utils::GetKernelGridDim(gaussians_count_, kPrefixWorkGroupSize);
-      LOGW("prefix sum buffer size is {}", kMaxPrefixSum);
+
+      uint32_t kNumElems = vk_utils::GetPaddingCount(
+        kDebugCount,
+        // gaussians_count_,
+
+        kPrefixWorkGroupSize
+      );
+
+      // Initialize the test buffer.
+      std::vector<uint32_t> counts(kNumElems, 0);
+      for (size_t i = 0; (i<kDebugCount) && (i<counts.size()); ++i) {
+        counts[i] = 1;
+      }
 
       //--------------
-      prefix_count_sbo_ = context_.createBuffer(
-        kMaxPrefixSum * sizeof(uint32_t),
+      // prefix_count_sbo_ = context_.createBuffer(
+      //   kMaxPrefixSum * sizeof(uint32_t),
+      //     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      //   | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      // );
+      prefix_count_sbo_ = context_.transientCreateBuffer(
+        counts,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 
       prefix_output_local_sbo_ = context_.createBuffer(
-        kMaxPrefixSum * sizeof(uint32_t),
+        kNumElems * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-      );
-
-      prefix_output_group_sbo_ = context_.createBuffer(
-        kPrefixWorkGroupSize * sizeof(uint32_t),
-          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        , VMA_MEMORY_USAGE_GPU_TO_CPU
       );
       //--------------
 
-      LOGI("<<< End allocating Gaussian Splat buffers");
+      // PrefixSum
+      // Each level of the up-sweep phase needs two buffers the size of
+      // the level groupCount :
+      //  - 1 for the previous pass block offset output
+      //  - 1 for the current phase local offset output
+
+      uint32_t scratchBufferSize = 0;
+      uint32_t level = 0;
+      for(uint32_t size = kNumElems; size > 1; level++) {
+        size = vk_utils::GetKernelGridDim(size, kPrefixWorkGroupSize);
+        scratchBufferSize += 2*size;
+
+        LOGW("level {}, + {}  = {}", level, size,scratchBufferSize);
+      }
+      LOGW("prefix sum buffer size is {}, with {} levels", scratchBufferSize, level);
+
+      prefix_scratch_sbo_ = context_.createBuffer(
+        scratchBufferSize * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        , VMA_MEMORY_USAGE_GPU_TO_CPU
+      );
     }
+
 
     /* Create the Compute Pipelines */
     {
@@ -183,14 +226,20 @@ class SampleApp final : public Application {
       context_.createComputePipelines(
         pipeline_layout_,
         ShaderStageDescriptors{
-          { shaders[GSCompute_Preprocess] },
-          // { shaders[GSCompute_PrefixSum], "localPrefixSum" },
+          { shaders[0] },
+          { shaders[1],   "localPrefixSum" },
+          { shaders[1],   "addBlockOffsets" },
         },
         compute_pipelines_.data()
       );
 
       context_.releaseShaderModules(shaders);
     }
+
+    // LOGI(
+    //   "subgroupSize : {}",
+    //   context_.subgroup_properties().subgroupSize
+    // );
 
     return true;
   }
@@ -207,8 +256,123 @@ class SampleApp final : public Application {
 
       prefix_count_sbo_,
       prefix_output_local_sbo_,
-      prefix_output_group_sbo_
+      prefix_scratch_sbo_
     );
+  }
+
+  void dispatchPrefixSum(
+    uint32_t const inputSize,
+    backend::Buffer const& input,
+    backend::Buffer const& output,
+    backend::Buffer const& scratch
+  ) {
+    using InternalType = uint32_t;
+
+    uint32_t const kKernelSize = shader_interop::kCompute_PrefixSum_kernelSize_x;
+
+    struct LevelInfo {
+      uint32_t numElems{};
+      uint32_t groupCount{};
+      VkDeviceSize groupBufferSize{};
+      VkDeviceAddress inputAddr{};
+      VkDeviceAddress outputAddr{};
+      VkDeviceAddress outputGroupAddr{};
+    };
+    std::vector<LevelInfo> levels{};
+
+    /* --- Prefill levels params --- */
+
+    uint32_t currentSize = inputSize;
+    VkDeviceAddress currentInput  = input.address;
+    VkDeviceAddress currentOutput = output.address;
+    VkDeviceAddress groupOutput   = scratch.address;
+
+    for (uint32_t levelIndex = 0; currentSize > 1; ++levelIndex)
+    {
+      auto groupCount = vk_utils::GetKernelGridDim(currentSize, kKernelSize);
+      auto groupBufferSize = VkDeviceSize(groupCount * sizeof(InternalType));
+
+      levels.emplace_back(LevelInfo{
+        .numElems = currentSize,
+        .groupCount = groupCount,
+        .groupBufferSize = groupBufferSize,
+        .inputAddr = currentInput,
+        .outputAddr = currentOutput,
+        .outputGroupAddr = groupOutput,
+      });
+
+      // Next level params (targets previous groupOutput).
+      currentSize   = groupCount;
+      currentInput  = groupOutput;
+      currentOutput = groupOutput + groupBufferSize;     // current level '2nd side'
+      groupOutput   = currentOutput + groupBufferSize;   // next level '1st side'
+    }
+
+    /* --- Up-Sweep --- */
+
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+    cmd.bindPipeline(compute_pipelines_[GSCompute_ScanUp]);
+
+    for (auto const&l : levels)
+    {
+      push_constant_.numElems               = l.numElems;
+      push_constant_.scan_input_addr        = l.inputAddr;
+      push_constant_.scan_output_addr       = l.outputAddr;
+      push_constant_.scan_output_group_addr = l.outputGroupAddr;
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.dispatch(l.groupCount);
+
+      auto const nextReadOffset = static_cast<VkDeviceSize>(
+        l.outputGroupAddr - scratch.address
+      );
+      cmd.pipelineBufferBarriers({
+        // Previous Write, Next Read
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer = scratch.buffer,
+          .offset = nextReadOffset,
+          .size = l.groupBufferSize,
+        },
+      });
+    }
+
+    context_.finishTransientCommandEncoder(cmd);
+
+    // for (auto const& l : levels | std::views::reverse) {
+    //   // TODO
+    // }
+
+    // -------------------------------------------
+    // uint32_t *outputs = nullptr;
+
+    // LOGI("> mapping prefix local output");
+    // context_.mapMemory(prefix_output_local_sbo_, &outputs);
+    //   for (uint32_t i = 0; i < push_constant_.numElems; ++i) {
+    //     if (i > 0 && (0 == i%shader_interop::kCompute_PrefixSum_kernelSize_x)) {
+    //       fprintf(stderr, "| \n");
+    //     }
+    //     fprintf(stderr, "(%d) %d %s\n", i, outputs[i],
+    //       (i%shader_interop::kCompute_PrefixSum_kernelSize_x != outputs[i])
+    //         ? "X" : ""
+    //     );
+    //   }
+    //   fprintf(stderr, "\n");
+    // context_.unmapMemory(prefix_output_local_sbo_);
+
+    // uint32_t const N = ceil(push_constant_.numElems / (float)shader_interop::kCompute_PrefixSum_kernelSize_x);
+    // LOGI("> mapping prefix group output (N = {})", N);
+    // context_.mapMemory(prefix_scratch_sbo_, &outputs);
+    //   for (uint32_t i = 0; i < N; ++i) {
+    //     fprintf(stderr, "%d ", outputs[i]);
+    //   }
+    //   fprintf(stderr, "\n");
+    // context_.unmapMemory(prefix_scratch_sbo_);
+    // -------------------------------------------
   }
 
   void update(float const dt) final {
@@ -230,43 +394,54 @@ class SampleApp final : public Application {
 
     //--------------
     push_constant_.scan_input_addr        = prefix_count_sbo_.address;
-    push_constant_.scan_output_local_addr = prefix_output_local_sbo_.address;
-    push_constant_.scan_output_group_addr = prefix_output_group_sbo_.address;
+    push_constant_.scan_output_addr = prefix_output_local_sbo_.address;
+    push_constant_.scan_output_group_addr = prefix_scratch_sbo_.address;
     //--------------
+
+    // -------------------------------------------
+
+#if 0
+    //WIP
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Main);
+    {
+      // Preprocess
+      {
+        push_constant_.numElems = gaussians_count_;
+        cmd.pushConstant(
+          push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+
+        cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
+
+        cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
+
+        cmd.pipelineBufferBarriers({
+          {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                           | VK_ACCESS_2_SHADER_WRITE_BIT,
+            .buffer = splat_sbo_.buffer,
+          }
+        });
+      }
+    }
+    context_.finishTransientCommandEncoder(cmd);
+#endif
+
+    dispatchPrefixSum(
+      kDebugCount,
+      prefix_count_sbo_,
+      prefix_output_local_sbo_,
+      prefix_scratch_sbo_
+    );
+
+    // exit(-1);
   }
 
   void draw(CommandEncoder const& cmd) final {
-    // Preprocess
-    {
-      push_constant_.numElems = gaussians_count_;
-      cmd.pushConstant(
-        push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
-      );
-
-      cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
-
-      cmd.dispatch<shader_interop::kCompute_Preprocess_kernelSize_x>(
-        gaussians_count_
-      );
-
-      cmd.pipelineBufferBarriers({
-        {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
-                         | VK_ACCESS_2_SHADER_WRITE_BIT,
-          .buffer = splat_sbo_.buffer,
-        }
-      });
-    }
-
-    // Run a PrefixSum (Scan) on the tile info structure to calculate offsets
-    // via hardware subgroups !
-    {
-
-    }
 
     auto pass = cmd.beginRendering();
     {
@@ -289,7 +464,7 @@ class SampleApp final : public Application {
 
   backend::Buffer prefix_count_sbo_{}; //
   backend::Buffer prefix_output_local_sbo_{}; //
-  backend::Buffer prefix_output_group_sbo_{}; //
+  backend::Buffer prefix_scratch_sbo_{}; //
 
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};
