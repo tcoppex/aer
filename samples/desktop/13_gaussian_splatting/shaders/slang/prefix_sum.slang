@@ -61,6 +61,11 @@ uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
   if (waveID == 0) {
     let waveVal = (tid < waveCount) ? s_waveSums[tid] : 0;
     s_waveSums[tid] = WavePrefixSum(waveVal); //
+
+    let total = WaveActiveSum(waveVal);
+    if (tid == 0) {
+      s_prevInclusivePrefix = total;
+    }
   }
   GroupMemoryBarrierWithGroupSync();
 
@@ -88,9 +93,8 @@ void main(uint tid : SV_GroupIndex)
     : 0;
   let localPrefix = blockScanAndExtractOffset(val, tid);
 
-  let wavePrefix = WaveActiveSum((tid >= (kWorkgroupSize - laneCount)) ? val : 0);
-  let localAggregate = s_waveSums[kWorkgroupSize / laneCount - 1]
-                     + wavePrefix;
+  // Updated by blockScanAndExtractOffset.
+  let localAggregate = s_prevInclusivePrefix;
 
   uint32_t *tileDescriptor = ((uint32_t*)pushConstant.scan_descriptor_addr)
                            + tileID * 2;
