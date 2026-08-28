@@ -130,8 +130,14 @@ class GenericCommandEncoder {
 
   // --- Buffers ---
 
+  inline
   void fillBuffer(backend::Buffer const& buffer, VkDeviceSize offset, VkDeviceSize bytesize, uint32_t data) const noexcept {
     vkCmdFillBuffer(handle_, buffer.buffer, offset, bytesize, data);
+  }
+
+  inline
+  void fillBuffer(backend::Buffer const& buffer, uint32_t data) const noexcept {
+    fillBuffer(buffer, 0u, VK_WHOLE_SIZE, data);
   }
 
   // --- Pipeline Barrier ---
