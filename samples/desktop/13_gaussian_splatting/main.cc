@@ -17,19 +17,20 @@ namespace shader_interop {
 
 // ----------------------------------------------------------------------------
 
-// peut avoir des bugs avec un kernel de 64 bits, probleme due à un prefix sum
-// sur des waves inexistantes
-
-uint32_t const kDebugCount = 278;
 
 class SampleApp final : public Application {
   public:
   enum GSCompute {
     GSCompute_Preprocess  = 0,
     GSCompute_PrefixSum,
+    GSCompute_DuplicateKeys,
 
     GSCompute_kCount,
   };
+
+  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 4 };
+
+  static constexpr uint32_t kDebugCount{ 278 }; //
 
  public:
   AppSettings settings() const noexcept final {
@@ -124,9 +125,10 @@ class SampleApp final : public Application {
         &indexes[10], 4, miniply::PLYPropertyType::Float,
         &gaussians[0].color[0], stride
       );
+    }
 
-      /* Allocate device buffers. */
-
+    /* Allocate device buffers. */
+    {
       gaussian_sbo_ = context_.transientCreateBuffer(
         gaussians,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -135,6 +137,18 @@ class SampleApp final : public Application {
 
       splat_sbo_ = context_.createBuffer(
         gaussians_count_ * sizeof(shader_interop::SplatOutput),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      );
+
+      gaussian_keys_unsorted_ = context_.createBuffer(
+        gaussians_count_ * kHeuristicMaxTilePerGaussian * sizeof(uint64_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      );
+
+      gaussian_values_unsorted_ = context_.createBuffer(
+        gaussians_count_ * kHeuristicMaxTilePerGaussian * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
@@ -204,6 +218,7 @@ class SampleApp final : public Application {
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "gaussian_preprocess.slang",
         "prefix_sum.slang",
+        "gaussian_duplicate_keys.slang",
       });
       context_.createComputePipelines(pipeline_layout_, shaders, compute_pipelines_.data());
       context_.releaseShaderModules(shaders);
@@ -221,8 +236,11 @@ class SampleApp final : public Application {
       uniform_buffer_,
       gaussian_sbo_,
       splat_sbo_,
-
       splat_tilecount_sbo_,
+
+      gaussian_keys_unsorted_,
+      gaussian_values_unsorted_,
+
       prefix_output_sbo_,
       prefix_descriptor_sbo_
     );
@@ -287,43 +305,32 @@ class SampleApp final : public Application {
     context_.writeBuffer(uniform_buffer_, host_data_);
 
     // PushConstant buffers address.
-    push_constant_.uniform_addr     = uniform_buffer_.address;
-    push_constant_.gaussian_addr    = gaussian_sbo_.address;
-    push_constant_.splat_addr       = splat_sbo_.address;
-    push_constant_.scan_input_addr  = splat_tilecount_sbo_.address;
+    push_constant_.uniform_addr           = uniform_buffer_.address;
+    push_constant_.gaussian_addr          = gaussian_sbo_.address;
+    push_constant_.splat_addr             = splat_sbo_.address;
+    push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
+    push_constant_.unsorted_keys_addr     = gaussian_keys_unsorted_.address;
+    push_constant_.unsorted_values_addr   = gaussian_values_unsorted_.address;
 
     // -------------------------------------------
 
-#if 0
-    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+    // [currently using one command per pass for debugging]
+
+    // 1. Preprocess
+    // Projects 3D Gaussian to 2D screen space & calculate tile bounding box.
     {
-      // Preprocess
-      {
-        push_constant_.numElems = gaussians_count_;
-        cmd.pushConstant(
-          push_constant_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT
-        );
+     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
 
-        cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
+      push_constant_.numElems = gaussians_count_;
 
-        cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
+      cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
 
-        cmd.pipelineBufferBarriers({
-          {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
-                           | VK_ACCESS_2_SHADER_WRITE_BIT,
-            .buffer = splat_sbo_.buffer,
-          }
-        });
-      }
+      context_.finishTransientCommandEncoder(cmd);
     }
-    context_.finishTransientCommandEncoder(cmd);
-#endif
 
+    // 2. Calculate tile offsets.
     dispatchPrefixSum(
       gaussians_count_,
       splat_tilecount_sbo_,
@@ -331,19 +338,36 @@ class SampleApp final : public Application {
       prefix_descriptor_sbo_
     );
 
+    // 3. Create the keys-value pairs.
+    {
+      auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+
+      push_constant_.numElems    = gaussians_count_;
+      push_constant_.maxCapacity = gaussians_count_ * kHeuristicMaxTilePerGaussian;
+
+      cmd.bindPipeline(compute_pipelines_[GSCompute_DuplicateKeys]);
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.runKernel<shader_interop::kCompute_Duplicate_kernelSize_x>(push_constant_.numElems);
+
+      context_.finishTransientCommandEncoder(cmd);
+    }
+
+    // 4. Sort keys
+    // TODO
+
     // -------------------------------------------1
     if constexpr(false) {
       uint32_t *outputs = nullptr;
       context_.mapMemory(prefix_output_sbo_, &outputs);
 
       LOGI("> mapping prefix local output");
-      for (uint32_t i = 0; i < push_constant_.numElems; ++i) {
+      for (uint32_t i = 0; i < 100 + 0*push_constant_.numElems; ++i) {
         if (i > 0 && (0 == i%shader_interop::kCompute_PrefixSum_kernelSize_x)) {
           fprintf(stderr, "| \n");
         }
-        fprintf(stderr, "(%d) %d %s\n",
-          i,outputs[i], (i != outputs[i]) ? "X" : ""
-        );
+        // fprintf(stderr, "(%d) %d %s\n",
+        //   i,outputs[i], (i != outputs[i]) ? "X" : ""
+        // );
       }
       fprintf(stderr, "\n");
 
@@ -372,12 +396,19 @@ class SampleApp final : public Application {
   shader_interop::UniformBufferData host_data_{};
   backend::Buffer uniform_buffer_{};
 
+  // ----------
+
   backend::Buffer gaussian_sbo_{};          // raw input data
   backend::Buffer splat_sbo_{};             // preprocess output
   backend::Buffer splat_tilecount_sbo_{};   // overlapped tile count.
 
   backend::Buffer prefix_output_sbo_{}; //
   backend::Buffer prefix_descriptor_sbo_{}; //
+
+  backend::Buffer gaussian_keys_unsorted_{};      // buffer of 64bits
+  backend::Buffer gaussian_values_unsorted_{};    // buffer of 32bits
+
+  // ----------
 
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};

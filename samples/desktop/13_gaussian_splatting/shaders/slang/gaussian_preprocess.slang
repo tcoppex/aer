@@ -78,11 +78,11 @@ void main(
     return;
   }
 
+  const float kMaxSplatRadius   = 1024.0f; //
+
   const float kNearZCull        = -0.2f;
   const float kNDCMargin        = 0.3f;
   const float kCovariance2DBlur = 0.3f;
-  const float kMaxSplatRadius   = 1024.0f;
-  const float kTileSize         = 16.0f;
 
   // Inputs
   let uData    = *((UniformBufferData*)pushConstant.uniform_addr);
@@ -175,10 +175,12 @@ void main(
   let minPixel = pos_screen - radius;
   let maxPixel = pos_screen + radius;
 
+  let invTileRes: float = 1.0 / float(kTileResolution);
+
   // Find tiles bounds [minTile, maxTile)
-  let tile_grid_size = ceil(resolution / kTileSize);
-  let minTile = uint2(clamp(floor(minPixel / kTileSize), float2(0.0f), tile_grid_size - 1.0f));
-  let maxTile = uint2(clamp(ceil(maxPixel / kTileSize), float2(0.0f), tile_grid_size));
+  let tile_grid_size = ceil(resolution * invTileRes);
+  let minTile = uint2(clamp(floor(minPixel * invTileRes), float2(0.0f), tile_grid_size - 1.0f));
+  let maxTile = uint2(clamp(ceil(maxPixel * invTileRes), float2(0.0f), tile_grid_size));
 
   // Cull splats outside the grid.
   if (any(minTile >= maxTile)) {
@@ -196,6 +198,8 @@ void main(
   output->conic       = conic;
   output->depth       = -pos_view.z;
   output->screen_pos  = pos_screen;
+  output->minTile     = minTile;
+  output->maxTile     = maxTile;
 }
 
 // ----------------------------------------------------------------------------

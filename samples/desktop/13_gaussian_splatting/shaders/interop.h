@@ -20,6 +20,9 @@
 
 STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x  = 256;
 STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
+STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x   = 256;
+
+STATIC_CONST uint32_t kTileResolution = 16u; //
 
 // ---------------------------------------------------------------------------
 
@@ -42,8 +45,8 @@ struct UniformBufferData {
 };
 
 struct PushConstant {
-  uint32_t numElems;
-  uint32_t pad0_[1];
+  uint32_t numElems;              // kernel max threads count.
+  uint32_t maxCapacity;           // limit for output with dynamic bounds.
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
@@ -51,8 +54,11 @@ struct PushConstant {
   // ----
   uint64_t scan_input_addr;
   uint64_t scan_output_addr;
-  uint64_t scan_descriptor_addr;
-  uint64_t scan_counter_addr;
+  uint64_t scan_descriptor_addr;  // PrefixScan descriptor flags.
+  uint64_t scan_counter_addr;     // PrefixScan atomic counter.
+  // ----
+  uint64_t unsorted_keys_addr;
+  uint64_t unsorted_values_addr;
 };
 
 // ---------------------------------------------------------------------------
@@ -62,8 +68,11 @@ struct SplatOutput {
   float3 conic;
   float depth;
   float2 screen_pos;
-  uint32_t pad0_[2];
+  // uint32_t pad0_[2];
+  uint2 minTile;
+  uint2 maxTile;
 };
+
 
 // ---------------------------------------------------------------------------
 
