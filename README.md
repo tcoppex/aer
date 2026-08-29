@@ -10,13 +10,13 @@
    /::::\   \:::\    \      /::::\   \:::\    \      /::::\   \:::\    \
   /::::::\   \:::\    \    /::::::\   \:::\    \    /::::::\   \:::\    \
  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\____\
-/:::/  \:::\   \:::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::|    |
+/:::/  \:::\   \:::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::\    \
 \::/    \:::\  /:::/    /\:::\   \:::\   \::/    /\::/   |::::\  /:::|____|
  \/____/ \:::\/:::/    /  \:::\   \:::\   \/____/  \/____|:::::\/:::/    /
           \::::::/    /    \:::\   \:::\    \            |:::::::::/    /
            \::::/    /      \:::\   \:::\____\           |::|\::::/    /
-           /:::/    /        \:::\   \::/    /           |::| \::/____/
-          /:::/    /          \:::\   \/____/            |::|  ~|
+           /:::/    /        \:::\   \::/    /           |::| \::/    /
+          /:::/    /          \:::\   \/____/            |::|  \/____/
          /:::/    /            \:::\    \                |::|   |
         /:::/    /              \:::\____\               \::|   |
         \::/    /                \::/    /                \:|   |
@@ -80,6 +80,7 @@ cmake --build build --config Release
 * **[10_material](samples/desktop/10_material/)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
 * **[11_ray_tracing](samples/desktop/11_ray_tracing/)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
 * **[12_font](samples/desktop/12_font/)**: Dynamic 2D/3D text generation from a font file.
+* **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)**: Implements _3D Gaussian Splatting for Real-Time Radiance Field Rendering_.
 
 Samples are linear in progression: when a feature is introduced the
 first version uses a somewhat verbose semantic before switching to simpler ones in subsequent examples.
