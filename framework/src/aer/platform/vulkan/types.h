@@ -89,6 +89,11 @@ struct GPUProperties {
 
   VkPhysicalDeviceSubgroupProperties subgroup{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+    .pNext = &subgroup_size_control
+  };
+
+  VkPhysicalDeviceSubgroupSizeControlProperties subgroup_size_control{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES,
     .pNext = &descriptor_buffer
   };
 

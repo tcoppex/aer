@@ -746,6 +746,15 @@ bool Context::initDevice() {
     LOG_CHECK(features_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
     LOG_CHECK(features_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
     LOG_CHECK(features_.v13.subgroupSizeControl && "Subgroup Size Control required (Vulkan 1.3 core)");
+    {
+      auto const& props = subgroup_size_control_properties();
+      LOG_CHECK(
+        "Subgroup Size Control: unsupported subgroup size required for Compute Shaders."
+        && (props.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT)
+        && (props.minSubgroupSize <= kRequiredSubgroupSize)
+        && (props.maxSubgroupSize >= kRequiredSubgroupSize)
+      );
+    }
   }
 
 

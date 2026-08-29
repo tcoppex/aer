@@ -577,6 +577,7 @@ void RenderContext::createComputePipelines(
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .stage = {
         .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext  = nullptr,
         .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = VK_NULL_HANDLE,
         .pName  = nullptr,
@@ -584,12 +585,21 @@ void RenderContext::createComputePipelines(
       .layout = pipeline_layout,
     }
   );
+  auto required_size_infos = std::vector<VkPipelineShaderStageRequiredSubgroupSizeCreateInfo>(
+    shader_stage_descriptors.size(),
+    {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO,
+      .pNext = nullptr,
+      .requiredSubgroupSize = Context::kRequiredSubgroupSize,
+    }
+  );
   for (size_t i = 0; i < shader_stage_descriptors.size(); ++i) {
     auto const& desc = shader_stage_descriptors[i];
     auto const& name = desc.entryPoint;
     auto &stage = pipeline_infos[i].stage;
-    stage.module = desc.shader.module;
-    stage.pName = name.empty() ? kDefaulShaderEntryPoint : name.c_str();
+    stage.module  = desc.shader.module;
+    stage.pNext   = &required_size_infos[i];
+    stage.pName   = name.empty() ? kDefaulShaderEntryPoint : name.c_str();
   }
 
   auto out_pipelines = std::vector<VkPipeline>(shader_stage_descriptors.size());

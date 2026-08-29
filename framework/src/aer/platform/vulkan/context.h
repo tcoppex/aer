@@ -15,6 +15,8 @@
 
 class Context {
  public:
+  static constexpr uint32_t kRequiredSubgroupSize{ 32u };
+
   enum class TargetQueue {
     Main,
     Transfer,
@@ -84,6 +86,11 @@ class Context {
   [[nodiscard]]
   VkPhysicalDeviceSubgroupProperties const& subgroup_properties() const noexcept {
     return properties_.subgroup;
+  }
+
+  [[nodiscard]]
+  VkPhysicalDeviceSubgroupSizeControlProperties const& subgroup_size_control_properties() const noexcept {
+    return properties_.subgroup_size_control;
   }
 
   [[nodiscard]]
