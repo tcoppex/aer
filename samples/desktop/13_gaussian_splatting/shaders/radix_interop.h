@@ -27,7 +27,7 @@ struct RadixPushConstant {
   uint64_t numkeys_addr;
   uint64_t unsorted_keys_addr;
   uint64_t histogram_addr;
-  uint32_t pad0_[2];
+  uint64_t histogram_prefixes_addr;
 };
 
 // ---------------------------------------------------------------------------

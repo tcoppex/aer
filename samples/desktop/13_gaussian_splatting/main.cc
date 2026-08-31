@@ -27,18 +27,17 @@ class SampleApp final : public Application {
 
   public:
     enum GSCompute {
-      GSCompute_Preprocess  = 0,
-      GSCompute_PrefixSum,
+      GSCompute_Preprocess,
+      GSCompute_DecoupledPrefixSum,
       GSCompute_PrefixResetTotalCountIndirect,
       GSCompute_DuplicateKeys,
-
-      // GSCompute_RadixHistogram,
 
       GSCompute_kCount,
     };
 
     enum RadixCompute {
-      RadixCompute_Histogram = 0,
+      RadixCompute_Histogram,
+      RadixCompute_PrefixSum,
 
       RadixCompute_kCount
     };
@@ -152,13 +151,13 @@ class SampleApp final : public Application {
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 
-      gaussian_keys_unsorted_ = context_.createBuffer(
+      splat_keys_unsorted_ = context_.createBuffer(
         gaussians_count_ * kHeuristicMaxTilePerGaussian * sizeof(uint64_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
       );
 
-      gaussian_values_unsorted_ = context_.createBuffer(
+      splat_values_unsorted_ = context_.createBuffer(
         gaussians_count_ * kHeuristicMaxTilePerGaussian * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -171,12 +170,9 @@ class SampleApp final : public Application {
       {
         LOGW(">>>> DEBUG_RUN is ON <<<<");
 
-        gaussians_count_ = kDebugCount; // XXX XXX XXX XXX
+        gaussians_count_ = kDebugCount; //
 
-        // DEBUG BUFFER
         std::vector<uint32_t> counts(gaussians_count_, 0);
-
-
         for (size_t i = 0; (i<kDebugCount) && (i<counts.size()); ++i) {
           counts[i] = 1;
         }
@@ -221,7 +217,7 @@ class SampleApp final : public Application {
 
       // - The 3 first uint32_t are X,Y,Z dispatch groupCount.
       // - the 4th uint32_t is the total size of keys (prefixSum total).
-      prefix_total_count_indirect_sbo_ = context_.createBuffer(
+      prefix_total_indirect_count_sbo_ = context_.createBuffer(
         4u * sizeof(uint32_t), //
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -267,6 +263,13 @@ class SampleApp final : public Application {
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       );
+      // (might also double the previous one)
+      radix_.histograms_prefixes_sbo = context_.createBuffer(
+        shader_interop::kRadixHistogramSize * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      );
 
       radix_.layout = context_.createPipelineLayout({
         .pushConstantRanges = {
@@ -278,6 +281,7 @@ class SampleApp final : public Application {
       });
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "radix_histogram.slang",
+        "radix_prefix_sum.slang",
       });
       context_.createComputePipelines(
         radix_.layout,
@@ -302,12 +306,12 @@ class SampleApp final : public Application {
       splat_sbo_,
       splat_tilecount_sbo_,
 
-      gaussian_keys_unsorted_,
-      gaussian_values_unsorted_,
+      splat_keys_unsorted_,
+      splat_values_unsorted_,
 
       prefix_output_sbo_,
       prefix_descriptor_sbo_,
-      prefix_total_count_indirect_sbo_
+      prefix_total_indirect_count_sbo_
     );
 
     /* Radix */
@@ -316,17 +320,18 @@ class SampleApp final : public Application {
     }
     context_.destroyResources(
       radix_.layout,
-      radix_.histograms_sbo
+      radix_.histograms_sbo,
+      radix_.histograms_prefixes_sbo
     );
   }
 
   /* Compute Splats tiles offsets. */
-  void dispatchPrefixSum(
+  void dispatchDecoupledPrefixSum(
     uint32_t const inputSize,
     backend::Buffer const& input,
     backend::Buffer const& output,
     backend::Buffer const& descriptor,
-    backend::Buffer const& total_indirect
+    backend::Buffer const* total_indirect
   ) {
     if (inputSize == 0) {
       return;
@@ -341,8 +346,6 @@ class SampleApp final : public Application {
     push_constant_.scan_output_addr       = output.address;
     push_constant_.scan_descriptor_addr   = descriptor.address;
     push_constant_.scan_counter_addr      = descriptor.address + tileCounterOffset;
-
-    push_constant_.scan_total_count_indirect_addr = total_indirect.address;
 
     // ---------------
 
@@ -364,31 +367,38 @@ class SampleApp final : public Application {
     });
 
     // 2. Run the PrefixSum
-    cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixSum]);
+    cmd.bindPipeline(compute_pipelines_[GSCompute_DecoupledPrefixSum]);
     cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
     cmd.dispatch(groupCount);
 
     // 3. Calculate the total count and put it into an indirect dispatch buffer.
-    cmd.pipelineBufferBarriers({
-      {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-        .buffer = output.buffer,
-      },
-      {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-        .srcStageMask = VK_PIPELINE_STAGE_2_NONE, //
-        .srcAccessMask = VK_ACCESS_NONE, //
-        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-        .buffer = total_indirect.buffer,
-      },
-    });
-    cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixResetTotalCountIndirect]);
-    cmd.dispatch();
+    if (total_indirect != nullptr) {
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer = output.buffer,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_NONE, //
+          .srcAccessMask = VK_ACCESS_NONE, //
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .buffer = total_indirect->buffer,
+        },
+      });
+
+      cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixResetTotalCountIndirect]);
+
+      push_constant_.scan_total_count_indirect_addr = total_indirect->address;
+      cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.dispatch();
+    }
 
     context_.finishTransientCommandEncoder(cmd);
 
@@ -422,15 +432,19 @@ class SampleApp final : public Application {
   void dispatchRadixSort(
     backend::Buffer const& indirect_key_count,
     backend::Buffer const& unsorted_keys,
-    backend::Buffer const& histograms
+    backend::Buffer const& histograms,
+    backend::Buffer const& histograms_prefixes
   ) {
     auto &pc = radix_.push_constant;
 
-    pc.numkeys_addr       = indirect_key_count.address + 3 * sizeof(uint32_t);
-    pc.unsorted_keys_addr = unsorted_keys.address;
-    pc.histogram_addr     = histograms.address;
+    pc.numkeys_addr             = indirect_key_count.address + 3 * sizeof(uint32_t);
+    pc.unsorted_keys_addr       = unsorted_keys.address;
+    pc.histogram_addr           = histograms.address;
+    pc.histogram_prefixes_addr  = histograms_prefixes.address;
 
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+
+    cmd.pushConstant(pc, radix_.layout, VK_SHADER_STAGE_COMPUTE_BIT);
 
     // 1. Compute Histograms.
     {
@@ -450,21 +464,37 @@ class SampleApp final : public Application {
       });
 
       cmd.bindPipeline(radix_.pipelines[RadixCompute_Histogram]);
-      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
-
       cmd.dispatchIndirect(indirect_key_count);
-
-      // cmd.pipelineBufferBarriers({
-      //   {
-      //     .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-      //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-      //     .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      //     .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-      //     .buffer = histograms.buffer,
-      //   },
-      // });
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer = histograms.buffer,
+        },
+      });
     }
+
+    // 2. Exclusive Sum kernel.
+    {
+      cmd.bindPipeline(radix_.pipelines[RadixCompute_PrefixSum]);
+      cmd.dispatch(shader_interop::kRadixDigitCount);
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer = histograms_prefixes.buffer,
+        },
+      });
+    }
+
+    // 3. Chained scan digit-binning kernel.
+    //
 
     context_.finishTransientCommandEncoder(cmd);
   }
@@ -487,21 +517,8 @@ class SampleApp final : public Application {
     push_constant_.gaussian_addr          = gaussian_sbo_.address;
     push_constant_.splat_addr             = splat_sbo_.address;
     push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
-    push_constant_.unsorted_keys_addr     = gaussian_keys_unsorted_.address;
-    push_constant_.unsorted_values_addr   = gaussian_values_unsorted_.address;
-
-    // if constexpr (kEnableDebugRun)
-    // {
-    //   dispatchPrefixSum(
-    //     gaussians_count_,
-    //     splat_tilecount_sbo_,
-    //     prefix_output_sbo_,
-    //     prefix_descriptor_sbo_,
-    //     prefix_total_count_indirect_sbo_
-    //   );
-    //   LOGW("Exiting debug run (post dispatchPrefixSum)");
-    //   exit(-1);
-    // }
+    push_constant_.unsorted_keys_addr     = splat_keys_unsorted_.address;
+    push_constant_.unsorted_values_addr   = splat_values_unsorted_.address;
 
     // -------------------------------------------
     // For debugging purpose we are using one command encoder
@@ -523,12 +540,12 @@ class SampleApp final : public Application {
     }
 
     // 2. Calculate tile offsets.
-    dispatchPrefixSum(
+    dispatchDecoupledPrefixSum(
       gaussians_count_,
       splat_tilecount_sbo_,
       prefix_output_sbo_,
       prefix_descriptor_sbo_,
-      prefix_total_count_indirect_sbo_
+      &prefix_total_indirect_count_sbo_
     );
 
     // 3. Create the keys-value pairs.
@@ -547,23 +564,18 @@ class SampleApp final : public Application {
 
     // 4. Sort keys
     dispatchRadixSort(
-      prefix_total_count_indirect_sbo_,
-      gaussian_keys_unsorted_,
-      radix_.histograms_sbo
+      prefix_total_indirect_count_sbo_,
+      splat_keys_unsorted_,
+      radix_.histograms_sbo,
+      radix_.histograms_prefixes_sbo
     );
   }
 
   void draw(CommandEncoder const& cmd) final {
-
     auto pass = cmd.beginRendering();
-    {
-    }
     cmd.endRendering();
-
     drawUI(cmd);
   }
-
-  void buildUI() final {}
 
  private:
   ArcBallController arcball_controller_{};
@@ -574,15 +586,15 @@ class SampleApp final : public Application {
   // ----------
 
   backend::Buffer gaussian_sbo_{};          // raw input data
+
   backend::Buffer splat_sbo_{};             // preprocess output
-  backend::Buffer splat_tilecount_sbo_{};   // overlapped tile count.
+  backend::Buffer splat_tilecount_sbo_{};   // overlapped tile count
+  backend::Buffer splat_keys_unsorted_{};   // buffer of 64bits
+  backend::Buffer splat_values_unsorted_{}; // buffer of 32bits
 
-  backend::Buffer prefix_output_sbo_{}; //
-  backend::Buffer prefix_descriptor_sbo_{}; //
-  backend::Buffer prefix_total_count_indirect_sbo_{}; //
-
-  backend::Buffer gaussian_keys_unsorted_{};      // buffer of 64bits
-  backend::Buffer gaussian_values_unsorted_{};    // buffer of 32bits
+  backend::Buffer prefix_output_sbo_{};
+  backend::Buffer prefix_descriptor_sbo_{};
+  backend::Buffer prefix_total_indirect_count_sbo_{};
 
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};
@@ -592,10 +604,12 @@ class SampleApp final : public Application {
   // ----------
 
   struct Radix {
+    backend::Buffer histograms_sbo{};
+    backend::Buffer histograms_prefixes_sbo{};
+
     VkPipelineLayout layout{};
     shader_interop::RadixPushConstant push_constant{};
     std::array<Pipeline, RadixCompute_kCount> pipelines{};
-    backend::Buffer histograms_sbo{};
   } radix_;
 };
 
