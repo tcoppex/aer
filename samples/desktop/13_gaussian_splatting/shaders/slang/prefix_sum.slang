@@ -34,15 +34,22 @@ enum DescFlag {
 };
 
 DescFlag atomicLoad(uint32_t *ptr) {
-  return (DescFlag)((Atomic<uint32_t>*)ptr)->load();
+  // return (DescFlag)((Atomic<uint32_t>*)ptr)->load();
+  uint32_t prev = 0;
+  InterlockedOr(*ptr, 0, prev);
+  return (DescFlag)prev;
 }
 
 void atomicExchange(uint32_t *ptr, DescFlag flag) {
-  ((Atomic<uint32_t>*)ptr)->exchange((uint32_t)flag);
+  // ((Atomic<uint32_t>*)ptr)->exchange((uint32_t)flag);
+  InterlockedExchange(*ptr, (uint32_t)flag);
 }
 
 uint32_t atomicAdd(uint32_t *ptr, uint32_t value) {
-  return ((Atomic<uint32_t>*)ptr)->add(value);
+  // return ((Atomic<uint32_t>*)ptr)->add(value);
+  uint32_t prev = 0;
+  InterlockedAdd(*ptr, value, prev);
+  return prev;
 }
 
 // ----------------------------------------------------------------------------
