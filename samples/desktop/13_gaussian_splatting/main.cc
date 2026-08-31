@@ -388,8 +388,9 @@ class SampleApp final : public Application {
     push_constant_.unsorted_values_addr   = gaussian_values_unsorted_.address;
 
     // -------------------------------------------
-
-    // [currently using one command per pass for debugging]
+    // For debugging purpose we are using one command encoder
+    //  per "pass"
+    // -------------------------------------------
 
     // 1. Preprocess
     // Projects 3D Gaussian to 2D screen space & calculate tile bounding box.

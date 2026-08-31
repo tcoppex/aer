@@ -48,12 +48,12 @@ uint32_t atomicAdd(uint32_t *ptr, uint32_t value) {
 // ----------------------------------------------------------------------------
 
 uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
-  let laneCount     = WaveGetLaneCount();
-  let waveCount     = (kWorkgroupSize + laneCount - 1) / laneCount;
+  let laneCount   = WaveGetLaneCount();
+  let waveCount   = (kWorkgroupSize + laneCount - 1) / laneCount;
 
-  let wavePrefix    = WavePrefixSum(val);
-  let waveSum       = WaveActiveSum(val);
-  let waveID        = WaveGetWaveIndex();
+  let wavePrefix  = WavePrefixSum(val);
+  let waveSum     = WaveActiveSum(val);
+  let waveID      = WaveGetWaveIndex();
 
   // Store the sum of each wave. (first thread of each wave)
   if (WaveIsFirstLane()) {

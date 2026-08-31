@@ -93,8 +93,8 @@ void main(
   let resolution: float2   = uData.resolution;
 
   // Output
-  SplatOutput *output     = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
-  uint32_t *tileCount     = &(((uint32_t*)pushConstant.scan_input_addr)[gid]);
+  SplatOutput *output = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
+  uint32_t *tileCount = &(((uint32_t*)pushConstant.scan_input_addr)[gid]);
 
   // Reset tile overlapped count.
   *tileCount = 0;
