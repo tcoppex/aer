@@ -18,6 +18,7 @@ groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
 
 // ----------------------------------------------------------------------------
 
+[ForceInline]
 uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
   let laneCount   = WaveGetLaneCount();
   let waveCount   = (NUM_THREADS + laneCount - 1) / laneCount;
@@ -49,22 +50,13 @@ void main(
   uint tid : SV_GroupIndex
 )
 {
-  let digit   = groupID.x;
-  let offset  = digit * NUM_THREADS;
+  uint32_t *g_histograms = ((uint32_t*)pushConstant.histogram_addr);
+  uint32_t *g_offsets    = ((uint32_t*)pushConstant.histogram_prefixes_addr);
+
+  let offset  = groupID.x * NUM_THREADS;
   let h_index = offset + tid;
 
-  uint val = 0;
-
-  if (h_index < kRadixHistogramSize) {
-    val = ((uint32_t*)pushConstant.histogram_addr)[h_index];
-  }
-
-  let localPrefix = blockScanAndExtractOffset(val, tid);
-
-  if (h_index < kRadixHistogramSize) {
-    uint32_t *prefixes = (uint32_t*)pushConstant.histogram_prefixes_addr;
-    prefixes[h_index] = localPrefix;
-  }
+  g_offsets[h_index] = blockScanAndExtractOffset(g_histograms[h_index], tid);
 }
 
 // ----------------------------------------------------------------------------

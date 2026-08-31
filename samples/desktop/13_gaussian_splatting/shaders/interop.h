@@ -20,11 +20,11 @@
 
 // ---------------------------------------------------------------------------
 
-STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x      = 256;
-STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x       = 256;
-STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x       = 256;
+STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x  = 256;
+STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
+STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x   = 256;
 
-STATIC_CONST uint32_t kTileResolution = 16u; //
+STATIC_CONST uint32_t kTileResolution = 16u;
 
 // ---------------------------------------------------------------------------
 
@@ -69,9 +69,9 @@ struct SplatOutput {
   float3 conic;
   float depth;
   float2 screen_pos;
-  // uint32_t pad0_[2];
   uint2 minTile;
   uint2 maxTile;
+  // uint32_t pad0_[2];
 };
 
 // ---------------------------------------------------------------------------

@@ -494,7 +494,9 @@ class SampleApp final : public Application {
     }
 
     // 3. Chained scan digit-binning kernel.
-    //
+    for (uint32_t pass = 0; pass < shader_interop::kRadixDigitCount; ++pass) {
+      
+    }
 
     context_.finishTransientCommandEncoder(cmd);
   }
@@ -521,14 +523,14 @@ class SampleApp final : public Application {
     push_constant_.unsorted_values_addr   = splat_values_unsorted_.address;
 
     // -------------------------------------------
-    // For debugging purpose we are using one command encoder
-    //  per "pass"
+    //  For debugging purpose we are currently using one command encoder
+    //  per "pass", but later on we will use just one.
     // -------------------------------------------
 
     // 1. Preprocess
     // Projects 3D Gaussian to 2D screen space & calculate tile bounding box.
     {
-     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+      auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
 
       push_constant_.numElems = gaussians_count_;
 
@@ -562,7 +564,7 @@ class SampleApp final : public Application {
       context_.finishTransientCommandEncoder(cmd);
     }
 
-    // 4. Sort keys
+    // 4. Sort keys.
     dispatchRadixSort(
       prefix_total_indirect_count_sbo_,
       splat_keys_unsorted_,
