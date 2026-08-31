@@ -14,24 +14,17 @@
 //
 // ---------------------------------------------------------------------------
 
+#ifndef STATIC_CONST
 #define STATIC_CONST static const
+#endif
 
 // ---------------------------------------------------------------------------
 
-STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x  = 256;
-STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
-STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x   = 256;
+STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x      = 256;
+STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x       = 256;
+STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x       = 256;
 
 STATIC_CONST uint32_t kTileResolution = 16u; //
-
-// ---------------------------------------------------------------------------
-
-struct /*alignas(16)*/ GaussianData {
-  float4 position;
-  float4 rotation;
-  float4 scale;
-  float4 color;
-};
 
 // ---------------------------------------------------------------------------
 
@@ -47,6 +40,7 @@ struct UniformBufferData {
 struct PushConstant {
   uint32_t numElems;              // kernel max threads count.
   uint32_t maxCapacity;           // limit for output with dynamic bounds.
+                                  // (for radix, it's use for bitshifting)
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
@@ -59,9 +53,19 @@ struct PushConstant {
   // ----
   uint64_t unsorted_keys_addr;
   uint64_t unsorted_values_addr;
+  // ----
+  // uint64_t radix_histogram_addr;
+  // uint64_t radix_plop_addr;
 };
 
 // ---------------------------------------------------------------------------
+
+struct /*alignas(16)*/ GaussianData {
+  float4 position;
+  float4 rotation;
+  float4 scale;
+  float4 color;
+};
 
 struct SplatOutput {
   float4 color;
@@ -72,7 +76,6 @@ struct SplatOutput {
   uint2 minTile;
   uint2 maxTile;
 };
-
 
 // ---------------------------------------------------------------------------
 

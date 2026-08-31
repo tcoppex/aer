@@ -13,24 +13,26 @@
 
 namespace shader_interop {
 #include "shaders/interop.h"
+#include "shaders/radix_interop.h"
 }
 
 // ----------------------------------------------------------------------------
 
-
 class SampleApp final : public Application {
-  public:
-  enum GSCompute {
-    GSCompute_Preprocess  = 0,
-    GSCompute_PrefixSum,
-    GSCompute_DuplicateKeys,
-
-    GSCompute_kCount,
-  };
-
+ public:
+  static constexpr uint32_t kDebugCount{ 278 }; //
   static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 4 };
 
-  static constexpr uint32_t kDebugCount{ 278 }; //
+  public:
+    enum GSCompute {
+      GSCompute_Preprocess  = 0,
+      GSCompute_PrefixSum,
+      GSCompute_DuplicateKeys,
+
+      // GSCompute_RadixHistogram,
+
+      GSCompute_kCount,
+    };
 
  public:
   AppSettings settings() const noexcept final {
@@ -204,6 +206,23 @@ class SampleApp final : public Application {
       );
     }
 
+    /* Allocate the OneSweep radix sort buffers */
+    {
+      // shader_interop::kRadixBins
+      constexpr uint32_t kRadixHistogramBufferSize{
+          shader_interop::kRadixDigitCount
+        * shader_interop::kRadixSize
+      };
+
+      radix_histograms_sbo_ = context_.createBuffer(
+        kRadixHistogramBufferSize * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      );
+    }
+
+
     /* Create the Compute Pipelines */
     {
       pipeline_layout_ = context_.createPipelineLayout({
@@ -242,10 +261,13 @@ class SampleApp final : public Application {
       gaussian_values_unsorted_,
 
       prefix_output_sbo_,
-      prefix_descriptor_sbo_
+      prefix_descriptor_sbo_,
+
+      radix_histograms_sbo_
     );
   }
 
+  /* Compute Splats tiles offsets. */
   void dispatchPrefixSum(
     uint32_t const inputSize,
     backend::Buffer const& input,
@@ -291,6 +313,59 @@ class SampleApp final : public Application {
 
     context_.finishTransientCommandEncoder(cmd);
   }
+
+  void dispatchRadixSort(
+    backend::Buffer const& histograms,
+    backend::Buffer const& unsorted_keys
+  ) {
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+
+    // 1. Compute Histograms.
+    {
+      // Clear histograms.
+      cmd.fillBuffer(histograms, 0u);
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT
+                         ,
+          .buffer = histograms.buffer,
+        },
+      });
+
+      // [should be the last value of previous prefixSum]
+      // push_constant_.numElems = gaussians_count_; //
+      // push_constant_.maxCapacity = 0; //
+
+      // push_constant_.radix_histogram_addr = histograms.address;
+      // push_constant_.unsorted_keys_addr   = unsorted_keys.address;
+
+      // cmd.bindPipeline(compute_pipelines_[GSCompute_RadixHistogram]);
+      // cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      // cmd.runKernel<shader_interop::kRadixBins>(push_constant_.numElems);
+      // // cmd.dispatch(groupCount);
+
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer = histograms.buffer,
+        },
+      });
+
+    }
+
+    context_.finishTransientCommandEncoder(cmd);
+  }
+
 
   void update(float const dt) final {
     // Camera Uniform Data.
@@ -353,7 +428,10 @@ class SampleApp final : public Application {
     }
 
     // 4. Sort keys
-    // TODO
+    dispatchRadixSort(
+      radix_histograms_sbo_,
+      gaussian_keys_unsorted_
+    );
 
     // -------------------------------------------1
     if constexpr(false) {
@@ -407,6 +485,8 @@ class SampleApp final : public Application {
 
   backend::Buffer gaussian_keys_unsorted_{};      // buffer of 64bits
   backend::Buffer gaussian_values_unsorted_{};    // buffer of 32bits
+
+  backend::Buffer radix_histograms_sbo_{};
 
   // ----------
 
