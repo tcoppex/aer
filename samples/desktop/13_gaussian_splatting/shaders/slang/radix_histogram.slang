@@ -10,14 +10,12 @@
 STATIC_CONST uint32_t kItemsPerThreads  = 16;
 STATIC_CONST uint32_t kTileSize         = NUM_THREADS * kItemsPerThreads;
 
-STATIC_CONST uint32_t kSharedMemorySize = kRadixSize * NUM_PASSES;
-
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
 RadixPushConstant pushConstant;
 
-groupshared uint32_t s_Histogram[kSharedMemorySize];
+groupshared uint32_t s_Histogram[kRadixHistogramSize];
 
 // ----------------------------------------------------------------------------
 
@@ -43,13 +41,13 @@ void main(
   let tid = threadID.x;
   let tileBase = groupID.x * NUM_THREADS;
 
-  let numKeys = 0; // *((uint32_t*)pushConstant.numkeys_addr)
+  let numKeys = *((uint32_t*)pushConstant.numkeys_addr);
 
   uint32_t *g_keys = ((uint32_t*)pushConstant.unsorted_keys_addr);
   uint32_t *g_histograms = ((uint32_t*)pushConstant.histogram_addr);
 
   // 1. Initialize local histogram (8 per threads)
-  for (uint i = tid; i < kSharedMemorySize; i += NUM_THREADS) {
+  for (uint i = tid; i < kRadixHistogramSize; i += NUM_THREADS) {
     s_Histogram[i] = 0;
   }
   GroupMemoryBarrierWithGroupSync();
@@ -71,7 +69,7 @@ void main(
   GroupMemoryBarrierWithGroupSync();
 
   // 3. Add the result to the global histogram.
-  for (uint i = tid; i < kSharedMemorySize; i += NUM_THREADS) {
+  for (uint i = tid; i < kRadixHistogramSize; i += NUM_THREADS) {
     let h = s_Histogram[i];
     if (h != 0) {
       InterlockedAdd(g_histograms[i], h);

@@ -40,22 +40,19 @@ struct UniformBufferData {
 struct PushConstant {
   uint32_t numElems;              // kernel max threads count.
   uint32_t maxCapacity;           // limit for output with dynamic bounds.
-                                  // (for radix, it's use for bitshifting)
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
   uint64_t splat_addr;
   // ----
-  uint64_t scan_input_addr;
-  uint64_t scan_output_addr;
+  uint64_t scan_input_addr;       // Splats' tile count
+  uint64_t scan_output_addr;      // Splat's tile offset
   uint64_t scan_descriptor_addr;  // PrefixScan descriptor flags.
   uint64_t scan_counter_addr;     // PrefixScan atomic counter.
+  uint64_t scan_total_count_indirect_addr;
   // ----
   uint64_t unsorted_keys_addr;
   uint64_t unsorted_values_addr;
-  // ----
-  // uint64_t radix_histogram_addr;
-  // uint64_t radix_plop_addr;
 };
 
 // ---------------------------------------------------------------------------

@@ -156,3 +156,25 @@ void main(uint tid : SV_GroupIndex)
 }
 
 // ----------------------------------------------------------------------------
+
+[shader("compute")]
+[numthreads(1, 1, 1)]
+void resetTotalCountIndirect()
+{
+  let lastId      = pushConstant.numElems - 1;
+  let lastCount   = ((uint32_t*)pushConstant.scan_input_addr)[lastId];
+  let lastOffset  = ((uint32_t*)pushConstant.scan_output_addr)[lastId];
+
+  uint32_t *indirectBuffer = (uint32_t*)pushConstant.scan_total_count_indirect_addr;
+
+  let totalCount = lastOffset + lastCount;
+  let kRadixNumThread = 256; // kRadixHistogramNumThreads
+
+  // [TODO: use custom struct instead]
+  indirectBuffer[0] = (totalCount + kRadixNumThread - 1) / kRadixNumThread; //
+  indirectBuffer[1] = 1;
+  indirectBuffer[2] = 1;
+  indirectBuffer[3] = totalCount;
+}
+
+// ----------------------------------------------------------------------------
