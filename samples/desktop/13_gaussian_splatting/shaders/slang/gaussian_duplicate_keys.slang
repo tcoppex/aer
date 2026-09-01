@@ -19,14 +19,17 @@ void main(
     return;
   }
 
+  // Discard culled gaussians.
+  let count = ((uint32_t*)pushConstant.scan_input_addr)[gid];
+  if (count == 0) {
+    return;
+  }
+
   // Screen width resolution by tiles [could be a constant].
   let uData     = *((UniformBufferData*)pushConstant.uniform_addr);
   let tileResX  = uint32_t(ceil(uData.resolution.x / float(kTileResolution)));
 
-  // Splat's preprocessed infos.
   let splat     = ((SplatOutput*)pushConstant.splat_addr)[gid];
-
-  // Splat's tiles base offset.
   var offset    = ((uint32_t*)pushConstant.scan_output_addr)[gid];
 
   // Output pointers.
