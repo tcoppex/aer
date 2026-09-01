@@ -143,7 +143,7 @@ void main(uint tid : SV_GroupIndex)
       else if (flag == AGGREGATE)
       {
         exclusivePrefix += atomicLoad(&prevDescriptor[AGGREGATE]);
-        lookbackIndex--;
+        --lookbackIndex;
       }
     }
 

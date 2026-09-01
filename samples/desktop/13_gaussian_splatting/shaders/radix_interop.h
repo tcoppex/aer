@@ -2,6 +2,12 @@
 #define SHADERS_RADIX_INTEROP_H_
 
 // ---------------------------------------------------------------------------
+//
+// Reference:
+//   " Onesweep: A Faster Least Significant Digit Radix Sort for GPUs "
+//      from Andy Adinets & Duane Merrill
+//
+// ---------------------------------------------------------------------------
 
 #ifndef STATIC_CONST
 #define STATIC_CONST static const

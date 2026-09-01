@@ -519,12 +519,8 @@ class SampleApp final : public Application {
 
     cmd.pushConstant(pc, radix_.layout, VK_SHADER_STAGE_COMPUTE_BIT);
 
-    // Clear the Descriptor + AtomicCounter buffer (use on last pass).
-    cmd.fillBuffer(descriptor, 0u);
-
-    // 1. Compute Histograms.
+    // 1. Compute Histograms
     {
-      // Clear histograms.
       cmd.fillBuffer(histograms, 0u);
       cmd.pipelineBufferBarriers({
         {
@@ -572,7 +568,7 @@ class SampleApp final : public Application {
       });
     }
 
-    // 2. Exclusive Sum kernel.
+    // 2. Exclusive Sum (Global Prefix Scan on Histograms)
     {
       cmd.bindPipeline(radix_.pipelines[RadixCompute_PrefixSum]);
       cmd.dispatch(shader_interop::kRadixNumPasses);
@@ -589,45 +585,61 @@ class SampleApp final : public Application {
       });
     }
 
-    // 3. Chained scan digit-binning kernel.
+    // 3. OneSweep Digit Binning Kernel
     cmd.bindPipeline(radix_.pipelines[RadixCompute_Binning]);
 
-    cmd.pipelineBufferBarriers({
-      {
-        .srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
-                       | VK_ACCESS_2_SHADER_WRITE_BIT,
-        .buffer = descriptor.buffer,
-      }
-    });
-
-    // pc.numElems = ;
-    // cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+    auto src_keys = keys.address;
+    auto dst_keys = keys.address + sorted_keys_offset;
+    auto src_vals = values.address;
+    auto dst_vals = values.address + sorted_value_offset;
 
     for (uint32_t pass = 0; pass < shader_interop::kRadixNumPasses; ++pass)
     {
-      cmd.pushConstant(pass, VK_SHADER_STAGE_COMPUTE_BIT,
-        offsetof(shader_interop::RadixPushConstant, pass)
-      );
+      // Clear descriptors AND atomic tile counter
+      cmd.fillBuffer(descriptor, 0u);
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT,
+          .buffer = descriptor.buffer,
+        }
+      });
 
-      // cmd.dispatchIndirect(indirect_key_count);
+      pc.pass                   = pass;
+      pc.unsorted_keys_addr     = src_keys;
+      pc.unsorted_values_addr   = src_vals;
+      pc.sorted_values_addr     = dst_keys;
+      pc.sorted_keys_addr       = dst_vals;
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      // cmd.pipelineBufferBarriers({
-      //   {
-      //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-      //     .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      //     .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-      //     .buffer = histograms.buffer,
-      //   },
-      // });
+      // cmd.dispatchIndirect(indirect_key_count); //
+
+      std::swap(src_keys, dst_keys);
+      std::swap(src_vals, dst_vals);
+
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer        = keys.buffer,
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .buffer        = values.buffer,
+        }
+      });
     }
 
     context_.finishTransientCommandEncoder(cmd);
   }
-
 
   void update(float const dt) final {
     // Camera Uniform Data.
