@@ -228,6 +228,7 @@ macro(slang2spirv shader)
     spvFragmentFullyCoveredEXT
     spvGroupNonUniform
     spvGroupNonUniformArithmetic
+    spvGroupNonUniformBallot
     spvGroupNonUniformShuffle
     spvImageGatherExtended
     spvImageQuery

@@ -38,6 +38,7 @@ class SampleApp final : public Application {
     enum RadixCompute {
       RadixCompute_Histogram,
       RadixCompute_PrefixSum,
+      RadixCompute_Binning,
 
       RadixCompute_kCount
     };
@@ -302,6 +303,7 @@ class SampleApp final : public Application {
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "radix_histogram.slang",
         "radix_prefix_sum.slang",
+        "radix_binning.slang",
       });
       context_.createComputePipelines(
         radix_.layout,
@@ -517,6 +519,9 @@ class SampleApp final : public Application {
 
     cmd.pushConstant(pc, radix_.layout, VK_SHADER_STAGE_COMPUTE_BIT);
 
+    // Clear the Descriptor + AtomicCounter buffer (use on last pass).
+    cmd.fillBuffer(descriptor, 0u);
+
     // 1. Compute Histograms.
     {
       // Clear histograms.
@@ -582,6 +587,42 @@ class SampleApp final : public Application {
           .buffer = histograms.buffer,
         },
       });
+    }
+
+    // 3. Chained scan digit-binning kernel.
+    cmd.bindPipeline(radix_.pipelines[RadixCompute_Binning]);
+
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                       | VK_ACCESS_2_SHADER_WRITE_BIT,
+        .buffer = descriptor.buffer,
+      }
+    });
+
+    // pc.numElems = ;
+    // cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+    for (uint32_t pass = 0; pass < shader_interop::kRadixNumPasses; ++pass)
+    {
+      cmd.pushConstant(pass, VK_SHADER_STAGE_COMPUTE_BIT,
+        offsetof(shader_interop::RadixPushConstant, pass)
+      );
+
+      // cmd.dispatchIndirect(indirect_key_count);
+
+      // cmd.pipelineBufferBarriers({
+      //   {
+      //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+      //     .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      //     .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+      //     .buffer = histograms.buffer,
+      //   },
+      // });
     }
 
     context_.finishTransientCommandEncoder(cmd);
