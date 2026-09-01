@@ -27,26 +27,28 @@ groupshared uint32_t s_tileExclusivePrefix;
 
 // ----------------------------------------------------------------------------
 
-enum DescFlag {
-  NOT_READY,
-  AGGREGATE,
-  PREFIX,
-};
+#define NOT_READY   0
+#define AGGREGATE   1
+#define PREFIX      2
+#define NUM_FLAGS   3
 
+[ForceInline]
 uint32_t atomicLoad(uint32_t *ptr) {
   uint32_t prev = 0;
   InterlockedOr(*ptr, 0, prev);
   return prev;
 }
 
+[ForceInline]
 uint32_t atomicAdd(uint32_t *ptr, uint32_t value) {
   uint32_t prev = 0;
   InterlockedAdd(*ptr, value, prev);
   return prev;
 }
 
-void atomicExchange(uint32_t *ptr, DescFlag flag) {
-  InterlockedExchange(*ptr, (uint32_t)flag);
+[ForceInline]
+void atomicExchange(uint32_t *ptr, uint32_t val) {
+  InterlockedExchange(*ptr, val);
 }
 
 // ----------------------------------------------------------------------------
@@ -107,40 +109,40 @@ void main(uint tid : SV_GroupIndex)
   let localPrefix = blockScanAndExtractOffset(val, tid);
   let localAggregate = s_tileAggregate;
 
-  uint32_t *tileDescriptor = g_descriptor + tileID * 3;
+  uint32_t *tileDescriptor = g_descriptor + tileID * NUM_FLAGS;
 
   if (tileID == 0) {
     if (globalIndex < pushConstant.numElems) {
       g_scan_output[globalIndex] = localPrefix;
     }
     if (tid == 0) {
-      tileDescriptor[2] = localAggregate;
+      tileDescriptor[PREFIX] = localAggregate;
       AllMemoryBarrier();
-      atomicExchange(tileDescriptor, DescFlag::PREFIX);
+      atomicExchange(tileDescriptor, PREFIX);
     }
     return;
   }
 
   if (tid == 0) {
-    tileDescriptor[1] = localAggregate;
+    tileDescriptor[AGGREGATE] = localAggregate;
     AllMemoryBarrier();
-    atomicExchange(tileDescriptor, DescFlag::AGGREGATE);
+    atomicExchange(tileDescriptor, AGGREGATE);
 
     uint lookbackIndex = tileID - 1;
     uint exclusivePrefix = 0;
 
     while (true) {
-      uint32_t* prevDescriptor = g_descriptor + lookbackIndex * 3;
-      let flag = (DescFlag)atomicLoad(prevDescriptor);
+      uint32_t* prevDescriptor = g_descriptor + lookbackIndex * NUM_FLAGS;
+      let flag = atomicLoad(prevDescriptor);
 
-      if (flag == DescFlag::PREFIX)
+      if (flag == PREFIX)
       {
-        exclusivePrefix += atomicLoad(prevDescriptor + 2);
+        exclusivePrefix += atomicLoad(&prevDescriptor[PREFIX]);
         break;
       }
-      else if (flag == DescFlag::AGGREGATE)
+      else if (flag == AGGREGATE)
       {
-        exclusivePrefix += atomicLoad(prevDescriptor + 1);
+        exclusivePrefix += atomicLoad(&prevDescriptor[AGGREGATE]);
         lookbackIndex--;
       }
     }
@@ -149,7 +151,7 @@ void main(uint tid : SV_GroupIndex)
 
     tileDescriptor[2] = exclusivePrefix + localAggregate;
     AllMemoryBarrier();
-    atomicExchange(tileDescriptor, DescFlag::PREFIX);
+    atomicExchange(tileDescriptor, PREFIX);
   }
   GroupMemoryBarrierWithGroupSync();
 
