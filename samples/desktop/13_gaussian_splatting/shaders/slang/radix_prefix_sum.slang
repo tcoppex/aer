@@ -50,13 +50,14 @@ void main(
   uint tid : SV_GroupIndex
 )
 {
-  uint32_t *g_histograms = ((uint32_t*)pushConstant.histogram_addr);
-  uint32_t *g_offsets    = ((uint32_t*)pushConstant.histogram_prefixes_addr);
+  let g_histograms = (uint32_t*)pushConstant.histogram_addr;
+  let h_index = groupID.x * NUM_THREADS + tid;
 
-  let offset  = groupID.x * NUM_THREADS;
-  let h_index = offset + tid;
+  let count   = g_histograms[h_index];
+  let offset  = blockScanAndExtractOffset(count, tid);
 
-  g_offsets[h_index] = blockScanAndExtractOffset(g_histograms[h_index], tid);
+  // Update the histogram in-place.
+  g_histograms[h_index] = offset;
 }
 
 // ----------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 #include "../radix_interop.h"
 
 #define NUM_THREADS kRadixSize
-#define NUM_PASSES  kRadixDigitCount
+#define NUM_PASSES  kRadixNumPasses
 
 // ----------------------------------------------------------------------------
 

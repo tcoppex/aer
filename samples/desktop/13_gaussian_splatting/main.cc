@@ -275,21 +275,16 @@ class SampleApp final : public Application {
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT
       );
 
-      // (we might also double the previous one)
-      radix_.histograms_prefixes_sbo = context_.createBuffer(
-        shader_interop::kRadixHistogramSize * sizeof(uint32_t),
-          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-      );
-
-      // (does not use atomic counter compared to prefix_sum.slang)
-      uint32_t const prefixDescriptorBufferSize = 3u * vk_utils::GetKernelGridDim(
+      radix_.descriptor_size = 3u * vk_utils::GetKernelGridDim(
         splat_kv_heuristic_size_,
         shader_interop::kRadixSize
       );
+
+      // (use an additional uint32_t for atomic counter)
+      uint32_t const bufferSize = 1u + radix_.descriptor_size;
+
       radix_.prefix_descriptor_sbo = context_.createBuffer(
-        prefixDescriptorBufferSize * sizeof(uint32_t),
+        bufferSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -319,6 +314,15 @@ class SampleApp final : public Application {
     return true;
   }
 
+  void buildUI() final {
+    ImGui::Begin("Settings");
+    {
+      ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+      ImGui::Separator();
+    }
+    ImGui::End();
+  }
+
   void release() final {
     /* Gaussian Splatting */
     for (auto pipeline : compute_pipelines_) {
@@ -344,7 +348,6 @@ class SampleApp final : public Application {
     context_.destroyResources(
       radix_.layout,
       radix_.histograms_sbo,
-      radix_.histograms_prefixes_sbo,
       radix_.prefix_descriptor_sbo
     );
   }
@@ -494,7 +497,6 @@ class SampleApp final : public Application {
     backend::Buffer const& values
   ) {
     auto const& histograms = radix_.histograms_sbo;
-    auto const& prefixes   = radix_.histograms_prefixes_sbo;
     auto const& descriptor = radix_.prefix_descriptor_sbo;
 
     auto const sorted_keys_offset = VkDeviceAddress(splat_kv_heuristic_size_ * sizeof(uint64_t));
@@ -503,12 +505,12 @@ class SampleApp final : public Application {
     auto &pc = radix_.push_constant;
     pc.numkeys_addr             = indirect_key_count.address + 3 * sizeof(uint32_t);
     pc.histogram_addr           = histograms.address;
-    pc.histogram_prefixes_addr  = prefixes.address;
     pc.unsorted_keys_addr       = keys.address;
     pc.unsorted_values_addr     = values.address;
     pc.sorted_keys_addr         = keys.address + sorted_keys_offset;
     pc.sorted_values_addr       = values.address + sorted_value_offset;
     pc.descriptor_addr          = descriptor.address;
+    pc.counter_addr             = descriptor.address + radix_.descriptor_size * sizeof(uint32_t);
     pc.pass                     = {};
 
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
@@ -557,7 +559,9 @@ class SampleApp final : public Application {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
           .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT
+                         ,
           .buffer = histograms.buffer,
         },
       });
@@ -566,20 +570,18 @@ class SampleApp final : public Application {
     // 2. Exclusive Sum kernel.
     {
       cmd.bindPipeline(radix_.pipelines[RadixCompute_PrefixSum]);
-      cmd.dispatch(shader_interop::kRadixDigitCount);
+      cmd.dispatch(shader_interop::kRadixNumPasses);
+
       cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT,
           .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-          .buffer = prefixes.buffer,
+          .buffer = histograms.buffer,
         },
       });
-    }
-
-    // 3. Chained scan digit-binning kernel.
-    for (uint32_t pass = 0; pass < shader_interop::kRadixDigitCount; ++pass) {
     }
 
     context_.finishTransientCommandEncoder(cmd);
@@ -755,8 +757,8 @@ class SampleApp final : public Application {
 
   struct Radix {
     backend::Buffer histograms_sbo{};
-    backend::Buffer histograms_prefixes_sbo{};
     backend::Buffer prefix_descriptor_sbo{};
+    VkDeviceSize descriptor_size{};
 
     VkPipelineLayout layout{};
     shader_interop::RadixPushConstant push_constant{};
