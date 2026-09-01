@@ -38,12 +38,12 @@ void main(
   uint3 threadID  : SV_GroupThreadID
 )
 {
-  let tid       = threadID.x;
-  let tileBase  = groupID.x * kTileSize; //NUM_THREADS;
-  let numKeys   = *((uint32_t*)pushConstant.numkeys_addr);
-
   uint64_t *g_keys        = ((uint64_t*)pushConstant.unsorted_keys_addr);
   uint32_t *g_histograms  = ((uint32_t*)pushConstant.histogram_addr);
+
+  let tid       = threadID.x;
+  let tileBase  = groupID.x * kTileSize;
+  let numKeys   = *((uint32_t*)pushConstant.numkeys_addr);
 
   // 1. Initialize local histogram (8 per threads)
   for (uint i = tid; i < kRadixHistogramSize; i += NUM_THREADS) {

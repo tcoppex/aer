@@ -21,9 +21,9 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
   static constexpr bool kEnableDebugRun{ false };
-  static constexpr uint32_t kDebugCount{ 278 };
+  static constexpr uint32_t kDebugCount{ 1157141 };
 
-  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 4 }; //
+  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 10 }; //
 
   public:
     enum GSCompute {
@@ -418,7 +418,7 @@ class SampleApp final : public Application {
     }
 
     // -------------------------------------------1
-    // if constexpr (kEnableDebugRun)
+    if constexpr (kEnableDebugRun)
     {
       LOGI("> mapping prefix output subrange.");
       debugMapBuffer(output, 765, 771, 256);
@@ -470,8 +470,8 @@ class SampleApp final : public Application {
 
       context_.finishTransientCommandEncoder(cmd);
 
-      LOGI("> mapping post prefix Indirect + Total Count");
-      debugMapBuffer(*total_indirect, 0, 4, 1);
+      // LOGI("> mapping post prefix Indirect + Total Count");
+      // debugMapBuffer(*total_indirect, 0, 4, 4);
     }
   }
 
@@ -510,7 +510,8 @@ class SampleApp final : public Application {
       });
 
       cmd.bindPipeline(radix_.pipelines[RadixCompute_Histogram]);
-      cmd.dispatchIndirect(indirect_key_count);
+      cmd.dispatchIndirect(indirect_key_count); // slow!
+
       cmd.pipelineBufferBarriers({
         {
           .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
@@ -541,7 +542,7 @@ class SampleApp final : public Application {
 
     // 3. Chained scan digit-binning kernel.
     for (uint32_t pass = 0; pass < shader_interop::kRadixDigitCount; ++pass) {
-      
+
     }
 
     context_.finishTransientCommandEncoder(cmd);
@@ -565,6 +566,7 @@ class SampleApp final : public Application {
     push_constant_.gaussian_addr          = gaussian_sbo_.address;
     push_constant_.splat_addr             = splat_sbo_.address;
     push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
+
     push_constant_.unsorted_keys_addr     = splat_keys_unsorted_.address;
     push_constant_.unsorted_values_addr   = splat_values_unsorted_.address;
 
@@ -582,9 +584,40 @@ class SampleApp final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
-      cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(push_constant_.numElems);
+
+      // ------
+      // BUGTRACK:
+      //  There is a lot of tile per gaussians, which can be an issue with
+      //   the kernel.
+      // ------
+      cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(
+        push_constant_.numElems
+      );
+
+      cmd.pipelineBufferBarriers({
+        {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+          .buffer = splat_tilecount_sbo_.buffer,
+        },
+      });
 
       context_.finishTransientCommandEncoder(cmd);
+
+      // -------------------------------------------
+      if constexpr (false && kEnableDebugRun)
+      {
+        LOGI("Total original Gaussian : {}", gaussians_count_);
+
+        uint32_t nSize = push_constant_.numElems / 1500;
+        LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
+
+        debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
+      }
+      // -------------------------------------------
     }
 
     // 2. Calculate tile offsets.
@@ -610,20 +643,21 @@ class SampleApp final : public Application {
       context_.finishTransientCommandEncoder(cmd);
     }
 
+    // 4. Sort keys.
+    dispatchRadixSort(
+      prefix_total_indirect_count_sbo_,
+      splat_keys_unsorted_,
+      radix_.histograms_sbo,
+      radix_.histograms_prefixes_sbo
+    );
 
-    // // 4. Sort keys.
-    // dispatchRadixSort(
-    //   prefix_total_indirect_count_sbo_,
-    //   splat_keys_unsorted_,
-    //   radix_.histograms_sbo,
-    //   radix_.histograms_prefixes_sbo
-    // );
-
-    static int frame = 0;
-    if (++frame == 3) {
-      exit(-1);
+    if constexpr (kEnableDebugRun) {
+      static int frame = 0;
+      if (++frame == 3) {
+        // exit(-1);
+      }
+      LOGI("------------------------------->");
     }
-    LOGI("------------------------------->");
   }
 
   void draw(CommandEncoder const& cmd) final {
