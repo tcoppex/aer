@@ -33,26 +33,20 @@ enum DescFlag {
   PREFIX,
 };
 
-uint32_t atomicLoadPayload(uint32_t *ptr) {
-  uint32_t val = 0;
-  InterlockedAdd(*ptr, 0, val);
-  return val;
-}
-
-DescFlag atomicLoad(uint32_t *ptr) {
+uint32_t atomicLoad(uint32_t *ptr) {
   uint32_t prev = 0;
   InterlockedOr(*ptr, 0, prev);
-  return (DescFlag)prev;
-}
-
-void atomicExchange(uint32_t *ptr, DescFlag flag) {
-  InterlockedExchange(*ptr, (uint32_t)flag);
+  return prev;
 }
 
 uint32_t atomicAdd(uint32_t *ptr, uint32_t value) {
   uint32_t prev = 0;
   InterlockedAdd(*ptr, value, prev);
   return prev;
+}
+
+void atomicExchange(uint32_t *ptr, DescFlag flag) {
+  InterlockedExchange(*ptr, (uint32_t)flag);
 }
 
 // ----------------------------------------------------------------------------
@@ -137,16 +131,16 @@ void main(uint tid : SV_GroupIndex)
 
     while (true) {
       uint32_t* prevDescriptor = g_descriptor + lookbackIndex * 3;
-      let flag = atomicLoad(prevDescriptor);
+      let flag = (DescFlag)atomicLoad(prevDescriptor);
 
       if (flag == DescFlag::PREFIX)
       {
-        exclusivePrefix += atomicLoadPayload(prevDescriptor + 2);
+        exclusivePrefix += atomicLoad(prevDescriptor + 2);
         break;
       }
       else if (flag == DescFlag::AGGREGATE)
       {
-        exclusivePrefix += atomicLoadPayload(prevDescriptor + 1);
+        exclusivePrefix += atomicLoad(prevDescriptor + 1);
         lookbackIndex--;
       }
     }
