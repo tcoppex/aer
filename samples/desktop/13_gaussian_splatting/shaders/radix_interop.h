@@ -23,7 +23,12 @@ STATIC_CONST uint32_t kRadixNumPasses     = kRadixKeyBits / kRadixBits; // 8
 // (default block num threads)
 STATIC_CONST uint32_t kRadixSize          = 1 << kRadixBits; // 256
 
+// ---------------------------------------------------------------------------
+
+// (wip)
 STATIC_CONST uint32_t kRadixHistogramSize = kRadixSize * kRadixNumPasses;
+STATIC_CONST uint32_t kItemsPerThreads    = 16;
+STATIC_CONST uint32_t kTileSize           = kRadixSize * kItemsPerThreads;
 
 // ---------------------------------------------------------------------------
 

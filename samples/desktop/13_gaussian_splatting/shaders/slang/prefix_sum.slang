@@ -173,11 +173,10 @@ void resetTotalCountIndirect()
 
   let g_indirect  = (uint32_t*)pushConstant.scan_total_count_indirect_addr;
 
-  let totalCount = lastOffset + lastCount;
-  let kRadixNumThread = 256; // kRadixHistogramNumThreads
+  let totalCount  = lastOffset + lastCount;
 
   // [TODO: use custom struct instead]
-  g_indirect[0] = (totalCount + kRadixNumThread - 1) / kRadixNumThread; //
+  g_indirect[0] = (totalCount + pushConstant.tileSize - 1) / pushConstant.tileSize; //
   g_indirect[1] = 1;
   g_indirect[2] = 1;
   g_indirect[3] = totalCount;

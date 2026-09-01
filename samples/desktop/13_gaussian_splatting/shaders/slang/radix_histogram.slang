@@ -7,11 +7,6 @@
 
 // ----------------------------------------------------------------------------
 
-STATIC_CONST uint32_t kItemsPerThreads  = 16;
-STATIC_CONST uint32_t kTileSize         = NUM_THREADS * kItemsPerThreads;
-
-// ----------------------------------------------------------------------------
-
 [[vk::push_constant]]
 RadixPushConstant pushConstant;
 

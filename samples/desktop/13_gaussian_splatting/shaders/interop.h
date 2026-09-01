@@ -40,6 +40,8 @@ struct UniformBufferData {
 struct PushConstant {
   uint32_t numElems;              // kernel max threads count.
   uint32_t maxCapacity;           // limit for output with dynamic bounds.
+  uint32_t tileSize;              // use only by resetTotalCountIndirect.
+  uint32_t pad0_[1];
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;

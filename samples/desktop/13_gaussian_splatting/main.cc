@@ -453,6 +453,7 @@ class SampleApp final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[GSCompute_PrefixResetTotalCountIndirect]);
 
+      push_constant_.tileSize = shader_interop::kTileSize; //
       push_constant_.scan_total_count_indirect_addr = total_indirect.address;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -615,7 +616,8 @@ class SampleApp final : public Application {
       pc.sorted_keys_addr       = dst_vals;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      // cmd.dispatchIndirect(indirect_key_count); //
+      // [issue, maybe due to invalid grid dimension]
+      // cmd.dispatchIndirect(indirect_key_count); // xxx
 
       std::swap(src_keys, dst_keys);
       std::swap(src_vals, dst_vals);
