@@ -2,7 +2,7 @@
 
 #include "../radix_interop.h"
 
-#define NUM_THREADS kRadixHistogramNumThreads
+#define NUM_THREADS kRadixSize
 #define NUM_PASSES  kRadixDigitCount
 
 // ----------------------------------------------------------------------------
