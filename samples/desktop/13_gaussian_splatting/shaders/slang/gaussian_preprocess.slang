@@ -1,4 +1,11 @@
 // ----------------------------------------------------------------------------
+//
+//  Preprocess stage of the Gaussian Splatting algorithm.
+//
+//   * Camera are expected to be right-handed, -Z forward, column-major layout.
+//   * Slangc must use -matrix-layout-column-major
+//
+// ----------------------------------------------------------------------------
 
 #include "../interop.h"
 
@@ -18,11 +25,11 @@ float3x3 quaternionToMatrix(
   let r = qrot.w; //
 
   // Column major layout
-  return float3x3(
-    1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y - r*z),       2.0 * (x*z + r*y),
-          2.0 * (x*y + r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z - r*x),
-          2.0 * (x*z - r*y),       2.0 * (y*z + r*x), 1.0 - 2.0 * (x*x + y*y)
-  );
+  float3 col0 = float3(1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y + r*z),       2.0 * (x*z - r*y));
+  float3 col1 = float3(      2.0 * (x*y - r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z + r*x));
+  float3 col2 = float3(      2.0 * (x*z + r*y),       2.0 * (y*z - r*x), 1.0 - 2.0 * (x*x + y*y));
+
+  return float3x3(col0, col1, col2);
 }
 
 // ----------------
@@ -126,11 +133,7 @@ void main(
   let cov3D = computeCovariance3D(gaussian.scale.xyz, gaussian.rotation);
 
   // Extract upper 3x3 rotation from column-major ViewMatrix.
-  let W = float3x3(
-    viewMatrix[0].x, viewMatrix[1].x, viewMatrix[2].x,
-    viewMatrix[0].y, viewMatrix[1].y, viewMatrix[2].y,
-    viewMatrix[0].z, viewMatrix[1].z, viewMatrix[2].z
-  );
+  let W = (float3x3)viewMatrix;
 
   // (eq. 5) Project the 3D Gaussian to 2D.
   let J = computeJacobian(pos_view.xyz, uData.tanFov, uData.focal);
@@ -148,7 +151,7 @@ void main(
 
   // Invert the 2D covariant matrix to obtain the conic parameters.
   let det = cov_a * cov_c - cov_b * cov_b;
-  if (det == 0.0f) {
+  if (abs(det) <= 0.001f) {
     return;
   }
   let conic = (1.0f / det) * float3(cov_c, -cov_b, cov_a);
@@ -188,7 +191,6 @@ void main(
   }
 
   *tileCount = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
-  // tileInfo->offset = 0; //
 
   // ----
 
