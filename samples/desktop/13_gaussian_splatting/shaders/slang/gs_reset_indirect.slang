@@ -21,7 +21,8 @@ void main()
   let lastId     = pushConstant.numElems - 1;
   let lastCount  = ((uint32_t*)pushConstant.scan_input_addr)[lastId];
   let lastOffset = ((uint32_t*)pushConstant.scan_output_addr)[lastId];
-  let totalCount = lastOffset + lastCount;
+
+  let totalCount = (lastOffset + lastCount) % pushConstant.maxKeyValueCapacity;
 
   // Radix histogram grid dimension.
   g_indirect[0] = groupCount(totalCount, pushConstant.tileSize);
