@@ -324,6 +324,18 @@ void CommandEncoder::transferBufferToDevice(
     copyBuffer(
       staging_buffer, 0u, device_buffer, device_buffer_offset, host_data_size
     );
+    pipelineBufferBarriers({
+      {
+        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                      | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+                      ,
+        .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                       | VK_ACCESS_2_SHADER_WRITE_BIT,
+        .buffer = device_buffer.buffer,
+      },
+    });
   }
 }
 
