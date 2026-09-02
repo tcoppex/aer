@@ -2,19 +2,19 @@
 
 #include "../radix_interop.h"
 
-#define NUM_THREADS kRadixSize // <=> kRadixHistogramNumThreads
+#define WAVE_SIZE     32  // [enforced]
+
+#define NUM_THREADS   kRadixSize
+#define NUM_WAVES     ((NUM_THREADS) / (WAVE_SIZE))
 
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
 RadixPushConstant pushConstant;
 
-static const uint32_t kWaveSize = 32;
-static const uint32_t kMaxWavesPerWorkgroup = NUM_THREADS / kWaveSize;
-
 // ----------------------------------------------------------------------------
 
-groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
+groupshared uint32_t s_waveSums[NUM_THREADS];
 
 // ----------------------------------------------------------------------------
 

@@ -14,17 +14,17 @@
 //
 // ---------------------------------------------------------------------------
 
-#ifndef STATIC_CONST
-#define STATIC_CONST static const
+#ifdef __cplusplus
+#define ALIGNAS(x)  alignas(16)
+#else
+#define ALIGNAS(x)
 #endif
 
-// ---------------------------------------------------------------------------
+static const uint32_t kCompute_Preprocess_kernelSize_x  = 256;
+static const uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
+static const uint32_t kCompute_Duplicate_kernelSize_x   = 256;
 
-STATIC_CONST uint32_t kCompute_Preprocess_kernelSize_x  = 256;
-STATIC_CONST uint32_t kCompute_PrefixSum_kernelSize_x   = 256;
-STATIC_CONST uint32_t kCompute_Duplicate_kernelSize_x   = 256;
-
-STATIC_CONST uint32_t kTileResolution = 16u;
+static const uint32_t kTileResolution = 16u;
 
 // ---------------------------------------------------------------------------
 
@@ -40,8 +40,9 @@ struct UniformBufferData {
 struct PushConstant {
   uint32_t numElems;              // kernel max threads count.
   uint32_t maxCapacity;           // limit for output with dynamic bounds.
+  // ----
   uint32_t tileSize;              // use only by resetTotalCountIndirect.
-  uint32_t pad0_[1];
+  uint32_t radixSize;             // ~
   // ----
   uint64_t uniform_addr;
   uint64_t gaussian_addr;
@@ -59,21 +60,21 @@ struct PushConstant {
 
 // ---------------------------------------------------------------------------
 
-struct /*alignas(16)*/ GaussianData {
+struct ALIGNAS(16) GaussianData {
   float4 position;
   float4 rotation;
   float4 scale;
   float4 color;
 };
 
-struct SplatOutput {
+struct ALIGNAS(16) SplatOutput {
   float4 color;
   float3 conic;
   float depth;
   float2 screen_pos;
   uint2 minTile;
   uint2 maxTile;
-  // uint32_t pad0_[2];
+  uint32_t pad0_[2];
 };
 
 // ---------------------------------------------------------------------------

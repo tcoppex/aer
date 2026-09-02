@@ -76,16 +76,16 @@ void main(
   uint tid : SV_GroupIndex
 )
 {
-  let g_histogram     = (uint32_t*)pushConstant.histogram_addr;
+  let g_histogram   = (uint32_t*)pushConstant.histogram_addr;
 
-  let g_descriptor    = (uint32_t*)pushConstant.descriptor_addr;
-  let g_counter       = (uint32_t*)pushConstant.counter_addr;
+  let g_descriptor  = (uint32_t*)pushConstant.descriptor_addr;
+  let g_counter     = (uint32_t*)pushConstant.counter_addr;
 
-  let g_keysIn        = (uint64_t*)pushConstant.unsorted_keys_addr;
-  let g_valuesIn      = (uint32_t*)pushConstant.unsorted_values_addr;
+  let g_keysIn      = (uint64_t*)pushConstant.unsorted_keys_addr;
+  let g_valuesIn    = (uint32_t*)pushConstant.unsorted_values_addr;
 
-  let g_keysOut       = (uint64_t*)pushConstant.sorted_keys_addr;
-  let g_valuesOut     = (uint32_t*)pushConstant.sorted_values_addr;
+  let g_keysOut     = (uint64_t*)pushConstant.sorted_keys_addr;
+  let g_valuesOut   = (uint32_t*)pushConstant.sorted_values_addr;
 
   // ---------------
 
@@ -161,13 +161,16 @@ void main(
 
   // Apply per digit aggregate & decoupled look back.
 
-  let tileDescriptor = g_descriptor + (tileID * NUM_THREADS + tid) * NUM_FLAGS;
+  let tileDescriptor = g_descriptor
+                     + (tileID * NUM_THREADS + tid) * NUM_FLAGS;
 
   if (tileID == 0) {
+
     s_tileExclusivePrefix[tid] = 0;
     tileDescriptor[PREFIX] = localAggregate;
     AllMemoryBarrier();
     atomicExchange(tileDescriptor, PREFIX);
+
   } else {
     tileDescriptor[AGGREGATE] = localAggregate;
     AllMemoryBarrier();
@@ -177,7 +180,8 @@ void main(
     uint32_t exclusivePrefix = 0;
 
     while (true) {
-      let prevDescriptor = g_descriptor + (lookbackIndex * NUM_THREADS + tid) * NUM_FLAGS;
+      let prevDescriptor = g_descriptor
+                         + (lookbackIndex * NUM_THREADS + tid) * NUM_FLAGS;
       let flag = atomicLoad(prevDescriptor);
 
       if (flag == PREFIX)
