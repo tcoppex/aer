@@ -14,7 +14,7 @@ RadixPushConstant pushConstant;
 
 // ----------------------------------------------------------------------------
 
-groupshared uint32_t s_waveSums[NUM_THREADS];
+groupshared uint32_t s_waveSums[NUM_THREADS]; //
 
 // ----------------------------------------------------------------------------
 
@@ -34,7 +34,10 @@ uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
 
   if (waveID == 0) {
     let waveVal = (tid < waveCount) ? s_waveSums[tid] : 0;
-    s_waveSums[tid] = WavePrefixSum(waveVal); //
+    let prefix = WavePrefixSum(waveVal);
+    if (tid < waveCount) {
+      s_waveSums[tid] = prefix;
+    }
   }
   GroupMemoryBarrierWithGroupSync();
 

@@ -1,5 +1,7 @@
 // ----------------------------------------------------------------------------
 //
+//    Exclusive PrefixSum (scan) to compute tile count offsets.
+//
 // Reference:
 //   " Single-pass Parallel Prefix Scan with Decoupled Look-back "
 //      from Duane Merrill & Michael Garland
@@ -8,22 +10,23 @@
 
 #include "../interop.h" //
 
-#define NUM_THREADS kCompute_PrefixSum_kernelSize_x
+// [wave size is enforced on the framework via subgroup size control]
+#define WAVE_SIZE     32
+
+#define NUM_THREADS   kCompute_PrefixSum_kernelSize_x
+#define NUM_WAVES     ((NUM_THREADS) / (WAVE_SIZE))
 
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
 PushConstant pushConstant;
 
-static const uint32_t kWaveSize = 32; // [enforced on the CPU]
-static const uint32_t kMaxWavesPerWorkgroup = NUM_THREADS / kWaveSize;
-
 // ----------------------------------------------------------------------------
 
-groupshared uint32_t s_waveSums[kMaxWavesPerWorkgroup];
 groupshared uint32_t s_tileID;
-groupshared uint32_t s_tileAggregate;
 groupshared uint32_t s_tileExclusivePrefix;
+groupshared uint32_t s_tileAggregate;
+groupshared uint32_t s_waveSums[NUM_THREADS]; // (only use NUM_WAVES)
 
 // ----------------------------------------------------------------------------
 
@@ -70,13 +73,17 @@ uint32_t blockScanAndExtractOffset(uint32_t val, uint32_t tid) {
   // Calculate the Workgroup offset at the start of each wave.
   if (waveID == 0) {
     let waveVal = (tid < waveCount) ? s_waveSums[tid] : 0;
-    s_waveSums[tid] = WavePrefixSum(waveVal);
-
+    let prefix = WavePrefixSum(waveVal);
+    if (tid < waveCount) {
+      s_waveSums[tid] = prefix;
+    }
+    // ------------------------------------
     // Block-wide total
     let total = WaveActiveSum(waveVal);
     if (tid == 0) {
       s_tileAggregate = total;
     }
+    // ------------------------------------
   }
   GroupMemoryBarrierWithGroupSync();
 
