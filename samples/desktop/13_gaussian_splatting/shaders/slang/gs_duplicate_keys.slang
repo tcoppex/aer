@@ -40,7 +40,7 @@ void main(
     for (var x = splat.minTile.x; x < splat.maxTile.x; ++x) {
       let tileId = y * tileResX + x;
 
-      if (offset < pushConstant.maxCapacity) {
+      if (offset < pushConstant.maxKeyValueCapacity) {
         out_key[offset]   = (uint64_t(tileId) << 32) | uint64_t(asuint(splat.depth));
         out_value[offset] = gid;
       }

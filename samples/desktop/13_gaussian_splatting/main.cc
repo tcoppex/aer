@@ -214,6 +214,7 @@ class SampleApp final : public Application {
           counts,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
           | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+          , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
         );
       }
       else
@@ -222,7 +223,7 @@ class SampleApp final : public Application {
           gaussians_count_ * sizeof(uint32_t),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
           | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-          // , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+          , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
         );
       }
 
@@ -231,7 +232,7 @@ class SampleApp final : public Application {
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-        // , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
       );
 
       // --------------------------------------
@@ -498,22 +499,22 @@ class SampleApp final : public Application {
 
       cmd.dispatch();
 
-      // [DEBUG]
-      // cmd.pipelineBufferBarriers({
-      //   {
-      //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-      //     .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-      //     .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-      //     .buffer = total_indirect.buffer,
-      //   },
-      // });
+      if constexpr(kEnableDebugRun)
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+          .buffer = total_indirect.buffer,
+        },
+      });
     }
 
     context_.finishTransientCommandEncoder(cmd);
 
     // LOGI("> mapping post prefix Indirect + Total Count");
-    // debugMapBuffer(total_indirect, 0, 4, 4);
+    // debugMapBuffer(total_indirect, 0, 8, 4);
   }
 
   void dispatchRadixSort(
@@ -719,54 +720,48 @@ class SampleApp final : public Application {
     context_.finishTransientCommandEncoder(cmd);
 
     // [ As kRadixNumPasses is even, the final sort is always the first section ]
-
-    if constexpr (kEnableDebugRun)
-    {
-      LOGI("> map key outputs <first>");
-      debugMapBuffer<uint64_t>(keys, 0u, kDebugBufferSize, 256u);
-
-      LOGI("> map key outputs <second>");
-      debugMapBuffer<uint64_t>(keys, kDebugBufferSize, 2*kDebugBufferSize, 256u);
-
-      exit(-1);
-    }
   }
 
   void update(float const dt) final {
     // Camera Uniform Data.
-    host_data_.viewMatrix       = camera_.view();
-    host_data_.projectionMatrix = camera_.proj();
-    host_data_.tanFov           = camera_.tan_fovs();
-    host_data_.focal            = camera_.focals();
-    host_data_.resolution       = float2(
-      static_cast<float>(camera_.width()),
-      static_cast<float>(camera_.height())
-    );
-    context_.writeBuffer(uniform_buffer_, host_data_);
+    {
+      host_data_.viewMatrix       = camera_.view();
+      host_data_.projectionMatrix = camera_.proj();
+      host_data_.tanFov           = camera_.tan_fovs();
+      host_data_.focal            = camera_.focals();
+      host_data_.resolution       = float2(
+        static_cast<float>(camera_.width()),
+        static_cast<float>(camera_.height())
+      );
+      context_.writeBuffer(uniform_buffer_, host_data_);
+    }
 
-    // PushConstant buffers address.
+    // PushConstant setup.
+    {
+      push_constant_.numElems               = gaussians_count_;
+      push_constant_.maxKeyValueCapacity    = splat_kv_heuristic_size_;
 
-    push_constant_.numElems               = gaussians_count_;
-    push_constant_.maxCapacity            = gaussians_count_; //
+      push_constant_.tileSize               = shader_interop::kTileSize;
+      push_constant_.radixSize              = shader_interop::kRadixSize;
 
-    push_constant_.uniform_addr           = uniform_buffer_.address;
-    push_constant_.gaussian_addr          = gaussian_sbo_.address;
-    push_constant_.splat_addr             = splat_sbo_.address;
-    push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
+      push_constant_.uniform_addr           = uniform_buffer_.address;
+      push_constant_.gaussian_addr          = gaussian_sbo_.address;
+      push_constant_.splat_addr             = splat_sbo_.address;
+      push_constant_.scan_input_addr        = splat_tilecount_sbo_.address;
 
-    push_constant_.unsorted_keys_addr     = splat_keys_sbo_.address;
-    push_constant_.unsorted_values_addr   = splat_values_sbo_.address;
+      push_constant_.unsorted_keys_addr     = splat_keys_sbo_.address;
+      push_constant_.unsorted_values_addr   = splat_values_sbo_.address;
+    }
 
     // -------------------------------------------
     //  For debugging purpose we are currently using one command encoder
     //  per "pass", but later on we will use just one.
     // -------------------------------------------
+
 #if 0
     // 1. Preprocess 3D Gaussian splats to tiled 2D screen space.
     {
       auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
-      push_constant_.numElems = gaussians_count_;
 
       cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -791,19 +786,20 @@ class SampleApp final : public Application {
       });
 
       context_.finishTransientCommandEncoder(cmd);
-
-      // -------------------------------------------
-      if constexpr (false && kEnableDebugRun)
-      {
-        LOGI("Total original Gaussian : {}", gaussians_count_);
-
-        uint32_t nSize = push_constant_.numElems / 1500; //
-        LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
-
-        debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
-      }
-      // -------------------------------------------
     }
+#endif
+
+    // -------------------------------------------
+    if constexpr (kEnableDebugRun)
+    {
+      LOGI("Total original Gaussian : {}", gaussians_count_);
+      uint32_t nSize = push_constant_.numElems; //
+      LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
+      debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
+    }
+    // -------------------------------------------
+
+#if 1
 
     // 2. Calculate tile offsets.
     dispatchPrefixSum(
@@ -814,15 +810,19 @@ class SampleApp final : public Application {
       indirect_kv_count_sbo_
     );
 
+#endif
+
+#if 1
     // 3. Create the keys-value pairs.
     {
       auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
 
-      push_constant_.numElems    = gaussians_count_;
-      push_constant_.maxCapacity = splat_kv_heuristic_size_;
-
       cmd.bindPipeline(compute_pipelines_[GSCompute_DuplicateKeys]);
+
+      push_constant_.numElems             = gaussians_count_;
+      push_constant_.maxKeyValueCapacity  = splat_kv_heuristic_size_;
       cmd.pushConstant(push_constant_, VK_SHADER_STAGE_COMPUTE_BIT);
+
       cmd.runKernel<shader_interop::kCompute_Duplicate_kernelSize_x>(
         push_constant_.numElems
       );
@@ -831,6 +831,12 @@ class SampleApp final : public Application {
     }
 #endif
 
+    if constexpr (kEnableDebugRun)
+    {
+      LOGI("> pre sort KEYS output <first>");
+      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, kDebugBufferSize, 256u);
+    }
+
     // 4. Sort key-value pairs.
     dispatchRadixSort(
       indirect_kv_count_sbo_,
@@ -838,11 +844,16 @@ class SampleApp final : public Application {
       splat_values_sbo_
     );
 
+    if constexpr (kEnableDebugRun)
+    {
+      LOGI("> post sort KEYS output <first>");
+      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, kDebugBufferSize, 256u);
+    }
 
     if constexpr (kEnableDebugRun) {
       static int frame = 0;
-      if (++frame == 3) {
-        // exit(-1);
+      if (++frame == 1) {
+        exit(-1);
       }
       LOGI("------------------------------->");
     }
