@@ -165,15 +165,15 @@ void main(
                      + (tileID * NUM_THREADS + tid) * NUM_FLAGS;
 
   if (tileID == 0) {
-
     s_tileExclusivePrefix[tid] = 0;
     tileDescriptor[PREFIX] = localAggregate;
-    AllMemoryBarrier();
-    atomicExchange(tileDescriptor, PREFIX);
+    DeviceMemoryBarrier();
 
+    atomicExchange(tileDescriptor, PREFIX);
   } else {
     tileDescriptor[AGGREGATE] = localAggregate;
-    AllMemoryBarrier();
+    DeviceMemoryBarrier();
+
     atomicExchange(tileDescriptor, AGGREGATE);
 
     uint32_t lookbackIndex = tileID - 1;
@@ -197,9 +197,8 @@ void main(
     }
 
     s_tileExclusivePrefix[tid] = exclusivePrefix;
-
     tileDescriptor[PREFIX] = exclusivePrefix + localAggregate;
-    AllMemoryBarrier();
+    DeviceMemoryBarrier();
 
     atomicExchange(tileDescriptor, PREFIX);
   }

@@ -117,7 +117,8 @@ void main(uint tid : SV_GroupIndex)
     }
     if (tid == 0) {
       tileDescriptor[PREFIX] = localAggregate;
-      AllMemoryBarrier();
+      DeviceMemoryBarrier();
+
       atomicExchange(tileDescriptor, PREFIX);
     }
     return;
@@ -125,7 +126,8 @@ void main(uint tid : SV_GroupIndex)
 
   if (tid == 0) {
     tileDescriptor[AGGREGATE] = localAggregate;
-    AllMemoryBarrier();
+    DeviceMemoryBarrier();
+
     atomicExchange(tileDescriptor, AGGREGATE);
 
     uint lookbackIndex = tileID - 1;
@@ -148,9 +150,9 @@ void main(uint tid : SV_GroupIndex)
     }
 
     s_tileExclusivePrefix = exclusivePrefix;
-
     tileDescriptor[2] = exclusivePrefix + localAggregate;
-    AllMemoryBarrier();
+    DeviceMemoryBarrier();
+
     atomicExchange(tileDescriptor, PREFIX);
   }
   GroupMemoryBarrierWithGroupSync();
