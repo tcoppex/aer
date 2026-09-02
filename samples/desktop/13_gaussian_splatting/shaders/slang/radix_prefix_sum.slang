@@ -56,10 +56,9 @@ void main(
   let g_histograms = (uint32_t*)pushConstant.histogram_addr;
   let h_index = groupID.x * NUM_THREADS + tid;
 
-  let count   = g_histograms[h_index];
-  let offset  = blockScanAndExtractOffset(count, tid);
+  let count  = g_histograms[h_index];
+  let offset = blockScanAndExtractOffset(count, tid);
 
-  // Update the histogram in-place.
   g_histograms[h_index] = offset;
 }
 

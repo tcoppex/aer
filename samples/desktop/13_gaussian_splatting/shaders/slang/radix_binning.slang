@@ -166,6 +166,7 @@ void main(
 
   if (tileID == 0) {
     s_tileExclusivePrefix[tid] = 0;
+
     tileDescriptor[PREFIX] = localAggregate;
     DeviceMemoryBarrier();
 
@@ -197,6 +198,7 @@ void main(
     }
 
     s_tileExclusivePrefix[tid] = exclusivePrefix;
+
     tileDescriptor[PREFIX] = exclusivePrefix + localAggregate;
     DeviceMemoryBarrier();
 

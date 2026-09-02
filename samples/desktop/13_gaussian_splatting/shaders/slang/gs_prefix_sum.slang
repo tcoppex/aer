@@ -110,16 +110,17 @@ void main(uint tid : SV_GroupIndex)
   let baseIndex   = tileID * NUM_THREADS;
   let globalIndex = baseIndex + tid;
 
-  let val = (globalIndex < pushConstant.numElems)
-    ? g_scan_input[globalIndex]
-    : 0;
+  let isValid     = globalIndex < pushConstant.numElems;
+
+  let val = isValid ? g_scan_input[globalIndex]
+                    : 0;
   let localPrefix = blockScanAndExtractOffset(val, tid);
   let localAggregate = s_tileAggregate;
 
   uint32_t *tileDescriptor = g_descriptor + tileID * NUM_FLAGS;
 
   if (tileID == 0) {
-    if (globalIndex < pushConstant.numElems) {
+    if (isValid) {
       g_scan_output[globalIndex] = localPrefix;
     }
     if (tid == 0) {
@@ -157,15 +158,17 @@ void main(uint tid : SV_GroupIndex)
     }
 
     s_tileExclusivePrefix = exclusivePrefix;
-    tileDescriptor[2] = exclusivePrefix + localAggregate;
+    tileDescriptor[PREFIX] = exclusivePrefix + localAggregate;
     DeviceMemoryBarrier();
 
     atomicExchange(tileDescriptor, PREFIX);
   }
   GroupMemoryBarrierWithGroupSync();
 
-  if (globalIndex < pushConstant.numElems) {
-    let scanResult = localPrefix + s_tileExclusivePrefix;
+  if (isValid) {
+    let scanResult = localPrefix
+                   + s_tileExclusivePrefix
+                   ;
     g_scan_output[globalIndex] = scanResult;
   }
 }
