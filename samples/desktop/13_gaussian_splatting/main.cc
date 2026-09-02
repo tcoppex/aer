@@ -21,7 +21,7 @@ namespace shader_interop {
 class SampleApp final : public Application {
  public:
   static constexpr bool kEnableDebugRun{ false };
-  static constexpr uint32_t kDebugBufferSize{ 1 << 23 /*1157141*/ };
+  static constexpr uint32_t kDebugBufferSize{ 281 /*1157141*/ };
 
   static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 8 }; //
 
@@ -257,24 +257,26 @@ class SampleApp final : public Application {
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
-        // , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
       );
       key_count_offset_           = 3u * sizeof(uint32_t);
       indirect_histogram_offset_  = 0u;
       indirect_binning_offset_    = 4u * sizeof(uint32_t);
 
-      // if constexpr (kEnableDebugRun) {
-      //   uint32_t *buffer;
-      //   context_.mapMemory(indirect_kv_count_sbo_, &buffer);
-      //     buffer[0] = vk_utils::GetKernelGridDim(
-      //       kDebugBufferSize,
-      //       shader_interop::kTileSize //
-      //     );
-      //     buffer[1] = 1;
-      //     buffer[2] = 1;
-      //     buffer[3] = kDebugBufferSize;
-      //   context_.unmapMemory(indirect_kv_count_sbo_);
-      // }
+      // if we bypass the gaussian pipeline / prefix sum
+      // we need to specify the (debug) indirect buffer directly.
+      if constexpr (kEnableDebugRun) {
+        uint32_t *buffer;
+        context_.mapMemory(indirect_kv_count_sbo_, &buffer);
+          buffer[0] = vk_utils::GetKernelGridDim(kDebugBufferSize, shader_interop::kTileSize);
+          buffer[1] = 1;
+          buffer[2] = 1;
+          buffer[3] = kDebugBufferSize;
+          buffer[4] = vk_utils::GetKernelGridDim(kDebugBufferSize, shader_interop::kRadixSize);
+          buffer[5] = 1;
+          buffer[6] = 1;
+        context_.unmapMemory(indirect_kv_count_sbo_);
+      }
     }
 
     /* Create the Compute Pipelines */
@@ -608,35 +610,6 @@ class SampleApp final : public Application {
       });
     }
 
-    // context_.finishTransientCommandEncoder(cmd);
-    // // debug
-    // if constexpr (kEnableDebugRun) {
-    //   uint32_t *buffer;
-    //   context_.mapMemory(indirect_key_count, &buffer);
-    //     buffer[0] = vk_utils::GetKernelGridDim(
-    //       kDebugBufferSize,
-    //       shader_interop::kRadixSize //
-    //     );
-    //     buffer[1] = 1;
-    //     buffer[2] = 1;
-    //     buffer[3] = kDebugBufferSize;
-    //   context_.unmapMemory(indirect_kv_count_sbo_);
-    // }
-    // cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-    // cmd.pipelineBufferBarriers({
-    //   {
-    //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-    //     .dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT
-    //                   | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
-    //                   ,
-    //     .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT
-    //                    | VK_ACCESS_2_SHADER_READ_BIT
-    //                    ,
-    //     .buffer = indirect_key_count.buffer,
-    //   },
-    // });
-
     // 3. OneSweep Digit Binning Kernel
     cmd.bindPipeline(radix_.pipelines[RadixCompute_Binning]);
 
@@ -725,42 +698,37 @@ class SampleApp final : public Application {
     }
 
     // [DEBUG]
-    // cmd.pipelineBufferBarriers({
-    //   {
-    //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-    //     .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-    //     .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-    //     .buffer = keys.buffer,
-    //   },
-    //   {
-    //     .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //     .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-    //     .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-    //     .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-    //     .buffer = histograms.buffer,
-    //   },
-    // });
+    if constexpr (kEnableDebugRun)
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+        .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+        .buffer = keys.buffer,
+      },
+      {
+        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+        .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+        .buffer = histograms.buffer,
+      },
+    });
 
     context_.finishTransientCommandEncoder(cmd);
 
+    // [ As kRadixNumPasses is even, the final sort is always the first section ]
 
     if constexpr (kEnableDebugRun)
     {
-      // LOGI("> map histogram");
-      // debugMapBuffer<uint32_t>(
-      //   histograms, 0u,
-      //   kDebugBufferSize, // shader_interop::kRadixHistogramSize,
-      //   256u
-      // );
+      LOGI("> map key outputs <first>");
+      debugMapBuffer<uint64_t>(keys, 0u, kDebugBufferSize, 256u);
 
-      // LOGI("> map key outputs <first>");
-      // debugMapBuffer<uint64_t>(keys, 0u, kDebugBufferSize, 256u);
+      LOGI("> map key outputs <second>");
+      debugMapBuffer<uint64_t>(keys, kDebugBufferSize, 2*kDebugBufferSize, 256u);
 
-      // LOGI("> map key outputs <second>");
-      // debugMapBuffer<uint64_t>(keys, kDebugBufferSize, 2*kDebugBufferSize, 256u);
-
-      // exit(-1);
+      exit(-1);
     }
   }
 
