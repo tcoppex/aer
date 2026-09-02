@@ -7,6 +7,11 @@ PushConstant pushConstant;
 
 // ----------------------------------------------------------------------------
 
+[ForceInline]
+uint32_t groupCount(uint32_t numElems, uint32_t threadsPerGroup) {
+  return (numElems + threadsPerGroup - 1) / threadsPerGroup;
+}
+
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void main()
@@ -19,7 +24,7 @@ void main()
   let totalCount = lastOffset + lastCount;
 
   // Radix histogram grid dimension.
-  g_indirect[0] = uint32_t(ceil(totalCount / pushConstant.tileSize));
+  g_indirect[0] = groupCount(totalCount, pushConstant.tileSize);
   g_indirect[1] = 1;
   g_indirect[2] = 1;
 
@@ -27,7 +32,7 @@ void main()
   g_indirect[3] = totalCount;
 
   // Radix digit binning grid dimension.
-  g_indirect[4] = uint32_t(ceil(totalCount / pushConstant.radixSize));
+  g_indirect[4] = groupCount(totalCount, pushConstant.radixSize);
   g_indirect[5] = 1;
   g_indirect[6] = 1;
 }
