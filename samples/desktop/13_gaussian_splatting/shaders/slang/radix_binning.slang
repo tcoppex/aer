@@ -200,6 +200,7 @@ void main(
 
     tileDescriptor[PREFIX] = exclusivePrefix + localAggregate;
     AllMemoryBarrier();
+
     atomicExchange(tileDescriptor, PREFIX);
   }
   GroupMemoryBarrierWithGroupSync();
@@ -207,7 +208,7 @@ void main(
   // ---------------
 
   if (isValid) {
-    let out_index = g_histogram[pushConstant.pass + NUM_THREADS + digit]
+    let out_index = g_histogram[pushConstant.pass * NUM_THREADS + digit]
                   + s_tileExclusivePrefix[digit]
                   + localRank
                   ;
@@ -215,6 +216,7 @@ void main(
     g_keysOut[out_index]    = key;
     g_valuesOut[out_index]  = value;
   }
+
 }
 
 // ----------------------------------------------------------------------------
