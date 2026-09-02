@@ -346,12 +346,11 @@ backend::Buffer Context::transientCreateBuffer(
   void const* host_data,
   size_t host_data_size,
   VkBufferUsageFlags2KHR usage,
-  size_t device_buffer_offset,
-  size_t device_buffer_size
+  VmaMemoryUsage const memory_usage
 ) const {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
   auto buffer = cmd.createBufferAndUpload(
-    host_data, host_data_size, usage, device_buffer_offset, device_buffer_size
+    host_data, host_data_size, usage, memory_usage
   );
   finishTransientCommandEncoder(cmd);
   return buffer;

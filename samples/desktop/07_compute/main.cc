@@ -92,6 +92,7 @@ class SampleApp final : public Application {
         mesh.vertex = cmd.createBufferAndUpload(
           mesh.geo.vertices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+          VMA_MEMORY_USAGE_GPU_ONLY,
           vertex_buffer_bytesize_, 2u * vertex_buffer_bytesize_
         );
 
@@ -99,6 +100,7 @@ class SampleApp final : public Application {
         mesh.index = cmd.createBufferAndUpload(
           mesh.geo.indices(),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+          VMA_MEMORY_USAGE_GPU_ONLY,
           0u, 2u * index_buffer_bytesize_
         );
       }

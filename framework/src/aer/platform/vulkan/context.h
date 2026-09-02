@@ -325,8 +325,7 @@ class Context {
     void const* host_data,
     size_t host_data_size,
     VkBufferUsageFlags2KHR usage,
-    size_t device_buffer_offset = 0u,
-    size_t device_buffer_size = 0u
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO
   ) const;
 
   template<SpanConvertible T>
@@ -334,15 +333,14 @@ class Context {
   backend::Buffer transientCreateBuffer(
     T const& host_data,
     VkBufferUsageFlags2KHR usage,
-    size_t device_buffer_offset = 0u,
-    size_t device_buffer_size = 0u
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO
   ) const {
     auto const host_span{ std::span(host_data) };
     auto const bytesize{
       sizeof(typename decltype(host_span)::element_type) * host_span.size()
     };
     return transientCreateBuffer(
-      host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
+      host_span.data(), bytesize, usage, memory_usage
     );
   }
 

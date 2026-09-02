@@ -253,6 +253,7 @@ class CommandEncoder : public GenericCommandEncoder {
     void const* host_data,
     size_t const host_data_size,
     VkBufferUsageFlags2KHR const usage,
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     size_t const device_buffer_offset = 0u,
     size_t const device_buffer_size = 0u
   ) const;
@@ -262,6 +263,7 @@ class CommandEncoder : public GenericCommandEncoder {
   backend::Buffer createBufferAndUpload(
     T const& host_data,
     VkBufferUsageFlags2KHR const usage = {},
+    VmaMemoryUsage const memory_usage = VMA_MEMORY_USAGE_AUTO,
     size_t const device_buffer_offset = 0u,
     size_t const device_buffer_size = 0u
   ) const {
@@ -270,7 +272,7 @@ class CommandEncoder : public GenericCommandEncoder {
       sizeof(typename decltype(host_span)::element_type) * host_span.size()
     };
     return createBufferAndUpload(
-      host_span.data(), bytesize, usage, device_buffer_offset, device_buffer_size
+      host_span.data(), bytesize, usage, memory_usage, device_buffer_offset, device_buffer_size
     );
   }
 

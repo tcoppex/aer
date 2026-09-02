@@ -333,21 +333,23 @@ backend::Buffer CommandEncoder::createBufferAndUpload(
   void const* host_data,
   size_t const host_data_size,
   VkBufferUsageFlags2KHR const usage,
+  VmaMemoryUsage const memory_usage,
   size_t const device_buffer_offset,
   size_t const device_buffer_size
 ) const {
   LOG_CHECK(host_data != nullptr);
   LOG_CHECK(host_data_size > 0u);
 
-  size_t const buffer_bytesize = (device_buffer_size > 0) ? device_buffer_size
-                                                          : host_data_size
-                                                          ;
+  size_t const buffer_bytesize = (device_buffer_size > 0)
+                                ? device_buffer_size
+                                : host_data_size
+                                ;
   LOG_CHECK(host_data_size <= buffer_bytesize);
 
   auto device_buffer{allocator_ptr_->createBuffer(
     static_cast<VkDeviceSize>(buffer_bytesize),
     usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-    VMA_MEMORY_USAGE_GPU_ONLY
+    memory_usage
   )};
   transferBufferToDevice(
     host_data, host_data_size, device_buffer, device_buffer_offset
