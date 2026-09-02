@@ -291,10 +291,10 @@ class SampleApp final : public Application {
       });
 
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-        "gaussian_preprocess.slang",
-        "prefix_sum.slang",
-        "reset_indirect_buffers.slang",
-        "gaussian_duplicate_keys.slang",
+        "gs_preprocess.slang",
+        "gs_prefix_sum.slang",
+        "gs_reset_indirect.slang",
+        "gs_duplicate_keys.slang",
       });
       context_.createComputePipelines(
         pipeline_layout_,
