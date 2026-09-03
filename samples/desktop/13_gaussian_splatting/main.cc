@@ -440,6 +440,7 @@ class GaussianSplatSample final : public Application {
 
   /* Compute Splats tiles offsets. */
   void dispatchPrefixSum(
+    CommandEncoder const& cmd,
     uint32_t const inputSize,
     backend::Buffer const& input,
     backend::Buffer const& output,
@@ -456,20 +457,11 @@ class GaussianSplatSample final : public Application {
     pc.scan_descriptor_addr = descriptor.address;
     pc.scan_counter_addr    = descriptor.address + prefix_descriptor_count_offset_;
     pc.scan_indirect_count_addr = total_indirect.address;
-
-    // ---------------
-
-    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
     cmd.pushConstant(pc, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
     // 1. Clear both descriptor flags AND the atomic counter.
     {
       cmd.fillBuffer(descriptor, 0u);
-
-      // (debug only, should not be needed)
-      cmd.fillBuffer(output, 0u);
-
       cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -503,7 +495,7 @@ class GaussianSplatSample final : public Application {
     {
       cmd.bindPipeline(compute_pipelines_[GSCompute_DecoupledPrefixSum]);
       cmd.runKernel<shader_interop::kCompute_PrefixSum_kernelSize_x>(
-        inputSize
+        pc.numElems
       );
     }
 
@@ -529,28 +521,11 @@ class GaussianSplatSample final : public Application {
       });
 
       cmd.dispatch();
-
-      if constexpr(kEnableDebugRun)
-      cmd.pipelineBufferBarriers({
-        {
-          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-          .buffer = total_indirect.buffer,
-        },
-      });
-    }
-
-    context_.finishTransientCommandEncoder(cmd);
-
-    if constexpr(kEnableDebugRun) {
-      LOGI("> mapping post prefix Indirect + Total Count");
-      debugMapBuffer(total_indirect, 0, 8, 4);
     }
   }
 
   void dispatchRadixSort(
+    CommandEncoder const& cmd,
     backend::Buffer const& indirect_key_count,
     backend::Buffer const& keys,
     backend::Buffer const& values
@@ -571,13 +546,11 @@ class GaussianSplatSample final : public Application {
     pc.descriptor_addr      = descriptor.address;
     pc.counter_addr         = descriptor.address + radix_.descriptor_size * sizeof(uint32_t);
     pc.pass                 = {};
-
-    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
     cmd.pushConstant(pc, radix_.layout, VK_SHADER_STAGE_COMPUTE_BIT);
 
-    // 1. Compute Histograms
+    // 1. Compute Histogram.
     {
+      // Reset [todo in shader instead ?]
       cmd.fillBuffer(histograms, 0u);
       cmd.pipelineBufferBarriers({
         {
@@ -610,9 +583,7 @@ class GaussianSplatSample final : public Application {
       });
 
       cmd.bindPipeline(radix_.pipelines[RadixCompute_Histogram]);
-
       cmd.dispatchIndirect(indirect_key_count, indirect_histogram_offset_);
-
       cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -629,9 +600,7 @@ class GaussianSplatSample final : public Application {
     // 2. Exclusive Sum (Global Prefix Scan on Histograms)
     {
       cmd.bindPipeline(radix_.pipelines[RadixCompute_PrefixSum]);
-
       cmd.dispatch(shader_interop::kRadixNumPasses);
-
       cmd.pipelineBufferBarriers({
         {
           .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -652,6 +621,7 @@ class GaussianSplatSample final : public Application {
     auto src_vals = values.address;
     auto dst_vals = values.address + values_buffer_size;
 
+    // [ As kRadixNumPasses is even, the final sort is always the first section ]
     for (uint32_t pass = 0; pass < shader_interop::kRadixNumPasses; ++pass)
     {
       if (pass > 0) {
@@ -666,7 +636,10 @@ class GaussianSplatSample final : public Application {
           }
         });
       }
-      // Clear descriptors AND atomic tile counter
+
+      // Clear descriptors AND atomic tile counter.
+      // -------------------------------------
+      // [probably have room for optimizations here]
       cmd.fillBuffer(descriptor, 0u);
       cmd.pipelineBufferBarriers({
         {
@@ -678,6 +651,7 @@ class GaussianSplatSample final : public Application {
           .buffer = descriptor.buffer,
         }
       });
+      // -------------------------------------
 
       pc.pass                   = pass;
       pc.unsorted_keys_addr     = src_keys;
@@ -724,61 +698,16 @@ class GaussianSplatSample final : public Application {
           .size          = values_buffer_size,
         },
       });
-
       cmd.dispatchIndirect(indirect_key_count, indirect_binning_offset_);
 
       std::swap(src_keys, dst_keys);
       std::swap(src_vals, dst_vals);
     }
-
-    // [DEBUG]
-    if constexpr (kEnableDebugRun)
-    cmd.pipelineBufferBarriers({
-      {
-        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-        .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-        .buffer = keys.buffer,
-      },
-      {
-        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-        .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-        .buffer = histograms.buffer,
-      },
-    });
-
-    context_.finishTransientCommandEncoder(cmd);
-
-    // [ As kRadixNumPasses is even, the final sort is always the first section ]
   }
 
-  void update(float const dt) final {
-    // Camera Uniform Data.
-    {
-      host_data_.viewMatrix       = camera_.view();
-      host_data_.projectionMatrix = camera_.proj();
-      host_data_.tanFov           = camera_.tan_fovs();
-      host_data_.focal            = camera_.focals();
-      host_data_.resolution       = float2(
-        static_cast<float>(camera_.width()),
-        static_cast<float>(camera_.height())
-      );
-      context_.writeBuffer(uniform_buffer_, host_data_);
-    }
-
-    // -------------------------------------------
-    //  For debugging purpose we are currently using one command encoder
-    //  per "pass", but later on we will use just one.
-    // -------------------------------------------
-
-
+  void runGaussianSplattingPipeline(CommandEncoder const& cmd) {
     // 1. Preprocess 3D Gaussian splats to tiled 2D screen space.
     {
-      auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
       cmd.bindPipeline(compute_pipelines_[GSCompute_Preprocess]);
 
       // [hack] Used to cull excedent tiles count ...
@@ -820,34 +749,11 @@ class GaussianSplatSample final : public Application {
       cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(
         push_constant_.numElems
       );
-
-      if constexpr(kEnableDebugRun)
-      cmd.pipelineBufferBarriers({
-        {
-          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-          .buffer = splat_tilecount_sbo_.buffer,
-        },
-      });
-
-      context_.finishTransientCommandEncoder(cmd);
     }
-
-    // -------------------------------------------
-    if constexpr (kEnableDebugRun)
-    {
-      LOGI("Total original Gaussian : {}", gaussians_count_);
-      uint32_t nSize = push_constant_.numElems; //
-      LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
-      debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
-      // exit(-1);
-    }
-    // -------------------------------------------
 
     // 2. Calculate tile offsets.
     dispatchPrefixSum(
+      cmd,
       gaussians_count_,
       splat_tilecount_sbo_,
       prefix_output_sbo_,
@@ -855,20 +761,8 @@ class GaussianSplatSample final : public Application {
       indirect_kv_count_sbo_
     );
 
-    // -------------------------------------------
-    if constexpr (kEnableDebugRun)
-    {
-      uint32_t nSize = push_constant_.numElems; //
-      LOGI("> mapping TILE OFFSET output.");
-      debugMapBuffer(prefix_output_sbo_, 0, nSize, 256);
-      // exit(-1);
-    }
-    // -------------------------------------------
-
     // 3. Create the keys-value pairs.
     {
-      auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
       cmd.bindPipeline(compute_pipelines_[GSCompute_DuplicateKeys]);
 
       auto pc = push_constant_;
@@ -911,28 +805,41 @@ class GaussianSplatSample final : public Application {
       cmd.runKernel<shader_interop::kCompute_Duplicate_kernelSize_x>(
         push_constant_.numElems
       );
-
-      if constexpr(kEnableDebugRun)
-      cmd.pipelineBufferBarriers({
-        {
-          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
-          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
-          .buffer = splat_keys_sbo_.buffer,
-        },
-      });
-
-      context_.finishTransientCommandEncoder(cmd);
     }
 
-    // ---------------------------------------------
-    // ---------------------------------------------
+    // 4. Sort key-value pairs.
+    // [This use 64bits key as per the original 2023 GS paper, but we might be
+    //  able to halve it to 32bits for performance gain.]
+    dispatchRadixSort(
+      cmd,
+      indirect_kv_count_sbo_,
+      splat_keys_sbo_,
+      splat_values_sbo_
+    );
+  }
 
-    uint32_t kv_real_size = 0;
-
-    if constexpr (kEnableDebugRun)
+  void update(float const dt) final {
+    // Camera Uniform Data.
     {
+      host_data_.viewMatrix       = camera_.view();
+      host_data_.projectionMatrix = camera_.proj();
+      host_data_.tanFov           = camera_.tan_fovs();
+      host_data_.focal            = camera_.focals();
+      host_data_.resolution       = float2(
+        static_cast<float>(camera_.width()),
+        static_cast<float>(camera_.height())
+      );
+      context_.writeBuffer(uniform_buffer_, host_data_);
+    }
+
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+    runGaussianSplattingPipeline(cmd);
+    context_.finishTransientCommandEncoder(cmd);
+
+    if constexpr (kEnableDebugRun) {
+      uint32_t const nSize = push_constant_.numElems; //
+      uint32_t kv_real_size = 0;
+
       uint32_t *indirect_buf;
       context_.mapMemory(indirect_kv_count_sbo_, &indirect_buf);
         kv_real_size = indirect_buf[3];
@@ -942,25 +849,19 @@ class GaussianSplatSample final : public Application {
         }
       context_.unmapMemory(indirect_kv_count_sbo_);
 
-      // LOGI("> pre sort KEYS output <first>");
-      // debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 2*kv_real_size, kv_real_size);
-      // exit(-1);
-    }
+      LOGI("> pre sort KEYS output <first>");
+      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 2*kv_real_size, kv_real_size);
 
-    // 4. Sort key-value pairs.
-    dispatchRadixSort(
-      indirect_kv_count_sbo_,
-      splat_keys_sbo_,
-      splat_values_sbo_
-    );
+      LOGI("Total original Gaussian : {}", gaussians_count_);
+      LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
+      debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
 
-    if constexpr (kEnableDebugRun)
-    {
+      LOGI("> mapping TILE OFFSET output.");
+      debugMapBuffer(prefix_output_sbo_, 0, nSize, 256);
+
       LOGI("> post sort KEYS output <first>");
       debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 1*kv_real_size, kv_real_size);
-    }
 
-    if constexpr (kEnableDebugRun) {
       static int frame = 0;
       if (++frame == 1) {
         exit(-1);
