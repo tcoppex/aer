@@ -16,28 +16,18 @@ PushConstant pushConstant;
 
 // ----------------------------------------------------------------------------
 
-float3x3 quaternionToMatrix(
-  in float4 qrot
-) {
+float3x3 quaternionToMatrix(in float4 qrot) {
   let x = qrot.x;
   let y = qrot.y;
   let z = qrot.z;
   let r = qrot.w; //
-
-  // Column major layout
-  float3 col0 = float3(1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y + r*z),       2.0 * (x*z - r*y));
-  float3 col1 = float3(      2.0 * (x*y - r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z + r*x));
-  float3 col2 = float3(      2.0 * (x*z + r*y),       2.0 * (y*z - r*x), 1.0 - 2.0 * (x*x + y*y));
-
+  let col0 = float3(1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y + r*z),       2.0 * (x*z - r*y));
+  let col1 = float3(      2.0 * (x*y - r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z + r*x));
+  let col2 = float3(      2.0 * (x*z + r*y),       2.0 * (y*z - r*x), 1.0 - 2.0 * (x*x + y*y));
   return float3x3(col0, col1, col2);
 }
 
-// ----------------
-
-float3x3 computeCovariance3D(
-  in float3 scale,
-  in float4 qrot
-) {
+float3x3 computeCovariance3D(in float3 scale, in float4 qrot) {
   let s = exp(scale);
   let S = float3x3(
     s.x, 0.0, 0.0,
@@ -48,8 +38,6 @@ float3x3 computeCovariance3D(
   let M = mul(R, S);
   return mul(M, transpose(M));
 }
-
-// ----------------
 
 float3x3 computeJacobian(
   in float3 position,
