@@ -140,8 +140,17 @@ if(TRUE)
     NAME OPENXR_SDK
     GITHUB_REPOSITORY KhronosGroup/OpenXR-SDK
     GIT_TAG release-1.1.52
+    SYSTEM YES
     # DOWNLOAD_ONLY YES
   )
+  
+  if(TARGET openxr_sdk)
+    target_compile_options(openxr_sdk PRIVATE -w)
+  endif()
+  if(TARGET openxr_jsoncpp)
+    target_compile_options(openxr_jsoncpp PRIVATE -w)
+  endif()
+
   set(OPENXR_INCLUDE_DIRS ${OPENXR_SDK_SOURCE_DIR}/include)
   set(OPENXR_LOADER_SHARED_LIBRARY OpenXR::openxr_loader)
 
@@ -254,7 +263,14 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 set(MINIPLY_INCLUDE_DIR "${miniply_SOURCE_DIR}")
-target_sources(${target} PRIVATE ${miniply_SOURCE_DIR}/miniply.cpp)
+
+set(MINIPLY_SRC ${miniply_SOURCE_DIR}/miniply.cpp)
+target_sources(${target} PRIVATE ${MINIPLY_SRC})
+set_source_files_properties(
+  ${MINIPLY_SRC}
+  PROPERTIES
+    COMPILE_OPTIONS "-Wno-shadow"
+)
 
 #-----------------------------------
 # Draco (not currently supported)
@@ -282,6 +298,7 @@ CPMAddPackage(
   NAME entt
   GITHUB_REPOSITORY skypjack/entt
   GIT_TAG v3.16.0
+  SYSTEM YES
   # OPTIONS
   #   "ENTT_INCLUDE_HEADERS ON"
   #   "ENTT_INCLUDE_NATVIS ON"

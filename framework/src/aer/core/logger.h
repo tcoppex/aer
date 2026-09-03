@@ -233,7 +233,12 @@ class Logger : public Singleton<Logger> {
 
 #define LOG_FATAL(...)  LOGE(__VA_ARGS__); exit(-1)
 #define LOG_LINE()      LOGD("{} {}", __FILE__, __LINE__)
+
+#if defined(NDEBUG)
+#define LOG_CHECK(x)    if (!(x)) { LOGE("" #x); }
+#else
 #define LOG_CHECK(x)    assert(x)
+#endif
 
 // ----------------------------------------------------------------------------
 // Disable Debug log on release.

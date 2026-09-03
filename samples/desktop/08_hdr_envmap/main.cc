@@ -260,9 +260,10 @@ class SampleApp final : public Application {
     for (auto const& mesh : scene_->meshes) {
       pass.setPrimitiveTopology(mesh->vk_primitive_topology());
 
+      auto root_matrix = scene_->root_matrix();
       push_constant_.model.worldMatrix = lina::mul(
         world_matrix,
-        scene_->root_matrix()
+        root_matrix //
       );
 
       for (auto const& submesh : mesh->submeshes) {

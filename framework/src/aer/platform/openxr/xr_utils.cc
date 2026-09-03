@@ -1,13 +1,15 @@
 #include "aer/platform/openxr/xr_utils.h"
 
+#include <bit>
+
 namespace xrutils {
 
 /* -------------------------------------------------------------------------- */
 
 mat4f PoseMatrix(XrPosef const& pose) {
   return lina::pose_matrix(
-    reinterpret_cast<vec4f const&>(pose.orientation),
-    reinterpret_cast<vec3f const&>(pose.position)
+    std::bit_cast<vec4f>(pose.orientation),
+    std::bit_cast<vec3f>(pose.position)
   );
 }
 

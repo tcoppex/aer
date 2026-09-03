@@ -76,6 +76,21 @@ bool HostResources::loadFile(std::string_view filename) {
 
 // ----------------------------------------------------------------------------
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnull-dereference"
+
+mat4 const& HostResources::root_matrix() const {
+  LOG_CHECK(scene_tree.registry.valid(scene_tree.root) && "Root entity must be valid");
+  return scene_tree
+    .registry
+    .get<component::GlobalTransform>(scene_tree.root)
+    .worldMatrix;
+}
+
+#pragma GCC diagnostic pop
+
+// ----------------------------------------------------------------------------
+
 /* [Work In Progress] */
 // Mesh* HostResources::createMesh(std::string_view mesh_name) {
 //   auto mesh = std::make_unique<Mesh>();

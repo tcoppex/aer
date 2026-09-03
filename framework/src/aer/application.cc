@@ -167,12 +167,12 @@ bool Application::presetup(AppData_t app_data) {
     default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
     Events::Get().registerCallbacks(default_callbacks_.get());
 
-    LOGI("> Retrieve original viewport size.");
+    LOGD("> Retrieve original viewport size.");
     viewport_size_ = {
       .width = wm_->surface_width(),
       .height = wm_->surface_height(),
     };
-    LOGI("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+    LOGD("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
   }
 
   /* Framework internal data. */

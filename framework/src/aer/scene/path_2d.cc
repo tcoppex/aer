@@ -1,7 +1,10 @@
 #include "aer/scene/path_2d.h"
 #include "aer/scene/mesh.h"
 
-#include "mapbox/earcut.hpp"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnull-dereference"
+#include "mapbox/earcut.hpp" //
+#pragma GCC diagnostic pop
 
 /* -------------------------------------------------------------------------- */
 

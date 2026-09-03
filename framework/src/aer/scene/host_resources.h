@@ -53,12 +53,7 @@ struct HostResources {
   }
 
   [[nodiscard]]
-  mat4 const& root_matrix() const {
-    return scene_tree
-      .registry
-      .get<component::GlobalTransform>(scene_tree.root)
-      .worldMatrix;
-  }
+  mat4 const& root_matrix() const;
 
  protected:
   [[nodiscard]]
