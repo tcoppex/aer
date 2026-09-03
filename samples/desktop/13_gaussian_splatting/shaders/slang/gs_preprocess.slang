@@ -24,7 +24,7 @@ float3x3 quaternionToMatrix(in float4 qrot) {
   let col0 = float3(1.0 - 2.0 * (y*y + z*z),       2.0 * (x*y + r*z),       2.0 * (x*z - r*y));
   let col1 = float3(      2.0 * (x*y - r*z), 1.0 - 2.0 * (x*x + z*z),       2.0 * (y*z + r*x));
   let col2 = float3(      2.0 * (x*z + r*y),       2.0 * (y*z - r*x), 1.0 - 2.0 * (x*x + y*y));
-  return float3x3(col0, col1, col2);
+  return float3x3(col0, col1, col2); //
 }
 
 float3x3 computeCovariance3D(in float3 scale, in float4 qrot) {
@@ -73,28 +73,40 @@ void main(
     return;
   }
 
-  const float kMaxSplatRadius   = 1024.0f; //
-
+  const float kOpacityCullLogit = -5.545f; // logit(1/255)
   const float kNearZCull        = -0.2f;
   const float kNDCMargin        = 0.3f;
   const float kCovariance2DBlur = 0.3f;
+  const float kEpsilon          = 0.001f;
+
+  // [highly affect performance and throughput]
+  const float kMaxSplatRadius   = 16.0f; //
+
+  // --------------------------------------------------
 
   // Inputs
-  let uData    = *((UniformBufferData*)pushConstant.uniform_addr);
   let gaussian = ((GaussianData*)pushConstant.gaussian_addr)[gid];
+  let uData    = *((UniformBufferData*)pushConstant.uniform_addr);
 
   let viewMatrix: float4x4 = uData.viewMatrix;
   let projMatrix: float4x4 = uData.projectionMatrix;
   let resolution: float2   = uData.resolution;
 
-  // Output
+  // Outputs
   SplatOutput *output = &(((SplatOutput*)pushConstant.splat_addr)[gid]);
   uint32_t *tileCount = &(((uint32_t*)pushConstant.scan_input_addr)[gid]);
 
   // Reset tile overlapped count.
   *tileCount = 0;
 
+  // --------------------------------------------------
+
   // 1. Culling.
+
+  // Cull near-invisible splats.
+  if (gaussian.color.w < kOpacityCullLogit) {
+    return;
+  }
 
   // Transform to view space.
   let pos_view = mul(viewMatrix, float4(gaussian.position.xyz, 1.0));
@@ -109,7 +121,8 @@ void main(
   let pos_ndc = pos_clip.xyz / pos_clip.w;
 
   // Cull outside the NDC.
-  if (any(abs(pos_ndc.xy) > float2(1.0f + kNDCMargin))) {
+  if ((pos_ndc.z > 1.0f)
+    || any(abs(pos_ndc.xy) > float2(1.0f + kNDCMargin))) {
     return;
   }
 
@@ -139,7 +152,7 @@ void main(
 
   // Invert the 2D covariant matrix to obtain the conic parameters.
   let det = cov_a * cov_c - cov_b * cov_b;
-  if (abs(det) <= 0.001f) {
+  if (!(abs(det) > kEpsilon)) {
     return;
   }
   let conic = (1.0f / det) * float3(cov_c, -cov_b, cov_a);
@@ -154,7 +167,7 @@ void main(
   let lambda2 = mid - term;
   let radius  = ceil(3.0f * sqrt(max(lambda1, lambda2)));
 
-  if (radius <= 0.0f || radius > kMaxSplatRadius) {
+  if (!(radius > kEpsilon && radius <= kMaxSplatRadius)) {
     return;
   }
 
