@@ -149,6 +149,11 @@ class GaussianSplatSample final : public Application {
       gaussians_count_ = kDebugBufferSize; //
     }
 
+    constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
+      kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
+                      : VMA_MEMORY_USAGE_GPU_ONLY
+    };
+
     /* Allocate device buffers. */
     {
       gaussian_sbo_ = context_.transientCreateBuffer(
@@ -160,7 +165,8 @@ class GaussianSplatSample final : public Application {
       splat_sbo_ = context_.createBuffer(
         gaussians_count_ * sizeof(shader_interop::SplatOutput),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        kDefaultBufferMemoryUsage
       );
 
       // As we don't know how many total tiles would be touched
@@ -171,8 +177,8 @@ class GaussianSplatSample final : public Application {
       splat_keys_sbo_ = context_.createBuffer(
         2u * splat_kv_heuristic_size_ * sizeof(uint64_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        kDefaultBufferMemoryUsage
       );
       if constexpr (kEnableDebugRun)
       {
@@ -190,7 +196,8 @@ class GaussianSplatSample final : public Application {
       splat_values_sbo_ = context_.createBuffer(
         2u * splat_kv_heuristic_size_ * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        kDefaultBufferMemoryUsage
       );
     }
 
@@ -207,8 +214,8 @@ class GaussianSplatSample final : public Application {
         splat_tilecount_sbo_ = context_.transientCreateBuffer(
           counts,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-          | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-          , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+          | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+          kDefaultBufferMemoryUsage
         );
       }
       else
@@ -216,8 +223,8 @@ class GaussianSplatSample final : public Application {
         splat_tilecount_sbo_ = context_.createBuffer(
           gaussians_count_ * sizeof(uint32_t),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-          | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-          , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+          | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+          kDefaultBufferMemoryUsage
         );
       }
 
@@ -225,8 +232,8 @@ class GaussianSplatSample final : public Application {
         gaussians_count_ * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          kDefaultBufferMemoryUsage
       );
 
       // --------------------------------------
@@ -242,7 +249,8 @@ class GaussianSplatSample final : public Application {
         (1u + prefixDescriptorBufferSize) * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          kDefaultBufferMemoryUsage
       );
       prefix_descriptor_count_offset_ = prefixDescriptorBufferSize
                                       * sizeof(uint32_t);
@@ -254,8 +262,8 @@ class GaussianSplatSample final : public Application {
         8u * sizeof(uint32_t), //
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
-        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+          kDefaultBufferMemoryUsage
       );
       key_count_offset_           = 3u * sizeof(uint32_t);
       indirect_histogram_offset_  = 0u;
@@ -319,8 +327,8 @@ class GaussianSplatSample final : public Application {
         shader_interop::kRadixHistogramSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-        , VMA_MEMORY_USAGE_GPU_TO_CPU         // DEBUG
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          kDefaultBufferMemoryUsage
       );
 
       radix_.descriptor_size = vk_utils::GetKernelGridDim(
@@ -336,7 +344,8 @@ class GaussianSplatSample final : public Application {
         bufferSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          kDefaultBufferMemoryUsage
       );
 
       radix_.layout = context_.createPipelineLayout({
