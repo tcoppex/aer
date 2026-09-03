@@ -483,9 +483,10 @@ void Context::initInstance(
 
   VkDebugUtilsMessengerCreateInfoEXT debug_info{
     .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-    .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-                     | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+    .messageSeverity = 0
+                     | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
 #ifndef NDEBUG
+                     | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
                      // | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
                      // | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
 #endif

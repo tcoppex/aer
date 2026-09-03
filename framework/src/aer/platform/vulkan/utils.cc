@@ -227,23 +227,23 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMessage(
 
   switch (messageSeverity) {
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-      LOGE("[{}]\n{}\n", errorTypeString.c_str(), pCallbackData->pMessage);
+      LOGE("{}", pCallbackData->pMessage);
       break;
 
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-      LOGW("[{}]\n{}\n", errorTypeString.c_str(), pCallbackData->pMessage);
+      LOGW("{}", pCallbackData->pMessage);
       break;
 
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-      LOGI("[{}]\n{}\n", errorTypeString.c_str(), pCallbackData->pMessage);
+      LOGI("{}", pCallbackData->pMessage);
       break;
 
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-      LOGD("[{}]\n{}\n", errorTypeString.c_str(), pCallbackData->pMessage);
+      LOGD("{}", pCallbackData->pMessage);
       break;
 
     default:
-      LOGD("[{}]\n{}\n", errorTypeString.c_str(), pCallbackData->pMessage);
+      LOGD("[{}]\n{}", errorTypeString.c_str(), pCallbackData->pMessage);
       break;
   }
   return VK_FALSE;
