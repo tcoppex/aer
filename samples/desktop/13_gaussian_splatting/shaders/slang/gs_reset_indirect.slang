@@ -16,13 +16,17 @@ uint32_t groupCount(uint32_t numElems, uint32_t threadsPerGroup) {
 [numthreads(1, 1, 1)]
 void main()
 {
-  let g_indirect = (uint32_t*)pushConstant.scan_total_count_indirect_addr;
+  let g_indirect = (uint32_t*)pushConstant.scan_indirect_count_addr;
 
   let lastId     = pushConstant.numElems - 1;
   let lastCount  = ((uint32_t*)pushConstant.scan_input_addr)[lastId];
   let lastOffset = ((uint32_t*)pushConstant.scan_output_addr)[lastId];
+  var totalCount = lastOffset + lastCount;
 
-  let totalCount = (lastOffset + lastCount) % pushConstant.maxKeyValueCapacity;
+  // Clamp the real value inside memory budget.
+  if (pushConstant.maxKeyValueCapacity > 0) {
+    totalCount = uint32_t(min(totalCount, pushConstant.maxKeyValueCapacity));
+  }
 
   // Radix histogram grid dimension.
   g_indirect[0] = groupCount(totalCount, pushConstant.tileSize);

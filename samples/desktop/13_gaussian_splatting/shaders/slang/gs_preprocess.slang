@@ -190,7 +190,16 @@ void main(
     return;
   }
 
-  *tileCount = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
+  // ----
+
+  uint32_t count = (maxTile.x - minTile.x) * (maxTile.y - minTile.y);
+
+  // [hacky] Force per gaussian tile output budget.
+  if (pushConstant.maxKeyValueCapacity > 0) {
+    // count = uint32_t(min(count, pushConstant.maxKeyValueCapacity));
+  }
+
+  *tileCount = count;
 
   // ----
 
@@ -198,7 +207,7 @@ void main(
 
   output->color       = gaussian.color; // (redundant)
   output->conic       = conic;
-  output->depth       = -pos_view.z;
+  output->depth       = - pos_view.z; //
   output->screen_pos  = pos_screen;
   output->minTile     = minTile;
   output->maxTile     = maxTile;
