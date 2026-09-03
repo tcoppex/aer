@@ -20,12 +20,12 @@ namespace shader_interop {
 
 // ----------------------------------------------------------------------------
 
-class SampleApp final : public Application {
+class GaussianSplatSample final : public Application {
  public:
-  static constexpr bool kEnableDebugRun{ false };
-  static constexpr uint32_t kDebugBufferSize{ 281 /*1157141*/ };
+  static constexpr bool kEnableDebugRun{ true };
+  static constexpr uint32_t kDebugBufferSize{ 4  /*1157141*/ };
 
-  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 8 }; //
+  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 6 }; //
 
   public:
     enum GSCompute {
@@ -49,6 +49,7 @@ class SampleApp final : public Application {
   AppSettings settings() const noexcept final {
     AppSettings S{};
     S.renderer.sample_count = VK_SAMPLE_COUNT_8_BIT;
+    S.app_name = "GaussianSplat viewer";
     return S;
   }
 
@@ -1002,6 +1003,6 @@ class SampleApp final : public Application {
 
 // ----------------------------------------------------------------------------
 
-ENTRY_POINT(SampleApp)
+ENTRY_POINT(GaussianSplatSample)
 
 /* -------------------------------------------------------------------------- */
