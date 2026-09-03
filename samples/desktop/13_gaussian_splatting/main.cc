@@ -22,8 +22,9 @@ namespace shader_interop {
 
 class GaussianSplatSample final : public Application {
  public:
+  // Debug limit the size of the buffer.
   static constexpr bool kEnableDebugRun{ false };
-  static constexpr uint32_t kDebugBufferSize{ 4 /*1157141*/ };
+  static constexpr uint32_t kDebugBufferSize{ 1 << 8 /*1157141*/ };
 
   static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 6 }; //
 
@@ -208,8 +209,8 @@ class GaussianSplatSample final : public Application {
       {
         std::vector<uint32_t> counts(gaussians_count_, 0);
         for (size_t i = 0; (i<kDebugBufferSize) && (i<counts.size()); ++i) {
-          // BUGTRACK: force an possible oveflow problem
-          counts[i] = 2 + rand() % kHeuristicMaxTilePerGaussian; //<
+          // BUGTRACK: force a possible oveflow problem
+          counts[i] = 0 + rand() % (kHeuristicMaxTilePerGaussian + 2); //<
         }
 
         splat_tilecount_sbo_ = context_.transientCreateBuffer(
@@ -339,10 +340,15 @@ class GaussianSplatSample final : public Application {
       ;
 
       // (use an additional uint32_t for atomic counter)
-      uint32_t const bufferSize = 1u + radix_.descriptor_size;
+      uint32_t const singlePassSize = 1u + radix_.descriptor_size;
+
+      // [should we N-buffer it ?]
+      // uint32_t const totalBufferSize = singlePassSize * shader_interop::kRadixNumPasses;
+      // LOGI("single buffer size {} Mb", singlePassSize / (1024*1024));
+      // LOGI("total buffer size {} Mb", totalBufferSize / (1024*1024));
 
       radix_.prefix_descriptor_sbo = context_.createBuffer(
-        bufferSize * sizeof(uint32_t),
+        singlePassSize * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -398,6 +404,19 @@ class GaussianSplatSample final : public Application {
 
     LOGI("TileSize is {}", shader_interop::kTileSize);
     LOGI("RadixSize is {}", shader_interop::kRadixSize);
+
+    // Setup initial uniform buffer.
+    {
+      host_data_.viewMatrix       = camera_.view();
+      host_data_.projectionMatrix = camera_.proj();
+      host_data_.tanFov           = camera_.tan_fovs();
+      host_data_.focal            = camera_.focals();
+      host_data_.resolution       = float2(
+        static_cast<float>(camera_.width()),
+        static_cast<float>(camera_.height())
+      );
+      context_.writeBuffer(uniform_buffer_, host_data_);
+    }
 
     return true;
   }
@@ -841,23 +860,36 @@ class GaussianSplatSample final : public Application {
   void update(float const dt) final {
     // Camera Uniform Data.
     {
-      host_data_.viewMatrix       = camera_.view();
-      host_data_.projectionMatrix = camera_.proj();
-      host_data_.tanFov           = camera_.tan_fovs();
-      host_data_.focal            = camera_.focals();
-      host_data_.resolution       = float2(
-        static_cast<float>(camera_.width()),
-        static_cast<float>(camera_.height())
-      );
+      host_data_.viewMatrix = camera_.view();
       context_.writeBuffer(uniform_buffer_, host_data_);
     }
 
+#if 0
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-    runGaussianSplattingPipeline(cmd);
+    {
+      runGaussianSplattingPipeline(cmd);
+
+      if constexpr(kEnableDebugRun)
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+          .buffer = indirect_kv_count_sbo_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+          .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+          .buffer = splat_keys_sbo_.buffer,
+        },
+      });
+    }
     context_.finishTransientCommandEncoder(cmd);
 
     if constexpr (kEnableDebugRun) {
-      uint32_t const nSize = push_constant_.numElems; //
       uint32_t kv_real_size = 0;
 
       uint32_t *indirect_buf;
@@ -869,30 +901,35 @@ class GaussianSplatSample final : public Application {
         }
       context_.unmapMemory(indirect_kv_count_sbo_);
 
-      LOGI("> pre sort KEYS output <first>");
-      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 2*kv_real_size, kv_real_size);
+      // uint32_t const nSize = push_constant_.numElems; //
+      // LOGI("> pre sort KEYS output <first>");
+      // debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 2*kv_real_size, kv_real_size);
 
-      LOGI("Total original Gaussian : {}", gaussians_count_);
-      LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
-      debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
+      // LOGI("Total original Gaussian : {}", gaussians_count_);
+      // LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
+      // debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
 
-      LOGI("> mapping TILE OFFSET output.");
-      debugMapBuffer(prefix_output_sbo_, 0, nSize, 256);
+      // LOGI("> mapping TILE OFFSET output.");
+      // debugMapBuffer(prefix_output_sbo_, 0, nSize, 256);
 
       LOGI("> post sort KEYS output <first>");
-      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 1*kv_real_size, kv_real_size);
+      debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, kv_real_size, kv_real_size);
 
       static int frame = 0;
       if (++frame == 1) {
-        exit(-1);
+        // exit(-1);
       }
       LOGI("------------------------------->");
     }
+#endif
   }
 
   void draw(CommandEncoder const& cmd) final {
+    runGaussianSplattingPipeline(cmd);
+
     auto pass = cmd.beginRendering();
     cmd.endRendering();
+
     drawUI(cmd);
   }
 

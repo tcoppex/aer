@@ -87,6 +87,8 @@ void main(
   let g_keysOut     = (uint64_t*)pushConstant.sorted_keys_addr;
   let g_valuesOut   = (uint32_t*)pushConstant.sorted_values_addr;
 
+  let numKeys       = *((uint32_t*)pushConstant.numkeys_addr); //
+
   // ---------------
 
   // Initialization.
@@ -105,8 +107,6 @@ void main(
   // ---------------
 
   // Extract Key-Value & pass digit.
-
-  let numKeys     = *((uint32_t*)pushConstant.numkeys_addr); //
 
   let tileID      = s_tileID;
   let globalIndex = tileID * NUM_THREADS + tid;

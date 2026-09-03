@@ -18,7 +18,7 @@ void main()
 {
   let g_indirect = (uint32_t*)pushConstant.scan_indirect_count_addr;
 
-  let lastId     = pushConstant.numElems - 1;
+  let lastId     = (pushConstant.numElems > 0) ? pushConstant.numElems - 1 : 0;
   let lastCount  = ((uint32_t*)pushConstant.scan_input_addr)[lastId];
   let lastOffset = ((uint32_t*)pushConstant.scan_output_addr)[lastId];
   var totalCount = lastOffset + lastCount;
