@@ -40,6 +40,7 @@ class GaussianSplatSample final : public Application {
     enum RadixCompute {
       RadixCompute_Histogram,
       RadixCompute_PrefixSum,
+      RadixCompute_ClearDescriptor,
       RadixCompute_Binning,
 
       RadixCompute_kCount
@@ -48,8 +49,8 @@ class GaussianSplatSample final : public Application {
  public:
   AppSettings settings() const noexcept final {
     AppSettings S{};
-    S.renderer.sample_count = VK_SAMPLE_COUNT_8_BIT;
-    S.app_name = "GaussianSplat viewer";
+    S.renderer.sample_count = VK_SAMPLE_COUNT_1_BIT;
+    S.app_name = "Gaussian Splat Viewer";
     return S;
   }
 
@@ -359,6 +360,7 @@ class GaussianSplatSample final : public Application {
       auto shaders = context_.createShaderModules(SAMPLE_SPIRV_DIR, {
         "radix_histogram.slang",
         "radix_prefix_sum.slang",
+        "radix_clear_descriptor.slang",
         "radix_binning.slang",
       });
       context_.createComputePipelines(
@@ -624,22 +626,17 @@ class GaussianSplatSample final : public Application {
     // [ As kRadixNumPasses is even, the final sort is always the first section ]
     for (uint32_t pass = 0; pass < shader_interop::kRadixNumPasses; ++pass)
     {
-      if (pass > 0) {
-        cmd.pipelineBufferBarriers({
-          {
-            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT
-                           | VK_ACCESS_2_SHADER_WRITE_BIT,
-            .dstStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-            .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            .buffer        = descriptor.buffer,
-          }
-        });
-      }
+      pc.pass                   = pass;
+      pc.unsorted_keys_addr     = src_keys;
+      pc.unsorted_values_addr   = src_vals;
+      pc.sorted_keys_addr       = dst_keys;
+      pc.sorted_values_addr     = dst_vals;
+      cmd.pushConstant(pc, radix_.layout, VK_SHADER_STAGE_COMPUTE_BIT);
 
       // Clear descriptors AND atomic tile counter.
       // -------------------------------------
       // [probably have room for optimizations here]
+#if 0
       cmd.fillBuffer(descriptor, 0u);
       cmd.pipelineBufferBarriers({
         {
@@ -651,14 +648,37 @@ class GaussianSplatSample final : public Application {
           .buffer = descriptor.buffer,
         }
       });
-      // -------------------------------------
+#else
+      // (no performance gain)
 
-      pc.pass                   = pass;
-      pc.unsorted_keys_addr     = src_keys;
-      pc.unsorted_values_addr   = src_vals;
-      pc.sorted_keys_addr       = dst_keys;
-      pc.sorted_values_addr     = dst_vals;
-      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT,
+          .buffer        = descriptor.buffer,
+        }
+      });
+
+      cmd.bindPipeline(radix_.pipelines[RadixCompute_ClearDescriptor]);
+      cmd.dispatchIndirect(indirect_key_count, indirect_binning_offset_);
+      cmd.bindPipeline(radix_.pipelines[RadixCompute_Binning]);
+
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT
+                         | VK_ACCESS_2_SHADER_WRITE_BIT,
+          .buffer        = descriptor.buffer,
+        }
+      });
+
+#endif
+      // -------------------------------------
 
       cmd.pipelineBufferBarriers({
         {
