@@ -373,8 +373,9 @@ class GaussianSplatSample final : public Application {
       pc.uniform_addr           = uniform_buffer_.address;
       pc.gaussian_addr          = gaussian_sbo_.address;
       pc.splat_addr             = splat_sbo_.address;
-      pc.scan_input_addr        = splat_tilecount_sbo_.address;
 
+      pc.scan_input_addr        = splat_tilecount_sbo_.address;
+      pc.scan_output_addr       = prefix_output_sbo_.address;
       pc.scan_descriptor_addr   = prefix_descriptor_and_count_sbo_.address;
       pc.scan_counter_addr      = prefix_descriptor_and_count_sbo_.address
                                 + prefix_descriptor_count_offset_;
