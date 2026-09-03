@@ -52,7 +52,7 @@ struct PushConstant {
   uint64_t scan_output_addr;      // Splat's tile offset
   uint64_t scan_descriptor_addr;  // PrefixScan descriptor flags.
   uint64_t scan_counter_addr;     // PrefixScan atomic counter.
-  uint64_t scan_total_count_indirect_addr;
+  uint64_t scan_indirect_count_addr;
   // ----
   uint64_t unsorted_keys_addr;
   uint64_t unsorted_values_addr;
