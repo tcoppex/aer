@@ -22,8 +22,8 @@ namespace shader_interop {
 
 class GaussianSplatSample final : public Application {
  public:
-  static constexpr bool kEnableDebugRun{ true };
-  static constexpr uint32_t kDebugBufferSize{ 4  /*1157141*/ };
+  static constexpr bool kEnableDebugRun{ false };
+  static constexpr uint32_t kDebugBufferSize{ 4 /*1157141*/ };
 
   static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 6 }; //
 
@@ -384,6 +384,9 @@ class GaussianSplatSample final : public Application {
       pc.unsorted_keys_addr     = splat_keys_sbo_.address;
       pc.unsorted_values_addr   = splat_values_sbo_.address;
     }
+
+    LOGI("TileSize is {}", shader_interop::kTileSize);
+    LOGI("RadixSize is {}", shader_interop::kRadixSize);
 
     return true;
   }
@@ -757,14 +760,12 @@ class GaussianSplatSample final : public Application {
       context_.writeBuffer(uniform_buffer_, host_data_);
     }
 
-
-
     // -------------------------------------------
     //  For debugging purpose we are currently using one command encoder
     //  per "pass", but later on we will use just one.
     // -------------------------------------------
 
-#if 0
+
     // 1. Preprocess 3D Gaussian splats to tiled 2D screen space.
     {
       auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
@@ -776,11 +777,37 @@ class GaussianSplatSample final : public Application {
       pc.maxKeyValueCapacity = kHeuristicMaxTilePerGaussian;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
-      // ------
-      // BUGTRACK:
-      //  There is a lot of tile per gaussians, which can be an issue with
-      //   the kernel.
-      // ------
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer = prefix_output_sbo_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer = splat_tilecount_sbo_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer = splat_keys_sbo_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer = splat_values_sbo_.buffer,
+        },
+      });
+
       cmd.runKernel<shader_interop::kCompute_Preprocess_kernelSize_x>(
         push_constant_.numElems
       );
@@ -798,6 +825,7 @@ class GaussianSplatSample final : public Application {
 
       context_.finishTransientCommandEncoder(cmd);
     }
+
     // -------------------------------------------
     if constexpr (kEnableDebugRun)
     {
@@ -805,14 +833,9 @@ class GaussianSplatSample final : public Application {
       uint32_t nSize = push_constant_.numElems; //
       LOGI("> mapping TILE COUNT output {}/{} elements.", nSize, push_constant_.numElems);
       debugMapBuffer(splat_tilecount_sbo_, 0, nSize, 256);
+      // exit(-1);
     }
-    // exit(-1);
     // -------------------------------------------
-#endif
-
-
-#if 1
-    /// (some issues happens when we enter this)
 
     // 2. Calculate tile offsets.
     dispatchPrefixSum(
@@ -829,13 +852,10 @@ class GaussianSplatSample final : public Application {
       uint32_t nSize = push_constant_.numElems; //
       LOGI("> mapping TILE OFFSET output.");
       debugMapBuffer(prefix_output_sbo_, 0, nSize, 256);
+      // exit(-1);
     }
-    // exit(-1);
     // -------------------------------------------
 
-#if 1
-
-    LOGW("> using debug KV pair inside shader !");
     // 3. Create the keys-value pairs.
     {
       auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
@@ -849,6 +869,20 @@ class GaussianSplatSample final : public Application {
 
       cmd.pipelineBufferBarriers({
         {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer = splat_tilecount_sbo_.buffer,
+        },
+        {
+          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer = prefix_output_sbo_.buffer,
+        },
+        {
           .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
           .srcAccessMask = VK_ACCESS_NONE,
           .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -861,13 +895,6 @@ class GaussianSplatSample final : public Application {
           .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
           .buffer = splat_values_sbo_.buffer,
-        },
-        {
-          .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-          .buffer = splat_tilecount_sbo_.buffer,
         },
       });
 
@@ -890,9 +917,6 @@ class GaussianSplatSample final : public Application {
       context_.finishTransientCommandEncoder(cmd);
     }
 
-#endif
-#endif
-
     // ---------------------------------------------
     // ---------------------------------------------
 
@@ -911,6 +935,7 @@ class GaussianSplatSample final : public Application {
 
       // LOGI("> pre sort KEYS output <first>");
       // debugMapBuffer<uint64_t>(splat_keys_sbo_, 0u, 2*kv_real_size, kv_real_size);
+      // exit(-1);
     }
 
     // 4. Sort key-value pairs.
