@@ -11,7 +11,7 @@ This project was tested on the following platforms and compilers:
 For desktop build you only need a compatible CMake version and a build toolchains
 to fetch the project dependencies automatically.
 
-You can then easily fetch and build the project using those commands :
+You can then easily build the project using those commands:
 
 ```bash
 # [Optional] Retrieve system build dependencies with Synaptic.
@@ -34,28 +34,28 @@ cmake --build build --config Release
 ##### Third parties
 
  * CMake 3.22.1
- * CPM 0.40.3 (_fetched_)
- * Vulkan SDK 1.3 (_1.4.321.0 headers downloaded via CPM_)
- * Volk 1.4.321.0 (_via CPM_)
- * VulkanMemoryAllocator 3.2.0 (_via CPM_)
- * Slang 2026.5.2 (_fetched_)
- * GLFW 3.4 (_via CPM_)
- * libfmt 12.0.0 (_via CPM_)
- * ImGUI v1.92.3-docking (_via CPM_)
- * cgltf 1.15 (_via CPM_)
- * miniply 1.10 (_via CPM_)
- * MikkTSpace (_via CPM_)
- * linalg v2.2 (_via CPM_)
- * earcut v2.2.4 (_via CPM_)
- * utfcpp v4.0.8 (_via CPM_)
- * stb\_truetype.h (_fetched_)
- * stb\_image.h (_fetched_)
+ * CPM 0.40.3
+ * Vulkan 1.4.321.0 headers
+ * Volk 1.4.321.0
+ * VulkanMemoryAllocator 3.2.0
+ * Slang 2026.5.2
+ * GLFW 3.4
+ * libfmt 12.0.0
+ * ImGUI v1.92.3-docking
+ * cgltf 1.15
+ * miniply 1.10
+ * MikkTSpace
+ * linalg v2.2
+ * earcut v2.2.4
+ * utfcpp v4.0.8
+ * stb\_truetype.h
+ * stb\_image.h
 
 <!--
-* KTX (Khronos Texture) Library 4.4.2 (_via CPM_)
+* KTX (Khronos Texture) Library 4.4.2
 -->
 
-By default, CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (either fetch from env or cmake variable). When none exist it will default to `./third_party/.cpmlocalcache/`.
+By default CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (_either fetched from env or cmake variable_). When none exist it will default to `./third_party/.cpmlocalcache/`.
 
 ##### Vulkan device extensions
 
@@ -125,7 +125,7 @@ sdkmanager.bat --sdk_root=$ANDROID_HOME "platforms;android-36" "platform-tools" 
 ```
 </details>
 
-###### Build and Run
+##### Build and Run
 
 Each Android sample provides a set of CMake debug targets in the form `{prefix}{sample_name}`
 (_eg. `log_aloha`_) to simplify development without the need to launch Android Studio. All of this commands target debug builds.
@@ -141,7 +141,11 @@ _Device-dependent targets (**install**, **run**, **log**) require a compatible c
 
 _**Note:** the Gradle's cmake cache directory (`.cxx` in projects subdirectory) might require to be cleaned up manually when local configurations change (eg. Vulkan SDK directory)._
 
-#### Assets
+### VR / XR support
+
+Virtual and extended reality are supported on Android-based devices, specifically the _Meta Quest 3_.
+
+### Assets
 
 A few assets are served via `git-lfs` but most will be downloaded automatically on CMake Cache generation time.
 
