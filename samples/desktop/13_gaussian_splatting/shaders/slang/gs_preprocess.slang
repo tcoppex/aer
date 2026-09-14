@@ -103,27 +103,27 @@ float3 computeColorFromSH(in float3 dir, in float shc[48]) {
   result += SH_C0 * float3(shc[0],shc[1],shc[2]);
 
   result +=
-    - SH_C1 * float3(shc[3],  shc[4],  shc[5]) * x
-    + SH_C1 * float3(shc[6],  shc[7],  shc[8]) * y
-    - SH_C1 * float3(shc[9], shc[10], shc[11]) * z
+    - SH_C1 * float3(shc[3], shc[18], shc[33]) * x
+    + SH_C1 * float3(shc[4], shc[19], shc[34]) * y
+    - SH_C1 * float3(shc[5], shc[20], shc[35]) * z
   ;
 
   result +=
-      SH_C2[0] * float3(shc[12], shc[13], shc[14]) * xy
-    + SH_C2[1] * float3(shc[15], shc[16], shc[17]) * yz
-    + SH_C2[2] * float3(shc[18], shc[19], shc[20]) * (2.0f * zz - xx - yy)
-    + SH_C2[3] * float3(shc[21], shc[22], shc[23]) * xz
-    + SH_C2[4] * float3(shc[24], shc[25], shc[26]) * (xx - yy)
+      SH_C2[0] * float3(shc[6],  shc[21], shc[36]) * xy
+    + SH_C2[1] * float3(shc[7],  shc[22], shc[37]) * yz
+    + SH_C2[2] * float3(shc[8],  shc[23], shc[38]) * (2.0f * zz - xx - yy)
+    + SH_C2[3] * float3(shc[9],  shc[24], shc[39]) * xz
+    + SH_C2[4] * float3(shc[10], shc[25], shc[40]) * (xx - yy)
   ;
 
   result +=
-      SH_C3[0] * float3(shc[27], shc[28], shc[29]) * y * (3.0f * xx - yy)
-    + SH_C3[1] * float3(shc[30], shc[31], shc[32]) * xy * z
-    + SH_C3[2] * float3(shc[33], shc[34], shc[35]) * y * (4.0f * zz - xx - yy)
-    + SH_C3[3] * float3(shc[36], shc[37], shc[38]) * z * (2.0f * zz - 3.0f * xx - 3.0f * yy)
-    + SH_C3[4] * float3(shc[39], shc[40], shc[41]) * x * (4.0f * zz - xx - yy)
-    + SH_C3[5] * float3(shc[42], shc[43], shc[44]) * z * (xx - yy)
-    + SH_C3[6] * float3(shc[45], shc[46], shc[47]) * x * (xx - 3.0f * yy)
+      SH_C3[0] * float3(shc[11], shc[26], shc[41]) * y * (3.0f * xx - yy)
+    + SH_C3[1] * float3(shc[12], shc[27], shc[42]) * xy * z
+    + SH_C3[2] * float3(shc[13], shc[28], shc[43]) * y * (4.0f * zz - xx - yy)
+    + SH_C3[3] * float3(shc[14], shc[29], shc[44]) * z * (2.0f * zz - 3.0f * xx - 3.0f * yy)
+    + SH_C3[4] * float3(shc[15], shc[30], shc[45]) * x * (4.0f * zz - xx - yy)
+    + SH_C3[5] * float3(shc[16], shc[31], shc[46]) * z * (xx - yy)
+    + SH_C3[6] * float3(shc[17], shc[32], shc[47]) * x * (xx - 3.0f * yy)
   ;
 
   return max(float3(0.0f), result + 0.5f);
