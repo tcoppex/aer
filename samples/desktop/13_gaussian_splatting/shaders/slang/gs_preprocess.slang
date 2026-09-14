@@ -108,8 +108,13 @@ void main(
     return;
   }
 
+  let flipY = float3(1.0, -1.0, 1.0);
+  let mean = gaussian.position.xyz * flipY;
+
   // Transform to view space.
-  let pos_view = mul(viewMatrix, float4(gaussian.position.xyz, 1.0));
+  var pos_view = mul(viewMatrix, float4(mean, 1.0));
+
+  pos_view.xyz *= flipY;
 
   // Near cull (-Z forward).
   if (pos_view.z > kNearZCull) {
@@ -118,7 +123,7 @@ void main(
 
   // Transform to NDC space.
   let pos_clip = mul(projMatrix, pos_view);
-  let pos_ndc = pos_clip.xyz / pos_clip.w;
+  let pos_ndc = (pos_clip.xyz / pos_clip.w);
 
   // Cull outside the NDC.
   if ((pos_ndc.z > 1.0f)
