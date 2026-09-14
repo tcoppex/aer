@@ -263,14 +263,19 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 set(MINIPLY_INCLUDE_DIR "${miniply_SOURCE_DIR}")
-
 set(MINIPLY_SRC ${miniply_SOURCE_DIR}/miniply.cpp)
+
 target_sources(${target} PRIVATE ${MINIPLY_SRC})
 set_source_files_properties(
   ${MINIPLY_SRC}
   PROPERTIES
     COMPILE_OPTIONS "-Wno-shadow"
 )
+
+add_library(aer_miniply STATIC ${miniply_SOURCE_DIR}/miniply.cpp)
+target_include_directories(aer_miniply PUBLIC ${MINIPLY_INCLUDE_DIR})
+target_compile_options(aer_miniply PRIVATE -Wno-shadow)
+
 
 #-----------------------------------
 # Draco (not currently supported)
@@ -384,19 +389,26 @@ if(TRUE)
   # Tell Imgui to use volk's vulkan header.
   set_source_files_properties(${IMGUI_SOURCES}
     PROPERTIES
-      COMPILE_DEFINITIONS
-        IMGUI_IMPL_VULKAN_USE_VOLK
+      COMPILE_DEFINITIONS "IMGUI_IMPL_VULKAN_USE_VOLK"
   )
   if(OS_LINUX)
-    set_source_files_properties(${IMGUI_SOURCES} PROPERTIES COMPILE_FLAGS
-      "-Wno-null-dereference"
-    )
+    set_source_files_properties(${IMGUI_SOURCES} PROPERTIES COMPILE_FLAGS "-Wno-null-dereference")
   endif()
 
-  target_sources(${target} PRIVATE ${IMGUI_SOURCES})
-  list(APPEND IMGUI_INCLUDE_DIR
-    ${imgui_SOURCE_DIR}
-  )
+  list(APPEND IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR})
+
+  if (FALSE)
+    target_sources(${target} PRIVATE ${IMGUI_SOURCES})
+  else()
+    add_library(aer_imgui STATIC ${IMGUI_SOURCES})
+    target_include_directories(aer_imgui
+      PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+        ${VULKAN_INCLUDE_DIR}
+    )
+    target_link_libraries(aer_imgui PRIVATE volk)
+  endif()
 endif()
 
 #-----------------------------------
@@ -453,6 +465,17 @@ target_link_libraries(${target}
     # ktx
     mikktspace
     EnTT::EnTT
+    aer_imgui
+    aer_miniply
+)
+
+target_precompile_headers(${target}
+  PRIVATE
+    # <fmt/format.h>
+    <volk.h>
+    <entt/entt.hpp>
+    <linalg.h>
+    <lina/lina.h>
 )
 
 target_include_directories(${target}
