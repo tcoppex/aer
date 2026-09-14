@@ -22,7 +22,7 @@ namespace shader_interop {
 
 class GaussianSplatSample final : public Application {
  public:
-  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 5 }; //
+  static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 8 }; //
 
   static constexpr bool kEnableDebugRun{ false };
   static constexpr uint32_t kDebugBufferSize{ 1 << 8 };
@@ -101,7 +101,6 @@ class GaussianSplatSample final : public Application {
     std::vector<shader_interop::GaussianData> gaussians{};
     {
       auto reader = miniply::PLYReader( ASSETS_DIR "pointclouds/"
-        // "bonzai_7000/point_cloud.ply"
         "flowers_1/flowers_1.ply"
       );
       if (!reader.valid()) {
