@@ -265,17 +265,20 @@ CPMAddPackage(
 set(MINIPLY_INCLUDE_DIR "${miniply_SOURCE_DIR}")
 set(MINIPLY_SRC ${miniply_SOURCE_DIR}/miniply.cpp)
 
-target_sources(${target} PRIVATE ${MINIPLY_SRC})
-set_source_files_properties(
-  ${MINIPLY_SRC}
-  PROPERTIES
-    COMPILE_OPTIONS "-Wno-shadow"
-)
+if(OS_LINUX)
+  set_source_files_properties(
+    ${MINIPLY_SRC}
+    PROPERTIES
+      COMPILE_OPTIONS "-Wno-shadow"
+  )
+endif()
 
-add_library(aer_miniply STATIC ${miniply_SOURCE_DIR}/miniply.cpp)
-target_include_directories(aer_miniply PUBLIC ${MINIPLY_INCLUDE_DIR})
-target_compile_options(aer_miniply PRIVATE -Wno-shadow)
-
+if (FALSE)
+  target_sources(${target} PRIVATE ${MINIPLY_SRC})
+else()
+  add_library(aer_miniply STATIC ${MINIPLY_SRC})
+  target_include_directories(aer_miniply PUBLIC ${MINIPLY_INCLUDE_DIR})
+endif()
 
 #-----------------------------------
 # Draco (not currently supported)
@@ -406,8 +409,9 @@ if(TRUE)
         ${imgui_SOURCE_DIR}
         ${imgui_SOURCE_DIR}/backends
         ${VULKAN_INCLUDE_DIR}
+        ${PlatformIncludeDirs}
     )
-    target_link_libraries(aer_imgui PRIVATE volk)
+    target_link_libraries(aer_imgui PRIVATE volk glfw)
   endif()
 endif()
 
