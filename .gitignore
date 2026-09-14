@@ -4,6 +4,8 @@ projects
 DOCs
 build
 bin
+third_party
+_WIP_
 imgui.ini
 *.spv
 *.slang.dep

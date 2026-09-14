@@ -31,22 +31,16 @@
 ![api: android32](https://img.shields.io/badge/Android_API-32-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# aer
+## aer
 
-A cross-platform real-time rendering framework, for both desktop & XR, inspired by WebGPU and _vk\_minimal\_latest_.
+A cross-platform real-time rendering framework, inspired by WebGPU and _vk\_minimal\_latest_.
 
-Runs on GNU/Linux, Windows 11 and Android 12L (_Meta Quest 3_). See [BUILD.md](BUILD.md) for detailed build instructions.
+See [BUILD.md](BUILD.md) for detailed build instructions.
 
 <details>
   <summary><strong>Quick start & run!</strong></summary>
 
 ```bash
-# [Optional] Retrieve system build dependencies with Synaptic.
-# sudo apt install git git-lfs build-essential cmake vulkan-sdk
-
-# [Optionnal] Specify the ANDROID_HOME path to create Android targets.
-# export ANDROID_HOME=~/Android/Sdk
-
 # Clone the repository.
 git clone https://github.com/tcoppex/aer
 cd aer
@@ -57,31 +51,31 @@ cmake --build build --config Release
 
 # Run the first sample.
 ./bin/00_hello
-
-# [Optionnal] Build & Run an Android sample on a connected device.
-# cmake --build build --target run_aloha
 ```
 
 </details>
 
-
 ### Samples
 
-* **[00_hello](samples/desktop/00_hello/)**: Display a surface and clear its color (_Device, Swapchain, dynamic rendering_).
-* **[01_triangle](samples/desktop/01_triangle/)**: Display a simple triangle (_Shader, Graphics Pipeline, Vertex Buffer, Commands_).
-* **[02_push_constant](samples/desktop/02_push_constant/)**: Update per-frame values via push constants and dynamic states (_Push Constant_).
-* **[03_descriptor_set](samples/desktop/03_descriptor_set/)**: Initialize & update a descriptor set on a single uniform buffer (_Descriptor Set, Uniform/Constant Buffer_).
-* **[04_texturing](samples/desktop/04_texturing/)**: Display a textured cube with a linear sampler (_Image, Sampler_).
-* **[05_stencil_op](samples/desktop/05_stencil_op/)**: Stencil operations and instancing through a multi-passes portal effect (_Stencil, Instancing, Specialization Constants_).
-* **[06_blend_op](samples/desktop/06_blend_op/)**: Fast & simple billboarded GPU particles with additive blending (_Blending_).
-* **[07_compute](samples/desktop/07_compute/)**: Waves simulation with sorted alpha-blended particles (_Compute Pipeline, Push Constants Range, Buffer Barriers_).
-* **[08_hdr_envmap](samples/desktop/08_hdr_envmap/)**: Compute Image-Based Lighting from a HDR environment map (_Texture Barriers_).
-* **[09_post_process](samples/desktop/09_post_process/)**: Screen-space contour effect via a post-processing pipeline (_Render Target_, _Blit_).
-* **[10_material](samples/desktop/10_material/)**: Showcase the internal PBR material system with scene graph ordering (_Pipeline Cache_, _Specialization Constants_).
-* **[11_ray_tracing](samples/desktop/11_ray_tracing/)**: Simple path tracer on a Cornell box via hardware-accelerated ray tracing (_Acceleration Structure_, _Ray Tracing Pipeline_, _Buffer Device Address_).
-* **[12_font](samples/desktop/12_font/)**: Dynamic 2D/3D text generation from a font file.
-* **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)**: Implements _3D Gaussian Splatting for Real-Time Radiance Field Rendering_.
+|   |   |
+| --- | --- |
+| **[00_hello](samples/desktop/00_hello/)** | Display a surface and clear its color. |
+| **[01_triangle](samples/desktop/01_triangle/)** | Draw a simple triangle. |
+| **[02_push_constant](samples/desktop/02_push_constant/)** | Update per-frame values via push constants and dynamic states. |
+| **[03_descriptor_set](samples/desktop/03_descriptor_set/)** | Initialize & update a descriptor set on a single uniform buffer. |
+| **[04_texturing](samples/desktop/04_texturing/)** | Render a textured cube with a linear sampler. |
+| **[05_stencil_op](samples/desktop/05_stencil_op/)** | Stencil operations and instancing through a multi-passes portal effect. |
+| **[06_blend_op](samples/desktop/06_blend_op/)** | Fast & simple billboarded GPU particles with additive blending. |
+| **[07_compute](samples/desktop/07_compute/)** | Waves simulation with sorted alpha-blended particles. |
+| **[08_hdr_envmap](samples/desktop/08_hdr_envmap/)** | Compute Image-Based Lighting from a HDR environment map. |
+| **[09_post_process](samples/desktop/09_post_process/)** | Screen-space contour effect via a post-processing pipeline. |
+| **[10_material](samples/desktop/10_material/)** | Showcase the internal PBR material system with scene graph ordering. |
+| **[11_ray_tracing](samples/desktop/11_ray_tracing/)** | Simple path tracer on a Cornell box via hardware-accelerated ray tracing. |
+| **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file. |
+| **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)** | Implements *3D Gaussian Splatting for Real-Time Radiance Field Rendering*. |
+|   |   |
 
+<!--
 Samples are linear in progression: when a feature is introduced the
 first version uses a somewhat verbose semantic before switching to simpler ones in subsequent examples.
 
@@ -92,6 +86,6 @@ This project was inspired by the expressiveness of WebGPU and the work of **NVID
 ### License
 
 This project is released under the _MIT License_.
+-->
 
 :leaves:
-
