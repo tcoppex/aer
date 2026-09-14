@@ -68,8 +68,8 @@ struct PushConstant {
 struct ALIGNAS(16) GaussianData {
   float4 position;
   float4 rotation;
-  float4 scale;
-  float4 color;
+  float4 scale_opacity;
+  float shc[48];
 };
 
 struct ALIGNAS(16) SplatOutput {

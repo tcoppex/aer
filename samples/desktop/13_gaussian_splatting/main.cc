@@ -124,14 +124,61 @@ class GaussianSplatSample final : public Application {
       gaussians_count_ = static_cast<uint32_t>(reader.num_rows());
       gaussians.resize(gaussians_count_, shader_interop::GaussianData{});
 
-      constexpr uint32_t kPropCount = 14u;
+      constexpr uint32_t kPropCount = 59u;
       std::array<uint32_t, kPropCount> indexes{};
 
       bool res = reader.find_properties(indexes.data(), kPropCount,
         "x", "y", "z",
         "rot_1", "rot_2", "rot_3", "rot_0", // 'w' at the end
-        "scale_0", "scale_1", "scale_2",
-        "f_dc_0", "f_dc_1", "f_dc_2", "opacity"
+        "scale_0", "scale_1", "scale_2", "opacity",
+        "f_dc_0",
+        "f_dc_1",
+        "f_dc_2",
+        "f_rest_0",
+        "f_rest_1",
+        "f_rest_2",
+        "f_rest_3",
+        "f_rest_4",
+        "f_rest_5",
+        "f_rest_6",
+        "f_rest_7",
+        "f_rest_8",
+        "f_rest_9",
+        "f_rest_10",
+        "f_rest_11",
+        "f_rest_12",
+        "f_rest_13",
+        "f_rest_14",
+        "f_rest_15",
+        "f_rest_16",
+        "f_rest_17",
+        "f_rest_18",
+        "f_rest_19",
+        "f_rest_20",
+        "f_rest_21",
+        "f_rest_22",
+        "f_rest_23",
+        "f_rest_24",
+        "f_rest_25",
+        "f_rest_26",
+        "f_rest_27",
+        "f_rest_28",
+        "f_rest_29",
+        "f_rest_30",
+        "f_rest_31",
+        "f_rest_32",
+        "f_rest_33",
+        "f_rest_34",
+        "f_rest_35",
+        "f_rest_36",
+        "f_rest_37",
+        "f_rest_38",
+        "f_rest_39",
+        "f_rest_40",
+        "f_rest_41",
+        "f_rest_42",
+        "f_rest_43",
+        "f_rest_44"
       );
       if (!res) {
         LOGW("miniply: one or more properties not found in the PLY header!");
@@ -143,19 +190,19 @@ class GaussianSplatSample final : public Application {
       // Extract properties individually to count for paddings.
       reader.extract_properties_with_stride(
         &indexes[0], 3, miniply::PLYPropertyType::Float,
-        &gaussians[0].position[0], stride
+        &gaussians[0].position, stride
       );
       reader.extract_properties_with_stride(
         &indexes[3], 4, miniply::PLYPropertyType::Float,
-        &gaussians[0].rotation[0], stride
+        &gaussians[0].rotation, stride
       );
       reader.extract_properties_with_stride(
-        &indexes[7], 3, miniply::PLYPropertyType::Float,
-        &gaussians[0].scale[0], stride
+        &indexes[7], 4, miniply::PLYPropertyType::Float,
+        &gaussians[0].scale_opacity, stride
       );
       reader.extract_properties_with_stride(
-        &indexes[10], 4, miniply::PLYPropertyType::Float,
-        &gaussians[0].color[0], stride
+        &indexes[11], 48, miniply::PLYPropertyType::Float,
+        gaussians[0].shc, stride
       );
     }
 
