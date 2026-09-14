@@ -22,11 +22,10 @@ namespace shader_interop {
 
 class GaussianSplatSample final : public Application {
  public:
-  // Debug limit the size of the buffer.
-  static constexpr bool kEnableDebugRun{ false };
-  static constexpr uint32_t kDebugBufferSize{ 1 << 8 /*1157141*/ };
-
   static constexpr uint32_t kHeuristicMaxTilePerGaussian{ 5 }; //
+
+  static constexpr bool kEnableDebugRun{ false };
+  static constexpr uint32_t kDebugBufferSize{ 1 << 8 };
 
   public:
     enum QueryTimestamp {

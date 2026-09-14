@@ -75,14 +75,13 @@ void main(
     return;
   }
 
+  const float kMaxSplatRadius   = 1024.0f; //
+
   const float kOpacityCullLogit = -5.545f; // logit(1/255)
-  const float kNearZCull        = -0.2f;
+  const float kNearZCull        = -0.1f;
   const float kNDCMargin        = 0.3f;
   const float kCovariance2DBlur = 0.3f;
   const float kEpsilon          = 0.001f;
-
-  // [highly affect performance and throughput]
-  const float kMaxSplatRadius   = 256.0f; //
 
   // --------------------------------------------------
 
