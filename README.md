@@ -88,6 +88,4 @@ This project was inspired by the expressiveness of WebGPU and the work of **NVID
 This project is released under the _MIT License_.
 -->
 
-_The hills are shadows, and they flow_
-
 :leaves:
