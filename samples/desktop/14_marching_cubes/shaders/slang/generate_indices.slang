@@ -319,9 +319,9 @@ Texture3D<uint> inIndicesVolume : register(t2);
 [numthreads(kCompute_MaxLinearGroupSize, 1, 1)]
 void main(uint gid : SV_DispatchThreadID)
 {
-  let g_cellCount = ((uint32_t*)pushConstant.cellCountBuffer);
+  let kCellCount = ((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_CELL];
 
-  if (gid >= *g_cellCount) {
+  if (gid >= kCellCount) {
     return;
   }
 
@@ -341,7 +341,7 @@ void main(uint gid : SV_DispatchThreadID)
   }
 
   let numTriangles = kNumTriangleLUT[cube_case];
-  let g_atomicCount = ((uint32_t*)pushConstant.atomicCountBuffer);
+  let g_atomicCount = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDX];
 
   uint offset;
   InterlockedAdd(*g_atomicCount, 3u * numTriangles, offset);

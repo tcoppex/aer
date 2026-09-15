@@ -18,18 +18,21 @@ namespace shader_interop {
 
 class MarchingCubeSample final : public Application {
  public:
-  public:
-    enum Compute {
-      Compute_BuildDensityVolume,
-      Compute_ListNonEmptyCells,
-      Compute_ListVertices,
-      Compute_SplatVertexIndices,
-      Compute_SetupDispatchIndirect,
-      Compute_GenerateVertices,
-      Compute_GenerateIndices,
+  static constexpr uint32_t kHeuristicChunkMaxVertices  = (1 << 13); // 4096
+  static constexpr uint32_t kHeuristicChunkMaxIndices   = (1 << 16); // 32768
 
-      Compute_kCount,
-    };
+ public:
+  enum Compute {
+    Compute_BuildDensityVolume,
+    Compute_ListNonEmptyCells,
+    Compute_ListVertices,
+    Compute_SplatVertexIndices,
+    Compute_SetupDispatchIndirect,
+    Compute_GenerateVertices,
+    Compute_GenerateIndices,
+
+    Compute_kCount,
+  };
 
  public:
   AppSettings settings() const noexcept final {
@@ -60,7 +63,6 @@ class MarchingCubeSample final : public Application {
     /* Allocate the uniform buffer. */
     {
       // TODO: allocate as a properly padded ring buffer
-
       uniform_buffer_ = context_.createBuffer(
         sizeof(host_data_), // (* max_frames_in_flight)
           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
@@ -69,27 +71,47 @@ class MarchingCubeSample final : public Application {
       );
     }
 
-    // constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
-    //   kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
-    //                   : VMA_MEMORY_USAGE_GPU_ONLY
-    // };
-
     /* Allocate device buffers. */
     {
-      // gaussian_sbo_ = context_.transientCreateBuffer(
-      //   gaussians,
-      //     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-      //   | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-      // );
+      const uint32_t kHeuristicMaxNonEmptyCellsSize = kHeuristicChunkMaxVertices * sizeof(uint32_t);
 
-      // splat_sbo_ = context_.createBuffer(
-      //   gaussians_count_ * sizeof(shader_interop::SplatOutput),
-      //     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-      //   | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-      //   kDefaultBufferMemoryUsage
-      // );
+      non_empty_cells_sbo_ = context_.createBuffer(
+        "MarchingCubes::Buffer::NonEmptyCells",
+        kHeuristicMaxNonEmptyCellsSize,
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+      );
+
+      vertices_to_generate_sbo_ = context_.createBuffer(
+        "MarchingCubes::Buffer::VerticesToGenerate",
+        3u * kHeuristicMaxNonEmptyCellsSize,
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+      );
+
+      atomic_count_sbo_ = context_.createBuffer(
+        "MarchingCubes::Buffer::AtomicCount",
+        3u * sizeof(uint32_t),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+      );
+
+      indirect_sbo_ = context_.createBuffer(
+        2u * (3u * sizeof(uint32_t)),
+          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY
+      );
     }
 
+    {
+      
+    }
 
     /* Descriptor set. */
     {
@@ -190,6 +212,10 @@ class MarchingCubeSample final : public Application {
       context_.destroyPipeline(pipeline);
     }
     context_.destroyResources(
+      non_empty_cells_sbo_,
+      vertices_to_generate_sbo_,
+      atomic_count_sbo_,
+      indirect_sbo_,
       pipeline_layout_,
       uniform_buffer_,
       descriptor_set_layout_
@@ -223,7 +249,18 @@ class MarchingCubeSample final : public Application {
 
   // ----------
 
-  // backend::Buffer gaussian_sbo_{};
+  backend::Buffer non_empty_cells_sbo_{};
+  backend::Buffer vertices_to_generate_sbo_{};
+
+  backend::Buffer atomic_count_sbo_{};
+
+  backend::Buffer indirect_sbo_{};
+
+  // backend::Buffer indices_sbo_{};
+  // backend::Buffer vertices_sbo_{};
+
+  // backend::Image density_texture_{};
+  // backend::Image vertex_indices_volume_{};
 
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};

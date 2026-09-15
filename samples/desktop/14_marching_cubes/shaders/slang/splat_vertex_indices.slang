@@ -18,9 +18,9 @@ void main(
   uint gid : SV_DispatchThreadID
 )
 {
-  let g_vertexCount = ((uint32_t*)pushConstant.vertexCountBuffer); //
+  let kVertexCount = ((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_VERT]; //
 
-  if (gid >= *g_vertexCount) {
+  if (gid >= kVertexCount) {
     return;
   }
 

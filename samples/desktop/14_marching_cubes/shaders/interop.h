@@ -38,6 +38,12 @@ static const float kTexelSize           = 1.0 / kDensityVolumeTexRes;
 
 // ---------------------------------------------------------------------------
 
+#define ATOMIC_COUNT_CELL 0
+#define ATOMIC_COUNT_VERT 1
+#define ATOMIC_COUNT_INDX 2
+
+// ---------------------------------------------------------------------------
+
 struct UniformBufferData {
   float4x4 viewMatrix;
   float4x4 projectionMatrix;
@@ -53,15 +59,11 @@ struct PushConstant {
   float4 chunkAttributes;
   // ---
   uint64_t nonEmptyCellsBuffer;
-  uint64_t atomicCountBuffer;
-  // ---
-  uint64_t cellCountBuffer;
   uint64_t verticesToGenerateBuffer;
-  // ---
-  uint64_t vertexCountBuffer;
-  // ---
+  uint64_t atomicCountBuffer;
+
   uint64_t indirectBuffer;
-  // ---
+
   uint64_t indicesBuffer;
   uint64_t verticesBuffer;
 };

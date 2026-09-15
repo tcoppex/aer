@@ -13,15 +13,15 @@ void main(
   uint gid : SV_DispatchThreadID
 )
 {
-  let g_cellCount = ((uint32_t*)pushConstant.cellCountBuffer);
+  let kCellCount = ((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_CELL];
 
-  if (gid >= *g_cellCount) {
+  if (gid >= kCellCount) {
     return;
   }
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
   let g_outVertices   = ((uint32_t*)pushConstant.verticesToGenerateBuffer);
-  let g_atomicCount   = ((uint32_t*)pushConstant.atomicCountBuffer);
+  let g_atomicCount   = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_VERT];
 
   let packedData = g_nonEmptyCells[gid];
   let coords = uint3(
