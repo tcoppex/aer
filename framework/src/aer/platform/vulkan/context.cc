@@ -100,62 +100,80 @@ VkSampleCountFlagBits Context::max_sample_count() const noexcept {
 
 // ----------------------------------------------------------------------------
 
-backend::Image Context::createImage2D(
-  uint32_t width,
-  uint32_t height,
-  uint32_t array_layers,
+backend::Image Context::createImage(
+  std::string_view label,
+  VkImageViewType image_view_type,
+  VkExtent3D size,
   uint32_t levels,
+  uint32_t layers,
+  VkSampleCountFlagBits samples,
   VkFormat format,
-  VkSampleCountFlagBits sample_count,
-  VkImageUsageFlags usage,
-  std::string_view debug_name
+  VkImageUsageFlags usage
 ) const {
-  LOG_CHECK( width > 0u && height > 0u );
-  LOG_CHECK( array_layers > 0u );
-  LOG_CHECK( levels == 1u ); // [todo]
-  LOG_CHECK( (sample_count > 0b0) && (sample_count <= max_sample_count()) );
-
+  // -----------
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
-
-  // [TODO] check format is a valid depth one too.
   if (vk_utils::IsValidStencilFormat(format)) {
     usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     aspect_mask = VK_IMAGE_ASPECT_DEPTH_BIT
                 | VK_IMAGE_ASPECT_STENCIL_BIT
                 ;
   }
+  // -----------
 
-  VkImageCreateFlags createFlags{};
-  if (array_layers > 1u) {
-    createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+  VkImageType image_type{};
+  switch(image_view_type) {
+    case VK_IMAGE_VIEW_TYPE_1D:
+    case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+      image_type = VK_IMAGE_TYPE_1D;
+    break;
+
+    case VK_IMAGE_VIEW_TYPE_2D:
+    case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+    case VK_IMAGE_VIEW_TYPE_CUBE:
+    case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+      image_type = VK_IMAGE_TYPE_2D;
+    break;
+
+    case VK_IMAGE_VIEW_TYPE_3D:
+      image_type = VK_IMAGE_TYPE_3D;
+    break;
+
+    default:
+      LOGD("unhandled switch case {}", uint32_t(image_view_type));
+    break;
+  };
+
+  // -----------
+  VkImageCreateFlags createFlags{}; //
+  if (layers > 1u) {
+    if (image_type == VK_IMAGE_TYPE_2D) {
+      createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+    }
   }
+  // -----------
 
-  VkImageCreateInfo const image_info{
+  auto const image_info = VkImageCreateInfo{
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .pNext = nullptr,
     .flags = createFlags,
-    .imageType = VK_IMAGE_TYPE_2D,
+    .imageType = image_type,
     .format = format,
-    .extent = {
-      width,
-      height,
-      1u
-    },
+    .extent = size,
     .mipLevels = levels,
-    .arrayLayers = array_layers,
-    .samples = sample_count,
+    .arrayLayers = layers,
+    .samples = samples,
     .tiling = VK_IMAGE_TILING_OPTIMAL,
     .usage = usage,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
 
-  VkImageViewCreateInfo view_info{
+  auto const view_info = VkImageViewCreateInfo{
     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = VK_NULL_HANDLE, // set by allocator
-    .viewType = (array_layers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
-                                    : VK_IMAGE_VIEW_TYPE_2D
-                                    ,
-    .format = image_info.format,
+    .pNext = nullptr,
+    .image = VK_NULL_HANDLE,
+    .viewType = image_view_type,
+    .format = format,
     .components = {
       VK_COMPONENT_SWIZZLE_R,
       VK_COMPONENT_SWIZZLE_G,
@@ -171,12 +189,11 @@ backend::Image Context::createImage2D(
     },
   };
 
-  auto image = allocator_.createImage(image_info, view_info);
+  auto image = createImage(image_info, view_info);
 
-  setDebugObjectName(
-    image.image,
-    std::string(debug_name.empty() ? "Image2d::NoName" : debug_name)
-  );
+  if (!label.empty()) {
+    setDebugObjectName(image.image, std::string(label));
+  }
 
   return image;
 }

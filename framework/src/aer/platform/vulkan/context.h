@@ -56,6 +56,12 @@ class Context {
 
   void release();
 
+  void deviceWaitIdle() const {
+    CHECK_VK(vkDeviceWaitIdle(handle_));
+  }
+
+  // --- Getters ---
+
   [[nodiscard]]
   VkInstance instance() const noexcept {
     return instance_;
@@ -113,11 +119,19 @@ class Context {
     return allocator_;
   }
 
-  void deviceWaitIdle() const {
-    CHECK_VK(vkDeviceWaitIdle(handle_));
+  [[nodiscard]]
+  VkSampleCountFlags sample_counts() const noexcept;
+
+  [[nodiscard]]
+  VkSampleCountFlagBits max_sample_count() const noexcept;
+
+  // --- Surface --
+
+  void destroySurface(VkSurfaceKHR surface) const {
+    vkDestroySurfaceKHR(instance_, surface, nullptr);
   }
 
-  // --- Allocator composition interface --
+  // --- Buffer (Allocator interface) --
 
   [[nodiscard]]
   backend::Buffer createBuffer(
@@ -203,6 +217,8 @@ class Context {
     return writeBuffer(dst_buffer, &host_data, sizeof(T));
   }
 
+  // --- Image (Allocator Interface) ---
+
   [[nodiscard]]
   backend::Image createImage(
     VkImageCreateInfo const& image_info,
@@ -212,24 +228,21 @@ class Context {
     return allocator_.createImage(image_info, view_info, memory_usage);
   }
 
-  void destroyImage(backend::Image &image) const {
-    allocator_.destroyImage(image);
-  }
-
-  // --- Surface --
-
-  void destroySurface(VkSurfaceKHR surface) const {
-    vkDestroySurfaceKHR(instance_, surface, nullptr);
-  }
-
-  // --- Image ---
-
   [[nodiscard]]
-  VkSampleCountFlags sample_counts() const noexcept;
+  backend::Image createImage(
+    std::string_view label,
+    VkImageViewType image_view_type,
+    VkExtent3D size,
+    uint32_t levels,
+    uint32_t layers,
+    VkSampleCountFlagBits samples,
+    VkFormat format,
+    VkImageUsageFlags usage
+  ) const;
 
-  [[nodiscard]]
-  VkSampleCountFlagBits max_sample_count() const noexcept;
-
+  // --------------
+  // --------------
+  // [[deprecated]]
   [[nodiscard]]
   backend::Image createImage2D(
     uint32_t width,
@@ -240,8 +253,20 @@ class Context {
     VkSampleCountFlagBits sample_count,
     VkImageUsageFlags usage,
     std::string_view debug_name
-  ) const;
+  ) const {
+    return createImage(
+      debug_name,
+      (array_layers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
+      VkExtent3D{width, height, 1u},
+      levels,
+      array_layers,
+      sample_count,
+      format,
+      usage
+    );
+  }
 
+  // [[deprecated]]
   [[nodiscard]]
   backend::Image createImage2D(
     uint32_t width,
@@ -253,6 +278,12 @@ class Context {
     return createImage2D(
       width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debug_name
     );
+  }
+  // --------------
+  // --------------
+
+  void destroyImage(backend::Image &image) const {
+    allocator_.destroyImage(image);
   }
 
   // --- Shader Module ---
