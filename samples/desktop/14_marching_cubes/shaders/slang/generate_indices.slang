@@ -310,8 +310,8 @@ PushConstant pushConstant;
 
 // ----------------------------------------------------------------------------
 
-[[vk::binding(kDescriptorSetBinding_IndicesVolume, 0)]]
-Texture3D<uint> inIndicesVolume : register(t2);
+[[vk::binding(kDescriptorSetBinding_VertexIndicesVolume, 0)]]
+RWTexture3D<uint32_t> inIndicesVolume;
 
 // ----------------------------------------------------------------------------
 
@@ -357,7 +357,7 @@ void main(uint gid : SV_DispatchThreadID)
       var edge_coords = coords + uint3(kEdgeStart[edge_id]);
       edge_coords.x = 3u * edge_coords.x + kEdgeAxis[edge_id];
 
-      let vertex_id = inIndicesVolume.Load(int4(edge_coords, 0)).r;
+      let vertex_id = inIndicesVolume.Load(edge_coords).r;
 
       let g_outIndices = ((uint32_t*)pushConstant.indicesBuffer);
       g_outIndices[offset + 3u * i + j] = vertex_id;

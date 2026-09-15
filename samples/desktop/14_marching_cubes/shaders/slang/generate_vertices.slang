@@ -39,8 +39,8 @@ SamplerState uSamplerNearest : register(s0);
 [[vk::binding(kDescriptorSetBinding_SamplerLinear, 0)]]
 SamplerState uSamplerLinear : register(s1);
 
-[[vk::binding(kDescriptorSetBinding_DensityTexture, 0)]]
-Texture3D<float> uDensityTexture : register(t0);
+[[vk::binding(kDescriptorSetBinding_DensityTexture_Sampling, 0)]]
+Texture3D<float> uDensityTexture : register(t0); //
 
 
 float sampleNearest(float3 uvw) {

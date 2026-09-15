@@ -22,7 +22,7 @@ PushConstant pushConstant;
 [[vk::binding(kDescriptorSetBinding_SamplerNearest, 0)]]
 SamplerState uSamplerNearest : register(s0);
 
-[[vk::binding(kDescriptorSetBinding_DensityTexture, 0)]]
+[[vk::binding(kDescriptorSetBinding_DensityTexture_Sampling, 0)]]
 Texture3D<float> uDensityTexture : register(t0);
 
 float sampleNearest(float3 uvw) {

@@ -14,11 +14,11 @@
 static const uint32_t kCompute_BuildDensity_kernelSize  = 4;
 static const uint32_t kCompute_MaxLinearGroupSize       = 256; //
 
-static const uint32_t kDescriptorSetBinding_SamplerNearest      = 0;
-static const uint32_t kDescriptorSetBinding_SamplerLinear       = 1;
-static const uint32_t kDescriptorSetBinding_DensityTexture      = 2;
-static const uint32_t kDescriptorSetBinding_VertexIndicesVolume = 3;
-static const uint32_t kDescriptorSetBinding_IndicesVolume       = 4;
+static const uint32_t kDescriptorSetBinding_SamplerNearest            = 0;
+static const uint32_t kDescriptorSetBinding_SamplerLinear             = 1;
+static const uint32_t kDescriptorSetBinding_DensityTexture_Storage    = 2;
+static const uint32_t kDescriptorSetBinding_DensityTexture_Sampling   = 3;
+static const uint32_t kDescriptorSetBinding_VertexIndicesVolume       = 4;
 
 // -----------------------------------------------------------<----------------
 
@@ -38,9 +38,9 @@ static const float kTexelSize           = 1.0 / kDensityVolumeTexRes;
 
 // ---------------------------------------------------------------------------
 
-#define ATOMIC_COUNT_CELL 0
-#define ATOMIC_COUNT_VERT 1
-#define ATOMIC_COUNT_INDX 2
+#define ATOMIC_COUNT_CELL   0u
+#define ATOMIC_COUNT_VERT   1u
+#define ATOMIC_COUNT_INDX   2u
 
 // ---------------------------------------------------------------------------
 

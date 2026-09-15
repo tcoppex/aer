@@ -110,29 +110,119 @@ class MarchingCubeSample final : public Application {
     }
 
     {
-      
+      auto const kVolumeRes = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
+
+      // [use 'rgba16float' to be able to use filtering, while only needing 'r16float']
+      density_volume_ = context_.createImage(
+        "MarchingCubes::Texture::DensityVolume",
+        VK_IMAGE_VIEW_TYPE_3D,
+        VkExtent3D{kVolumeRes, kVolumeRes, kVolumeRes},
+        1u,
+        1u,
+        VK_SAMPLE_COUNT_1_BIT,
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+      );
+
+      // [use 3*width RED instead of RGB values to avoid concurrent texel store operations]
+      // [might want to switch to 'r16uint']
+      vertex_indices_volume_ = context_.createImage(
+        "MarchingCubes::Texture::VertexIndicesVolume",
+        VK_IMAGE_VIEW_TYPE_3D,
+        VkExtent3D{3u * kVolumeRes, kVolumeRes, kVolumeRes},
+        1u,
+        1u,
+        VK_SAMPLE_COUNT_1_BIT,
+        VK_FORMAT_R32_UINT,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+      );
     }
 
     /* Descriptor set. */
     {
+      auto const& SP = context_.sampler_pool();
+
       descriptor_set_layout_ = context_.createDescriptorSetLayout({
         {
-          .binding = 0,
+          .binding = shader_interop::kDescriptorSetBinding_SamplerNearest,
+          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+          .descriptorCount = 1u,
+          .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_SamplerLinear,
+          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+          .descriptorCount = 1u,
+          .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-        }
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
+          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          .descriptorCount = 1u,
+          .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_VertexIndicesVolume,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .descriptorCount = 1u,
+          .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        },
       });
+
       descriptor_set_ = context_.createDescriptorSet(descriptor_set_layout_, {
         {
-          // .binding = 0,
-          // .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-          // .images = {
-          //   {
-          //     .imageView = gs_image_.view,
-          //     .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-          //   }
-          // }
+          .binding = shader_interop::kDescriptorSetBinding_SamplerNearest,
+          .type = VK_DESCRIPTOR_TYPE_SAMPLER,
+          .images = {
+            {
+              .sampler = SP.anyso_clampedge_nearest(),
+            }
+          }
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_SamplerLinear,
+          .type = VK_DESCRIPTOR_TYPE_SAMPLER,
+          .images = {
+            {
+              .sampler = SP.anyso_clampedge_linear(),
+            }
+          }
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
+          .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .images = {
+            {
+              .imageView = density_volume_.view,
+              .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            }
+          }
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
+          .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          .images = {
+            {
+              .imageView = density_volume_.view,
+              .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            }
+          }
+        },
+        {
+          .binding = shader_interop::kDescriptorSetBinding_VertexIndicesVolume,
+          .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .images = {
+            {
+              .imageView = vertex_indices_volume_.view,
+              .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            }
+          }
         },
       });
     }
@@ -172,14 +262,16 @@ class MarchingCubeSample final : public Application {
     {
       auto &pc = push_constant_;
 
-      // pc.numElems               = gaussians_count_;
+      // pc.gridSize               = uint3();
+      // pc.chunkAttributes        = float4();
 
-      // pc.uniform_addr           = uniform_buffer_.address;
-      // pc.gaussian_addr          = gaussian_sbo_.address;
-      // pc.splat_addr             = splat_sbo_.address;
-      // pc.keys_addr              = splat_keys_sbo_.address;
-      // pc.values_addr            = splat_values_sbo_.address;
-      // pc.tile_ranges_addr       = tile_ranges_sbo_.address;
+      pc.nonEmptyCellsBuffer       = non_empty_cells_sbo_.address;
+      pc.verticesToGenerateBuffer  = vertices_to_generate_sbo_.address;
+      pc.atomicCountBuffer         = atomic_count_sbo_.address;
+      pc.indirectBuffer            = indirect_sbo_.address;
+
+      // pc.indicesBuffer             = indices_sbo_.address;
+      // pc.verticesBuffer            = vertices_sbo_.address;
     }
 
     // Setup initial uniform buffer.
@@ -216,6 +308,10 @@ class MarchingCubeSample final : public Application {
       vertices_to_generate_sbo_,
       atomic_count_sbo_,
       indirect_sbo_,
+
+      density_volume_,
+      vertex_indices_volume_,
+
       pipeline_layout_,
       uniform_buffer_,
       descriptor_set_layout_
@@ -223,7 +319,6 @@ class MarchingCubeSample final : public Application {
   }
 
   void runMarchingCubePipeline(CommandEncoder const& cmd) {
-
   }
 
   void update(float const dt) final {
@@ -235,8 +330,8 @@ class MarchingCubeSample final : public Application {
   void draw(CommandEncoder const& cmd) final {
     runMarchingCubePipeline(cmd);
 
-    // auto pass = cmd.beginRendering();
-    // cmd.endRendering();
+    auto pass = cmd.beginRendering();
+    cmd.endRendering();
 
     drawUI(cmd);
   }
@@ -259,8 +354,8 @@ class MarchingCubeSample final : public Application {
   // backend::Buffer indices_sbo_{};
   // backend::Buffer vertices_sbo_{};
 
-  // backend::Image density_texture_{};
-  // backend::Image vertex_indices_volume_{};
+  backend::Image density_volume_{};
+  backend::Image vertex_indices_volume_{};
 
   VkDescriptorSetLayout descriptor_set_layout_{};
   VkDescriptorSet descriptor_set_{};

@@ -5,7 +5,7 @@
 [[vk::push_constant]]
 PushConstant pushConstant;
 
-[[vk::binding(kDescriptorSetBinding_DensityTexture, 0)]]
+[[vk::binding(kDescriptorSetBinding_DensityTexture_Storage, 0)]]
 RWTexture3D<float4> outDensityVolume;
 
 // ----------------------------------------------------------------------------
