@@ -25,7 +25,7 @@ class MarchingCubeSample final : public Application {
     Compute_ListNonEmptyCells,
     Compute_ListVertices,
     Compute_SplatVertexIndices,
-    Compute_SetupDispatchIndirect,
+    Compute_SetupDispatchIndirect, //
     Compute_GenerateVertices,
     Compute_GenerateIndices,
 
@@ -52,7 +52,7 @@ class MarchingCubeSample final : public Application {
         viewport_size_.width,
         viewport_size_.height,
         0.1f,
-        750.0f
+        250.0f
       );
       camera_.set_controller(&arcball_controller_);
       arcball_controller_.set_dolly(5.0f);
@@ -99,12 +99,13 @@ class MarchingCubeSample final : public Application {
         3u * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        // | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY
       );
 
       indirect_sbo_ = context_.createBuffer(
-        2u * (3u * sizeof(uint32_t)),
+        2u * (3u * sizeof(uint32_t)),               //
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
@@ -125,7 +126,8 @@ class MarchingCubeSample final : public Application {
         1u,
         VK_SAMPLE_COUNT_1_BIT,
         VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+          VK_IMAGE_USAGE_SAMPLED_BIT
+        | VK_IMAGE_USAGE_STORAGE_BIT
       );
 
       // [use 3*width RED instead of RGB values to avoid concurrent texel store operations]
@@ -138,7 +140,9 @@ class MarchingCubeSample final : public Application {
         1u,
         VK_SAMPLE_COUNT_1_BIT,
         VK_FORMAT_R32_UINT,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+          VK_IMAGE_USAGE_SAMPLED_BIT
+        | VK_IMAGE_USAGE_STORAGE_BIT
+        | VK_IMAGE_USAGE_TRANSFER_DST_BIT   // (to clean it)
       );
     }
 
@@ -265,17 +269,19 @@ class MarchingCubeSample final : public Application {
     // PushConstant base setup.
     {
       auto &pc = push_constant_;
+      auto const& chunk_grid_buffer = chunk_grid_.buffers();
 
-      // pc.gridSize               = uint3();
-      // pc.chunkAttributes        = float4();
+      pc.gridSize                   = uint3(0u);
+      pc.atomicCountIndex           = 0u;
+      pc.chunkAttributes            = float4(0.0f);
 
-      pc.nonEmptyCellsBuffer       = non_empty_cells_sbo_.address;
-      pc.verticesToGenerateBuffer  = vertices_to_generate_sbo_.address;
-      pc.atomicCountBuffer         = atomic_count_sbo_.address;
-      pc.indirectBuffer            = indirect_sbo_.address;
+      pc.nonEmptyCellsBuffer        = non_empty_cells_sbo_.address;
+      pc.verticesToGenerateBuffer   = vertices_to_generate_sbo_.address;
+      pc.atomicCountBuffer          = atomic_count_sbo_.address;
+      pc.indirectBuffer             = indirect_sbo_.address;
 
-      // pc.indicesBuffer             = indices_sbo_.address;
-      // pc.verticesBuffer            = vertices_sbo_.address;
+      pc.indicesBuffer              = chunk_grid_buffer.index.address;
+      pc.verticesBuffer             = chunk_grid_buffer.vertex.address;
     }
 
     // Setup initial uniform buffer.
@@ -324,17 +330,200 @@ class MarchingCubeSample final : public Application {
     chunk_grid_.release();
   }
 
-  void runMarchingCubePipeline(CommandEncoder const& cmd) {
+  void buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk &chunk) {
+    uint32_t const kVolumeTexRes  = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
+    uint32_t const kChunkDim      = shader_interop::kChunkDim;
+    uint32_t const kVolumeWorkGroupSize = shader_interop::kCompute_BuildDensity_kernelSize;
+
+    cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
+
+    // 0. Clear shared resources.
+    {
+      cmd.fillBuffer(atomic_count_sbo_, 0);
+      cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
+    }
+
+    // -----------
+
+    // 1. Build Density Volume.
+    {
+      cmd.pipelineImageBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT
+                         ,
+          .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .image = vertex_indices_volume_.image,
+          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        },
+      });
+
+      cmd.bindPipeline(compute_pipelines_[Compute_BuildDensityVolume]);
+
+      auto pc = push_constant_;
+      pc.gridSize = uint3(kVolumeTexRes);
+      pc.chunkAttributes = float4(0.0f); // TODO
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.runKernel<kVolumeWorkGroupSize, kVolumeWorkGroupSize, kVolumeWorkGroupSize>(
+        kVolumeTexRes, kVolumeTexRes, kVolumeTexRes
+      );
+    }
+
+    // -----------
+
+    // 2. List non empty cells.
+    {
+      cmd.pipelineImageBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, //
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+                         ,
+          .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .image = density_volume_.image,
+          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 } //
+        },
+      });
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                         | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = non_empty_cells_sbo_.buffer,
+        },
+      });
+
+      cmd.bindPipeline(compute_pipelines_[Compute_ListNonEmptyCells]);
+
+      auto pc = push_constant_;
+      pc.gridSize = uint3(kChunkDim);
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.runKernel<kVolumeWorkGroupSize, kVolumeWorkGroupSize, kVolumeWorkGroupSize>(
+        kChunkDim, kChunkDim, kChunkDim
+      );
+    }
+
+    // 3. Setup Indirect Cells.
+    {
+      cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
+
+      auto pc = push_constant_;
+      pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_CELL;
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.dispatch();
+    }
+
+    cmd.pipelineMemoryBarrier({
+      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    });
+
+    // -----------
+
+    // 4. List Vertices
+    cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
+    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
+
+    cmd.pipelineMemoryBarrier({
+      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    });
+
+    // 5. Setup Indirect Vertices
+    {
+      cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
+
+      auto pc = push_constant_;
+      pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT; //
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.dispatch();
+    }
+
+    // -----------
+
+    // 6. Splat Vertex Indices.
+    cmd.bindPipeline(compute_pipelines_[Compute_SplatVertexIndices]);
+    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
+
+    cmd.pipelineMemoryBarrier({
+      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    });
+
+    // -----------
+
+    // 7. Generate Vertices.
+    cmd.bindPipeline(compute_pipelines_[Compute_GenerateVertices]);
+    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
+
+    // 8. Generate Indices.
+    cmd.bindPipeline(compute_pipelines_[Compute_GenerateIndices]);
+    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
+
+    cmd.pipelineMemoryBarrier({
+      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    });
+
+    // -----------
+
+    // TODO
+    // if (drawIndexedIndirectBuffer) {
+    //   cmd.copyBufferToBuffer(
+    //     buffer.atomicCountIndices, 0, drawIndexedIndirectBuffer,
+    //     chunk.offsets.drawIndexedIndirect, buffer.atomicCountIndices.size
+    //   );
+    // }
   }
 
   void update(float const dt) final {
     host_data_.viewMatrix = camera_.view();
     context_.writeBuffer(uniform_buffer_, host_data_); //
+
+    // -------
+
+    auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+    for (auto &chunk : chunk_grid_.chunks()) {
+      buildChunk(cmd, chunk);
+    }
+    context_.finishTransientCommandEncoder(cmd);
   }
 
   void draw(CommandEncoder const& cmd) final {
-    runMarchingCubePipeline(cmd);
-
     auto pass = cmd.beginRendering();
     cmd.endRendering();
 

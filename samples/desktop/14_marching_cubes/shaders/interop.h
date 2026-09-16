@@ -38,9 +38,9 @@ static const float kTexelSize           = 1.0 / kDensityVolumeTexRes;
 
 // ---------------------------------------------------------------------------
 
-#define ATOMIC_COUNT_CELL   0u
-#define ATOMIC_COUNT_VERT   1u
-#define ATOMIC_COUNT_INDX   2u
+static const uint32_t ATOMIC_COUNT_CELL = 0u;
+static const uint32_t ATOMIC_COUNT_VERT = 1u;
+static const uint32_t ATOMIC_COUNT_INDX = 2u;
 
 // ---------------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ struct UniformBufferData {
 
 struct PushConstant {
   uint3 gridSize;
-  uint pad0_[1];
+  uint32_t atomicCountIndex;
   float4 chunkAttributes;
   // ---
   uint64_t nonEmptyCellsBuffer;

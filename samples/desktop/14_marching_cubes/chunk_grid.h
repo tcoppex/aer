@@ -85,6 +85,12 @@ class ChunkGrid {
 
   void draw(RenderPassEncoder const& pass) const;
 
+  [[nodiscard]]
+  std::vector<Chunk>& chunks() noexcept { return chunks_; }
+
+  [[nodiscard]]
+  Buffers const& buffers() noexcept { return buffers_; }
+
  private:
   void reset(uint3 const& dimension);
 

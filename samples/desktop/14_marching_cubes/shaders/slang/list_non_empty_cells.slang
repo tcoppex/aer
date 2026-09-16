@@ -67,7 +67,7 @@ void main(uint3 coords : SV_DispatchThreadID)
                 | (iB.x << 4) | (iB.y << 5) | (iB.z << 6) | (iB.w << 7);
 
   if ((cube_case > 0) && (cube_case < 255)) {
-    let g_counter = ((uint32_t*)pushConstant.atomicCountBuffer);
+    let g_counter = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_CELL];
     let g_cells   = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
 
     uint out_index;
