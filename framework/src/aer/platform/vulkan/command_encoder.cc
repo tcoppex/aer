@@ -123,24 +123,36 @@ void GenericCommandEncoder::clearColorImage(
 
 // ----------------------------------------------------------------------------
 
+void GenericCommandEncoder::pipelineMemoryBarrier(VkMemoryBarrier2 barrier) const {
+  barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+  auto const dependency = VkDependencyInfo{
+    .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+    .memoryBarrierCount = 1u,
+    .pMemoryBarriers = &barrier,
+  };
+  vkCmdPipelineBarrier2(handle_, &dependency);
+}
+
+// ----------------------------------------------------------------------------
+
 void GenericCommandEncoder::pipelineBufferBarriers(
   std::vector<VkBufferMemoryBarrier2> barriers
 ) const {
   for (auto& bb : barriers) {
     bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
     bb.srcQueueFamilyIndex = (bb.srcQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
-                                                            : bb.srcQueueFamilyIndex
-                                                            ;
+                                                            : bb.srcQueueFamilyIndex;
     bb.dstQueueFamilyIndex = (bb.dstQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
-                                                            : bb.dstQueueFamilyIndex
-                                                            ;
+                                                            : bb.dstQueueFamilyIndex;
     bb.size = (bb.size == 0ULL) ? VK_WHOLE_SIZE : bb.size;
   }
-  VkDependencyInfo const dependency{
+
+  auto const dependency = VkDependencyInfo{
     .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
     .bufferMemoryBarrierCount = static_cast<uint32_t>(barriers.size()),
     .pBufferMemoryBarriers = barriers.data(),
   };
+
   // (requires VK_KHR_synchronization2 or VK_VERSION_1_3)
   vkCmdPipelineBarrier2(handle_, &dependency);
 }

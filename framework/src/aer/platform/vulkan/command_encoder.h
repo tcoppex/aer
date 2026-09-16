@@ -146,8 +146,8 @@ class GenericCommandEncoder {
 
   // --- Pipeline Barrier ---
 
+  void pipelineMemoryBarrier(VkMemoryBarrier2 barrier) const;
   void pipelineBufferBarriers(std::vector<VkBufferMemoryBarrier2> barriers) const;
-
   void pipelineImageBarriers(std::vector<VkImageMemoryBarrier2> barriers) const;
 
   // --- Query Pool ---
