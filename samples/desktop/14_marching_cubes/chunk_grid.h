@@ -7,43 +7,6 @@
 
 // ----------------------------------------------------------------------------
 
-class Chunk {
- public:
-  struct Offsets {
-    uint32_t chunk{};
-    uint32_t vertex{};
-    uint32_t index{};
-    uint32_t draw_indirect{};
-  };
-
- public:
-  Chunk(
-    uint32_t index,
-    uint3 const& coords,
-    float3 const& coordsWS,
-    Chunk::Offsets const& offsets
-  )
-  : index_(index)
-  , coords_(coords)
-  , coordsWS_(coordsWS)
-  , offsets_(offsets)
-  {}
-
-  [[nodiscard]]
-  Offsets const& offsets() const noexcept { return offsets_; }
-
-  [[nodiscard]]
-  float3 const& worldspace_coords() const noexcept { return coordsWS_; }
-
- private:
-  uint32_t index_{};
-  uint3 coords_{};
-  float3 coordsWS_{};
-  Offsets offsets_{};
-};
-
-// ----------------------------------------------------------------------------
-
 class ChunkGrid {
  public:
   // [should be updated depending on kChunkDim, and density function complexity]
@@ -67,8 +30,42 @@ class ChunkGrid {
 
   // -----------------------
 
-
  public:
+  class Chunk {
+   public:
+    struct Offsets {
+      uint32_t chunk{};
+      uint32_t vertex{};
+      uint32_t index{};
+      uint32_t draw_indirect{};
+    };
+
+   public:
+    Chunk(
+      uint32_t index,
+      uint3 const& coords,
+      float3 const& coordsWS,
+      Chunk::Offsets const& offsets
+    )
+    : index_(index)
+    , coords_(coords)
+    , coordsWS_(coordsWS)
+    , offsets_(offsets)
+    {}
+
+    [[nodiscard]]
+    Offsets const& offsets() const noexcept { return offsets_; }
+
+    [[nodiscard]]
+    float3 const& worldspace_coords() const noexcept { return coordsWS_; }
+
+   private:
+    uint32_t index_{};
+    uint3 coords_{};
+    float3 coordsWS_{};
+    Offsets offsets_{};
+  };
+
   struct Buffers {
     backend::Buffer chunk{};
     backend::Buffer vertex{};
@@ -91,11 +88,14 @@ class ChunkGrid {
  private:
   void reset(uint3 const& dimension);
 
-private:
+ private:
   RenderContext const* context_ptr_{};
+
   uint3 dimension_{};
   size_t size_{};
+
   std::vector<Chunk> chunks_{};
+
   Buffers buffers_{};
 };
 
