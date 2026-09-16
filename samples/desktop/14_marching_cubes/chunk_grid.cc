@@ -13,22 +13,6 @@ void ChunkGrid::setup(RenderContext const& context, uint3 const& dimension) {
 
   reset(dimension);
 
-  buffers_.chunk = context.createBuffer(
-    "ChunkGrid::ChunkBuffer",
-    size_ * kChunkStride,
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-    VMA_MEMORY_USAGE_AUTO,
-    backend::Allocator::kAllocMappedAtCreation
-  );
-  if (auto &buf = buffers_.chunk; buf.is_mapped()) {
-    float4 *attributes = reinterpret_cast<float4*>(buf.mapped_data);
-    for (size_t i = 0; i < chunks_.size(); ++i) {
-      attributes[i] = float4(chunks_[i].worldspace_coords(), shader_interop::kChunkSize);
-    }
-    context.flushBuffer(buf);
-  }
-
   buffers_.vertex = context.createBuffer(
     "ChunkGrid::VertexBuffer",
     size_ * kHeuristicChunkVerticesBufferSize,
@@ -55,9 +39,29 @@ void ChunkGrid::setup(RenderContext const& context, uint3 const& dimension) {
     backend::Allocator::kAllocMappedAtCreation
   );
   if (auto &buf = buffers_.draw_indirect; buf.is_mapped()) {
-    // TODO
+    uint32_t *data = reinterpret_cast<uint32_t*>(buf.mapped_data);
+    memset(data, 0u, size_ * kDrawIndexedIndirectSize);
+    for (size_t i = 0; i < size_; ++i) {
+      data[5u * i + 1u] = 1u;
+    }
     context.flushBuffer(buf);
   }
+
+  // buffers_.chunk = context.createBuffer(
+  //   "ChunkGrid::ChunkBuffer",
+  //   size_ * kChunkStride,
+  //     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+  //   | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+  //   VMA_MEMORY_USAGE_AUTO,
+  //   backend::Allocator::kAllocMappedAtCreation
+  // );
+  // if (auto &buf = buffers_.chunk; buf.is_mapped()) {
+  //   float4 *attributes = reinterpret_cast<float4*>(buf.mapped_data);
+  //   for (size_t i = 0; i < chunks_.size(); ++i) {
+  //     attributes[i] = float4(chunks_[i].worldspace_coords(), shader_interop::kChunkSize);
+  //   }
+  //   context.flushBuffer(buf);
+  // }
 }
 
 // ----------------------------------------------------------------------------
@@ -66,10 +70,10 @@ void ChunkGrid::release() {
   LOG_CHECK(context_ptr_ != nullptr);
 
   context_ptr_->destroyResources(
-    buffers_.chunk,
     buffers_.vertex,
     buffers_.index,
     buffers_.draw_indirect
+    // buffers_.chunk
   );
 }
 
@@ -111,10 +115,10 @@ void ChunkGrid::reset(uint3 const& dimension) {
           static_cast<float>(k)
         );
         auto const offsets = Chunk::Offsets{
-          .chunk          = static_cast<uint32_t>(index * kChunkStride),
           .vertex         = static_cast<uint32_t>(index * kHeuristicChunkVerticesBufferSize),
           .index          = static_cast<uint32_t>(index * kHeuristicChunkIndicesBufferSize),
-          .draw_indirect  = static_cast<uint32_t>(index * kDrawIndexedIndirectSize)
+          .draw_indirect  = static_cast<uint32_t>(index * kDrawIndexedIndirectSize),
+          // .chunk          = static_cast<uint32_t>(index * kChunkStride),
         };
         chunks_.emplace_back(index++, coords, coordsWS, offsets);
       }

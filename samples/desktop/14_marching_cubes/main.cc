@@ -364,8 +364,8 @@ class MarchingCubeSample final : public Application {
       cmd.bindPipeline(compute_pipelines_[Compute_BuildDensityVolume]);
 
       auto pc = push_constant_;
-      pc.gridSize = uint3(kVolumeTexRes);
-      pc.chunkAttributes = float4(0.0f); // TODO
+      pc.gridSize         = uint3(kVolumeTexRes);
+      pc.chunkAttributes  = float4(chunk.worldspace_coords(), shader_interop::kChunkSize); //
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.runKernel<kVolumeWorkGroupSize, kVolumeWorkGroupSize, kVolumeWorkGroupSize>(

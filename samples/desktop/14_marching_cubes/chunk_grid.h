@@ -34,10 +34,10 @@ class ChunkGrid {
   class Chunk {
    public:
     struct Offsets {
-      uint32_t chunk{};
       uint32_t vertex{};
       uint32_t index{};
       uint32_t draw_indirect{};
+      // uint32_t chunk{};
     };
 
    public:
@@ -67,13 +67,13 @@ class ChunkGrid {
   };
 
   struct Buffers {
-    backend::Buffer chunk{};
     backend::Buffer vertex{};
     backend::Buffer index{};
     backend::Buffer draw_indirect{};
+    // backend::Buffer chunk{};
 
     [[nodiscard]]
-    bool allocated() const noexcept { return chunk.buffer != VK_NULL_HANDLE; }
+    bool allocated() const noexcept { return vertex.buffer != VK_NULL_HANDLE; }
   };
 
  public:
