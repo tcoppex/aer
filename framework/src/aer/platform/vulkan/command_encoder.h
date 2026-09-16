@@ -514,7 +514,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t instance_count = 1u,
     uint32_t first_vertex = 0u,
     uint32_t first_instance = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
@@ -523,7 +523,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     VkDeviceSize offset = 0u,
     uint32_t drawCount = 1u,
     uint32_t stride = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDrawIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
 
@@ -533,7 +533,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t first_index = 0u,
     int32_t vertex_offset = 0,
     uint32_t first_instance = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDrawIndexed(
       handle_,
       index_count,
@@ -542,6 +542,15 @@ class RenderPassEncoder : public GenericCommandEncoder {
       vertex_offset,
       first_instance
     );
+  }
+
+  void drawIndexedIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0u,
+    uint32_t drawCount = 1u,
+    uint32_t stride = 0u
+  ) const noexcept {
+    vkCmdDrawIndexedIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
 
   void bindAndDraw(
