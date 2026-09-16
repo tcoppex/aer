@@ -54,7 +54,10 @@ namespace backend {
 // Resource Allocator
 
 struct Resource {
-  bool valid() const noexcept { return false; }
+  [[nodiscard]]
+  bool valid() const noexcept {
+    return false;
+  }
 };
 
 struct Image : Resource {
@@ -63,6 +66,7 @@ struct Image : Resource {
   VkFormat format{};
   VmaAllocation allocation{};
 
+  [[nodiscard]]
   bool valid() const noexcept {
     return image != VK_NULL_HANDLE;
   }
@@ -72,9 +76,16 @@ struct Buffer : Resource {
   VkBuffer buffer{};
   VmaAllocation allocation{};
   VkDeviceAddress address{};
+  mutable void* mapped_data{nullptr};
 
+  [[nodiscard]]
   bool valid() const noexcept {
     return buffer != VK_NULL_HANDLE;
+  }
+
+  [[nodiscard]]
+  bool is_mapped() const noexcept {
+    return mapped_data != nullptr;
   }
 };
 

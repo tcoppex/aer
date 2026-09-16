@@ -16,6 +16,23 @@ class Allocator {
   static constexpr size_t kDefaultStagingBufferSize{ 32u * 1024u * 1024u };
   static constexpr bool kAutoAlignBufferSize{ false };
 
+  // Dynamic Uniforms / Staging Buffers / Initialized once.
+  static constexpr VmaAllocationCreateFlags kAllocMappedAtCreation{
+      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+    | VMA_ALLOCATION_CREATE_MAPPED_BIT
+  };
+
+  // Readback buffers / GPU queries.
+  static constexpr VmaAllocationCreateFlags kAllocReadback{
+      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+    | VMA_ALLOCATION_CREATE_MAPPED_BIT
+  };
+
+  // Dedicated memory for *large* buffer.
+  static constexpr VmaAllocationCreateFlags kAllocDedicated{
+    VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT
+  };
+
  public:
   Allocator() = default;
   ~Allocator() = default;
@@ -66,6 +83,11 @@ class Allocator {
 
   void unmapMemory(backend::Buffer const& buffer) const {
     vmaUnmapMemory(handle_, buffer.allocation);
+  }
+
+  void flushBuffer(backend::Buffer const& buffer, VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) const {
+    vmaFlushAllocation(handle_, buffer.allocation, offset, size);
+    buffer.mapped_data = nullptr; //
   }
 
   /* Alias to map & copy host data to a device buffer. */

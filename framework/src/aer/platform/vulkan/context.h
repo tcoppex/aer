@@ -180,6 +180,10 @@ class Context {
     allocator_.unmapMemory(buffer);
   }
 
+  void flushBuffer(backend::Buffer const& buffer, VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) const {
+    allocator_.flushBuffer(buffer, offset, size);
+  }
+
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     size_t dst_offset,
