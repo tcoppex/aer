@@ -437,7 +437,7 @@ void Context::transientCopyBuffer(
   size_t const buffersize
 ) const {
   auto cmd = createTransientCommandEncoder(Context::TargetQueue::Transfer);
-  cmd.copyBuffer(src, dst, buffersize);
+  cmd.copyBufferToBuffer(src, dst, buffersize); //
   finishTransientCommandEncoder(cmd);
 }
 

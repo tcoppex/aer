@@ -192,8 +192,18 @@ void GenericCommandEncoder::pipelineImageBarriers(
 void CommandEncoder::copyBuffer(
   backend::Buffer const& src,
   backend::Buffer const& dst,
+  VkBufferCopy const& buffer_copy
+) const noexcept {
+  vkCmdCopyBuffer(handle_, src.buffer, dst.buffer, 1u, &buffer_copy);
+}
+
+// ----------------------------------------------------------------------------
+
+void CommandEncoder::copyBuffer(
+  backend::Buffer const& src,
+  backend::Buffer const& dst,
   std::vector<VkBufferCopy> const& regions
-) const {
+) const noexcept {
   vkCmdCopyBuffer(
     handle_, src.buffer, dst.buffer, static_cast<uint32_t>(regions.size()), regions.data()
   );
@@ -201,7 +211,7 @@ void CommandEncoder::copyBuffer(
 
 // ----------------------------------------------------------------------------
 
-size_t CommandEncoder::copyBuffer(
+size_t CommandEncoder::copyBufferToBuffer(
   backend::Buffer const& src,
   size_t src_offset,
   backend::Buffer const& dst,
@@ -210,11 +220,9 @@ size_t CommandEncoder::copyBuffer(
 ) const {
   LOG_CHECK(size > 0);
   copyBuffer(src, dst, {
-    {
-      .srcOffset = src_offset,
-      .dstOffset = dst_offet,
-      .size = size,
-    }
+    .srcOffset = src_offset,
+    .dstOffset = dst_offet,
+    .size = size,
   });
   return src_offset + size;
 }
@@ -353,12 +361,11 @@ void CommandEncoder::transferBufferToDevice(
     );
   } else {
     // [TODO] Staging buffers need better cleaning / garbage collection !
-    auto staging_buffer{
-      allocator_ptr_->createStagingBuffer(host_data_size, host_data)   //
-    };
-    copyBuffer(
-      staging_buffer, 0u, device_buffer, device_buffer_offset, host_data_size
-    );
+    auto staging_buffer = allocator_ptr_->createStagingBuffer(host_data_size, host_data);
+    copyBuffer(staging_buffer, device_buffer, {
+      .dstOffset  = device_buffer_offset,
+      .size       = host_data_size
+    });
     pipelineBufferBarriers({
       {
         .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,

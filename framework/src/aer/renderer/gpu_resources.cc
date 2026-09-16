@@ -444,15 +444,15 @@ void GPUResources::uploadBuffers() {
   auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Transfer);
   {
     size_t src_offset{0lu};
-    src_offset = cmd.copyBuffer(
+    src_offset = cmd.copyBufferToBuffer(
       staging_buffer, src_offset, vertex_buffer, 0u, vertex_buffer_size
     );
     if (index_buffer_size > 0) {
-      src_offset = cmd.copyBuffer(
+      src_offset = cmd.copyBufferToBuffer(
         staging_buffer, src_offset, index_buffer, 0u, index_buffer_size
       );
     }
-    src_offset = cmd.copyBuffer(
+    src_offset = cmd.copyBufferToBuffer(
       staging_buffer, src_offset, transforms_sbo_, 0u, transforms_buffer_size
     );
 

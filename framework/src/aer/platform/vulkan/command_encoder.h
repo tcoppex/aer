@@ -237,9 +237,26 @@ class CommandEncoder : public GenericCommandEncoder {
     backend::Buffer const& src,
     backend::Buffer const& dst,
     std::vector<VkBufferCopy> const& regions
-  ) const;
+  ) const noexcept;
 
-  size_t copyBuffer(
+  void copyBuffer(
+    backend::Buffer const& src,
+    backend::Buffer const& dst,
+    VkBufferCopy const& buffer_copy
+  ) const noexcept;
+
+  inline
+  void copyBuffer(backend::Buffer const& src, backend::Buffer const& dst) const noexcept {
+    copyBuffer(src, dst, VkBufferCopy{
+      .srcOffset = 0u,
+      .dstOffset = 0u,
+      .size = VK_WHOLE_SIZE
+    });
+  }
+
+  // -------------------------------
+  // [ WebGPU-like wrapper ]
+  size_t copyBufferToBuffer(
     backend::Buffer const& src,
     size_t src_offset,
     backend::Buffer const& dst,
@@ -247,13 +264,14 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t size
   ) const;
 
-  size_t copyBuffer(
+  size_t copyBufferToBuffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t size
   ) const {
-    return copyBuffer(src, 0, dst, 0, size);
+    return copyBufferToBuffer(src, 0u, dst, 0u, size);
   }
+  // -------------------------------
 
   void transferBufferToDevice(
     void const* host_data,
