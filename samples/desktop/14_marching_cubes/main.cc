@@ -14,13 +14,11 @@ namespace shader_interop {
 #include "shaders/interop.h"
 }
 
+#include "chunk_grid.h"
+
 // ----------------------------------------------------------------------------
 
 class MarchingCubeSample final : public Application {
- public:
-  static constexpr uint32_t kHeuristicChunkMaxVertices  = (1 << 13); // 4096
-  static constexpr uint32_t kHeuristicChunkMaxIndices   = (1 << 16); // 32768
-
  public:
   enum Compute {
     Compute_BuildDensityVolume,
@@ -45,7 +43,7 @@ class MarchingCubeSample final : public Application {
   bool setup() final {
     wm_->set_title("14 - Marching Cube");
 
-    renderer_.set_clear_color({ 0.2f, 0.75f, 0.5f, 1.0f });
+    renderer_.set_clear_color({ 0.52f, 0.45f, 0.65f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {
@@ -60,6 +58,9 @@ class MarchingCubeSample final : public Application {
       arcball_controller_.set_dolly(5.0f);
     }
 
+    /* Chunk Grid */
+    chunk_grid_.setup(context_, uint3(4, 4, 4)); //
+
     /* Allocate the uniform buffer. */
     {
       // TODO: allocate as a properly padded ring buffer
@@ -71,9 +72,11 @@ class MarchingCubeSample final : public Application {
       );
     }
 
-    /* Allocate device buffers. */
+    /* Allocate Device Buffers. */
     {
-      const uint32_t kHeuristicMaxNonEmptyCellsSize = kHeuristicChunkMaxVertices * sizeof(uint32_t);
+      const uint32_t kHeuristicMaxNonEmptyCellsSize = ChunkGrid::kHeuristicChunkMaxVertices
+                                                    * sizeof(uint32_t)
+                                                    ;
 
       non_empty_cells_sbo_ = context_.createBuffer(
         "MarchingCubes::Buffer::NonEmptyCells",
@@ -109,6 +112,7 @@ class MarchingCubeSample final : public Application {
       );
     }
 
+    /* Allocate Device Images. */
     {
       auto const kVolumeRes = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
 
@@ -316,13 +320,14 @@ class MarchingCubeSample final : public Application {
       uniform_buffer_,
       descriptor_set_layout_
     );
+
+    chunk_grid_.release();
   }
 
   void runMarchingCubePipeline(CommandEncoder const& cmd) {
   }
 
   void update(float const dt) final {
-    // Camera Uniform Data.
     host_data_.viewMatrix = camera_.view();
     context_.writeBuffer(uniform_buffer_, host_data_); //
   }
@@ -342,17 +347,14 @@ class MarchingCubeSample final : public Application {
   shader_interop::UniformBufferData host_data_{};
   backend::Buffer uniform_buffer_{};
 
+  ChunkGrid chunk_grid_{};
+
   // ----------
 
   backend::Buffer non_empty_cells_sbo_{};
   backend::Buffer vertices_to_generate_sbo_{};
-
   backend::Buffer atomic_count_sbo_{};
-
   backend::Buffer indirect_sbo_{};
-
-  // backend::Buffer indices_sbo_{};
-  // backend::Buffer vertices_sbo_{};
 
   backend::Image density_volume_{};
   backend::Image vertex_indices_volume_{};
@@ -362,6 +364,8 @@ class MarchingCubeSample final : public Application {
   VkPipelineLayout pipeline_layout_{};
   shader_interop::PushConstant push_constant_{};
   std::array<Pipeline, Compute_kCount> compute_pipelines_{};
+
+  // ----------
 };
 
 // ----------------------------------------------------------------------------
