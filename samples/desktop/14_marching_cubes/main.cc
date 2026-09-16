@@ -352,8 +352,7 @@ class MarchingCubeSample final : public Application {
           .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
           .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
           .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT
-                         ,
+          .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
           .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
           .newLayout = VK_IMAGE_LAYOUT_GENERAL,
           .image = vertex_indices_volume_.image,
@@ -501,12 +500,16 @@ class MarchingCubeSample final : public Application {
 
     // -----------
 
-    // TODO
-    // if (drawIndexedIndirectBuffer) {
-    //   cmd.copyBufferToBuffer(
-    //     buffer.atomicCountIndices, 0, drawIndexedIndirectBuffer,
-    //     chunk.offsets.drawIndexedIndirect, buffer.atomicCountIndices.size
-    //   );
+    // Copy total indices count to indirect indexed draw buffer.
+    // [ switch to a custom kernel ? ]
+    // {
+    //   auto const& offsets = chunk.offsets();
+    //   auto const& buffers = chunk_grid_.buffers();
+    //   cmd.copyBuffer(atomic_count_sbo_, buffers.draw_indirect, {
+    //     .srcOffset = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
+    //     .dstOffset = offsets.draw_indirect,
+    //     .size      = sizeof(uint32_t)
+    //   });
     // }
   }
 
