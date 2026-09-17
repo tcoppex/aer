@@ -10,11 +10,11 @@
 #include "aer/application.h"
 #include "aer/core/arcball_controller.h"
 
+#include "chunk_grid.h"
+
 namespace shader_interop {
 #include "shaders/interop.h"
 }
-
-#include "chunk_grid.h"
 
 // ----------------------------------------------------------------------------
 
@@ -25,7 +25,7 @@ class MarchingCubeSample final : public Application {
     Compute_ListNonEmptyCells,
     Compute_ListVertices,
     Compute_SplatVertexIndices,
-    Compute_SetupDispatchIndirect, //
+    Compute_SetupDispatchIndirect,
     Compute_GenerateVertices,
     Compute_GenerateIndices,
 
@@ -63,9 +63,8 @@ class MarchingCubeSample final : public Application {
 
     /* Allocate the uniform buffer. */
     {
-      // TODO: allocate as a properly padded ring buffer
       uniform_buffer_ = context_.createBuffer(
-        sizeof(host_data_), // (* max_frames_in_flight)
+        sizeof(host_data_),
           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         , VMA_MEMORY_USAGE_CPU_TO_GPU
@@ -99,13 +98,18 @@ class MarchingCubeSample final : public Application {
         3u * sizeof(uint32_t),
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        // | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-        | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT  // to copy index count to dispathIndexedIndirect
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT  // to clear
+        ,
         VMA_MEMORY_USAGE_GPU_ONLY
       );
 
+      uint32_t const kIndirectDispatchSize = sizeof(uint4);
+      indirect_cells_offset_    = 0u * kIndirectDispatchSize;
+      indirect_vertices_offset_ = 1u * kIndirectDispatchSize;
+
       indirect_sbo_ = context_.createBuffer(
-        2u * (3u * sizeof(uint32_t)),               //
+        2u * kIndirectDispatchSize,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
@@ -142,7 +146,13 @@ class MarchingCubeSample final : public Application {
         VK_FORMAT_R32_UINT,
           VK_IMAGE_USAGE_SAMPLED_BIT
         | VK_IMAGE_USAGE_STORAGE_BIT
-        | VK_IMAGE_USAGE_TRANSFER_DST_BIT   // (to clean it)
+        | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+      );
+
+      context_.transitionColorImages(
+        {density_volume_, vertex_indices_volume_},
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL
       );
     }
 
@@ -331,31 +341,29 @@ class MarchingCubeSample final : public Application {
   }
 
   void buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk &chunk) {
-    uint32_t const kVolumeTexRes  = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
-    uint32_t const kChunkDim      = shader_interop::kChunkDim;
     uint32_t const kVolumeWorkGroupSize = shader_interop::kCompute_BuildDensity_kernelSize;
 
+    uint32_t const kVolumeTexRes  = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
+    uint32_t const kChunkDim      = shader_interop::kChunkDim;
+
+    // Bind the shared descriptor set.
     cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
     // 0. Clear shared resources.
-    {
-      cmd.fillBuffer(atomic_count_sbo_, 0);
-      cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
-    }
-
-    // -----------
+    cmd.fillBuffer(atomic_count_sbo_, 0);
+    cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
 
     // 1. Build Density Volume.
     {
       cmd.pipelineImageBarriers({
         {
-          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .srcStageMask  = VK_PIPELINE_STAGE_NONE,
+          .srcAccessMask = VK_ACCESS_2_NONE,
           .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
           .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
           .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-          .image = vertex_indices_volume_.image,
+          .image = density_volume_.image,
           .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         },
       });
@@ -372,23 +380,8 @@ class MarchingCubeSample final : public Application {
       );
     }
 
-    // -----------
-
     // 2. List non empty cells.
     {
-      cmd.pipelineImageBarriers({
-        {
-          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT, //
-          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
-                         ,
-          .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-          .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-          .image = density_volume_.image,
-          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 } //
-        },
-      });
       cmd.pipelineBufferBarriers({
         {
           .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
@@ -397,6 +390,7 @@ class MarchingCubeSample final : public Application {
           .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
                          | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
           .buffer        = atomic_count_sbo_.buffer,
+          // .offset        = ATOMIC_COUNT_CELL
         },
         {
           .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -404,6 +398,19 @@ class MarchingCubeSample final : public Application {
           .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
           .buffer        = non_empty_cells_sbo_.buffer,
+        },
+      });
+      cmd.pipelineImageBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+                         ,
+          .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .image = density_volume_.image,
+          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         },
       });
 
@@ -420,97 +427,221 @@ class MarchingCubeSample final : public Application {
 
     // 3. Setup Indirect Cells.
     {
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+          .offset        = shader_interop::ATOMIC_COUNT_CELL * sizeof(uint32_t),
+          .size          = sizeof(uint32_t),
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+          .srcAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = indirect_sbo_.buffer,
+        },
+      });
+
       cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
 
       auto pc = push_constant_;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_CELL;
+      pc.indicesBuffer    = indirect_sbo_.address + indirect_cells_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch();
     }
 
-    cmd.pipelineMemoryBarrier({
-      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-    });
-
-    // -----------
-
     // 4. List Vertices
-    cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
-    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
-
-    cmd.pipelineMemoryBarrier({
-      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
+                       | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                       | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = atomic_count_sbo_.buffer,
+        // .offset        = ATOMIC_COUNT_CELL | ATOMIC_COUNT_VERT
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = vertices_to_generate_sbo_.buffer,
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .buffer        = non_empty_cells_sbo_.buffer,
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+        .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+        .buffer        = indirect_sbo_.buffer,
+      },
     });
+    cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
+    cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
 
     // 5. Setup Indirect Vertices
     {
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+          .offset        = shader_interop::ATOMIC_COUNT_VERT * sizeof(uint32_t),
+          .size          = sizeof(uint32_t),
+        },
+      });
+
       cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
 
       auto pc = push_constant_;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT; //
+      pc.indicesBuffer    = indirect_sbo_.address + indirect_vertices_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch();
     }
 
-    // -----------
-
     // 6. Splat Vertex Indices.
-    cmd.bindPipeline(compute_pipelines_[Compute_SplatVertexIndices]);
-    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
-
-    cmd.pipelineMemoryBarrier({
-      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .buffer        = vertices_to_generate_sbo_.buffer,
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+        .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+        .buffer        = indirect_sbo_.buffer,
+      },
     });
+    cmd.pipelineImageBarriers({
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .image = vertex_indices_volume_.image,
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+      },
+    });
+    cmd.bindPipeline(compute_pipelines_[Compute_SplatVertexIndices]);
+    cmd.dispatchIndirect(indirect_sbo_, indirect_vertices_offset_);
 
     // -----------
+
+    auto const& grid_buffers  = chunk_grid_.buffers();
+    auto const& chunk_offsets = chunk.offsets();
 
     // 7. Generate Vertices.
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .buffer        = vertices_to_generate_sbo_.buffer,
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, //
+        .srcAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT, //
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = grid_buffers.vertex.buffer,
+        .offset        = chunk_offsets.vertex,
+        .size          = ChunkGrid::kHeuristicChunkVerticesBufferSize,
+      }
+    });
     cmd.bindPipeline(compute_pipelines_[Compute_GenerateVertices]);
-    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
+    cmd.dispatchIndirect(indirect_sbo_, indirect_vertices_offset_);
 
     // 8. Generate Indices.
-    cmd.bindPipeline(compute_pipelines_[Compute_GenerateIndices]);
-    cmd.runKernel<shader_interop::kCompute_MaxLinearGroupSize>();
-
-    cmd.pipelineMemoryBarrier({
-      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    cmd.pipelineBufferBarriers({
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                       | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = atomic_count_sbo_.buffer,
+        .offset        = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
+        .size          = sizeof(uint32_t),
+      },
+      {
+        .srcStageMask  = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT, //
+        .srcAccessMask = VK_ACCESS_2_INDEX_READ_BIT, //
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = grid_buffers.index.buffer,
+        .offset        = chunk_offsets.index,
+        .size          = ChunkGrid::kHeuristicChunkIndicesBufferSize,
+      },
     });
+    cmd.bindPipeline(compute_pipelines_[Compute_GenerateIndices]);
+    cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
 
     // -----------
 
-    // Copy total indices count to indirect indexed draw buffer.
+    // 9. Copy total indices count to indirect indexed draw buffer.
     // [ switch to a custom kernel ? ]
-    // {
-    //   auto const& offsets = chunk.offsets();
-    //   auto const& buffers = chunk_grid_.buffers();
-    //   cmd.copyBuffer(atomic_count_sbo_, buffers.draw_indirect, {
-    //     .srcOffset = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
-    //     .dstOffset = offsets.draw_indirect,
-    //     .size      = sizeof(uint32_t)
-    //   });
-    // }
+    {
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+          .dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+          .offset        = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
+          .size          = sizeof(uint32_t),
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+          .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+          .buffer        = grid_buffers.draw_indirect.buffer,
+          .offset        = chunk_offsets.draw_indirect,
+          .size          = ChunkGrid::kDrawIndexedIndirectSize,
+        },
+      });
+
+      cmd.copyBuffer(atomic_count_sbo_, grid_buffers.draw_indirect, {
+        .srcOffset = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
+        .dstOffset = chunk_offsets.draw_indirect,
+        .size      = sizeof(uint32_t)
+      });
+    }
+
+    // cmd.pipelineMemoryBarrier({
+    //   .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    //   .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+    //                  | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    //   .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    //   .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+    //                  | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    // });
   }
 
   void update(float const dt) final {
@@ -545,8 +676,12 @@ class MarchingCubeSample final : public Application {
 
   backend::Buffer non_empty_cells_sbo_{};
   backend::Buffer vertices_to_generate_sbo_{};
+
   backend::Buffer atomic_count_sbo_{};
+
   backend::Buffer indirect_sbo_{};
+  VkDeviceSize indirect_cells_offset_{};
+  VkDeviceSize indirect_vertices_offset_{};
 
   backend::Image density_volume_{};
   backend::Image vertex_indices_volume_{};

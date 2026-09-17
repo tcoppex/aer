@@ -227,7 +227,8 @@ void main(
     return;
   }
 
-  let g_inVerticesToGenerate = ((uint32_t*)pushConstant.verticesToGenerateBuffer);
+  let g_inVerticesToGenerate  = ((uint32_t*)pushConstant.verticesToGenerateBuffer);
+  let g_outVertices           = ((float4*)pushConstant.verticesBuffer);
 
   let packedData = g_inVerticesToGenerate[gid];
   let coords = float3(
@@ -242,7 +243,6 @@ void main(
 
   let v = place_vertex_on_edge(coordsWS, texcoord, edge);
 
-  let g_outVertices = ((float4*)pushConstant.verticesBuffer);
   let out_index = 2u * gid;
 
   g_outVertices[out_index + 0u] = float4(v.position, v.ao);

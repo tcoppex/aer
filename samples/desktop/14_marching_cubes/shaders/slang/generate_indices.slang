@@ -326,6 +326,8 @@ void main(uint gid : SV_DispatchThreadID)
   }
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
+  let g_atomicCount   = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDX];
+  let g_outIndices    = ((uint32_t*)pushConstant.indicesBuffer);
 
   let packedData = g_nonEmptyCells[gid];
   let coords = uint3(
@@ -341,7 +343,6 @@ void main(uint gid : SV_DispatchThreadID)
   }
 
   let numTriangles = kNumTriangleLUT[cube_case];
-  let g_atomicCount = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDX];
 
   uint offset;
   InterlockedAdd(*g_atomicCount, 3u * numTriangles, offset);
@@ -359,7 +360,6 @@ void main(uint gid : SV_DispatchThreadID)
 
       let vertex_id = inIndicesVolume.Load(edge_coords).r;
 
-      let g_outIndices = ((uint32_t*)pushConstant.indicesBuffer);
       g_outIndices[offset + 3u * i + j] = vertex_id;
     }
   }
