@@ -446,9 +446,22 @@ void Context::transientCopyBuffer(
 void Context::transitionImages(
   std::span<backend::Image const> images,
   VkImageMemoryBarrier2 const& barrier
-) const {
+) const noexcept {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
   cmd.transitionImages(images, barrier);
+  finishTransientCommandEncoder(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+void Context::transitionColorImages(
+  std::span<backend::Image const> images,
+  VkImageLayout const src_layout,
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
+) const noexcept {
+  auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);
+  cmd.transitionColorImages(images, src_layout, dst_layout, layer_count);
   finishTransientCommandEncoder(cmd);
 }
 

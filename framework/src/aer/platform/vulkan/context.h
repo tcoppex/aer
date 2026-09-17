@@ -427,15 +427,38 @@ class Context {
   void transitionImages(
     std::span<backend::Image const> images,
     VkImageMemoryBarrier2 const& barrier
-  ) const;
+  ) const noexcept;
 
+  inline
   void transitionImages(
     std::initializer_list<backend::Image> images,
     VkImageMemoryBarrier2 const& barrier
-  ) const {
+  ) const noexcept {
     transitionImages(
       std::span<backend::Image const>{images.begin(), images.end()},
       barrier
+    );
+  }
+
+  void transitionColorImages(
+    std::span<backend::Image const> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const noexcept;
+
+  inline
+  void transitionColorImages(
+    std::initializer_list<backend::Image> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const noexcept {
+    transitionColorImages(
+      std::span<backend::Image const>{images.begin(), images.end()},
+      src_layout,
+      dst_layout,
+      layer_count
     );
   }
 
