@@ -16,7 +16,7 @@ class ChunkGrid {
   // -----------------------
 
   static constexpr uint32_t kChunkStride = sizeof(float4);
-  static constexpr uint32_t kVertexStride = (4u + 4u) * sizeof(float);
+  static constexpr uint32_t kVertexStride = 8u * sizeof(float); //
 
   static constexpr uint32_t kHeuristicChunkVerticesBufferSize = kHeuristicChunkMaxVertices
                                                               * kVertexStride

@@ -18,7 +18,7 @@ void ChunkGrid::setup(RenderContext const& context, uint3 const& dimension) {
     size_ * kHeuristicChunkVerticesBufferSize,
       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-    | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    // | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
   );
 
   buffers_.index = context.createBuffer(

@@ -187,12 +187,6 @@ float calculateAO(float3 uvw, float3 n) {
 
 // ----------------------------------------------------------------------------
 
-struct Vertex {
-  float3 position;
-  float ao;
-  float3 normal;
-};
-
 Vertex place_vertex_on_edge(float3 coordsWS, float3 texcoord, uint edge_id) {
   Vertex v;
 

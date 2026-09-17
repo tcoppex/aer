@@ -276,6 +276,53 @@ class MarchingCubeSample final : public Application {
 
     // ------------------------------------
 
+    {
+      rendering_.layout = context_.createPipelineLayout({
+        .pushConstantRanges = {
+          {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+                        | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .size = sizeof(shader_interop::PushConstant_Rendering),
+          }
+        },
+      });
+
+      auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "rendering.slang");
+
+      rendering_.pipeline = context_.createGraphicsPipeline(rendering_.layout, {
+        .vertex = {
+          .module = shader.module,
+          .entryPoint = "vertexMain",
+        },
+        .fragment = {
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
+          .targets = {
+            {
+              .writeMask = VK_COLOR_COMPONENT_R_BIT
+                         | VK_COLOR_COMPONENT_G_BIT
+                         | VK_COLOR_COMPONENT_B_BIT
+                         | VK_COLOR_COMPONENT_A_BIT
+                         ,
+            }
+          },
+        },
+        .depthStencil = {
+          .depthTestEnable = VK_TRUE,
+          .depthWriteEnable = VK_TRUE,
+          .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+        },
+        .primitive = {
+          .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+          .cullMode = VK_CULL_MODE_NONE //VK_CULL_MODE_BACK_BIT,
+        }
+      });
+
+      context_.releaseShaderModule(shader);
+    }
+
+    // ------------------------------------
+
     // PushConstant base setup.
     {
       auto &pc = push_constant_;
@@ -298,12 +345,6 @@ class MarchingCubeSample final : public Application {
     {
       host_data_.viewMatrix       = camera_.view();
       host_data_.projectionMatrix = camera_.proj();
-      host_data_.tanFov           = camera_.tan_fovs();
-      host_data_.focal            = camera_.focals();
-      host_data_.resolution       = float2(
-        static_cast<float>(camera_.width()),
-        static_cast<float>(camera_.height())
-      );
       context_.writeBuffer(uniform_buffer_, host_data_);
     }
 
@@ -324,6 +365,9 @@ class MarchingCubeSample final : public Application {
       context_.destroyPipeline(pipeline);
     }
     context_.destroyResources(
+      rendering_.pipeline,
+      rendering_.layout,
+
       non_empty_cells_sbo_,
       vertices_to_generate_sbo_,
       atomic_count_sbo_,
@@ -633,15 +677,6 @@ class MarchingCubeSample final : public Application {
         .size      = sizeof(uint32_t)
       });
     }
-
-    // cmd.pipelineMemoryBarrier({
-    //   .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //   .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-    //                  | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-    //   .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-    //   .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-    //                  | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-    // });
   }
 
   void update(float const dt) final {
@@ -651,17 +686,59 @@ class MarchingCubeSample final : public Application {
     // -------
 
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
+
     for (auto &chunk : chunk_grid_.chunks()) {
       buildChunk(cmd, chunk);
+
+      // (wip)
+      cmd.pipelineMemoryBarrier({
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                       | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                       | VK_ACCESS_2_INDEX_READ_BIT
+                       | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+      });
     }
+
     context_.finishTransientCommandEncoder(cmd);
   }
 
   void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.beginRendering();
+    {
+      auto const& grid_buffers = chunk_grid_.buffers();
+
+      pass.bindPipeline(rendering_.pipeline);
+      pass.bindIndexBuffer(grid_buffers.index);
+
+      shader_interop::PushConstant_Rendering pc{
+        .modelMatrix    = float4x4(lina::identity),
+        .uniformBuffer  = uniform_buffer_.address,
+        .vertices       = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address)
+      };
+
+      // -----------------------
+      for (auto const& chunk : chunk_grid_.chunks()) {
+        auto const& offsets = chunk.offsets();
+        uint64_t const vertices_addr = grid_buffers.vertex.address + offsets.vertex;
+
+        pc.vertices = reinterpret_cast<shader_interop::Vertex*>(vertices_addr);
+        pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        pass.drawIndexedIndirect(grid_buffers.draw_indirect, offsets.draw_indirect);
+      }
+      // -----------------------
+
+      // To render every chunk at once.
+      // pass.drawIndexedIndirect(grid_buffers.draw_indirect, 0u, chunk_grid_.size(), ChunkGrid::kDrawIndirectStride);
+    }
     cmd.endRendering();
 
     drawUI(cmd);
+
+    // exit(-1);
   }
 
  private:
@@ -693,6 +770,11 @@ class MarchingCubeSample final : public Application {
   std::array<Pipeline, Compute_kCount> compute_pipelines_{};
 
   // ----------
+
+  struct {
+    VkPipelineLayout layout{};
+    Pipeline pipeline{};
+  } rendering_;
 };
 
 // ----------------------------------------------------------------------------
