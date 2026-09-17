@@ -444,7 +444,7 @@ void Context::transientCopyBuffer(
 // ----------------------------------------------------------------------------
 
 void Context::transitionImages(
-  std::vector<backend::Image> const& images,
+  std::span<backend::Image const> images,
   VkImageMemoryBarrier2 const& barrier
 ) const {
   auto cmd = createTransientCommandEncoder(TargetQueue::Transfer);

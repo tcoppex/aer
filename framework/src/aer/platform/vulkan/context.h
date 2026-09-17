@@ -425,9 +425,19 @@ class Context {
   ) const;
 
   void transitionImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
     VkImageMemoryBarrier2 const& barrier
   ) const;
+
+  void transitionImages(
+    std::initializer_list<backend::Image> images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const {
+    transitionImages(
+      std::span<backend::Image const>{images.begin(), images.end()},
+      barrier
+    );
+  }
 
   void transientUploadImage(
     void const* host_data,
