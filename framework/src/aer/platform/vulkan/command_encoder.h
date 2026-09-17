@@ -311,13 +311,25 @@ class CommandEncoder : public GenericCommandEncoder {
   // --- Images ---
 
   void transitionImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const;
+
+  void transitionImages(
+    std::initializer_list<backend::Image> images,
     VkImageMemoryBarrier2 const& barrier
   ) const;
 
   // [somewhat deprecated helper to transition color images]
   void transitionColorImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const;
+
+  void transitionColorImages(
+    std::initializer_list<backend::Image> images,
     VkImageLayout const src_layout,
     VkImageLayout const dst_layout,
     uint32_t layer_count = 1u

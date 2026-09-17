@@ -230,7 +230,7 @@ size_t CommandEncoder::copyBufferToBuffer(
 // ----------------------------------------------------------------------------
 
 void CommandEncoder::transitionImages(
-  std::vector<backend::Image> const& images,
+  std::span<backend::Image const> images,
   VkImageMemoryBarrier2 const& barrier
 ) const {
   std::vector<VkImageMemoryBarrier2> barriers(images.size(), barrier);
@@ -242,8 +242,17 @@ void CommandEncoder::transitionImages(
 
 // ----------------------------------------------------------------------------
 
+void CommandEncoder::transitionImages(
+  std::initializer_list<backend::Image> images,
+  VkImageMemoryBarrier2 const& barrier
+) const {
+  transitionImages(std::span<backend::Image const>{images.begin(), images.end()}, barrier);
+}
+
+// ----------------------------------------------------------------------------
+
 void CommandEncoder::transitionColorImages(
-  std::vector<backend::Image> const& images,
+  std::span<backend::Image const> images,
   VkImageLayout const src_layout,
   VkImageLayout const dst_layout,
   uint32_t layer_count
@@ -262,6 +271,22 @@ void CommandEncoder::transitionColorImages(
       .layerCount = layer_count
     },
   });
+}
+
+// ----------------------------------------------------------------------------
+
+void CommandEncoder::transitionColorImages(
+  std::initializer_list<backend::Image> images,
+  VkImageLayout const src_layout,
+  VkImageLayout const dst_layout,
+  uint32_t layer_count
+) const {
+  transitionColorImages(
+    std::span<backend::Image const>{images.begin(), images.end()},
+    src_layout,
+    dst_layout,
+    layer_count
+  );
 }
 
 // ----------------------------------------------------------------------------
