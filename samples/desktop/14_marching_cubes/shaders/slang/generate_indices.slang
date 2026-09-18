@@ -326,7 +326,7 @@ void main(uint gid : SV_DispatchThreadID)
   }
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
-  let g_atomicCount   = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDX];
+  let g_indexCount    = ((uint32_t*)pushConstant.drawIndexedIndirectBuffer);
   let g_outIndices    = ((uint32_t*)pushConstant.indicesBuffer);
 
   let packedData = g_nonEmptyCells[gid];
@@ -344,7 +344,7 @@ void main(uint gid : SV_DispatchThreadID)
   let numTriangles = kNumTriangleLUT[cube_case];
 
   uint offset;
-  InterlockedAdd(*g_atomicCount, 3u * numTriangles, offset);
+  InterlockedAdd(*g_indexCount, 3u * numTriangles, offset);
 
   [unroll]
   for (uint i = 0u; i < numTriangles; i++) {

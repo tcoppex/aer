@@ -39,6 +39,15 @@ void main(uint3 coords : SV_DispatchThreadID)
   let density = computeDensity(voxelCoordsWS);
 
   outDensityVolume[coords] = float4(density, 0.0, 0.0, 0.0);
+
+  // [reset atomic count buffer]
+  if (all(coords == uint3(0))) {
+    let g_atomicCount = (uint4*)pushConstant.atomicCountBuffer;
+    *g_atomicCount = uint4(0);
+
+    let g_indexCount = ((uint32_t*)pushConstant.drawIndexedIndirectBuffer);
+    *g_indexCount = 0u;
+  }
 }
 
 // ----------------------------------------------------------------------------

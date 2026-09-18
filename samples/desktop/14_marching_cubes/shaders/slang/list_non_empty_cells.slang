@@ -7,18 +7,6 @@ PushConstant pushConstant;
 
 // ----------------------------------------------------------------------------
 
-// [vk::buffer_reference]
-// struct CellBuffer {
-//   uint data[];
-// };
-
-// [vk::buffer_reference]
-// struct AtomicCounter {
-//   uint value;
-// };
-
-// ----------------------------------------------------------------------------
-
 [[vk::binding(kDescriptorSetBinding_SamplerNearest, 0)]]
 SamplerState uSamplerNearest;
 

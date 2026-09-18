@@ -20,9 +20,9 @@ struct VSOutput {
 VSOutput vertexMain(
   uint vertexID : SV_VertexID
 ) {
-  Vertex v = pushConstant.vertices[vertexID];
+  Vertex v  = pushConstant.vertices[vertexID];
+  let uData = *pushConstant.uniformData;
 
-  let uData = *((UniformBufferData*)pushConstant.uniformBuffer);
   let viewMatrix = uData.viewMatrix;
   let projMatrix = uData.projectionMatrix;
   let viewProj   = mul(projMatrix, viewMatrix);

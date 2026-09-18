@@ -343,8 +343,9 @@ class MarchingCubeSample final : public Application {
 
       // (to be updated per-chunk)
       pc.chunkAttributes            = float4(0.0f);
-      pc.indicesBuffer              = chunk_grid_buffer.index.address;
       pc.verticesBuffer             = chunk_grid_buffer.vertex.address;
+      pc.indicesBuffer              = chunk_grid_buffer.index.address;
+      pc.drawIndexedIndirectBuffer  = chunk_grid_buffer.draw_indirect.address;
 
       // (fixed)
       pc.nonEmptyCellsBuffer        = non_empty_cells_sbo_.address;
@@ -407,24 +408,48 @@ class MarchingCubeSample final : public Application {
 
     // Chunk specific push constants.
     // (ideally, we should avoid using them for better concurrency)
+    auto local_pc = push_constant_;
     {
-      auto &pc = push_constant_;
-      pc.chunkAttributes = float4(chunk.worldspace_coords(), shader_interop::kChunkSize); //
-      pc.verticesBuffer  = grid_buffers.vertex.address + chunk_offsets.vertex;
-      pc.indicesBuffer   = grid_buffers.index.address + chunk_offsets.index;
+      local_pc.chunkAttributes = float4(chunk.worldspace_coords(), shader_interop::kChunkSize); //
+      local_pc.verticesBuffer  = grid_buffers.vertex.address + chunk_offsets.vertex;
+      local_pc.indicesBuffer   = grid_buffers.index.address + chunk_offsets.index;
+      local_pc.drawIndexedIndirectBuffer = grid_buffers.draw_indirect.address + chunk_offsets.draw_indirect;
     }
 
     // Bind the shared descriptor set.
     cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
     // Clear shared resources.
-    cmd.fillBuffer(atomic_count_sbo_, 0);
-    cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
+    {
+      // (perform in the BuildDensity shader)
+      // cmd.fillBuffer(atomic_count_sbo_, 0); //
+
+      // (should not be needed for static meshes)
+      // cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
+    }
 
     // -----------------------
 
     // 1. Build Density Volume.
     {
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+          .srcAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = grid_buffers.draw_indirect.buffer,
+          .offset        = chunk_offsets.draw_indirect,
+          .size          = ChunkGrid::kDrawIndexedIndirectSize,
+        },
+      });
       cmd.pipelineImageBarriers({
         {
           .srcStageMask  = VK_PIPELINE_STAGE_NONE,
@@ -440,7 +465,7 @@ class MarchingCubeSample final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[Compute_BuildDensityVolume]);
 
-      auto pc = push_constant_;
+      auto pc = local_pc;
       pc.gridSize = uint3(kVolumeTexRes);
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -453,8 +478,8 @@ class MarchingCubeSample final : public Application {
     {
       cmd.pipelineBufferBarriers({
         {
-          .srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-          .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
           .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
                          | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
@@ -484,7 +509,7 @@ class MarchingCubeSample final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[Compute_ListNonEmptyCells]);
 
-      auto pc = push_constant_;
+      auto pc = local_pc;
       pc.gridSize = uint3(kChunkDim);
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -516,7 +541,7 @@ class MarchingCubeSample final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
 
-      auto pc = push_constant_;
+      auto pc = local_pc;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_CELL;
       pc.indirectBuffer   = indirect_sbo_.address + indirect_cells_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -556,6 +581,8 @@ class MarchingCubeSample final : public Application {
         .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
         .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
         .buffer        = indirect_sbo_.buffer,
+        .offset        = indirect_cells_offset_,
+        .size          = sizeof(uint4),
       },
     });
     cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
@@ -577,7 +604,7 @@ class MarchingCubeSample final : public Application {
 
       cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
 
-      auto pc = push_constant_;
+      auto pc = local_pc;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT; //
       pc.indirectBuffer   = indirect_sbo_.address + indirect_vertices_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -600,6 +627,8 @@ class MarchingCubeSample final : public Application {
         .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
         .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
         .buffer        = indirect_sbo_.buffer,
+        .offset        = indirect_vertices_offset_,
+        .size          = sizeof(uint4),
       },
     });
     cmd.pipelineImageBarriers({
@@ -645,13 +674,12 @@ class MarchingCubeSample final : public Application {
     cmd.pipelineBufferBarriers({
       {
         .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
         .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                       | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .buffer        = atomic_count_sbo_.buffer,
-        .offset        = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
-        .size          = sizeof(uint32_t),
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .buffer        = grid_buffers.draw_indirect.buffer,
+        .offset        = chunk_offsets.draw_indirect,
+        .size          = ChunkGrid::kDrawIndexedIndirectSize,
       },
       {
         .srcStageMask  = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT, //
@@ -665,39 +693,6 @@ class MarchingCubeSample final : public Application {
     });
     cmd.bindPipeline(compute_pipelines_[Compute_GenerateIndices]);
     cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
-
-    // -----------
-
-    // 9. Copy total indices count to indirect indexed draw buffer.
-    // [ switch to a custom kernel ? ]
-    {
-      cmd.pipelineBufferBarriers({
-        {
-          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-          .dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-          .dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
-          .buffer        = atomic_count_sbo_.buffer,
-          .offset        = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
-          .size          = sizeof(uint32_t),
-        },
-        {
-          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-          .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
-          .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
-          .buffer        = grid_buffers.draw_indirect.buffer,
-          .offset        = chunk_offsets.draw_indirect,
-          .size          = ChunkGrid::kDrawIndexedIndirectSize,
-        },
-      });
-
-      cmd.copyBuffer(atomic_count_sbo_, grid_buffers.draw_indirect, {
-        .srcOffset = shader_interop::ATOMIC_COUNT_INDX * sizeof(uint32_t),
-        .dstOffset = chunk_offsets.draw_indirect,
-        .size      = sizeof(uint32_t)
-      });
-    }
   }
 
   void update(float const dt) final {
@@ -705,6 +700,10 @@ class MarchingCubeSample final : public Application {
     context_.writeBuffer(uniform_buffer_, host_data_); //
 
     // -------
+
+    if (frame_index() > 0) {
+      return;
+    }
 
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
     for (auto &chunk : chunk_grid_.chunks()) {
@@ -733,9 +732,9 @@ class MarchingCubeSample final : public Application {
       // pass.bindIndexBuffer(grid_buffers.index);
 
       shader_interop::PushConstant_Rendering pc{
-        .modelMatrix    = float4x4(lina::identity),
-        .uniformBuffer  = uniform_buffer_.address,
-        .vertices       = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address)
+        .modelMatrix  = float4x4(lina::identity),
+        .uniformData  = reinterpret_cast<shader_interop::UniformBufferData*>(uniform_buffer_.address),
+        .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address)
       };
 
       // -----------------------
