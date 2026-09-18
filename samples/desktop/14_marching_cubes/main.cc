@@ -58,7 +58,7 @@ class MarchingCubeSample final : public Application {
         250.0f
       );
       camera_.set_controller(&arcball_controller_);
-      arcball_controller_.set_dolly(35.0f);
+      arcball_controller_.set_dolly(50.0f);
     }
 
     /* Chunk Grid */
@@ -79,8 +79,15 @@ class MarchingCubeSample final : public Application {
                       : VMA_MEMORY_USAGE_GPU_ONLY
     };
 
+
+    auto & allocator = context_.allocator();
+    VkDeviceSize const bytes_before = allocator.getTotalAllocationBytes();
+
     /* Allocate Device Buffers. */
     {
+      // TODO: Allocate one large scratch buffer for the whole grid
+      //        instead of one per chunk.
+
       non_empty_cells_sbo_ = context_.createBuffer(
         "MarchingCubes::Buffer::NonEmptyCells",
         ChunkGrid::kHeuristicChunkMaxNonEmptyCellsSize,
@@ -157,6 +164,13 @@ class MarchingCubeSample final : public Application {
         VK_IMAGE_LAYOUT_GENERAL
       );
     }
+
+    VkDeviceSize const bytes_after = allocator.getTotalAllocationBytes();
+    VkDeviceSize const net_allocation_delta = bytes_after - bytes_before;
+    double const delta_mb = static_cast<double>(net_allocation_delta) / (1024.0 * 1024.0);
+
+    LOGD("MarchingCube buffer usage: {:.2f} MB allocated ({:.2f} MB if extended)",
+           delta_mb, delta_mb * chunk_grid_.chunks().size());
 
     /* Descriptor set. */
     {
@@ -316,7 +330,7 @@ class MarchingCubeSample final : public Application {
         },
         .primitive = {
           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-          .cullMode = VK_CULL_MODE_NONE //VK_CULL_MODE_BACK_BIT,
+          .cullMode = VK_CULL_MODE_BACK_BIT,
         }
       });
 
