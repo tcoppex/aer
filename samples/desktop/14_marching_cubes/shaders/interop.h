@@ -28,15 +28,36 @@ static const uint32_t kCompute_MaxLinearGroupSize       = 256;
 
 static const uint32_t kDescriptorSetBinding_SamplerNearest            = 0;
 static const uint32_t kDescriptorSetBinding_SamplerLinear             = 1;
-static const uint32_t kDescriptorSetBinding_DensityTexture_Storage    = 2;
-static const uint32_t kDescriptorSetBinding_DensityTexture_Sampling   = 3;
+static const uint32_t kDescriptorSetBinding_DensityTexture_Sampling   = 2;
+static const uint32_t kDescriptorSetBinding_DensityTexture_Storage    = 3;
 static const uint32_t kDescriptorSetBinding_VertexIndicesVolume       = 4;
+
+#if defined(__SLANG__)
+
+// [[vk::binding(kDescriptorSetBinding_SamplerNearest, 0)]]
+// SamplerState uSamplerNearest;
+
+// [[vk::binding(kDescriptorSetBinding_SamplerLinear, 0)]]
+// SamplerState uSamplerLinear;
+
+// [[vk::binding(kDescriptorSetBinding_DensityTexture_Sampling, 0)]]
+// [[vk::image_format("r16f")]]
+// Texture3D<float> uDensityTexture;
+
+// [[vk::binding(kDescriptorSetBinding_DensityTexture_Storage, 0)]]
+// [[vk::image_format("r16f")]]
+// RWTexture3D<float> outDensityVolume;
+
+// [[vk::binding(kDescriptorSetBinding_VertexIndicesVolume, 0)]]
+// [[vk::image_format("r32ui")]]
+// RWTexture3D<uint> inIndicesVolume;
+
+#endif
 
 // ---------------------------------------------------------------------------
 
 static const uint32_t ATOMIC_COUNT_CELL = 0u;
 static const uint32_t ATOMIC_COUNT_VERT = 1u;
-// static const uint32_t ATOMIC_COUNT_INDX = 2u;
 
 // ----------------------------------------------------------------------------
 
@@ -46,8 +67,6 @@ static const uint32_t ATOMIC_COUNT_VERT = 1u;
 #define ALIGNAS(x)
 #endif
 
-// ---------------------------------------------------------------------------
-
 struct ALIGNAS(16) Vertex {
   float3 position;
   float ao;
@@ -55,10 +74,7 @@ struct ALIGNAS(16) Vertex {
   float unused;
 };
 
-struct UniformBufferData {
-  float4x4 viewMatrix;
-  float4x4 projectionMatrix;
-};
+// ---------------------------------------------------------------------------
 
 struct PushConstant {
   float4 chunkAttributes;
@@ -75,6 +91,15 @@ struct PushConstant {
   uint64_t verticesBuffer;
   uint64_t indicesBuffer;
   uint64_t drawIndexedIndirectBuffer; // (index count)
+};
+
+// ---------------------------------------------------------------------------
+
+// [todo? move to interop_rendering.h]
+
+struct UniformBufferData {
+  float4x4 viewMatrix;
+  float4x4 projectionMatrix;
 };
 
 struct PushConstant_Rendering {

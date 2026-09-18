@@ -182,7 +182,7 @@ struct GraphicsPipelineDescriptor_t {
 
   struct Multisample {
     VkSampleCountFlagBits sampleCount{};
-  } multisample;
+  } multisample{};
 
   VkRenderPass renderPass{};
 };

@@ -61,8 +61,24 @@ class MarchingCubeSample final : public Application {
       arcball_controller_.set_dolly(50.0f);
     }
 
+    constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
+      kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
+                      : VMA_MEMORY_USAGE_GPU_ONLY
+    };
+
+    auto & allocator = context_.allocator();
     /* Chunk Grid */
-    chunk_grid_.setup(context_, uint3(4, 4, 4)); //
+    {
+      VkDeviceSize const bytes_before = allocator.getTotalAllocationBytes();
+
+      chunk_grid_.setup(context_, uint3(4, 4, 4)); //
+
+      VkDeviceSize const bytes_after = allocator.getTotalAllocationBytes();
+      VkDeviceSize const net_allocation_delta = bytes_after - bytes_before;
+      double const delta_mb = static_cast<double>(net_allocation_delta) / (1024.0 * 1024.0);
+
+      LOGD("ChunkGrid buffer usage: {:.2f} MB allocated.", delta_mb);
+    }
 
     /* Allocate the uniform buffer. */
     {
@@ -74,13 +90,6 @@ class MarchingCubeSample final : public Application {
       );
     }
 
-    constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
-      kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
-                      : VMA_MEMORY_USAGE_GPU_ONLY
-    };
-
-
-    auto & allocator = context_.allocator();
     VkDeviceSize const bytes_before = allocator.getTotalAllocationBytes();
 
     /* Allocate Device Buffers. */
@@ -106,7 +115,7 @@ class MarchingCubeSample final : public Application {
 
       atomic_count_sbo_ = context_.createBuffer(
         "MarchingCubes::Buffer::AtomicCount",
-        4u * sizeof(uint32_t),
+        4u * sizeof(uint32_t), //
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         ,
@@ -151,7 +160,7 @@ class MarchingCubeSample final : public Application {
         1u,
         1u,
         VK_SAMPLE_COUNT_1_BIT,
-        VK_FORMAT_R32_UINT,
+        VK_FORMAT_R32_UINT, //
           VK_IMAGE_USAGE_SAMPLED_BIT
         | VK_IMAGE_USAGE_STORAGE_BIT
         | VK_IMAGE_USAGE_TRANSFER_DST_BIT
@@ -168,7 +177,7 @@ class MarchingCubeSample final : public Application {
     VkDeviceSize const net_allocation_delta = bytes_after - bytes_before;
     double const delta_mb = static_cast<double>(net_allocation_delta) / (1024.0 * 1024.0);
 
-    LOGD("MarchingCube buffer usage: {:.2f} MB allocated ({:.2f} MB if extended)",
+    LOGD("Scratch buffer usage: {:.2f} MB allocated ({:.2f} MB if extended)",
            delta_mb, delta_mb * chunk_grid_.chunks().size());
 
     /* Descriptor set. */
@@ -189,14 +198,14 @@ class MarchingCubeSample final : public Application {
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
-          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
+          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
-          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .descriptorCount = 1u,
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         },
@@ -228,8 +237,8 @@ class MarchingCubeSample final : public Application {
           }
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
+          .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           .images = {
             {
               .imageView = density_volume_.view,
@@ -238,8 +247,8 @@ class MarchingCubeSample final : public Application {
           }
         },
         {
-          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Sampling,
-          .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          .binding = shader_interop::kDescriptorSetBinding_DensityTexture_Storage,
+          .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .images = {
             {
               .imageView = density_volume_.view,
@@ -312,15 +321,7 @@ class MarchingCubeSample final : public Application {
         .fragment = {
           .module = shader.module,
           .entryPoint = "fragmentMain",
-          .targets = {
-            {
-              .writeMask = VK_COLOR_COMPONENT_R_BIT
-                         | VK_COLOR_COMPONENT_G_BIT
-                         | VK_COLOR_COMPONENT_B_BIT
-                         | VK_COLOR_COMPONENT_A_BIT
-                         ,
-            }
-          },
+          .targets = { GraphicsPipelineDescriptor_t::Fragment::Target{} },
         },
         .depthStencil = {
           .depthTestEnable = VK_TRUE,
@@ -750,15 +751,14 @@ class MarchingCubeSample final : public Application {
       auto const& grid_buffers = chunk_grid_.buffers();
 
       pass.bindPipeline(rendering_.pipeline);
-
-      auto pc = shader_interop::PushConstant_Rendering{
-        .modelMatrix  = float4x4(lina::identity),
-        .uniformData  = reinterpret_cast<shader_interop::UniformBufferData*>(uniform_buffer_.address),
-        .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address),
-        .vertexOffset = ChunkGrid::kHeuristicChunkMaxVertices,
-      };
-      pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
+      pass.pushConstant(shader_interop::PushConstant_Rendering{
+          .modelMatrix  = float4x4(lina::identity),
+          .uniformData  = reinterpret_cast<shader_interop::UniformBufferData*>(uniform_buffer_.address),
+          .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address),
+          .vertexOffset = ChunkGrid::kHeuristicChunkMaxVertices,
+        },
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+      );
       pass.bindIndexBuffer(grid_buffers.index, VK_INDEX_TYPE_UINT32);
 
 #if 1
