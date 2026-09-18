@@ -63,9 +63,9 @@ struct UniformBufferData {
 struct PushConstant {
   float4 chunkAttributes;
   uint3 gridSize;
+  uint32_t pad0_[1];
   uint32_t atomicCountIndex;
   uint32_t atomicCountLimit;
-  uint32_t pad0[1];
   // ---
   uint64_t nonEmptyCellsBuffer;
   uint64_t verticesToGenerateBuffer;
@@ -81,6 +81,7 @@ struct PushConstant_Rendering {
   float4x4 modelMatrix;
   UniformBufferData* uniformData;
   Vertex* vertices;
+  uint32_t vertexOffset;
 };
 
 // ---------------------------------------------------------------------------

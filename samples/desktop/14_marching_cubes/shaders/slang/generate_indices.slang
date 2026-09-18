@@ -325,11 +325,11 @@ void main(uint gid : SV_DispatchThreadID)
     return;
   }
 
-  let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
   let g_indexCount    = ((uint32_t*)pushConstant.drawIndexedIndirectBuffer);
   let g_outIndices    = ((uint32_t*)pushConstant.indicesBuffer);
 
-  let packedData = g_nonEmptyCells[gid];
+  let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
+  let packedData      = g_nonEmptyCells[gid];
   let coords = uint3(
     (packedData >>  0) & 0xFFU,
     (packedData >>  8) & 0xFFU,

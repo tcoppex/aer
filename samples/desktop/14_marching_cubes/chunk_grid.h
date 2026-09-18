@@ -30,7 +30,7 @@ class ChunkGrid {
   static constexpr uint32_t kHeuristicChunkIndicesBufferSize = kHeuristicChunkMaxIndices
                                                              * kIndexStride;
 
-  static constexpr uint32_t kDrawIndexedIndirectSize = 5u * sizeof(uint32_t);
+  static constexpr uint32_t kDrawIndexedIndirectSize = sizeof(VkDrawIndexedIndirectCommand); // 5u * sizeof(uint32_t);
 
   // -----------------------
 
@@ -92,10 +92,13 @@ class ChunkGrid {
   void draw(RenderPassEncoder const& pass) const;
 
   [[nodiscard]]
-  std::vector<Chunk>& chunks() noexcept { return chunks_; }
+  std::vector<Chunk> const& chunks() const noexcept { return chunks_; }
 
   [[nodiscard]]
-  Buffers const& buffers() noexcept { return buffers_; }
+  Buffers const& buffers() const noexcept { return buffers_; }
+
+  [[nodiscard]]
+  uint32_t size() const noexcept { return size_; }
 
  private:
   void reset(uint3 const& dimension);
@@ -104,7 +107,7 @@ class ChunkGrid {
   RenderContext const* context_ptr_{};
 
   uint3 dimension_{};
-  size_t size_{};
+  uint32_t size_{};
 
   std::vector<Chunk> chunks_{};
 

@@ -41,10 +41,15 @@ void ChunkGrid::setup(RenderContext const& context, uint3 const& dimension) {
     backend::Allocator::kAllocMappedAtCreation
   );
   if (auto &buf = buffers_.draw_indirect; buf.is_mapped()) {
-    uint32_t *data = reinterpret_cast<uint32_t*>(buf.mapped_data);
+    auto *data = reinterpret_cast<VkDrawIndexedIndirectCommand*>(buf.mapped_data);
     memset(data, 0u, size_ * kDrawIndexedIndirectSize);
+
     for (size_t i = 0; i < size_; ++i) {
-      data[5u * i + 1u] = 1u;
+      data[i].instanceCount = 1u;
+      data[i].firstIndex    = i * kHeuristicChunkMaxIndices;
+
+      // (does not seem to work, maybe because Vertices are accessed as BDA)
+      // data[i].vertexOffset  = static_cast<int32_t>(i * kHeuristicChunkMaxVertices);
     }
     context.flushBuffer(buf);
   }

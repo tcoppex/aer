@@ -350,7 +350,7 @@ class MarchingCubeSample final : public Application {
       pc.atomicCountLimit           = 0u; //
 
       // (to be updated per-chunk)
-      pc.chunkAttributes            = float4(0.0f);
+      pc.chunkAttributes            = float4(0.0f); //
       pc.verticesBuffer             = chunk_grid_buffer.vertex.address;
       pc.indicesBuffer              = chunk_grid_buffer.index.address;
       pc.drawIndexedIndirectBuffer  = chunk_grid_buffer.draw_indirect.address;
@@ -405,7 +405,7 @@ class MarchingCubeSample final : public Application {
     chunk_grid_.release();
   }
 
-  void buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk &chunk) {
+  void buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk const& chunk) {
     uint32_t const kVolumeWorkGroupSize = shader_interop::kCompute_BuildDensity_kernelSize;
 
     uint32_t const kVolumeTexRes  = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
@@ -730,16 +730,16 @@ class MarchingCubeSample final : public Application {
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
     for (auto &chunk : chunk_grid_.chunks()) {
       buildChunk(cmd, chunk);
-
       // (wip)
       cmd.pipelineMemoryBarrier({
         .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
                        | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+                       | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
                        | VK_ACCESS_2_INDEX_READ_BIT
-                       | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+                       | VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
       });
     }
     context_.finishTransientCommandEncoder(cmd);
@@ -751,34 +751,41 @@ class MarchingCubeSample final : public Application {
       auto const& grid_buffers = chunk_grid_.buffers();
 
       pass.bindPipeline(rendering_.pipeline);
-      // pass.bindIndexBuffer(grid_buffers.index);
 
-      shader_interop::PushConstant_Rendering pc{
+      auto pc = shader_interop::PushConstant_Rendering{
         .modelMatrix  = float4x4(lina::identity),
         .uniformData  = reinterpret_cast<shader_interop::UniformBufferData*>(uniform_buffer_.address),
-        .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address)
+        .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address),
+        .vertexOffset = ChunkGrid::kHeuristicChunkMaxVertices,
       };
+      pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
+      pass.bindIndexBuffer(grid_buffers.index, VK_INDEX_TYPE_UINT32);
+
+#if 1
+      pass.drawIndexedIndirect(
+        grid_buffers.draw_indirect, 0u, chunk_grid_.size(), ChunkGrid::kDrawIndexedIndirectSize
+      );
+#else
       // -----------------------
-      for (auto const& chunk : chunk_grid_.chunks()) {
+      for (auto const& chunk : chunk_grid_.chunks())
+      {
         auto const& offsets = chunk.offsets();
-        uint64_t const vertices_addr = grid_buffers.vertex.address + offsets.vertex;
 
+        uint64_t const vertices_addr = grid_buffers.vertex.address + offsets.vertex;
         pc.vertices = reinterpret_cast<shader_interop::Vertex*>(vertices_addr);
         pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        pass.bindIndexBuffer(
-          grid_buffers.index,
-          VK_INDEX_TYPE_UINT32,
-          offsets.index
-        );
+        // pass.bindIndexBuffer(
+        //   grid_buffers.index, VK_INDEX_TYPE_UINT32,
+        //   offsets.index, ChunkGrid::kHeuristicChunkIndicesBufferSize
+        // );
 
         pass.drawIndexedIndirect(grid_buffers.draw_indirect, offsets.draw_indirect);
       }
       // -----------------------
+#endif
 
-      // To render every chunk at once.
-      // pass.drawIndexedIndirect(grid_buffers.draw_indirect, 0u, chunk_grid_.size(), ChunkGrid::kDrawIndirectStride);
     }
     cmd.endRendering();
 
