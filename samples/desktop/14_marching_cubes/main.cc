@@ -504,6 +504,7 @@ class MarchingCubeSample final : public Application {
 
       auto pc = local_pc;
       pc.gridSize = uint3(kChunkDim);
+      pc.atomicCountLimit = ChunkGrid::kHeuristicChunkMaxCells;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.runKernel<kVolumeWorkGroupSize, kVolumeWorkGroupSize, kVolumeWorkGroupSize>(
@@ -537,50 +538,56 @@ class MarchingCubeSample final : public Application {
       auto pc = local_pc;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_CELL;
       pc.indirectBuffer   = indirect_sbo_.address + indirect_cells_offset_;
-      pc.atomicCountLimit = ChunkGrid::kHeuristicChunkMaxCells;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch();
     }
 
     // 4. List Vertices
-    cmd.pipelineBufferBarriers({
-      {
-        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
-                       | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                       | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .buffer        = atomic_count_sbo_.buffer,
-        // .offset        = ATOMIC_COUNT_CELL | ATOMIC_COUNT_VERT
-      },
-      {
-        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .buffer        = vertices_to_generate_sbo_.buffer,
-      },
-      {
-        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-        .buffer        = non_empty_cells_sbo_.buffer,
-      },
-      {
-        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
-        .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
-        .buffer        = indirect_sbo_.buffer,
-        .offset        = indirect_cells_offset_,
-        .size          = sizeof(uint4),
-      },
-    });
-    cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
-    cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
+    {
+      cmd.pipelineBufferBarriers({
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
+                         | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                         | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = atomic_count_sbo_.buffer,
+          // .offset        = ATOMIC_COUNT_CELL | ATOMIC_COUNT_VERT
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .buffer        = vertices_to_generate_sbo_.buffer,
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+          .buffer        = non_empty_cells_sbo_.buffer,
+        },
+        {
+          .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+          .dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+          .dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+          .buffer        = indirect_sbo_.buffer,
+          .offset        = indirect_cells_offset_,
+          .size          = sizeof(uint4),
+        },
+      });
+      cmd.bindPipeline(compute_pipelines_[Compute_ListVertices]);
+
+      auto pc = local_pc;
+      pc.atomicCountLimit = ChunkGrid::kHeuristicChunkMaxVertices;
+      cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
+    }
 
     // 5. Setup Indirect Vertices
     {
@@ -599,8 +606,7 @@ class MarchingCubeSample final : public Application {
       cmd.bindPipeline(compute_pipelines_[Compute_SetupDispatchIndirect]);
 
       auto pc = local_pc;
-      pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT; //
-      pc.atomicCountLimit = ChunkGrid::kHeuristicChunkMaxVertices;
+      pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT;
       pc.indirectBuffer   = indirect_sbo_.address + indirect_vertices_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 

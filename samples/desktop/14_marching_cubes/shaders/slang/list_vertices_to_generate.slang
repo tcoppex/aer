@@ -20,7 +20,7 @@ void main(
   }
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
-  let g_outVertices   = ((uint32_t*)pushConstant.verticesToGenerateBuffer);
+  let g_vertices      = ((uint32_t*)pushConstant.verticesToGenerateBuffer);
   let g_atomicCount   = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_VERT];
 
   let packedData = g_nonEmptyCells[gid];
@@ -47,17 +47,20 @@ void main(
   uint out_index;
   InterlockedAdd(*g_atomicCount, numVerts, out_index);
 
-  let edge_nums = uint3(3U, 0U, 8U);
+  if ((pushConstant.atomicCountLimit > 0) && (out_index < pushConstant.atomicCountLimit))
+  {
+    let edge_nums = uint3(3U, 0U, 8U);
 
-  [unroll]
-  for (int i = 0; i < 3; i++) {
-    if (vertOnEdges[i]) {
-      g_outVertices[out_index] = ((coords.x & 0xFFU) << 0)
-                               | ((coords.y & 0xFFU) << 8)
-                               | ((coords.z & 0xFFU) << 16)
-                               | ((edge_nums[i] & 0xFFU) << 24)
-                               ;
-      out_index++;
+    [unroll]
+    for (int i = 0; i < 3; i++) {
+      if (vertOnEdges[i]) {
+        g_vertices[out_index] = ((coords.x & 0xFFU) << 0)
+                              | ((coords.y & 0xFFU) << 8)
+                              | ((coords.z & 0xFFU) << 16)
+                              | (edge_nums[i] << 24)
+                              ;
+        out_index++;
+      }
     }
   }
 }

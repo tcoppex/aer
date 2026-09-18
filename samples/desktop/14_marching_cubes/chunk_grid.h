@@ -10,9 +10,8 @@
 class ChunkGrid {
  public:
   // [should be updated depending on kChunkDim, and density function complexity]
-  static constexpr uint32_t kHeuristicChunkMaxCells    = (1u << 10u);
-  static constexpr uint32_t kHeuristicChunkMaxVertices = kHeuristicChunkMaxCells
-                                                       * 3u;
+  static constexpr uint32_t kHeuristicChunkMaxCells    = (1u << 14u);
+  static constexpr uint32_t kHeuristicChunkMaxVertices = kHeuristicChunkMaxCells * 3u; //
   static constexpr uint32_t kHeuristicChunkMaxIndices  = (1u << 17u) - 1u;
 
   // -----------------------

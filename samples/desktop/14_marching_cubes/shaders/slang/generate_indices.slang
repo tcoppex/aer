@@ -346,28 +346,30 @@ void main(uint gid : SV_DispatchThreadID)
   uint offset;
   InterlockedAdd(*g_indexCount, 3u * numTriangles, offset);
 
-  [unroll]
+  // [unroll]
   for (uint i = 0u; i < numTriangles; i++) {
     let tri_edge = kTriangleLUT[5u * cube_case + i].xzy;
 
     [unroll]
     for (uint j = 0u; j < 3u; j++) {
-      let edge_id = (uint)tri_edge[j];
+      let index_id = offset + 3u * i + j;
 
-      var edge_coords = coords + uint3(kEdgeStart[edge_id]);
-      edge_coords.x = 3u * edge_coords.x + kEdgeAxis[edge_id];
+      // if ((pushConstant.atomicCountLimit > 0) && (index_id < pushConstant.atomicCountLimit))
+      {
+        let edge_id = (uint)tri_edge[j];
+        var edge_coords = coords + uint3(kEdgeStart[edge_id]);
+        edge_coords.x = 3u * edge_coords.x + kEdgeAxis[edge_id];
 
-      let vertex_id = inIndicesVolume.Load(edge_coords).r;
-
-      g_outIndices[offset + 3u * i + j] = vertex_id;
+        g_outIndices[index_id] = inIndicesVolume.Load(edge_coords).r;
+      }
     }
   }
 
-  if (all(coords == uint3(0))) {
-    if (pushConstant.atomicCountLimit > 0) {
-      InterlockedMin(*g_indexCount, pushConstant.atomicCountLimit);
-    }
-  }
+  // if (all(coords == uint3(0))) {
+  //   if (pushConstant.atomicCountLimit > 0) {
+  //     InterlockedMin(*g_indexCount, pushConstant.atomicCountLimit);
+  //   }
+  // }
 }
 
 // ----------------------------------------------------------------------------

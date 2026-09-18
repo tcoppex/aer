@@ -62,11 +62,14 @@ void main(uint3 coords : SV_DispatchThreadID)
     uint out_index;
     InterlockedAdd(*g_counter, 1u, out_index);
 
-    g_cells[out_index] = ((coords.x & 0xFFU) << 0)
-                       | ((coords.y & 0xFFU) << 8)
-                       | ((coords.z & 0xFFU) << 16)
-                       | ((cube_case & 0xFFU) << 24)
-                       ;
+    if ((pushConstant.atomicCountLimit > 0) && (out_index < pushConstant.atomicCountLimit))
+    {
+      g_cells[out_index] = ((coords.x & 0xFFU) << 0)
+                         | ((coords.y & 0xFFU) << 8)
+                         | ((coords.z & 0xFFU) << 16)
+                         | ((cube_case & 0xFFU) << 24)
+                         ;
+    }
   }
 }
 
