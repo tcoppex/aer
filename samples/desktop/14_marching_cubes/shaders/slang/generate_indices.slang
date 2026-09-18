@@ -337,8 +337,7 @@ void main(uint gid : SV_DispatchThreadID)
   );
   let cube_case = (packedData >> 24) & 0xFFU;
 
-  let chunkDimMinus1 = uint3(pushConstant.gridSize.x - 1u);
-  if (any(coords >= chunkDimMinus1)) {
+  if (any(coords >= uint3(kChunkDim - 1u))) {
     return;
   }
 

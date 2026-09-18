@@ -8,7 +8,7 @@ PushConstant pushConstant;
 // ----------------------------------------------------------------------------
 
 [[vk::binding(kDescriptorSetBinding_VertexIndicesVolume, 0)]]
-RWTexture3D<uint4> outVertexIndicesVolume;
+RWTexture3D<uint32_t> outVertexIndicesVolume;
 
 // ----------------------------------------------------------------------------
 
@@ -42,7 +42,7 @@ void main(
     coords_xyz.y,
     coords_xyz.z
   );
-  outVertexIndicesVolume[coords] = uint4(gid, 0u, 0u, 0u);
+  outVertexIndicesVolume[coords] = gid;
 }
 
 // ----------------------------------------------------------------------------

@@ -20,10 +20,10 @@ PushConstant pushConstant;
 // ----------------------------------------------------------------------------
 
 [[vk::binding(kDescriptorSetBinding_SamplerNearest, 0)]]
-SamplerState uSamplerNearest : register(s0);
+SamplerState uSamplerNearest;
 
 [[vk::binding(kDescriptorSetBinding_DensityTexture_Sampling, 0)]]
-Texture3D<float> uDensityTexture : register(t0);
+Texture3D<float> uDensityTexture;
 
 float sampleNearest(float3 uvw) {
   return uDensityTexture.SampleLevel(uSamplerNearest, uvw, 0.0).r;
@@ -42,6 +42,10 @@ void main(uint3 coords : SV_DispatchThreadID)
   if (any(coords >= pushConstant.gridSize)) {
     return;
   }
+
+  let g_counter = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_CELL];
+  let g_cells   = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
+
 
   let uvw = kTexelSize * (float3(coords) + float3(kChunkMargin));
 
@@ -67,9 +71,6 @@ void main(uint3 coords : SV_DispatchThreadID)
                 | (iB.x << 4) | (iB.y << 5) | (iB.z << 6) | (iB.w << 7);
 
   if ((cube_case > 0) && (cube_case < 255)) {
-    let g_counter = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_CELL];
-    let g_cells   = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
-
     uint out_index;
     InterlockedAdd(*g_counter, 1u, out_index);
 

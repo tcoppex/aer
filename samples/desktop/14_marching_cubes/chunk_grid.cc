@@ -100,23 +100,15 @@ void ChunkGrid::reset(uint3 const& dimension) {
   chunks_.clear();
   chunks_.reserve(size_);
 
-  auto const startPosition = -0.5f * float3(
-    static_cast<float>(X),
-    static_cast<float>(Y),
-    static_cast<float>(Z)
-  );
+  auto const startPosition = -0.5f * float3(X, Y, Z);
 
   size_t index = 0;
   for (uint32_t k = 0; k < Z; ++k) {
     for (uint32_t j = 0; j < Y; ++j) {
       for (uint32_t i = 0; i < X; ++i) {
-        auto const coords = uint3(i, j, k);
-        auto const coordsWS = startPosition + shader_interop::kChunkSize * float3(
-          static_cast<float>(i),
-          static_cast<float>(j),
-          static_cast<float>(k)
-        );
-        auto const offsets = Chunk::Offsets{
+        auto const coords   = uint3(i, j, k);
+        auto const coordsWS = shader_interop::kChunkSize * (startPosition + float3(coords));
+        auto const offsets  = Chunk::Offsets{
           .vertex         = static_cast<uint32_t>(index * kHeuristicChunkVerticesBufferSize),
           .index          = static_cast<uint32_t>(index * kHeuristicChunkIndicesBufferSize),
           .draw_indirect  = static_cast<uint32_t>(index * kDrawIndexedIndirectSize),

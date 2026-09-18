@@ -328,17 +328,20 @@ class MarchingCubeSample final : public Application {
       auto &pc = push_constant_;
       auto const& chunk_grid_buffer = chunk_grid_.buffers();
 
+      // (to be updated per-stage needing them)
       pc.gridSize                   = uint3(0u);
       pc.atomicCountIndex           = 0u;
-      pc.chunkAttributes            = float4(0.0f);
 
+      // (to be updated per-chunk)
+      pc.chunkAttributes            = float4(0.0f);
+      pc.indicesBuffer              = chunk_grid_buffer.index.address;
+      pc.verticesBuffer             = chunk_grid_buffer.vertex.address;
+
+      // (fixed)
       pc.nonEmptyCellsBuffer        = non_empty_cells_sbo_.address;
       pc.verticesToGenerateBuffer   = vertices_to_generate_sbo_.address;
       pc.atomicCountBuffer          = atomic_count_sbo_.address;
       pc.indirectBuffer             = indirect_sbo_.address;
-
-      pc.indicesBuffer              = chunk_grid_buffer.index.address;
-      pc.verticesBuffer             = chunk_grid_buffer.vertex.address;
     }
 
     // Setup initial uniform buffer.
@@ -390,12 +393,26 @@ class MarchingCubeSample final : public Application {
     uint32_t const kVolumeTexRes  = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
     uint32_t const kChunkDim      = shader_interop::kChunkDim;
 
+    auto const& grid_buffers  = chunk_grid_.buffers();
+    auto const& chunk_offsets = chunk.offsets();
+
+    // Chunk specific push constants.
+    // (ideally, we should avoid using them for better concurrency)
+    {
+      auto &pc = push_constant_;
+      pc.chunkAttributes = float4(chunk.worldspace_coords(), shader_interop::kChunkSize); //
+      pc.verticesBuffer  = grid_buffers.vertex.address + chunk_offsets.vertex;
+      pc.indicesBuffer   = grid_buffers.index.address + chunk_offsets.index;
+    }
+
     // Bind the shared descriptor set.
     cmd.bindDescriptorSet(descriptor_set_, pipeline_layout_, VK_SHADER_STAGE_COMPUTE_BIT);
 
-    // 0. Clear shared resources.
+    // Clear shared resources.
     cmd.fillBuffer(atomic_count_sbo_, 0);
     cmd.clearColorImage(vertex_indices_volume_, float4(0.0f));
+
+    // -----------------------
 
     // 1. Build Density Volume.
     {
@@ -415,8 +432,7 @@ class MarchingCubeSample final : public Application {
       cmd.bindPipeline(compute_pipelines_[Compute_BuildDensityVolume]);
 
       auto pc = push_constant_;
-      pc.gridSize         = uint3(kVolumeTexRes);
-      pc.chunkAttributes  = float4(chunk.worldspace_coords(), shader_interop::kChunkSize); //
+      pc.gridSize = uint3(kVolumeTexRes);
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.runKernel<kVolumeWorkGroupSize, kVolumeWorkGroupSize, kVolumeWorkGroupSize>(
@@ -494,7 +510,7 @@ class MarchingCubeSample final : public Application {
 
       auto pc = push_constant_;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_CELL;
-      pc.indicesBuffer    = indirect_sbo_.address + indirect_cells_offset_;
+      pc.indirectBuffer   = indirect_sbo_.address + indirect_cells_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch();
@@ -555,7 +571,7 @@ class MarchingCubeSample final : public Application {
 
       auto pc = push_constant_;
       pc.atomicCountIndex = shader_interop::ATOMIC_COUNT_VERT; //
-      pc.indicesBuffer    = indirect_sbo_.address + indirect_vertices_offset_;
+      pc.indirectBuffer   = indirect_sbo_.address + indirect_vertices_offset_;
       cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
 
       cmd.dispatch();
@@ -594,9 +610,6 @@ class MarchingCubeSample final : public Application {
     cmd.dispatchIndirect(indirect_sbo_, indirect_vertices_offset_);
 
     // -----------
-
-    auto const& grid_buffers  = chunk_grid_.buffers();
-    auto const& chunk_offsets = chunk.offsets();
 
     // 7. Generate Vertices.
     cmd.pipelineBufferBarriers({
@@ -711,7 +724,7 @@ class MarchingCubeSample final : public Application {
       auto const& grid_buffers = chunk_grid_.buffers();
 
       pass.bindPipeline(rendering_.pipeline);
-      pass.bindIndexBuffer(grid_buffers.index);
+      // pass.bindIndexBuffer(grid_buffers.index);
 
       shader_interop::PushConstant_Rendering pc{
         .modelMatrix    = float4x4(lina::identity),
@@ -726,6 +739,12 @@ class MarchingCubeSample final : public Application {
 
         pc.vertices = reinterpret_cast<shader_interop::Vertex*>(vertices_addr);
         pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        pass.bindIndexBuffer(
+          grid_buffers.index,
+          VK_INDEX_TYPE_UINT32,
+          offsets.index
+        );
 
         pass.drawIndexedIndirect(grid_buffers.draw_indirect, offsets.draw_indirect);
       }
