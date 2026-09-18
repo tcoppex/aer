@@ -130,7 +130,6 @@ class MarchingCubeSample final : public Application {
     {
       auto const kVolumeRes = static_cast<uint32_t>(shader_interop::kDensityVolumeTexRes);
 
-      // [use 'rgba16float' to be able to use filtering, while only needing 'r16float']
       density_volume_ = context_.createImage(
         "MarchingCubes::Texture::DensityVolume",
         VK_IMAGE_VIEW_TYPE_3D,
@@ -138,7 +137,7 @@ class MarchingCubeSample final : public Application {
         1u,
         1u,
         VK_SAMPLE_COUNT_1_BIT,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_FORMAT_R16_SFLOAT,
           VK_IMAGE_USAGE_SAMPLED_BIT
         | VK_IMAGE_USAGE_STORAGE_BIT
       );

@@ -40,6 +40,7 @@ SamplerState uSamplerNearest;
 SamplerState uSamplerLinear;
 
 [[vk::binding(kDescriptorSetBinding_DensityTexture_Sampling, 0)]]
+[[vk::image_format("r16f")]]
 Texture3D<float> uDensityTexture; //
 
 

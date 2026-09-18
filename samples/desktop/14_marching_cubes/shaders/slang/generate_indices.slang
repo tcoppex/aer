@@ -311,7 +311,8 @@ PushConstant pushConstant;
 // ----------------------------------------------------------------------------
 
 [[vk::binding(kDescriptorSetBinding_VertexIndicesVolume, 0)]]
-RWTexture3D<uint32_t> inIndicesVolume;
+[[vk::image_format("r32ui")]]
+RWTexture3D<uint> inIndicesVolume;
 
 // ----------------------------------------------------------------------------
 

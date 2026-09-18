@@ -6,7 +6,8 @@
 PushConstant pushConstant;
 
 [[vk::binding(kDescriptorSetBinding_DensityTexture_Storage, 0)]]
-RWTexture3D<float4> outDensityVolume;
+[[vk::image_format("r16f")]]
+RWTexture3D<float> outDensityVolume;
 
 // ----------------------------------------------------------------------------
 
@@ -127,7 +128,7 @@ void main(uint3 coords : SV_DispatchThreadID)
 
   let density = computeDensity(voxelCoordsWS);
 
-  outDensityVolume[coords] = float4(density, 0.0, 0.0, 0.0);
+  outDensityVolume[coords] = density;
 
   // [reset atomic count buffer]
   if (all(coords == uint3(0))) {
