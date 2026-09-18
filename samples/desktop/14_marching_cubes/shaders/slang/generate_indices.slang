@@ -362,6 +362,12 @@ void main(uint gid : SV_DispatchThreadID)
       g_outIndices[offset + 3u * i + j] = vertex_id;
     }
   }
+
+  if (all(coords == uint3(0))) {
+    if (pushConstant.atomicCountLimit > 0) {
+      InterlockedMin(*g_indexCount, pushConstant.atomicCountLimit);
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------

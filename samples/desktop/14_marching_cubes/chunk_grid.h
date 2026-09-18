@@ -10,21 +10,26 @@
 class ChunkGrid {
  public:
   // [should be updated depending on kChunkDim, and density function complexity]
-  static constexpr uint32_t kHeuristicChunkMaxVertices  = (1u << 13u); // 4096
-  static constexpr uint32_t kHeuristicChunkMaxIndices   = (1u << 16u); // 32768
+  static constexpr uint32_t kHeuristicChunkMaxCells    = (1u << 10u);
+  static constexpr uint32_t kHeuristicChunkMaxVertices = kHeuristicChunkMaxCells
+                                                       * 3u;
+  static constexpr uint32_t kHeuristicChunkMaxIndices  = (1u << 17u) - 1u;
 
   // -----------------------
 
-  static constexpr uint32_t kChunkStride = sizeof(float4);
-  static constexpr uint32_t kVertexStride = 8u * sizeof(float); //
+  static constexpr uint32_t kAttributeStride  = sizeof(float4);
+  static constexpr uint32_t kVertexStride     = 2u * sizeof(float4); //
+  static constexpr uint32_t kIndexStride      = sizeof(uint32_t);
+
+
+  static constexpr uint32_t kHeuristicChunkMaxNonEmptyCellsSize = kHeuristicChunkMaxCells
+                                                                * sizeof(uint32_t);
 
   static constexpr uint32_t kHeuristicChunkVerticesBufferSize = kHeuristicChunkMaxVertices
-                                                              * kVertexStride
-                                                              ;
+                                                              * kVertexStride;
 
   static constexpr uint32_t kHeuristicChunkIndicesBufferSize = kHeuristicChunkMaxIndices
-                                                             * sizeof(uint32_t)
-                                                             ;
+                                                             * kIndexStride;
 
   static constexpr uint32_t kDrawIndexedIndirectSize = 5u * sizeof(uint32_t);
 

@@ -51,7 +51,7 @@ void ChunkGrid::setup(RenderContext const& context, uint3 const& dimension) {
 
   // buffers_.chunk = context.createBuffer(
   //   "ChunkGrid::ChunkBuffer",
-  //   size_ * kChunkStride,
+  //   size_ * kAttributeStride,
   //     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
   //   | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
   //   VMA_MEMORY_USAGE_AUTO,
@@ -112,7 +112,7 @@ void ChunkGrid::reset(uint3 const& dimension) {
           .vertex         = static_cast<uint32_t>(index * kHeuristicChunkVerticesBufferSize),
           .index          = static_cast<uint32_t>(index * kHeuristicChunkIndicesBufferSize),
           .draw_indirect  = static_cast<uint32_t>(index * kDrawIndexedIndirectSize),
-          // .chunk          = static_cast<uint32_t>(index * kChunkStride),
+          // .chunk          = static_cast<uint32_t>(index * kAttributeStride),
         };
         chunks_.emplace_back(index++, coords, coordsWS, offsets);
       }
