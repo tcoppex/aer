@@ -41,6 +41,20 @@ class Allocator {
 
   void release();
 
+  [[nodiscard]]
+  VkDeviceSize getTotalAllocationBytes() const {
+    VmaTotalStatistics stats{};
+    vmaCalculateStatistics(handle_, &stats);
+    return stats.total.statistics.allocationBytes;
+  }
+
+  [[nodiscard]]
+  VkDeviceSize getTotalBlockBytes() const {
+    VmaTotalStatistics stats{};
+    vmaCalculateStatistics(handle_, &stats);
+    return stats.total.statistics.blockBytes;
+  }
+
   // ----- Buffer -----
 
   [[nodiscard]]
