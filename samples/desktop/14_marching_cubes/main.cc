@@ -38,13 +38,13 @@ class MarchingCubeSample final : public Application {
  public:
   AppSettings settings() const noexcept final {
     AppSettings S{};
-    S.renderer.sample_count = VK_SAMPLE_COUNT_1_BIT;
+    S.renderer.sample_count = VK_SAMPLE_COUNT_4_BIT;
     S.app_name = "Marching Cubes";
     return S;
   }
 
   bool setup() final {
-    wm_->set_title("14 - Marching Cube");
+    wm_->set_title("14 - Marching Cubes");
 
     renderer_.set_clear_color({ 0.52f, 0.45f, 0.65f, 1.0f });
 
