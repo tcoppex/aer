@@ -581,7 +581,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     backend::Buffer const& buffer,
     VkDeviceSize offset = 0u,
     uint32_t drawCount = 1u,
-    uint32_t stride = 0u
+    uint32_t stride = sizeof(VkDrawIndexedIndirectCommand)
   ) const noexcept {
     vkCmdDrawIndexedIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
