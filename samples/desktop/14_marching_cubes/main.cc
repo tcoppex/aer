@@ -20,6 +20,9 @@ namespace shader_interop {
 
 class MarchingCubeSample final : public Application {
  public:
+  static constexpr bool kEnableDebugRun = false;
+
+ public:
   enum Compute {
     Compute_BuildDensityVolume,
     Compute_ListNonEmptyCells,
@@ -55,7 +58,7 @@ class MarchingCubeSample final : public Application {
         250.0f
       );
       camera_.set_controller(&arcball_controller_);
-      arcball_controller_.set_dolly(5.0f);
+      arcball_controller_.set_dolly(35.0f);
     }
 
     /* Chunk Grid */
@@ -71,6 +74,12 @@ class MarchingCubeSample final : public Application {
       );
     }
 
+
+    constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
+      kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
+                      : VMA_MEMORY_USAGE_GPU_ONLY
+    };
+
     /* Allocate Device Buffers. */
     {
       const uint32_t kHeuristicMaxNonEmptyCellsSize = ChunkGrid::kHeuristicChunkMaxVertices
@@ -82,7 +91,7 @@ class MarchingCubeSample final : public Application {
         kHeuristicMaxNonEmptyCellsSize,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
+        kDefaultBufferMemoryUsage
       );
 
       vertices_to_generate_sbo_ = context_.createBuffer(
@@ -90,7 +99,7 @@ class MarchingCubeSample final : public Application {
         3u * kHeuristicMaxNonEmptyCellsSize,
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
+        kDefaultBufferMemoryUsage
       );
 
       atomic_count_sbo_ = context_.createBuffer(
@@ -101,7 +110,7 @@ class MarchingCubeSample final : public Application {
         | VK_BUFFER_USAGE_TRANSFER_SRC_BIT  // to copy index count to dispathIndexedIndirect
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT  // to clear
         ,
-        VMA_MEMORY_USAGE_GPU_ONLY
+        kDefaultBufferMemoryUsage
       );
 
       uint32_t const kIndirectDispatchSize = sizeof(uint4);
@@ -113,7 +122,7 @@ class MarchingCubeSample final : public Application {
           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
+        kDefaultBufferMemoryUsage
       );
     }
 
@@ -465,8 +474,7 @@ class MarchingCubeSample final : public Application {
           .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
           .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
           .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-          .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
-                         ,
+          .dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
           .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
           .newLayout = VK_IMAGE_LAYOUT_GENERAL,
           .image = density_volume_.image,
@@ -699,7 +707,6 @@ class MarchingCubeSample final : public Application {
     // -------
 
     auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-
     for (auto &chunk : chunk_grid_.chunks()) {
       buildChunk(cmd, chunk);
 
@@ -714,7 +721,6 @@ class MarchingCubeSample final : public Application {
                        | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
       });
     }
-
     context_.finishTransientCommandEncoder(cmd);
   }
 
@@ -756,8 +762,6 @@ class MarchingCubeSample final : public Application {
     cmd.endRendering();
 
     drawUI(cmd);
-
-    // exit(-1);
   }
 
  private:

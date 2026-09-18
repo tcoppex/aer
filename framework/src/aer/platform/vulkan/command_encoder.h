@@ -162,19 +162,12 @@ class GenericCommandEncoder {
 
   // --- Compute ---
 
-  template<uint32_t tX = 1u, uint32_t tY = 1u, uint32_t tZ = 1u>
-  void runKernel(uint32_t x = 1u, uint32_t y = 1u, uint32_t z = 1u) const {
-    // LOGD("RunKernel<{},{},{}>({},{},{}) => {}, {}, {}",
-    //   tX, tY, tZ,
-    //   x, y, z,
-    //   vk_utils::GetKernelGridDim(x, tX),
-    //   vk_utils::GetKernelGridDim(y, tY),
-    //   vk_utils::GetKernelGridDim(z, tZ)
-    // );
+  template<uint32_t groupSizeX = 1u, uint32_t groupSizeY = 1u, uint32_t groupSizeZ = 1u>
+  void runKernel(uint32_t gridSizeX = 1u, uint32_t gridSizeY = 1u, uint32_t gridSizeZ = 1u) const {
     dispatch(
-      vk_utils::GetKernelGridDim(x, tX),
-      vk_utils::GetKernelGridDim(y, tY),
-      vk_utils::GetKernelGridDim(z, tZ)
+      vk_utils::GetKernelGridDim(gridSizeX, groupSizeX),
+      vk_utils::GetKernelGridDim(gridSizeY, groupSizeY),
+      vk_utils::GetKernelGridDim(gridSizeZ, groupSizeZ)
     );
   }
 

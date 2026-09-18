@@ -59,6 +59,8 @@ class ChunkGrid {
     [[nodiscard]]
     float3 const& worldspace_coords() const noexcept { return coordsWS_; }
 
+    uint32_t index() const { return index_; }
+
    private:
     uint32_t index_{};
     uint3 coords_{};
