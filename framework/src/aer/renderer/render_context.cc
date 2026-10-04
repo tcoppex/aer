@@ -593,12 +593,20 @@ void RenderContext::createComputePipelines(
       .requiredSubgroupSize = Context::kRequiredSubgroupSize,
     }
   );
+
+  VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *required_size_infos_ptr = nullptr;
+
   for (size_t i = 0; i < shader_stage_descriptors.size(); ++i) {
     auto const& desc = shader_stage_descriptors[i];
     auto const& name = desc.entryPoint;
     auto &stage = pipeline_infos[i].stage;
+
+#if !defined(ANDROID)
+    required_size_infos_ptr = &required_size_infos[i];
+#endif
+
     stage.module  = desc.shader.module;
-    stage.pNext   = &required_size_infos[i];
+    stage.pNext   = required_size_infos_ptr;
     stage.pName   = name.empty() ? kDefaulShaderEntryPoint : name.c_str();
   }
 

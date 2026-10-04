@@ -819,6 +819,8 @@ bool Context::initDevice() {
     LOG_CHECK(features_.v13.dynamicRendering && "Dynamic Rendering required (Vulkan 1.3 core)");
     LOG_CHECK(features_.v13.maintenance4 && "Maintenance4 required (Vulkan 1.3 core)");
     LOG_CHECK(features_.v13.subgroupSizeControl && "Subgroup Size Control required (Vulkan 1.3 core)");
+
+#if !defined(ANDROID)
     {
       auto const& props = subgroup_size_control_properties();
       LOG_CHECK(
@@ -828,6 +830,8 @@ bool Context::initDevice() {
         && (props.maxSubgroupSize >= kRequiredSubgroupSize)
       );
     }
+#endif
+
   }
 
 
