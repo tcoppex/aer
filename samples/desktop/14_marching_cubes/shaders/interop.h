@@ -67,7 +67,7 @@ static const uint32_t ATOMIC_COUNT_VERT = 1u;
 #define ALIGNAS(x)
 #endif
 
-struct ALIGNAS(16) Vertex {
+struct ALIGNAS(16) MarchingCubeVertex {
   float3 position;
   float ao;
   float3 normal;
@@ -105,7 +105,7 @@ struct UniformBufferData {
 struct PushConstant_Rendering {
   float4x4 modelMatrix;
   UniformBufferData* uniformData;
-  Vertex* vertices;
+  MarchingCubeVertex* vertices;
   uint32_t vertexOffset;
 };
 

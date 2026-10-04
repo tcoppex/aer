@@ -1,11 +1,16 @@
 // ----------------------------------------------------------------------------
 
+#include <material/interop.h>
+
 #include "../interop.h" //
 
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
 PushConstant_Rendering pushConstant;
+
+[vk::binding(kDescriptorSet_Scene_IBL_Irradiance, 0)]
+SamplerCube uEnvMapIrradiance;
 
 // ----------------------------------------------------------------------------
 
@@ -43,7 +48,11 @@ VSOutput vertexMain(
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
   var color = float4(0.5 * input.normal + 0.5, 1.0);
+
+  color.rgb = uEnvMapIrradiance.Sample(normalize(input.normal)).rgb;
+  color.rgb *= 0.25;
   color.rgb *= input.ao;
+
   return color;
 }
 

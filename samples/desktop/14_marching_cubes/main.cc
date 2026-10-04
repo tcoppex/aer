@@ -61,6 +61,15 @@ class MarchingCubeSample final : public Application {
       arcball_controller_.set_dolly(50.0f);
     }
 
+    {
+      auto &skybox = renderer_.skybox();
+
+      skybox.setup(ASSETS_DIR "textures/"
+        "scythian_tombs_puresky_2k.hdr"
+      );
+      skybox.set_hdr_intensity(0.25f);
+    }
+
     constexpr VmaMemoryUsage kDefaultBufferMemoryUsage{
       kEnableDebugRun ? VMA_MEMORY_USAGE_GPU_TO_CPU
                       : VMA_MEMORY_USAGE_GPU_ONLY
@@ -301,7 +310,11 @@ class MarchingCubeSample final : public Application {
     // ------------------------------------
 
     {
+      auto const& ds_scene = context_.descriptor_registry()
+        .descriptor(DescriptorRegistry::Type::Scene);
+
       rendering_.layout = context_.createPipelineLayout({
+        .setLayouts = { ds_scene.layout },
         .pushConstantRanges = {
           {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
@@ -748,18 +761,27 @@ class MarchingCubeSample final : public Application {
   void draw(CommandEncoder const& cmd) final {
     auto pass = cmd.beginRendering();
     {
+      if (auto const& skybox = renderer_.skybox(); skybox.is_valid()) {
+        skybox.render(pass, camera_);
+      }
+
       auto const& grid_buffers = chunk_grid_.buffers();
 
       pass.bindPipeline(rendering_.pipeline);
       pass.pushConstant(shader_interop::PushConstant_Rendering{
           .modelMatrix  = float4x4(lina::identity),
           .uniformData  = reinterpret_cast<shader_interop::UniformBufferData*>(uniform_buffer_.address),
-          .vertices     = reinterpret_cast<shader_interop::Vertex*>(grid_buffers.vertex.address),
+          .vertices     = reinterpret_cast<shader_interop::MarchingCubeVertex*>(grid_buffers.vertex.address),
           .vertexOffset = ChunkGrid::kHeuristicChunkMaxVertices,
         },
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
       );
       pass.bindIndexBuffer(grid_buffers.index, VK_INDEX_TYPE_UINT32);
+
+      auto const& ds = context_.descriptor_registry().descriptor(
+        DescriptorRegistry::Type::Scene
+      );
+      pass.bindDescriptorSet(ds.set, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 #if 1
       pass.drawIndexedIndirect(
@@ -772,7 +794,7 @@ class MarchingCubeSample final : public Application {
         auto const& offsets = chunk.offsets();
 
         uint64_t const vertices_addr = grid_buffers.vertex.address + offsets.vertex;
-        pc.vertices = reinterpret_cast<shader_interop::Vertex*>(vertices_addr);
+        pc.vertices = reinterpret_cast<shader_interop::MarchingCubeVertex*>(vertices_addr);
         pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // pass.bindIndexBuffer(

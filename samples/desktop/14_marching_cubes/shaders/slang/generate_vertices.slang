@@ -188,8 +188,8 @@ float calculateAO(float3 uvw, float3 n) {
 
 // ----------------------------------------------------------------------------
 
-Vertex place_vertex_on_edge(float3 coordsWS, float3 texcoord, uint edge_id) {
-  Vertex v;
+MarchingCubeVertex place_vertex_on_edge(float3 coordsWS, float3 texcoord, uint edge_id) {
+  MarchingCubeVertex v;
 
   let edge_start = kEdgeStart[edge_id];
   let edge_end = kEdgeEnd[edge_id];
