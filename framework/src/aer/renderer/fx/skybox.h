@@ -57,6 +57,10 @@ class Skybox {
     return setuped_;
   }
 
+  void set_hdr_intensity(float intensity) {
+    push_constant_.hdrIntensity = intensity;
+  }
+
  private:
   void computeSpecularBRDFLookup();
 
@@ -79,6 +83,10 @@ class Skybox {
 
   VkPipelineLayout pipeline_layout_{};
   Pipeline graphics_pipeline_{};
+
+  PushConstant_t push_constant_{
+    .hdrIntensity = 1.0f,
+  };
 
   bool setuped_{};
 };
