@@ -75,10 +75,12 @@ class SampleApp final : public Application {
       }});
     }
 
-    auto const shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-      "simple.vert",
-      "simple.frag",
-    })};
+    // auto const shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
+    //   "simple.vert.glsl",
+    //   "simple.frag.glsl",
+    // })};
+
+    auto const shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
     pipeline_layout_ = context_.createPipelineLayout({
       .setLayouts = { descriptor_set_layout_ },
@@ -93,7 +95,8 @@ class SampleApp final : public Application {
       pipeline_layout_,
       {
         .vertex = {
-          .module = shaders[0u].module,
+          .module = shader.module,
+          .entryPoint = "vertexMain",
           .buffers = {
             {
               .stride = sizeof(Vertex_t),
@@ -113,7 +116,8 @@ class SampleApp final : public Application {
           }
         },
         .fragment = {
-          .module = shaders[1u].module,
+          .module = shader.module,
+          .entryPoint = "fragmentMain",
           .targets = {
             {
               .writeMask = VK_COLOR_COMPONENT_R_BIT
@@ -135,7 +139,7 @@ class SampleApp final : public Application {
       }
     );
 
-    context_.releaseShaderModules(shaders);
+    context_.releaseShaderModule(shader);
 
     return true;
   }

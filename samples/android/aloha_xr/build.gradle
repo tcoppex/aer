@@ -35,10 +35,6 @@ android {
     //noinspection ExpiredTargetSdkVersion
     targetSdk = 32
 
-    shaders {
-      glslcArgs.addAll(['-c', '-g'])
-    }
-
     externalNativeBuild {
       ndk {
         abiFilters("arm64-v8a")
@@ -59,12 +55,12 @@ android {
     main {
       manifest.srcFile "src/AndroidManifest.xml"
       res.srcDirs = ["src/res"]
-      shaders.srcDirs = ["src/shaders"]
+      assets.srcDirs = ["${projectDir}/src/main/assets"]
     }
   }
 
   buildFeatures {
-    shaders = true
+    shaders = false
   }
 
   buildTypes {
