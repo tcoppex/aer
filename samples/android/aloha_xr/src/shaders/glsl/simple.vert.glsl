@@ -5,7 +5,7 @@
 
 // ----------------------------------------------------------------------------
 
-#include "interop.h"
+#include "../interop.h"
 
 // ----------------------------------------------------------------------------
 
@@ -28,7 +28,7 @@ layout (location = 0) out vec4 outColor;
 
 void main() {
   UniformCameraData view = uCameras[gl_ViewIndex];
-  
+
   mat4 viewProjMatrix = view.projectionMatrix
                       * view.viewMatrix
                       ;

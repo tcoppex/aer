@@ -3,13 +3,19 @@
 
 // ---------------------------------------------------------------------------
 
+#if defined(_GLSL_)
+#define float4x4 mat4
+#endif
+
+// ---------------------------------------------------------------------------
+
 struct UniformCameraData {
-  mat4 projectionMatrix;
-  mat4 viewMatrix;
+  float4x4 projectionMatrix;
+  float4x4 viewMatrix;
 };
 
 struct PushConstant {
-  mat4 modelMatrix;
+  float4x4 modelMatrix;
 };
 
 // ---------------------------------------------------------------------------
