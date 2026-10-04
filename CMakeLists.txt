@@ -59,13 +59,15 @@ set(CMAKE_CXX_EXTENSIONS            OFF)
 # -----------------------------------------------------------------------------
 
 # Use mold or lld if available.
-find_program(MOLD_LINKER mold)
-if(MOLD_LINKER)
-  add_link_options("-fuse-ld=mold")
-else()
-  find_program(LLD_LINKER lld)
-  if(LLD_LINKER)
-    add_link_options("-fuse-ld=lld")
+if (NOT ANDROID)
+  find_program(MOLD_LINKER mold)
+  if(MOLD_LINKER)
+    add_link_options("-fuse-ld=mold")
+  else()
+    find_program(LLD_LINKER lld)
+    if(LLD_LINKER)
+      add_link_options("-fuse-ld=lld")
+    endif()
   endif()
 endif()
 

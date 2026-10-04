@@ -411,7 +411,7 @@ if(TRUE)
         ${VULKAN_INCLUDE_DIR}
         ${PlatformIncludeDirs}
     )
-    target_link_libraries(aer_imgui PRIVATE volk glfw)
+    target_link_libraries(aer_imgui PRIVATE volk ${IMGUI_WM_BACKEND})
   endif()
 endif()
 
