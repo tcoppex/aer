@@ -123,24 +123,36 @@ void GenericCommandEncoder::clearColorImage(
 
 // ----------------------------------------------------------------------------
 
+void GenericCommandEncoder::pipelineMemoryBarrier(VkMemoryBarrier2 barrier) const {
+  barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+  auto const dependency = VkDependencyInfo{
+    .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+    .memoryBarrierCount = 1u,
+    .pMemoryBarriers = &barrier,
+  };
+  vkCmdPipelineBarrier2(handle_, &dependency);
+}
+
+// ----------------------------------------------------------------------------
+
 void GenericCommandEncoder::pipelineBufferBarriers(
   std::vector<VkBufferMemoryBarrier2> barriers
 ) const {
   for (auto& bb : barriers) {
     bb.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
     bb.srcQueueFamilyIndex = (bb.srcQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
-                                                            : bb.srcQueueFamilyIndex
-                                                            ;
+                                                            : bb.srcQueueFamilyIndex;
     bb.dstQueueFamilyIndex = (bb.dstQueueFamilyIndex == 0u) ? VK_QUEUE_FAMILY_IGNORED
-                                                            : bb.dstQueueFamilyIndex
-                                                            ;
+                                                            : bb.dstQueueFamilyIndex;
     bb.size = (bb.size == 0ULL) ? VK_WHOLE_SIZE : bb.size;
   }
-  VkDependencyInfo const dependency{
+
+  auto const dependency = VkDependencyInfo{
     .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
     .bufferMemoryBarrierCount = static_cast<uint32_t>(barriers.size()),
     .pBufferMemoryBarriers = barriers.data(),
   };
+
   // (requires VK_KHR_synchronization2 or VK_VERSION_1_3)
   vkCmdPipelineBarrier2(handle_, &dependency);
 }
@@ -180,8 +192,18 @@ void GenericCommandEncoder::pipelineImageBarriers(
 void CommandEncoder::copyBuffer(
   backend::Buffer const& src,
   backend::Buffer const& dst,
+  VkBufferCopy const& buffer_copy
+) const noexcept {
+  vkCmdCopyBuffer(handle_, src.buffer, dst.buffer, 1u, &buffer_copy);
+}
+
+// ----------------------------------------------------------------------------
+
+void CommandEncoder::copyBuffer(
+  backend::Buffer const& src,
+  backend::Buffer const& dst,
   std::vector<VkBufferCopy> const& regions
-) const {
+) const noexcept {
   vkCmdCopyBuffer(
     handle_, src.buffer, dst.buffer, static_cast<uint32_t>(regions.size()), regions.data()
   );
@@ -189,7 +211,7 @@ void CommandEncoder::copyBuffer(
 
 // ----------------------------------------------------------------------------
 
-size_t CommandEncoder::copyBuffer(
+size_t CommandEncoder::copyBufferToBuffer(
   backend::Buffer const& src,
   size_t src_offset,
   backend::Buffer const& dst,
@@ -198,11 +220,9 @@ size_t CommandEncoder::copyBuffer(
 ) const {
   LOG_CHECK(size > 0);
   copyBuffer(src, dst, {
-    {
-      .srcOffset = src_offset,
-      .dstOffset = dst_offet,
-      .size = size,
-    }
+    .srcOffset = src_offset,
+    .dstOffset = dst_offet,
+    .size = size,
   });
   return src_offset + size;
 }
@@ -210,9 +230,9 @@ size_t CommandEncoder::copyBuffer(
 // ----------------------------------------------------------------------------
 
 void CommandEncoder::transitionImages(
-  std::vector<backend::Image> const& images,
+  std::span<backend::Image const> images,
   VkImageMemoryBarrier2 const& barrier
-) const {
+) const noexcept {
   std::vector<VkImageMemoryBarrier2> barriers(images.size(), barrier);
   for (size_t i = 0u; i < images.size(); ++i) {
     barriers[i].image = images[i].image;
@@ -223,11 +243,11 @@ void CommandEncoder::transitionImages(
 // ----------------------------------------------------------------------------
 
 void CommandEncoder::transitionColorImages(
-  std::vector<backend::Image> const& images,
+  std::span<backend::Image const> images,
   VkImageLayout const src_layout,
   VkImageLayout const dst_layout,
   uint32_t layer_count
-) const {
+) const noexcept {
   /// [devnote] This is an helper method to transition multiple 2d single layer,
   //      single level images, using the default VkImageMemoryBarrier2 params
   //      as defined in 'GenericCommandEncoder::pipelineImageBarriers'.
@@ -341,12 +361,11 @@ void CommandEncoder::transferBufferToDevice(
     );
   } else {
     // [TODO] Staging buffers need better cleaning / garbage collection !
-    auto staging_buffer{
-      allocator_ptr_->createStagingBuffer(host_data_size, host_data)   //
-    };
-    copyBuffer(
-      staging_buffer, 0u, device_buffer, device_buffer_offset, host_data_size
-    );
+    auto staging_buffer = allocator_ptr_->createStagingBuffer(host_data_size, host_data);
+    copyBuffer(staging_buffer, device_buffer, {
+      .dstOffset  = device_buffer_offset,
+      .size       = host_data_size
+    });
     pipelineBufferBarriers({
       {
         .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,

@@ -8,7 +8,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <algorithm>
 #include <vector>
 #include <memory>
 #include <string_view>

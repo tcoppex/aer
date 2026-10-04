@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 #ifdef __cplusplus
-#define ALIGNAS(x)  alignas(16)
+#define ALIGNAS(x)  alignas(x)
 #else
 #define ALIGNAS(x)
 #endif

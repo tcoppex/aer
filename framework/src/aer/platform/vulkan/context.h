@@ -56,6 +56,12 @@ class Context {
 
   void release();
 
+  void deviceWaitIdle() const {
+    CHECK_VK(vkDeviceWaitIdle(handle_));
+  }
+
+  // --- Getters ---
+
   [[nodiscard]]
   VkInstance instance() const noexcept {
     return instance_;
@@ -113,11 +119,19 @@ class Context {
     return allocator_;
   }
 
-  void deviceWaitIdle() const {
-    CHECK_VK(vkDeviceWaitIdle(handle_));
+  [[nodiscard]]
+  VkSampleCountFlags sample_counts() const noexcept;
+
+  [[nodiscard]]
+  VkSampleCountFlagBits max_sample_count() const noexcept;
+
+  // --- Surface --
+
+  void destroySurface(VkSurfaceKHR surface) const {
+    vkDestroySurfaceKHR(instance_, surface, nullptr);
   }
 
-  // --- Allocator composition interface --
+  // --- Buffer (Allocator interface) --
 
   [[nodiscard]]
   backend::Buffer createBuffer(
@@ -166,6 +180,10 @@ class Context {
     allocator_.unmapMemory(buffer);
   }
 
+  void flushBuffer(backend::Buffer const& buffer, VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) const {
+    allocator_.flushBuffer(buffer, offset, size);
+  }
+
   size_t writeBuffer(
     backend::Buffer const& dst_buffer,
     size_t dst_offset,
@@ -203,6 +221,8 @@ class Context {
     return writeBuffer(dst_buffer, &host_data, sizeof(T));
   }
 
+  // --- Image (Allocator Interface) ---
+
   [[nodiscard]]
   backend::Image createImage(
     VkImageCreateInfo const& image_info,
@@ -212,24 +232,21 @@ class Context {
     return allocator_.createImage(image_info, view_info, memory_usage);
   }
 
-  void destroyImage(backend::Image &image) const {
-    allocator_.destroyImage(image);
-  }
-
-  // --- Surface --
-
-  void destroySurface(VkSurfaceKHR surface) const {
-    vkDestroySurfaceKHR(instance_, surface, nullptr);
-  }
-
-  // --- Image ---
-
   [[nodiscard]]
-  VkSampleCountFlags sample_counts() const noexcept;
+  backend::Image createImage(
+    std::string_view label,
+    VkImageViewType image_view_type,
+    VkExtent3D size,
+    uint32_t levels,
+    uint32_t layers,
+    VkSampleCountFlagBits samples,
+    VkFormat format,
+    VkImageUsageFlags usage
+  ) const;
 
-  [[nodiscard]]
-  VkSampleCountFlagBits max_sample_count() const noexcept;
-
+  // --------------
+  // --------------
+  // [[deprecated]]
   [[nodiscard]]
   backend::Image createImage2D(
     uint32_t width,
@@ -240,8 +257,20 @@ class Context {
     VkSampleCountFlagBits sample_count,
     VkImageUsageFlags usage,
     std::string_view debug_name
-  ) const;
+  ) const {
+    return createImage(
+      debug_name,
+      (array_layers > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
+      VkExtent3D{width, height, 1u},
+      levels,
+      array_layers,
+      sample_count,
+      format,
+      usage
+    );
+  }
 
+  // [[deprecated]]
   [[nodiscard]]
   backend::Image createImage2D(
     uint32_t width,
@@ -253,6 +282,12 @@ class Context {
     return createImage2D(
       width, height, 1u, 1u, format, VK_SAMPLE_COUNT_1_BIT, usage, debug_name
     );
+  }
+  // --------------
+  // --------------
+
+  void destroyImage(backend::Image &image) const {
+    allocator_.destroyImage(image);
   }
 
   // --- Shader Module ---
@@ -390,9 +425,42 @@ class Context {
   ) const;
 
   void transitionImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
     VkImageMemoryBarrier2 const& barrier
-  ) const;
+  ) const noexcept;
+
+  inline
+  void transitionImages(
+    std::initializer_list<backend::Image> images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const noexcept {
+    transitionImages(
+      std::span<backend::Image const>{images.begin(), images.end()},
+      barrier
+    );
+  }
+
+  void transitionColorImages(
+    std::span<backend::Image const> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const noexcept;
+
+  inline
+  void transitionColorImages(
+    std::initializer_list<backend::Image> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const noexcept {
+    transitionColorImages(
+      std::span<backend::Image const>{images.begin(), images.end()},
+      src_layout,
+      dst_layout,
+      layer_count
+    );
+  }
 
   void transientUploadImage(
     void const* host_data,

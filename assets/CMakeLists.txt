@@ -19,6 +19,7 @@ endfunction()
 list(APPEND hdriPolyhavenAssets
   qwantani_dusk_2_2k
   rogland_clear_night_2k
+  scythian_tombs_puresky_2k
 )
 
 foreach(asset IN LISTS hdriPolyhavenAssets)

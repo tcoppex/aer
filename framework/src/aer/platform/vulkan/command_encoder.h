@@ -146,8 +146,8 @@ class GenericCommandEncoder {
 
   // --- Pipeline Barrier ---
 
+  void pipelineMemoryBarrier(VkMemoryBarrier2 barrier) const;
   void pipelineBufferBarriers(std::vector<VkBufferMemoryBarrier2> barriers) const;
-
   void pipelineImageBarriers(std::vector<VkImageMemoryBarrier2> barriers) const;
 
   // --- Query Pool ---
@@ -162,19 +162,12 @@ class GenericCommandEncoder {
 
   // --- Compute ---
 
-  template<uint32_t tX = 1u, uint32_t tY = 1u, uint32_t tZ = 1u>
-  void runKernel(uint32_t x = 1u, uint32_t y = 1u, uint32_t z = 1u) const {
-    // LOGD("RunKernel<{},{},{}>({},{},{}) => {}, {}, {}",
-    //   tX, tY, tZ,
-    //   x, y, z,
-    //   vk_utils::GetKernelGridDim(x, tX),
-    //   vk_utils::GetKernelGridDim(y, tY),
-    //   vk_utils::GetKernelGridDim(z, tZ)
-    // );
+  template<uint32_t groupSizeX = 1u, uint32_t groupSizeY = 1u, uint32_t groupSizeZ = 1u>
+  void runKernel(uint32_t gridSizeX = 1u, uint32_t gridSizeY = 1u, uint32_t gridSizeZ = 1u) const {
     dispatch(
-      vk_utils::GetKernelGridDim(x, tX),
-      vk_utils::GetKernelGridDim(y, tY),
-      vk_utils::GetKernelGridDim(z, tZ)
+      vk_utils::GetKernelGridDim(gridSizeX, groupSizeX),
+      vk_utils::GetKernelGridDim(gridSizeY, groupSizeY),
+      vk_utils::GetKernelGridDim(gridSizeZ, groupSizeZ)
     );
   }
 
@@ -237,9 +230,26 @@ class CommandEncoder : public GenericCommandEncoder {
     backend::Buffer const& src,
     backend::Buffer const& dst,
     std::vector<VkBufferCopy> const& regions
-  ) const;
+  ) const noexcept;
 
-  size_t copyBuffer(
+  void copyBuffer(
+    backend::Buffer const& src,
+    backend::Buffer const& dst,
+    VkBufferCopy const& buffer_copy
+  ) const noexcept;
+
+  inline
+  void copyBuffer(backend::Buffer const& src, backend::Buffer const& dst) const noexcept {
+    copyBuffer(src, dst, VkBufferCopy{
+      .srcOffset = 0u,
+      .dstOffset = 0u,
+      .size = VK_WHOLE_SIZE
+    });
+  }
+
+  // -------------------------------
+  // [ WebGPU-like wrapper ]
+  size_t copyBufferToBuffer(
     backend::Buffer const& src,
     size_t src_offset,
     backend::Buffer const& dst,
@@ -247,13 +257,14 @@ class CommandEncoder : public GenericCommandEncoder {
     size_t size
   ) const;
 
-  size_t copyBuffer(
+  size_t copyBufferToBuffer(
     backend::Buffer const& src,
     backend::Buffer const& dst,
     size_t size
   ) const {
-    return copyBuffer(src, 0, dst, 0, size);
+    return copyBufferToBuffer(src, 0u, dst, 0u, size);
   }
+  // -------------------------------
 
   void transferBufferToDevice(
     void const* host_data,
@@ -293,17 +304,39 @@ class CommandEncoder : public GenericCommandEncoder {
   // --- Images ---
 
   void transitionImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
     VkImageMemoryBarrier2 const& barrier
-  ) const;
+  ) const noexcept;
 
-  // [somewhat deprecated helper to transition color images]
+  inline
+  void transitionImages(
+    std::initializer_list<backend::Image> images,
+    VkImageMemoryBarrier2 const& barrier
+  ) const noexcept {
+    transitionImages(std::span<backend::Image const>{images.begin(), images.end()}, barrier);
+  }
+
   void transitionColorImages(
-    std::vector<backend::Image> const& images,
+    std::span<backend::Image const> images,
     VkImageLayout const src_layout,
     VkImageLayout const dst_layout,
     uint32_t layer_count = 1u
-  ) const;
+  ) const noexcept;
+
+  inline
+  void transitionColorImages(
+    std::initializer_list<backend::Image> images,
+    VkImageLayout const src_layout,
+    VkImageLayout const dst_layout,
+    uint32_t layer_count = 1u
+  ) const noexcept {
+    transitionColorImages(
+      std::span<backend::Image const>{images.begin(), images.end()},
+      src_layout,
+      dst_layout,
+      layer_count
+    );
+  }
 
   void copyBufferToImage(
     backend::Buffer const& src,
@@ -514,7 +547,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t instance_count = 1u,
     uint32_t first_vertex = 0u,
     uint32_t first_instance = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
   }
 
@@ -523,7 +556,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     VkDeviceSize offset = 0u,
     uint32_t drawCount = 1u,
     uint32_t stride = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDrawIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
 
@@ -533,7 +566,7 @@ class RenderPassEncoder : public GenericCommandEncoder {
     uint32_t first_index = 0u,
     int32_t vertex_offset = 0,
     uint32_t first_instance = 0u
-  ) const {
+  ) const noexcept {
     vkCmdDrawIndexed(
       handle_,
       index_count,
@@ -542,6 +575,15 @@ class RenderPassEncoder : public GenericCommandEncoder {
       vertex_offset,
       first_instance
     );
+  }
+
+  void drawIndexedIndirect(
+    backend::Buffer const& buffer,
+    VkDeviceSize offset = 0u,
+    uint32_t drawCount = 1u,
+    uint32_t stride = sizeof(VkDrawIndexedIndirectCommand)
+  ) const noexcept {
+    vkCmdDrawIndexedIndirect(handle_, buffer.buffer, offset, drawCount, stride);
   }
 
   void bindAndDraw(

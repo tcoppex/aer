@@ -73,6 +73,7 @@ cmake --build build --config Release
 | **[11_ray_tracing](samples/desktop/11_ray_tracing/)** | Simple path tracer on a Cornell box via hardware-accelerated ray tracing. |
 | **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file. |
 | **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)** | Implements *3D Gaussian Splatting for Real-Time Radiance Field Rendering*. |
+| **[14_marching_cubes](samples/desktop/14_marching_cubes/)** | Dynamic marching cubes mesh generation via signed distant function. |
 |   |   |
 
 <!--

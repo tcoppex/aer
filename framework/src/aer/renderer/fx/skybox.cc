@@ -175,8 +175,7 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
     return;
   }
 
-  PushConstant_t push_constant{};
-  push_constant.hdrIntensity = 1.0f;
+  auto pc = push_constant_;
 
   /* Compute the MVP matrix while remove the translation part to keep the
    * skybox always centered on the camera. */
@@ -196,7 +195,7 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
 
   for (uint32_t i = 0; i < eyes_count; ++i) {
     auto view = lina::remove_translation(camera.view(i));
-    push_constant.mvpMatrix[i] = lina::mul(
+    pc.mvpMatrix[i] = lina::mul(
       lina::mul(camera.proj(i), view),
       world_matrix
     );
@@ -211,7 +210,7 @@ void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
     );
 
     pass.pushConstant(
-      push_constant,
+      pc,
         VK_SHADER_STAGE_VERTEX_BIT
       | VK_SHADER_STAGE_FRAGMENT_BIT
     );

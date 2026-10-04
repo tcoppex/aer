@@ -86,6 +86,7 @@ backend::Buffer Allocator::createBuffer(
     &buffer.allocation,
     &result_alloc_info
   ));
+  buffer.mapped_data = result_alloc_info.pMappedData;
 
   // Name the buffer for debugging.
   if (!name.empty()) {
