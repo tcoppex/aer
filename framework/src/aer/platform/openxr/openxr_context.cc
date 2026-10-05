@@ -546,9 +546,7 @@ void OpenXRContext::processFrame(
         // Add the world view projection layer to the composition.
         layers_[num_layers_++].projection = XrCompositionLayerProjection{
           .type       = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
-          .layerFlags = 0
-                      | XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
-                      | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT
+          .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT
                       ,
           .space      = base_space(), //

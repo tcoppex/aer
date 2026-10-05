@@ -77,11 +77,6 @@ class SampleApp final : public Application {
       }});
     }
 
-    // auto const shaders{context_.createShaderModules(SAMPLE_SPIRV_DIR, {
-    //   "simple.vert.glsl",
-    //   "simple.frag.glsl",
-    // })};
-
     auto const shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
     pipeline_layout_ = context_.createPipelineLayout({
