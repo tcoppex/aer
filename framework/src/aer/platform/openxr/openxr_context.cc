@@ -271,7 +271,7 @@ bool OpenXRContext::resetSwapchain() {
     auto& config_view{ view_config_views_[0] };
 
     // A multiview swapchain image is a 2D array image with 2 layers (left eye, right eye).
-    XrSwapchainCreateInfo create_info{
+    auto create_info = XrSwapchainCreateInfo{
       .type         = XR_TYPE_SWAPCHAIN_CREATE_INFO,
       .createFlags  = 0,
       .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT

@@ -349,8 +349,7 @@ CommandEncoder Context::createTransientCommandEncoder(
     cmd,
     static_cast<uint32_t>(target_queue),
     handle_,
-    &allocator_, //
-    nullptr // (no render target for transient command buffer)
+    &allocator_
   );
   encoder.begin();
 

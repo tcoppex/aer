@@ -516,7 +516,7 @@ class Context {
     std::vector<char const*> const& dependencies = {}
   ) {
     if (!has_extension(extension_name, available_device_extensions_)) {
-      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
+      LOGW("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
       return false;
     }
     if (device_extension_names_.contains(extension_name)) {
@@ -544,7 +544,6 @@ class Context {
 
   [[nodiscard]]
   bool initDevice();
-
 
  private:
   static constexpr bool kEnableDebugValidationLayer{ true };
