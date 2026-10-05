@@ -33,6 +33,8 @@ class SwapchainInterface {
   }
 
   virtual backend::Image current_image() const noexcept = 0;
+
+  virtual VkImageView fragment_density_map_view() const noexcept = 0;
 };
 
 /* -------------------------------------------------------------------------- */

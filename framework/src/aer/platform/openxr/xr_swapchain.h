@@ -51,6 +51,11 @@ struct OpenXRSwapchain : public SwapchainInterface {
     return images_[current_image_index_];
   }
 
+  [[nodiscard]]
+  VkImageView fragment_density_map_view() const noexcept final {
+    return has_fdm() ? fdms_[current_image_index_].view : VK_NULL_HANDLE;
+  }
+
  public:
   [[nodiscard]]
   bool create(
@@ -81,6 +86,11 @@ struct OpenXRSwapchain : public SwapchainInterface {
   [[nodiscard]]
   XrSwapchain handle() const noexcept {
     return handle_;
+  }
+
+  [[nodiscard]]
+  bool has_fdm() const noexcept {
+    return !fdms_.empty();
   }
 
  private:

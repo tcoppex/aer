@@ -73,6 +73,11 @@ class Swapchain : public SwapchainInterface {
     return images_[acquired_image_index_];
   }
 
+  [[nodiscard]]
+  VkImageView fragment_density_map_view() const noexcept final {
+    return VK_NULL_HANDLE; //
+  }
+
  private:
   [[nodiscard]]
   VkSurfaceFormat2KHR selectSurfaceFormat(
