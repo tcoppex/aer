@@ -88,33 +88,109 @@ int64_t XRVulkanInterface::selectColorSwapchainFormat(std::vector<int64_t> const
   return *it;
 }
 
-void XRVulkanInterface::allocateSwapchainImage(
-  std::vector<XrSwapchainImageVulkanKHR> const& base_images,
-  VkImageViewCreateInfo &view_info,
-  std::vector<backend::Image> &images
+// ----------------------------------------------------------------------------
+
+bool XRVulkanInterface::createSwapchainImages(
+  XrSwapchain swapchain,
+  XrSwapchainCreateInfo const& info,
+  bool use_foveation,
+  std::vector<backend::Image>& images,
+  std::vector<backend::Image>& fdms
 ) {
-  LOG_CHECK(!base_images.empty());
+  uint32_t count = 0u;
+  CHECK_XR_RET(xrEnumerateSwapchainImages(swapchain, 0, &count, nullptr));
+  LOG_CHECK(count > 0u);
 
-  images.clear();
-  images.reserve(base_images.size());
-  for (auto const& base : base_images) {
-    view_info.image = base.image;
-    VkImageView image_view{};
-    vkCreateImageView(binding_.device, &view_info, nullptr, &image_view);
-    images.push_back(backend::Image{
-      .image = base.image,
-      .view = image_view,
-      .format = view_info.format,
-    });
+  std::vector<XrSwapchainImageVulkanKHR> sc_images(
+    count, {XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR}
+  );
+  std::vector<XrSwapchainImageFoveationVulkanFB> sc_fdms(
+    count, {XR_TYPE_SWAPCHAIN_IMAGE_FOVEATION_VULKAN_FB}
+  );
+  if (use_foveation) {
+    for (uint32_t i = 0u; i < count; ++i) {
+      sc_images[i].next = &sc_fdms[i];
+    }
   }
+
+  CHECK_XR_RET(xrEnumerateSwapchainImages(
+    swapchain, count, &count,
+    reinterpret_cast<XrSwapchainImageBaseHeader*>(sc_images.data())
+  ));
+
+  auto const aspect =
+      (info.usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+          ? VK_IMAGE_ASPECT_DEPTH_BIT
+          : VK_IMAGE_ASPECT_COLOR_BIT
+          ;
+
+  auto view_info = VkImageViewCreateInfo{
+    .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .viewType   = (info.arraySize > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
+                                        : VK_IMAGE_VIEW_TYPE_2D,
+    .format     = static_cast<VkFormat>(info.format),
+    .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+                   VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+    .subresourceRange = {
+      .aspectMask = static_cast<VkImageAspectFlags>(aspect),
+      .levelCount = 1,
+      .layerCount = info.arraySize,
+    },
+  };
+
+  auto make_views = [&](auto const& src, std::vector<backend::Image>& out) {
+    out.clear();
+    out.reserve(src.size());
+    for (auto const& s : src) {
+      view_info.image = s.image;
+
+      VkImageView view{};
+      vkCreateImageView(binding_.device, &view_info, nullptr, &view);
+
+      out.push_back(backend::Image{
+        .image = s.image,
+        .view = view,
+        .format = view_info.format
+      });
+    }
+  };
+
+  make_views(sc_images, images);
+
+  fdms.clear();
+  if (use_foveation) {
+    bool const ok = std::all_of(
+      sc_fdms.begin(),
+      sc_fdms.end(),
+      [](auto const& f) { return f.image != VK_NULL_HANDLE; }
+    );
+
+    LOGV("[XR] FDM[0]: image={} size={}x{} ok={}",
+         (void*)sc_fdms[0].image, sc_fdms[0].width, sc_fdms[0].height, ok);
+
+    if (ok) {
+      view_info.format = VK_FORMAT_R8G8_UNORM;   //
+      view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      make_views(sc_fdms, fdms);
+    } else {
+      LOGW("[XR] Foveation requested but the runtime provided no FDM.");
+    }
+  }
+  return true;
 }
 
-void XRVulkanInterface::releaseSwapchainImage(std::vector<backend::Image> &images) const noexcept {
-  for (auto & img : images) {
-    vkDestroyImageView(binding_.device, img.view, nullptr);
+// ----------------------------------------------------------------------------
+
+void XRVulkanInterface::destroySwapchainImages(std::vector<backend::Image>& images) {
+  for (auto& img : images) {
+    if (img.view != VK_NULL_HANDLE) {
+      vkDestroyImageView(binding_.device, img.view, nullptr);
+    }
   }
   images.clear();
 }
+
+// ----------------------------------------------------------------------------
 
 XrResult XRVulkanInterface::xrCreateVulkanInstanceKHR(
   XrInstance instance,

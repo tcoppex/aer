@@ -47,13 +47,16 @@ struct XRVulkanInterface {
   [[nodiscard]]
   int64_t selectColorSwapchainFormat(std::vector<int64_t> const& formats) const;
 
-  void allocateSwapchainImage(
-    std::vector<XrSwapchainImageVulkanKHR> const& base_images,
-    VkImageViewCreateInfo &view_info,
-    std::vector<backend::Image> &images
+  [[nodiscard]]
+  bool createSwapchainImages(
+    XrSwapchain swapchain,
+    XrSwapchainCreateInfo const& info,
+    bool use_foveation,
+    std::vector<backend::Image>& images,
+    std::vector<backend::Image>& fdms
   );
 
-  void releaseSwapchainImage(std::vector<backend::Image> &images) const noexcept;
+  void destroySwapchainImages(std::vector<backend::Image>& images);
 
  private:
   XrResult xrCreateVulkanInstanceKHR(

@@ -56,7 +56,8 @@ struct OpenXRSwapchain : public SwapchainInterface {
   bool create(
     XrSession session,
     XrSwapchainCreateInfo const& info,
-    XRVulkanInterface *xr_graphics //
+    XRVulkanInterface *xr_graphics, //
+    bool use_foveation //
   );
 
   void destroy();
@@ -85,9 +86,13 @@ struct OpenXRSwapchain : public SwapchainInterface {
  private:
   XrSwapchainCreateInfo create_info_{};
   XrSwapchain handle_{XR_NULL_HANDLE};
+
   std::vector<backend::Image> images_{};
+  std::vector<backend::Image> fdms_{};
+
   uint32_t image_count_{};
   uint32_t current_image_index_{};
+
   XRVulkanInterface *xr_graphics_{};
 };
 
