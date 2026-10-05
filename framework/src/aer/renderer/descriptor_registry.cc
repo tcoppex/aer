@@ -248,7 +248,7 @@ void DescriptorRegistry::updateSceneIBL(Skybox const& skybox) const {
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
-  auto const& context_feature = context_ptr_->get_features();
+  auto const& context_feature = context_ptr_->features();
 
   /* Default pool, to adjust based on application needs. */
   descriptor_pool_sizes_ = {
@@ -292,7 +292,7 @@ void DescriptorRegistry::initDescriptorPool(uint32_t const max_sets) {
 // ----------------------------------------------------------------------------
 
 void DescriptorRegistry::setupMainDescriptors() {
-  auto const& context_feature = context_ptr_->get_features();
+  auto const& context_feature = context_ptr_->features();
 
   createMainDescriptorSet(
     Type::Scene,

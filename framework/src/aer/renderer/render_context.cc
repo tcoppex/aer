@@ -485,6 +485,13 @@ void RenderContext::createGraphicsPipelines(
       descs[i]
     );
     create_infos[i].flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+
+    if (features().fragment_density_map.fragmentDensityMap) {
+      create_infos[i].flags |=
+        VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT //
+      ;
+    }
+
     create_infos[i].basePipelineIndex = 0;
   }
   if (!create_infos.empty()) {

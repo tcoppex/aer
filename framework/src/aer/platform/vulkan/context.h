@@ -114,7 +114,7 @@ class Context {
   }
 
   [[nodiscard]]
-  VulkanContextFeatures const& get_features() const {
+  VulkanContextFeatures const& features() const {
     return features_;
   }
 
