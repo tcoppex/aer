@@ -1,8 +1,6 @@
 #include <cstring>
 #include <cctype>
 #include <algorithm>
-#include <string>
-#include <unordered_set>
 
 #include "aer/platform/openxr/openxr_context.h"
 #include "aer/platform/openxr/xr_utils.h"
@@ -79,7 +77,6 @@ bool OpenXRContext::init(
   }
 
   /* Create the Instance. */
-  std::unordered_set<std::string> availableExts;
   {
     LOG_CHECK(XR_NULL_HANDLE == instance_);
 
@@ -94,7 +91,7 @@ bool OpenXRContext::init(
 
     LOGI("Availables OpenXR extensions:");
     for (auto const& prop : supportedProperties) {
-      availableExts.insert(prop.extensionName);
+      available_extensions_.insert(prop.extensionName);
       LOGI("- {}", prop.extensionName);
     }
 
@@ -118,7 +115,7 @@ bool OpenXRContext::init(
     std::vector<char const*> enabledExtsCStr;
 
     for (auto const& ext : requestedExts) {
-      if (availableExts.contains(ext)) {
+      if (available_extensions_.contains(ext)) {
         enabledExtsStrings.push_back(ext);
       } else {
         // Log missing extensions for debugging
@@ -170,26 +167,6 @@ bool OpenXRContext::init(
 
   graphics_ = std::make_unique<XRVulkanInterface>(instance_, system_id_);
 
-  /* Foveation rendering support. */
-  if (graphics_->is_fragment_density_map_supported())
-  {
-    foveated_rendering_supported_ = true;
-
-    for (auto c : {
-      XR_FB_FOVEATION_EXTENSION_NAME,
-      XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
-      XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
-    }) {
-      foveated_rendering_supported_ &= availableExts.contains(c);
-    }
-
-    foveated_rendering_supported_ &= foveation_.init(instance_);
-  }
-
-  if (!foveated_rendering_supported_) {
-    LOGW("Foveated Rendering not supported.");
-  }
-
   return true;
 }
 
@@ -214,6 +191,25 @@ bool OpenXRContext::initSession() {
   } else {
     LOGW("[OpenXR] Passthrough failed to initialize.");
     return false;
+  }
+
+  /* Foveation rendering support. */
+  if (graphics_->is_fragment_density_map_supported())
+  {
+    foveated_rendering_supported_ = true;
+
+    for (auto c : {
+      XR_FB_FOVEATION_EXTENSION_NAME,
+      XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
+      XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
+    }) {
+      foveated_rendering_supported_ &= available_extensions_.contains(c);
+    }
+    foveated_rendering_supported_ &= foveation_.init(instance_);
+  }
+
+  if (!foveated_rendering_supported_) {
+    LOGW("Foveated Rendering is not supported.");
   }
 
   return true;
@@ -356,21 +352,22 @@ void OpenXRContext::shutdown() {
     controls_.action_set = XR_NULL_HANDLE;
   }
 
+  if (foveated_rendering_supported_) {
+    foveation_.shutdown();
+  }
+
+  passthrough_.shutdown();
+
   swapchain_.destroy();
 
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }
 
-  passthrough_.shutdown();
 
   if (session_ != XR_NULL_HANDLE) {
     xrDestroySession(session_);
     session_ = XR_NULL_HANDLE;
-  }
-
-  if (foveated_rendering_supported_) {
-    foveation_.shutdown();
   }
 
   graphics_.reset();

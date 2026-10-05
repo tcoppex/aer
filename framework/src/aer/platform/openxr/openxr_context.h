@@ -3,6 +3,9 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <string>
+#include <unordered_set>
+
 #include "aer/core/common.h"
 #include "aer/core/camera.h"
 
@@ -164,6 +167,8 @@ class OpenXRContext {
   XrSession session_{XR_NULL_HANDLE};
 
  private:
+  std::unordered_set<std::string> available_extensions_;
+
   XrEventDataBuffer event_data_buffer_{};
 
   bool session_running_ = false;
