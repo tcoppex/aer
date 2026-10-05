@@ -9,9 +9,10 @@
 #include "aer/platform/openxr/xr_common.h"
 #include "aer/platform/openxr/xr_utils.h"
 #include "aer/platform/openxr/xr_platform_interface.h"
-#include "aer/platform/openxr/xr_vulkan_interface.h" //
+#include "aer/platform/openxr/xr_vulkan_interface.h"
 #include "aer/platform/openxr/xr_swapchain.h"
-#include "aer/platform/openxr/xr_passthrough.h" //
+#include "aer/platform/openxr/xr_passthrough.h"
+#include "aer/platform/openxr/xr_foveation.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -182,6 +183,9 @@ class OpenXRContext {
   XRStereoBuffer<XrView> views_{};
 
   OpenXRSwapchain swapchain_{}; // color swapchain
+
+  XRFoveation foveation_{};
+  bool foveated_rendering_supported_{false};
 
   XRPassthrough passthrough_{};
   XrCompositionLayerPassthroughFB pt_layer_{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB}; //

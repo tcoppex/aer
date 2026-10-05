@@ -79,6 +79,7 @@ bool OpenXRContext::init(
   }
 
   /* Create the Instance. */
+  std::unordered_set<std::string> availableExts;
   {
     LOG_CHECK(XR_NULL_HANDLE == instance_);
 
@@ -91,7 +92,6 @@ bool OpenXRContext::init(
       nullptr, extensionCount, &extensionCount, supportedProperties.data()
     ));
 
-    std::unordered_set<std::string> availableExts;
     LOGI("Availables OpenXR extensions:");
     for (auto const& prop : supportedProperties) {
       availableExts.insert(prop.extensionName);
@@ -169,6 +169,26 @@ bool OpenXRContext::init(
   }
 
   graphics_ = std::make_unique<XRVulkanInterface>(instance_, system_id_);
+
+  /* Foveation rendering support. */
+  if (graphics_->is_fragment_density_map_supported())
+  {
+    foveated_rendering_supported_ = true;
+
+    for (auto c : {
+      XR_FB_FOVEATION_EXTENSION_NAME,
+      XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
+      XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
+    }) {
+      foveated_rendering_supported_ &= availableExts.contains(c);
+    }
+
+    foveated_rendering_supported_ &= foveation_.init(instance_);
+  }
+
+  if (!foveated_rendering_supported_) {
+    LOGW("Foveated Rendering not supported.");
+  }
 
   return true;
 }
@@ -269,7 +289,19 @@ bool OpenXRContext::resetSwapchain() {
       .mipCount     = 1,
     };
 
-    if (!swapchain_.create(session_, create_info, graphics_.get())) {
+    // -------------------
+    auto foveation_info = XrSwapchainCreateInfoFoveationFB{
+      .type  = XR_TYPE_SWAPCHAIN_CREATE_INFO_FOVEATION_FB,
+      .flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB,
+    };
+
+    if (foveated_rendering_supported_) {
+      foveation_info.next = const_cast<void*>(create_info.next);
+      create_info.next    = &foveation_info;
+    }
+    // -------------------
+
+    if (!swapchain_.create(session_, create_info, graphics_.get(), foveated_rendering_supported_)) {
       return false;
     }
   }
@@ -277,6 +309,12 @@ bool OpenXRContext::resetSwapchain() {
   // [TODO]
   // we need a depth swapchain only to alter the perception of depth
   // for specific XR techniques.
+
+  if (foveated_rendering_supported_) {
+    return foveation_.apply(
+      session_, swapchain_.handle(), XR_FOVEATION_LEVEL_HIGH_FB
+    );
+  }
 
   return true;
 }
@@ -329,6 +367,10 @@ void OpenXRContext::shutdown() {
   if (session_ != XR_NULL_HANDLE) {
     xrDestroySession(session_);
     session_ = XR_NULL_HANDLE;
+  }
+
+  if (foveated_rendering_supported_) {
+    foveation_.shutdown();
   }
 
   graphics_.reset();
