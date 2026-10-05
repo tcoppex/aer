@@ -11,6 +11,7 @@
 #include "aer/platform/openxr/xr_platform_interface.h"
 #include "aer/platform/openxr/xr_vulkan_interface.h" //
 #include "aer/platform/openxr/xr_swapchain.h"
+#include "aer/platform/openxr/xr_passthrough.h" //
 
 /* -------------------------------------------------------------------------- */
 
@@ -181,6 +182,9 @@ class OpenXRContext {
   XRStereoBuffer<XrView> views_{};
 
   OpenXRSwapchain swapchain_{}; // color swapchain
+
+  XRPassthrough passthrough_{};
+  XrCompositionLayerPassthroughFB pt_layer_{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB}; //
 
   XRStereoBuffer<XrCompositionLayerProjectionView> layer_projection_views_{};
   std::array<CompositorLayerUnion_t, kMaxNumCompositionLayers> layers_{};

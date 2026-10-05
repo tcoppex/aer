@@ -74,7 +74,7 @@ bool OpenXRContext::init(
       XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)(&initializeLoader)
     ))
     if (auto info = platform.loaderInitInfo(); nullptr != info) [[likely]] {
-      initializeLoader(info);
+      CHECK_XR_RET(initializeLoader(info));
     }
   }
 
@@ -82,42 +82,69 @@ bool OpenXRContext::init(
   {
     LOG_CHECK(XR_NULL_HANDLE == instance_);
 
-    std::vector<char const*> api_layers{};
-    std::vector<char const*> extensions{};
+    // 1. Query supported runtime extensions to avoid requesting unsupported ones (-9)
+    uint32_t extensionCount = 0;
+    CHECK_XR_RET(xrEnumerateInstanceExtensionProperties(nullptr, 0, &extensionCount, nullptr));
 
-    // Merge Platform's, Graphics API's and user's XR extensions into an unique array.
-    std::unordered_set<std::string_view> unique_exts{
-      /// Vulkan Graphics API
+    std::vector<XrExtensionProperties> supportedProperties(extensionCount, {XR_TYPE_EXTENSION_PROPERTIES});
+    CHECK_XR_RET(xrEnumerateInstanceExtensionProperties(
+      nullptr, extensionCount, &extensionCount, supportedProperties.data()
+    ));
+
+    std::unordered_set<std::string> availableExts;
+    LOGI("Availables OpenXR extensions:");
+    for (auto const& prop : supportedProperties) {
+      availableExts.insert(prop.extensionName);
+      LOGI("- {}", prop.extensionName);
+    }
+
+    // 2. Gather requested extensions
+    std::unordered_set<std::string> requestedExts{
       XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME,
-
-      /// Default Composition Layer
       XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
       // XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME,
       // XR_KHR_COMPOSITION_LAYER_CUBE_EXTENSION_NAME,
     };
-    auto const& platform_ext = platform.instanceExtensions();
-    unique_exts.insert(platform_ext.cbegin(), platform_ext.cend());
-    unique_exts.insert(appExtensions.cbegin(), appExtensions.cend());
 
-    // [it's safe to push string_view ptr into extensions because we don't keep
-    //  the data post unique_exts lifetime].
-    extensions.reserve(unique_exts.size());
-    for (auto const& ext : unique_exts) {
-      extensions.push_back(ext.data());
+    for (char const* ext : platform.instanceExtensions()) {
+      if (ext) requestedExts.insert(ext);
+    }
+    for (char const* ext : appExtensions) {
+      if (ext) requestedExts.insert(ext);
     }
 
-    XrInstanceCreateInfo info{
+    // 3. Filter requested extensions against available ones
+    std::vector<std::string> enabledExtsStrings;
+    std::vector<char const*> enabledExtsCStr;
+
+    for (auto const& ext : requestedExts) {
+      if (availableExts.contains(ext)) {
+        enabledExtsStrings.push_back(ext);
+      } else {
+        // Log missing extensions for debugging
+        LOGW("Requested OpenXR extension not available: {}", ext.c_str());
+      }
+    }
+
+    enabledExtsCStr.reserve(enabledExtsStrings.size());
+    for (auto const& ext : enabledExtsStrings) {
+      enabledExtsCStr.push_back(ext.c_str());
+    }
+
+    std::vector<char const*> api_layers{};
+
+    auto info = XrInstanceCreateInfo{
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
       .next = platform.instanceCreateInfo(),
       .applicationInfo = {
-        .applicationVersion = 1u, //
-        .engineVersion = 1u, //
-        .apiVersion = XR_API_VERSION_1_1, //XR_MAKE_VERSION(1, 0, 0),
+        .applicationVersion = 1u,
+        .engineVersion = 1u,
+        .apiVersion = XR_API_VERSION_1_1, //
       },
       .enabledApiLayerCount = static_cast<uint32_t>(api_layers.size()),
       .enabledApiLayerNames = api_layers.data(),
-      .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-      .enabledExtensionNames = extensions.data(),
+      .enabledExtensionCount = static_cast<uint32_t>(enabledExtsCStr.size()),
+      .enabledExtensionNames = enabledExtsCStr.data(),
     };
 
     CopyStringWithSafety(
@@ -161,6 +188,13 @@ bool OpenXRContext::initSession() {
     .systemId = system_id_,
   };
   CHECK_XR_RET(xrCreateSession(instance_, &create_info, &session_))
+
+  if (passthrough_.init(instance_, session_)) {
+    passthrough_.createReconstructionLayer(); //
+  } else {
+    LOGW("[OpenXR] Passthrough failed to initialize.");
+    return false;
+  }
 
   return true;
 }
@@ -222,7 +256,7 @@ bool OpenXRContext::resetSwapchain() {
       .createFlags  = 0,
       .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
                     | XR_SWAPCHAIN_USAGE_SAMPLED_BIT            //
-                    | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT       // to blit on it
+                    // | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT       // to blit on it
                     | XR_SWAPCHAIN_USAGE_MUTABLE_FORMAT_BIT
                     | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT
                     ,
@@ -289,6 +323,9 @@ void OpenXRContext::shutdown() {
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }
+
+  passthrough_.shutdown();
+
   if (session_ != XR_NULL_HANDLE) {
     xrDestroySession(session_);
     session_ = XR_NULL_HANDLE;
@@ -425,15 +462,17 @@ void OpenXRContext::endFrame() {
   // LOGD("-- OpenXRContext::endFrame -- ");
   auto& frameState = controls_.frame.state;
 
-  XrFrameEndInfo frameEndInfo{
+  auto frameEndInfo = XrFrameEndInfo{
     .type = XR_TYPE_FRAME_END_INFO,
     .displayTime = frameState.predictedDisplayTime,
-    .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE, // << App Specific
-    .layerCount = num_layers_,
-    .layers = composition_layers_.data(),
+    .environmentBlendMode =
+                            // XR_ENVIRONMENT_BLEND_MODE_OPAQUE, // << App Specific
+                            XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND,
+    .layerCount = static_cast<uint32_t>(composition_layers_.size()),
+    .layers     = composition_layers_.data(),
   };
   end_render_loop_ = CHECK_XR(xrEndFrame(session_, &frameEndInfo)) < 0;
-  composition_layers_.clear();
+  // composition_layers_.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -489,8 +528,17 @@ void OpenXRContext::processFrame(
     {
       num_layers_ = 0u;
       layers_.fill(CompositorLayerUnion_t{});
+      composition_layers_.clear();
 
-      // -------------------------------------------------
+      // Bottom layer: Passthrough camera feed.
+      pt_layer_.flags       = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+      pt_layer_.space       = XR_NULL_HANDLE;
+      pt_layer_.layerHandle = passthrough_.layer(); //
+      composition_layers_.push_back(
+        reinterpret_cast<XrCompositionLayerBaseHeader const*>(&pt_layer_)
+      );
+
+      // Top layer: scene.
       if (should_render_) {
         renderProjectionLayer(render_cb);
 
@@ -510,11 +558,10 @@ void OpenXRContext::processFrame(
       } else {
         LOGV("should_render_ is set to false");
       }
-      // -------------------------------------------------
 
-      for (auto & layer : layers_) {
+      for (uint32_t i = 0; i < num_layers_; ++i) {
         composition_layers_.push_back(
-          reinterpret_cast<XrCompositionLayerBaseHeader const*>(&layer)
+          reinterpret_cast<XrCompositionLayerBaseHeader const*>(&layers_[i])
         );
       }
     }
@@ -840,6 +887,8 @@ void OpenXRContext::handleSessionStateChangedEvent(XrEventDataSessionStateChange
       };
       CHECK_XR(xrBeginSession(session_, &sessionBeginInfo));
       session_running_ = true;
+
+      passthrough_.start();
     }
     break;
 
@@ -862,6 +911,8 @@ void OpenXRContext::handleSessionStateChangedEvent(XrEventDataSessionStateChange
       LOGD("XR_SESSION_STATE_STOPPING");
       CHECK_XR(xrEndSession(session_));
       session_running_ = false;
+
+      passthrough_.pause();
     }
     break;
 

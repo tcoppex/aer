@@ -35,12 +35,14 @@ class SampleApp final : public Application {
  public:
   AppSettings settings() const noexcept final {
     AppSettings S{};
+    // To use passthrough we need a swapchain with an alpha channel.
+    S.renderer.color_format = VK_FORMAT_R8G8B8A8_SRGB;
     S.renderer.sample_count = VK_SAMPLE_COUNT_4_BIT;
     return S;
   }
 
   bool setup() final {
-    renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 1.0f));
+    renderer_.set_clear_color(vec4(0.125f, 0.125f, 0.125f, 0.0f));
 
     vertex_buffer_ = context_.transientCreateBuffer(
       kVertices,
