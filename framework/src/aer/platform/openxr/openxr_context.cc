@@ -199,6 +199,7 @@ bool OpenXRContext::initSession() {
     foveated_rendering_supported_ = true;
 
     for (auto c : {
+      XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
       XR_FB_FOVEATION_EXTENSION_NAME,
       XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
       XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
