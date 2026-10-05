@@ -8,12 +8,14 @@
   <!-- Tell the system to target advanced hardware support -->
   <uses-feature android:name="android.hardware.vulkan.level" android:version="1" android:required="true" />
 
-  <!-- Use experimental Meta XR SDK features -->
-  <!-- <uses-feature android:name="com.oculus.experimental.enabled" android:required="true" /> -->
-
   <!-- Tell the system this app works in either 3dof or 6dof mode -->
   <uses-feature android:name="android.hardware.vr.headtracking" android:required="false" android:version="1" />
 
+  <!-- Use experimental Meta XR SDK features -->
+  <uses-feature android:name="com.oculus.experimental.enabled" android:required="true" />
+
+  <!-- Tell the system this app can activate passthrough -->
+  <uses-feature android:name="com.oculus.feature.PASSTHROUGH" android:required="true" />
 
   <!-- Tell the system this app can handle tracked remotes and hands -->
   <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
@@ -38,6 +40,7 @@
     <meta-data android:name="com.oculus.ossplash" android:value="true" />
     <meta-data android:name="com.oculus.vr.enable" android:value="true" />
     <meta-data android:name="com.oculus.vr.mode" android:value="true" />
+    <meta-data android:name="com.oculus.supportedPassthrough" android:value="true" />
 
     <meta-data android:name="com.oculus.application.name" android:value="@string/app_name" />
 
