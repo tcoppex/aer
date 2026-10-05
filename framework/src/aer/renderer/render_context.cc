@@ -96,7 +96,7 @@ std::unique_ptr<RenderTarget> RenderContext::createRenderTarget(
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
+RenderTarget::Descriptor RenderContext::defaultRenderTargetDescriptor() const {
   auto desc = RenderTarget::Descriptor{
     .colors = {
       {
@@ -115,7 +115,13 @@ std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
   if (default_view_mask_ > 1) {
     desc.array_size = utils::CountBits(default_view_mask_);
   }
-  return createRenderTarget(desc);
+  return desc;
+}
+
+// ----------------------------------------------------------------------------
+
+std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
+  return createRenderTarget(defaultRenderTargetDescriptor());
 }
 
 // ----------------------------------------------------------------------------
