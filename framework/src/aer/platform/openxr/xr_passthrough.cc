@@ -1,5 +1,7 @@
 #include "aer/platform/openxr/xr_passthrough.h"
 
+#include <algorithm>
+
 /* -------------------------------------------------------------------------- */
 
 bool XRPassthrough::init(XrInstance instance, XrSession session) {

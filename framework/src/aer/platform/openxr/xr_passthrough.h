@@ -8,9 +8,6 @@
 
 #include "aer/platform/openxr/xr_common.h"
 
-#include <vector>
-#include <algorithm>
-
 /* -------------------------------------------------------------------------- */
 
 class XRPassthrough {
@@ -36,10 +33,8 @@ class XRPassthrough {
 
   void pause();
 
-  [[nodiscard]]
   XrPassthroughLayerFB createReconstructionLayer();
 
-  [[nodiscard]]
   XrPassthroughLayerFB createProjectedLayer();
 
   void destroyLayer(XrPassthroughLayerFB layer);
