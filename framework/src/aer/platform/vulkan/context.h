@@ -42,6 +42,10 @@ class Context {
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
     // VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
+
+    // (for XR)
+    VkPhysicalDeviceFragmentDensityMapFeaturesEXT  fragment_density_map{};
+    VkPhysicalDeviceFragmentDensityMap2FeaturesEXT fragment_density_map2{}; // optionnal
   };
 
  public:

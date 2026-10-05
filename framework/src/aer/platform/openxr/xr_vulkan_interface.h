@@ -58,6 +58,15 @@ struct XRVulkanInterface {
 
   void destroySwapchainImages(std::vector<backend::Image>& images);
 
+  void set_fragment_density_map_supported(bool supported) noexcept {
+    fragment_density_map_supported_ = supported;
+  }
+
+  [[nodiscard]]
+  bool is_fragment_density_map_supported() const noexcept {
+    return fragment_density_map_supported_;
+  }
+
  private:
   XrResult xrCreateVulkanInstanceKHR(
     XrInstance instance,
@@ -90,6 +99,8 @@ struct XRVulkanInterface {
   XrSystemId system_id_{XR_NULL_SYSTEM_ID};
 
   XrGraphicsBindingVulkan2KHR binding_{XR_TYPE_GRAPHICS_BINDING_VULKAN2_KHR};
+
+  bool fragment_density_map_supported_{false};
 };
 
 // ----------------------------------------------------------------------------
