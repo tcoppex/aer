@@ -2,7 +2,12 @@
 //
 //    02 - Aloha XR
 //
-//   Show a simple XR demo, the verbose way.
+//   Show a triangle in passthrough mode.
+//
+//  - Right Buttons A/B cycle through the basic spaces (head, local, global).
+//  - Right Index trigger rotate the triangle.
+//  - Right Grip squeeze move the triangle closer.
+//
 //
 /* -------------------------------------------------------------------------- */
 
