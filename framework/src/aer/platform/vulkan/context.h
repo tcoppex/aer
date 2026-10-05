@@ -250,7 +250,8 @@ class Context {
     uint32_t layers,
     VkSampleCountFlagBits samples,
     VkFormat format,
-    VkImageUsageFlags usage
+    VkImageUsageFlags usage,
+    VkImageCreateFlags create_flags = {}
   ) const;
 
   // --------------
@@ -265,7 +266,8 @@ class Context {
     VkFormat format,
     VkSampleCountFlagBits sample_count,
     VkImageUsageFlags usage,
-    std::string_view debug_name
+    std::string_view debug_name,
+    VkImageCreateFlags create_flags = {}
   ) const {
     return createImage(
       debug_name,
@@ -275,7 +277,8 @@ class Context {
       array_layers,
       sample_count,
       format,
-      usage
+      usage,
+      create_flags
     );
   }
 

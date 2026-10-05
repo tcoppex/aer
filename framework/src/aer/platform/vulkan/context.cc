@@ -108,7 +108,8 @@ backend::Image Context::createImage(
   uint32_t layers,
   VkSampleCountFlagBits samples,
   VkFormat format,
-  VkImageUsageFlags usage
+  VkImageUsageFlags usage,
+  VkImageCreateFlags create_flags
 ) const {
   // -----------
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
@@ -144,10 +145,9 @@ backend::Image Context::createImage(
   };
 
   // -----------
-  VkImageCreateFlags createFlags{}; //
   if (layers > 1u) {
     if (image_type == VK_IMAGE_TYPE_2D) {
-      createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+      create_flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; //
     }
   }
   // -----------
@@ -155,7 +155,7 @@ backend::Image Context::createImage(
   auto const image_info = VkImageCreateInfo{
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
     .pNext = nullptr,
-    .flags = createFlags,
+    .flags = create_flags,
     .imageType = image_type,
     .format = format,
     .extent = size,
