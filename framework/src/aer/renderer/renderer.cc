@@ -124,10 +124,12 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 CommandEncoder& Renderer::beginFrame() {
   LOG_CHECK( context_ptr_ != nullptr );
 
+  auto &sc = swapchain();
+
   /* Handle Swapchain resize detection. */
   {
     // (suppose they use the same scale)
-    auto const& A = swapchain().surface_size();
+    auto const& A = sc.surface_size();
     auto const& B = surface_size();
     if (A.width != B.width || A.height != B.height) {
       resize(A.width, A.height);
@@ -136,7 +138,7 @@ CommandEncoder& Renderer::beginFrame() {
 
   /* Acquire next availables image in the swapchain. */
   LOG_CHECK(swapchain_ptr_);
-  if (!swapchain().acquireNextImage()) {
+  if (!sc.acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
@@ -151,7 +153,8 @@ CommandEncoder& Renderer::beginFrame() {
     static_cast<uint32_t>(Context::TargetQueue::Main),
     context_ptr_->device(),
     &context_ptr_->allocator(), //
-    frame.main_rt.get()
+    frame.main_rt.get(),
+    sc.fragment_density_map_view()
   );
   // -----------------------
 

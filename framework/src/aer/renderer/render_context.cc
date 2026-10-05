@@ -486,10 +486,11 @@ void RenderContext::createGraphicsPipelines(
     );
     create_infos[i].flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
 
-    if (features().fragment_density_map.fragmentDensityMap) {
+    if (features().fragment_density_map.fragmentDensityMap && has_xr()) {
       create_infos[i].flags |=
-        VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT //
+        VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT
       ;
+      LOGV("Graphics pipeline created with VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT");
     }
 
     create_infos[i].basePipelineIndex = 0;

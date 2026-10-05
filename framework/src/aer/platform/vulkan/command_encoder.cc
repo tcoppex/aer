@@ -416,7 +416,7 @@ backend::Buffer CommandEncoder::createBufferAndUpload(
 // ----------------------------------------------------------------------------
 
 RenderPassEncoder CommandEncoder::beginRendering(RenderPassDescriptor const& desc) const {
-  auto const rendering_info = VkRenderingInfoKHR{
+  auto rendering_info = VkRenderingInfoKHR{
     .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
     .pNext                = nullptr,
     .flags                = 0b0u,
@@ -428,6 +428,15 @@ RenderPassEncoder CommandEncoder::beginRendering(RenderPassDescriptor const& des
     .pDepthAttachment     = &desc.depthAttachment,
     .pStencilAttachment   = &desc.stencilAttachment, //
   };
+
+  auto fdm_info = VkRenderingFragmentDensityMapAttachmentInfoEXT{
+  .sType       = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT,
+  .imageView   = desc.fragmentDensityMapView,
+  .imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+  };
+  if (desc.fragmentDensityMapView != VK_NULL_HANDLE) {
+    rendering_info.pNext = &fdm_info;
+  }
 
   vkCmdBeginRendering(handle_, &rendering_info);
 
@@ -473,6 +482,7 @@ RenderPassEncoder CommandEncoder::beginRendering(
       .extent = render_target.surface_size()
     },
     .viewMask = render_target.view_mask(),
+    .fragmentDensityMapView = fragment_density_map_view_, //
   };
 
   // Setup the COLOR attachment depending on MSAA usage.

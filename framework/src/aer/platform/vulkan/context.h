@@ -129,6 +129,11 @@ class Context {
   [[nodiscard]]
   VkSampleCountFlagBits max_sample_count() const noexcept;
 
+  [[nodiscard]]
+  bool has_xr() const noexcept {
+    return vulkan_xr_ != nullptr;
+  }
+
   // --- Surface --
 
   void destroySurface(VkSurfaceKHR surface) const {

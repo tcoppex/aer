@@ -301,6 +301,7 @@ struct RenderPassDescriptor {
   VkRenderingAttachmentInfo stencilAttachment{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR};
   VkRect2D renderArea{};
   uint32_t viewMask{};
+  VkImageView fragmentDensityMapView{VK_NULL_HANDLE};
 };
 
 struct DescriptorSetLayoutParams {
