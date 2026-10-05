@@ -274,7 +274,8 @@ void CommandEncoder::blitImage2D(
   VkImageLayout current_dst_layout,
   VkImageLayout final_dst_layout,
   VkExtent2D const& extent,
-  uint32_t layer_count
+  uint32_t layer_count,
+  VkFilter const filter
 ) const {
   auto const subresourceLayers = VkImageSubresourceLayers{
     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -320,7 +321,7 @@ void CommandEncoder::blitImage2D(
     src.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
     dst.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     1, &blitRegion,
-    VK_FILTER_LINEAR
+    filter
   );
 
   // 3. Transition to Final Layouts (Prepare for Present/Shader Read)

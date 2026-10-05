@@ -370,7 +370,8 @@ class CommandEncoder : public GenericCommandEncoder {
     VkImageLayout current_dst_layout,
     VkImageLayout final_dst_layout,
     VkExtent2D const& extent,
-    uint32_t layer_count
+    uint32_t layer_count,
+    VkFilter filter = VK_FILTER_NEAREST
   ) const;
 
   // --- Rendering ---
