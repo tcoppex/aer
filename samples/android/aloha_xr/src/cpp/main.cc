@@ -42,7 +42,9 @@ class SampleApp final : public Application {
     AppSettings S{};
     // To use passthrough we need a swapchain with an alpha channel.
     S.renderer.color_format = VK_FORMAT_R8G8B8A8_SRGB;
-    S.renderer.sample_count = VK_SAMPLE_COUNT_4_BIT;
+
+    // CURRENTLY foveated rendering fail if using MSAA
+    S.renderer.sample_count = VK_SAMPLE_COUNT_1_BIT;
     return S;
   }
 
