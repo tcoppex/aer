@@ -166,36 +166,34 @@ void Renderer::applyPostProcess() {
   auto const& dst_img = swapchain().current_image();
 
   // Blit Color to Swapchain.
-  {
-    auto const& src_rt = *frame.main_rt;
-    auto const& src_img = src_rt.resolve_attachment();
-    auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                          ;
+  auto const& src_rt = *frame.main_rt;
+  auto const& src_img = src_rt.resolve_attachment();
+  auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                        ;
 
-    uint32_t const layer_count = src_rt.layer_count();
-    LOG_CHECK(layer_count == swapchain().image_array_size());
+  uint32_t const layer_count = src_rt.layer_count();
+  LOG_CHECK(layer_count == swapchain().image_array_size());
 
-    frame.cmd.transitionColorImages(
-      { src_img },
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      src_layout,
-      layer_count
-    );
+  frame.cmd.transitionColorImages(
+    { src_img },
+    VK_IMAGE_LAYOUT_UNDEFINED, //
+    src_layout,
+    layer_count
+  );
 
-    frame.cmd.blitImage2D(
-      src_img,
-      src_layout,
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  frame.cmd.blitImage2D(
+    src_img,
+    src_layout,
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 
-      dst_img,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    dst_img,
+    VK_IMAGE_LAYOUT_UNDEFINED, // 
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 
-      surface_size(),
-      layer_count
-    );
-  }
+    surface_size(),
+    layer_count
+  );
 }
 
 // ----------------------------------------------------------------------------

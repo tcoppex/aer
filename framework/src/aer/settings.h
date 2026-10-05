@@ -20,7 +20,7 @@ struct AppSettings {
   };
 
   RenderContext::Settings renderer{
-    .color_format         = VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+    .color_format         = VK_FORMAT_B10G11R11_UFLOAT_PACK32, //
     .depth_stencil_format = VK_FORMAT_D24_UNORM_S8_UINT,
     .sample_count         = VK_SAMPLE_COUNT_1_BIT,
     .material_model       = scene::MaterialModel::Unknown,
