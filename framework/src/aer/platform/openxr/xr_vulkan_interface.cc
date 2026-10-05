@@ -24,6 +24,8 @@ VkResult XRVulkanInterface::createVulkanInstance(
   return vk_result;
 }
 
+// ----------------------------------------------------------------------------
+
 void XRVulkanInterface::getGraphicsDevice(VkPhysicalDevice *physical_device) {
   XrGraphicsRequirementsVulkan2KHR graphics_requirements{
     XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR
@@ -43,6 +45,8 @@ void XRVulkanInterface::getGraphicsDevice(VkPhysicalDevice *physical_device) {
   ));
   binding_.physicalDevice = *physical_device;
 }
+
+// ----------------------------------------------------------------------------
 
 VkResult XRVulkanInterface::createVulkanDevice(
   VkPhysicalDevice physical_device,
@@ -68,6 +72,8 @@ VkResult XRVulkanInterface::createVulkanDevice(
   binding_.device = *device;
   return vk_result;
 }
+
+// ----------------------------------------------------------------------------
 
 int64_t XRVulkanInterface::selectColorSwapchainFormat(std::vector<int64_t> const& formats) const {
   constexpr std::array<VkFormat, 4> kSupportedColorSwapchainFormats{
@@ -207,6 +213,8 @@ XrResult XRVulkanInterface::xrCreateVulkanInstanceKHR(
   return pfnCreateVulkanInstanceKHR(instance, createInfo, vulkanInstance, vulkanResult);
 }
 
+// ----------------------------------------------------------------------------
+
 XrResult XRVulkanInterface::xrGetVulkanGraphicsRequirements2KHR(
   XrInstance instance,
   XrSystemId systemId,
@@ -221,6 +229,8 @@ XrResult XRVulkanInterface::xrGetVulkanGraphicsRequirements2KHR(
   return pfnGetVulkanGraphicsRequirements2KHR(instance, systemId, graphicsRequirements);
 }
 
+// ----------------------------------------------------------------------------
+
 XrResult XRVulkanInterface::xrGetVulkanGraphicsDevice2KHR(
   XrInstance instance,
   XrVulkanGraphicsDeviceGetInfoKHR *const getInfo,
@@ -234,6 +244,8 @@ XrResult XRVulkanInterface::xrGetVulkanGraphicsDevice2KHR(
   ));
   return pfnGetVulkanGraphicsDevice2KHR(instance, getInfo, vulkanPhysicalDevice);
 }
+
+// ----------------------------------------------------------------------------
 
 XrResult XRVulkanInterface::xrCreateVulkanDeviceKHR(
   XrInstance instance,

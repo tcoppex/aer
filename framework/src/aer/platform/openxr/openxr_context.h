@@ -192,14 +192,14 @@ class OpenXRContext {
 
   std::vector<XrCompositionLayerBaseHeader const*> composition_layers_{};
 
+  bool should_render_{};
+
   // -----
 
   XRControlState_t controls_{};
   XRFrameData frame_data_{}; //
 
   Camera *camera_ptr_{};
-
-  bool should_render_{};
 
   struct ViewController final : Camera::ViewController {
     ViewController(XRFrameData const& frame_data)
