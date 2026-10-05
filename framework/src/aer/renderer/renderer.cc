@@ -161,43 +161,6 @@ CommandEncoder& Renderer::beginFrame() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::applyPostProcess() {
-  auto const& frame = frame_resource();
-  auto const& dst_img = swapchain().current_image();
-
-  // Blit Color to Swapchain.
-  auto const& src_rt = *frame.main_rt;
-  auto const& src_img = src_rt.resolve_attachment();
-  auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                        ;
-
-  uint32_t const layer_count = src_rt.layer_count();
-  LOG_CHECK(layer_count == swapchain().image_array_size());
-
-  frame.cmd.transitionColorImages(
-    { src_img },
-    VK_IMAGE_LAYOUT_UNDEFINED, //
-    src_layout,
-    layer_count
-  );
-
-  frame.cmd.blitImage2D(
-    src_img,
-    src_layout,
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-
-    dst_img,
-    VK_IMAGE_LAYOUT_UNDEFINED, // 
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-
-    surface_size(),
-    layer_count
-  );
-}
-
-// ----------------------------------------------------------------------------
-
 void Renderer::endFrame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
@@ -270,6 +233,43 @@ GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
   return loadGLTF(
     gltf_filename,
     VertexInternal_t::GetDefaultAttributeLocationMap()
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::applyPostProcess() {
+  auto const& frame = frame_resource();
+  auto const& dst_img = swapchain().current_image();
+
+  // Blit Color to Swapchain.
+  auto const& src_rt = *frame.main_rt;
+  auto const& src_img = src_rt.resolve_attachment();
+  auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                        ;
+
+  uint32_t const layer_count = src_rt.layer_count();
+  LOG_CHECK(layer_count == swapchain().image_array_size());
+
+  frame.cmd.transitionColorImages(
+    { src_img },
+    VK_IMAGE_LAYOUT_UNDEFINED, //
+    src_layout,
+    layer_count
+  );
+
+  frame.cmd.blitImage2D(
+    src_img,
+    src_layout,
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+    dst_img,
+    VK_IMAGE_LAYOUT_UNDEFINED, //
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+
+    surface_size(),
+    layer_count
   );
 }
 
