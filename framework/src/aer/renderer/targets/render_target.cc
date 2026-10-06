@@ -25,7 +25,9 @@ void RenderTarget::release() {
 
   context_ptr_->destroyImage(depth_stencil_);
   for(auto& resolve : resolves_) {
-    context_ptr_->destroyImage(resolve);
+    if (resolve.valid()) {
+      context_ptr_->destroyImage(resolve);
+    }
   }
   for(auto& color : colors_) {
     context_ptr_->destroyImage(color);

@@ -88,13 +88,21 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
   auto const surface_size = VkExtent2D{ w, h };
-  auto const layers = swapchain().image_array_size();
 
-  if (frames_[0].main_rt != nullptr) [[likely]] {
+  if (frames_[0].main_rt != nullptr) [[likely]]
+  {
     for (auto &frame : frames_) {
       frame.main_rt->resize(w, h);
     }
-  } else {
+  }
+  else
+  {
+    auto const& sc = swapchain();
+    auto const layers = sc.image_array_size();
+
+    auto const foveated = context_ptr_->is_foveated_rendering_supported()
+                       && sc.has_fragment_density_map(); //
+
     for (size_t i = 0; i < frames_.size(); ++i) {
       auto &frame = frames_[i];
       frame.main_rt = context_ptr_->createRenderTarget({

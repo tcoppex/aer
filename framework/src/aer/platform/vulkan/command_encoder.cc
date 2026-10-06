@@ -493,7 +493,8 @@ RenderPassEncoder CommandEncoder::beginRendering(
     .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     .storeOp            = VK_ATTACHMENT_STORE_OP_STORE,
   });
-  if (render_target.use_msaa()) {
+  if (render_target.use_msaa())
+  {
     for (size_t i = 0u; i < colors.size(); ++i) {
       auto& attach = desc.colorAttachments[i];
       attach.imageView  = colors[i].view;
@@ -559,7 +560,8 @@ void CommandEncoder::endRendering() const {
     auto const& rt = *current_render_target_ptr_;
     uint32_t const layers = rt.layer_count();
 
-    if (kDebugManualMsaaResolve && rt.use_msaa()) {
+    if (kDebugManualMsaaResolve && rt.use_msaa())
+    {
       auto const& colors   = rt.color_attachments();
       auto const& resolves = rt.resolve_attachments();
 
@@ -580,19 +582,27 @@ void CommandEncoder::endRendering() const {
       for (size_t i = 0; i < colors.size(); ++i) {
         vkCmdResolveImage(
           handle_,
-          colors[i].image,   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-          resolves[i].image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          colors[i].image,
+          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          resolves[i].image,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
           1, &region
         );
       }
 
       transitionColorImages(resolves, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layers);
-    } else {
+    }
+    else
+    {
       auto const& images = rt.use_msaa() ? rt.resolve_attachments()
                                          : rt.color_attachments();
-      transitionColorImages(images, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layers);
+      transitionColorImages(
+        images,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        layers
+      );
     }
 
     current_render_target_ptr_ = nullptr;

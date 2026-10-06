@@ -34,7 +34,7 @@ bool RenderContext::init(
   );
 
   // (a bit hacky)
-  default_view_mask_ = (vulkan_xr != nullptr) ? 0b11u : 0u; //
+  default_view_mask_ = has_xr() ? 0b11u : 0u; //
 
   /* Create the shared pipeline cache. */
   LOGD(" > PipelineCacheInfo");
