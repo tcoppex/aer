@@ -513,6 +513,9 @@ RenderPassEncoder CommandEncoder::beginRendering(
         attach.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       }
     }
+    // depth & stencil attachment is transient under MSAA
+    desc.depthAttachment.storeOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    desc.stencilAttachment.storeOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   }
   else
   {
