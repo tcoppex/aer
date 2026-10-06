@@ -43,22 +43,30 @@ class XRFoveation {
     }
     destroyProfile();
 
-    XrFoveationLevelProfileCreateInfoFB level_info{XR_TYPE_FOVEATION_LEVEL_PROFILE_CREATE_INFO_FB};
-    level_info.level          = level;
-    level_info.verticalOffset = vertical_offset;
-    level_info.dynamic        = dynamic ? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB
-                                        : XR_FOVEATION_DYNAMIC_DISABLED_FB;
-
-    XrFoveationProfileCreateInfoFB profile_info{XR_TYPE_FOVEATION_PROFILE_CREATE_INFO_FB};
-    profile_info.next = &level_info;
+    auto level_info = XrFoveationLevelProfileCreateInfoFB{
+      .type = XR_TYPE_FOVEATION_LEVEL_PROFILE_CREATE_INFO_FB,
+      .next = nullptr,
+      .level = level,
+      .verticalOffset = vertical_offset,
+      .dynamic = dynamic ? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB
+                         : XR_FOVEATION_DYNAMIC_DISABLED_FB,
+    };
+    auto profile_info = XrFoveationProfileCreateInfoFB{
+      .type = XR_TYPE_FOVEATION_PROFILE_CREATE_INFO_FB,
+      .next = &level_info,
+    };
 
     if (XR_FAILED(pfnCreateProfile_(session, &profile_info, &profile_))) {
       LOGW("[OpenXR] xrCreateFoveationProfileFB fails.");
       return false;
     }
 
-    XrSwapchainStateFoveationFB state{XR_TYPE_SWAPCHAIN_STATE_FOVEATION_FB};
-    state.profile = profile_;
+    auto state = XrSwapchainStateFoveationFB{
+      .type = XR_TYPE_SWAPCHAIN_STATE_FOVEATION_FB,
+      .next = nullptr,
+      .flags = XrSwapchainStateFoveationFlagsFB{},
+      .profile = profile_,
+    };
     if (XR_FAILED(pfnUpdateSwapchain_(swapchain, reinterpret_cast<XrSwapchainStateBaseHeaderFB*>(&state)))) {
       LOGW("[OpenXR] xrUpdateSwapchainFB (foveation) fails.");
       return false;
@@ -84,8 +92,10 @@ class XRFoveation {
     return ok;
   }
 
+ private:
   XrInstance instance_{XR_NULL_HANDLE};
   XrFoveationProfileFB profile_{XR_NULL_HANDLE};
+
   PFN_xrCreateFoveationProfileFB  pfnCreateProfile_{nullptr};
   PFN_xrDestroyFoveationProfileFB pfnDestroyProfile_{nullptr};
   PFN_xrUpdateSwapchainFB         pfnUpdateSwapchain_{nullptr};
