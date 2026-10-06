@@ -89,6 +89,7 @@ using ShaderStageDescriptors = std::vector<ShaderStageDescriptor>;
 // ----------------------------------------------------------------------------
 
 struct GraphicsPipelineCreateInfoData_t {
+  VkPipelineCreateFlags flags{}; //
   std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments{};
 
   std::vector<VkFormat> color_attachments{};

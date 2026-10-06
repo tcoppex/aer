@@ -482,7 +482,6 @@ RenderPassEncoder CommandEncoder::beginRendering(
       .extent = render_target.surface_size()
     },
     .viewMask = render_target.view_mask(),
-    .fragmentDensityMapView = fragment_density_map_view_, //
   };
 
   // Setup the COLOR attachment depending on MSAA usage.
@@ -523,6 +522,18 @@ RenderPassEncoder CommandEncoder::beginRendering(
       attach.clearValue = render_target.color_clear_value(i);
     }
   }
+
+  // -----------------------------
+  // Foveated Rendering.
+  bool const bEnableFoveatedRendering = true; //
+
+  if (bEnableFoveatedRendering)
+  {
+    if (&render_target == default_render_target_ptr_) {
+      desc.fragmentDensityMapView = fragment_density_map_view_;
+    }
+  }
+  // -----------------------------
 
   current_render_target_ptr_ = &render_target;
 

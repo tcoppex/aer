@@ -198,6 +198,13 @@ VkGraphicsPipelineCreateInfo RenderContext::buildGraphicsPipelineCreateInfo(
 
   data = {};
 
+  /* Pipeline Create flags */
+  if (is_foveated_rendering_supported()) //
+  {
+    data.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+    LOGD("Graphics pipeline created with VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT");
+  }
+
   // Default color blend attachment.
   data.color_blend_attachments = {
     {
@@ -441,7 +448,7 @@ VkGraphicsPipelineCreateInfo RenderContext::buildGraphicsPipelineCreateInfo(
 
   auto graphics_pipeline_create_info = VkGraphicsPipelineCreateInfo{
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-    .flags                = 0,
+    .flags                = data.flags,
     .stageCount           = static_cast<uint32_t>(data.shader_stages.size()),
     .pStages              = data.shader_stages.data(),
     .pVertexInputState    = &data.vertex_input,
@@ -491,14 +498,6 @@ void RenderContext::createGraphicsPipelines(
       descs[i]
     );
     create_infos[i].flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
-
-    if (features().fragment_density_map.fragmentDensityMap && has_xr()) {
-      create_infos[i].flags |=
-        VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT
-      ;
-      LOGV("Graphics pipeline created with VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT");
-    }
-
     create_infos[i].basePipelineIndex = 0;
   }
   if (!create_infos.empty()) {

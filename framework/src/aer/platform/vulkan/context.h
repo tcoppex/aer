@@ -134,6 +134,12 @@ class Context {
     return vulkan_xr_ != nullptr;
   }
 
+  [[nodiscard]]
+  bool is_foveated_rendering_supported() const noexcept {
+    return has_xr()
+        && features().fragment_density_map.fragmentDensityMap;
+  }
+
   // --- Surface --
 
   void destroySurface(VkSurfaceKHR surface) const {
