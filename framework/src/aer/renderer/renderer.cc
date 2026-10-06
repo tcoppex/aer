@@ -101,7 +101,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
     auto const layers = sc.image_array_size();
 
     auto const foveated = context_ptr_->is_foveated_rendering_supported()
-                       && sc.has_fragment_density_map(); //
+                       && sc.has_fragment_density_map();
 
     for (size_t i = 0; i < frames_.size(); ++i) {
       auto &frame = frames_[i];
@@ -116,6 +116,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
         .size = surface_size,
         .array_size = layers,
         .sample_count = sample_count(),
+        .foveated = foveated,
         .debug_prefix = "Renderer::MainRT_" + std::to_string(i),
       });
     }

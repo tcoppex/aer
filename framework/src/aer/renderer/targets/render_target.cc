@@ -49,6 +49,15 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
   };
   uint32_t const levels = 1u; //
 
+  VkImageCreateFlags create_flags{};
+
+  // [VK_EXT_fragment_density_map] when enabled and
+  // 'fragmentDensityMapNonSubsampledImages' is not set, each color/depth/stencil
+  // attachments within a foveated render pass need this flag.
+  if (desc_.foveated) {
+    create_flags |= VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
+  }
+
   /* Create color images. */
   auto colorUsages = use_msaa()
     ? (kDebugManualMsaaResolve
@@ -65,7 +74,8 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
       desc_.colors[i].format,
       desc_.sample_count,
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | colorUsages,
-      desc_.debug_prefix + "::Color" + std::to_string(i)
+      desc_.debug_prefix + "::Color" + std::to_string(i),
+      create_flags
     );
   }
 
@@ -106,10 +116,10 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
       desc_.depth_stencil.format,
       desc_.sample_count,
       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | depthStencilUsage,
-      desc_.debug_prefix + "::DepthStencil"
+      desc_.debug_prefix + "::DepthStencil",
+      create_flags
     );
   }
-
 
   /* Transition image layouts */
   auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Transfer);
