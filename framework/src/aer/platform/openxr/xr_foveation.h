@@ -6,6 +6,14 @@
 
 class XRFoveation {
  public:
+  static constexpr XrFoveationLevelFB kDefaultFoveationLevel{
+    XR_FOVEATION_LEVEL_MEDIUM_FB
+  };
+  static constexpr bool kDefaultFoveationDynamicLevel{
+    false
+  };
+
+ public:
   XRFoveation() = default;
   ~XRFoveation() { shutdown(); }
 
@@ -26,8 +34,8 @@ class XRFoveation {
   bool apply(
     XrSession session,
     XrSwapchain swapchain,
-    XrFoveationLevelFB level = XR_FOVEATION_LEVEL_HIGH_FB,
-    bool dynamic = false,
+    XrFoveationLevelFB level = kDefaultFoveationLevel,
+    bool dynamic = kDefaultFoveationDynamicLevel,
     float vertical_offset = 0.0f
   ) {
     if (!pfnCreateProfile_) {

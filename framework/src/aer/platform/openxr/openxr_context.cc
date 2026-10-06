@@ -308,9 +308,7 @@ bool OpenXRContext::resetSwapchain() {
   // for specific XR techniques.
 
   if (foveated_rendering_supported_) {
-    return foveation_.apply(
-      session_, swapchain_.handle(), XR_FOVEATION_LEVEL_HIGH_FB
-    );
+    return foveation_.apply(session_, swapchain_.handle());
   }
 
   return true;
