@@ -11,6 +11,7 @@ imgui.ini
 *.slang.dep
 *.dev.md
 .*
+*_
 
 # Prerequisites
 *.d
