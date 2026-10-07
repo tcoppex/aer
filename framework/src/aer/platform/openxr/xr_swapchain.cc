@@ -37,7 +37,7 @@ bool OpenXRSwapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer)
 
 bool OpenXRSwapchain::finishFrame(VkQueue queue) {
   XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-  CHECK_XR_RET(xrReleaseSwapchainImage(handle_, &releaseInfo));
+  CHECK_XR_RET(xrReleaseSwapchainImage(handle_, &releaseInfo))
   return true;
 }
 
@@ -49,17 +49,19 @@ bool OpenXRSwapchain::create(
   XRVulkanInterface* xr_graphics,
   bool use_foveation
 ) {
+  LOG_CHECK(handle_ == XR_NULL_HANDLE);
   LOG_CHECK(xr_graphics != nullptr);
   create_info_ = info;
   xr_graphics_ = xr_graphics;
 
   CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle_))
 
-  if (!xr_graphics->createSwapchainImages(handle_, info, use_foveation, images_, fdms_)) {
-    return false;
-  }
+  bool res = xr_graphics_->createSwapchainImages(
+    handle_, create_info_, use_foveation, images_, fdms_
+  );
   image_count_ = static_cast<uint32_t>(images_.size());
-  return true;
+
+  return res;
 }
 
 // ----------------------------------------------------------------------------
