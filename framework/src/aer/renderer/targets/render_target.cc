@@ -54,7 +54,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
   // [VK_EXT_fragment_density_map] when enabled and
   // 'fragmentDensityMapNonSubsampledImages' is not set, each color/depth/stencil
   // attachments within a foveated render pass need this flag.
-  if (desc_.foveated) {
+  if (use_msaa() && desc_.foveated) {
     create_flags |= VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
   }
 
