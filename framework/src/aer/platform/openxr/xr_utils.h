@@ -12,7 +12,7 @@ extern "C" {
 /* -------------------------------------------------------------------------- */
 
 #if defined(NDEBUG)
-#define CHECK_XR(x)       x
+#define CHECK_XR(x)       (x)
 #else
 #define CHECK_XR(x)                                                \
   ([](XrResult _res) -> XrResult {                                 \
