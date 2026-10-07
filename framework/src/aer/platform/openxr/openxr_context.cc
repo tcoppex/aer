@@ -1016,7 +1016,7 @@ void OpenXRContext::handleControls() {
     frame.touch_trigger[side] = xrutils::GetBoolean(session_, touch.touch_trigger);
 
     // Thumbstick.
-    frame.button_thumbstick[side] = xrutils::GetBoolean(session_, touch.click_joystick);
+    frame.button_thumbstick[side] = xrutils::HasButtonSwitched(session_, touch.click_joystick);
     frame.touch_thumbstick[side]  = xrutils::GetBoolean(session_, touch.touch_joystick);
   }
 
