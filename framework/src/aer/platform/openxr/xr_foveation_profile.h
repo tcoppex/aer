@@ -4,21 +4,38 @@
 
 /* -------------------------------------------------------------------------- */
 
-class XRFoveation {
+struct XRFoveationProfileInterface {
+  virtual ~XRFoveationProfileInterface() = default;
+
+  virtual XrFoveationLevelFB level() const noexcept = 0;
+  virtual float vertical_offset() const noexcept = 0;
+  virtual bool has_dynamic_level() const noexcept = 0;
+
+  virtual void set_level(XrFoveationLevelFB level) noexcept = 0;
+  virtual void set_vertical_offset(float vertical_offset) noexcept = 0;
+  virtual void set_dynamic_level(bool dynamic_level) noexcept = 0;
+};
+
+// ----------------------------------------------------------------------------
+
+class XRFoveationProfile final : public XRFoveationProfileInterface {
  public:
-  static constexpr XrFoveationLevelFB kDefaultFoveationLevel{
+  static constexpr XrFoveationLevelFB kDefaultLevel{
     XR_FOVEATION_LEVEL_MEDIUM_FB
   };
-  static constexpr bool kDefaultFoveationDynamicLevel{
+  static constexpr float kDefaultVerticalOffset{
+    0.0f
+  };
+  static constexpr bool kDefaultDynamic{
     false
   };
 
  public:
-  XRFoveation() = default;
-  ~XRFoveation() { shutdown(); }
+  XRFoveationProfile() = default;
+  ~XRFoveationProfile() final { shutdown(); }
 
-  XRFoveation(XRFoveation const&) = delete;
-  XRFoveation& operator=(XRFoveation const&) = delete;
+  XRFoveationProfile(XRFoveationProfile const&) = delete;
+  XRFoveationProfile& operator=(XRFoveationProfile const&) = delete;
 
   [[nodiscard]]
   bool init(XrInstance instance) {
@@ -31,13 +48,10 @@ class XRFoveation {
   }
 
   [[nodiscard]]
-  bool apply(
-    XrSession session,
-    XrSwapchain swapchain,
-    XrFoveationLevelFB level = kDefaultFoveationLevel,
-    bool dynamic = kDefaultFoveationDynamicLevel,
-    float vertical_offset = 0.0f
-  ) {
+  bool apply(XrSession session, XrSwapchain swapchain) {
+    LOG_CHECK(session != XR_NULL_HANDLE);
+    LOG_CHECK(swapchain != XR_NULL_HANDLE);
+
     if (!pfnCreateProfile_) {
       return false;
     }
@@ -46,21 +60,19 @@ class XRFoveation {
     auto level_info = XrFoveationLevelProfileCreateInfoFB{
       .type = XR_TYPE_FOVEATION_LEVEL_PROFILE_CREATE_INFO_FB,
       .next = nullptr,
-      .level = level,
-      .verticalOffset = vertical_offset,
-      .dynamic = dynamic ? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB
-                         : XR_FOVEATION_DYNAMIC_DISABLED_FB,
+      .level = level_,
+      .verticalOffset = vertical_offset_,
+      .dynamic = dynamic_level_ ? XR_FOVEATION_DYNAMIC_LEVEL_ENABLED_FB
+                                : XR_FOVEATION_DYNAMIC_DISABLED_FB,
     };
     auto profile_info = XrFoveationProfileCreateInfoFB{
       .type = XR_TYPE_FOVEATION_PROFILE_CREATE_INFO_FB,
       .next = &level_info,
     };
-
     if (XR_FAILED(pfnCreateProfile_(session, &profile_info, &profile_))) {
       LOGW("[OpenXR] xrCreateFoveationProfileFB fails.");
       return false;
     }
-
     auto state = XrSwapchainStateFoveationFB{
       .type = XR_TYPE_SWAPCHAIN_STATE_FOVEATION_FB,
       .next = nullptr,
@@ -71,11 +83,45 @@ class XRFoveation {
       LOGW("[OpenXR] xrUpdateSwapchainFB (foveation) fails.");
       return false;
     }
+
+    rebuild_ = false;
+
     return true;
   }
 
   void shutdown() {
     destroyProfile();
+  }
+
+ public:
+  [[nodiscard]]
+  XrFoveationLevelFB level() const noexcept {
+    return level_;
+  }
+
+  [[nodiscard]]
+  float vertical_offset() const noexcept {
+    return vertical_offset_;
+  }
+
+  [[nodiscard]]
+  bool has_dynamic_level() const noexcept {
+    return dynamic_level_;
+  }
+
+  void set_level(XrFoveationLevelFB level) noexcept {
+    level_ = level;
+    rebuild_ = true;
+  }
+
+  void set_vertical_offset(float vertical_offset) noexcept {
+    vertical_offset_ = vertical_offset;
+    rebuild_ = true;
+  }
+
+  void set_dynamic_level(bool dynamic_level) noexcept {
+    dynamic_level_ = dynamic_level;
+    rebuild_ = true;
   }
 
  private:
@@ -99,6 +145,12 @@ class XRFoveation {
   PFN_xrCreateFoveationProfileFB  pfnCreateProfile_{nullptr};
   PFN_xrDestroyFoveationProfileFB pfnDestroyProfile_{nullptr};
   PFN_xrUpdateSwapchainFB         pfnUpdateSwapchain_{nullptr};
+
+  XrFoveationLevelFB level_{kDefaultLevel};
+  float vertical_offset_{kDefaultVerticalOffset};
+  bool dynamic_level_{kDefaultDynamic};
+
+  bool rebuild_{false};
 };
 
 /* -------------------------------------------------------------------------- */

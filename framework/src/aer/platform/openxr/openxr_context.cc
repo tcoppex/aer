@@ -201,16 +201,17 @@ bool OpenXRContext::initSession() {
     for (auto c : {
       XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
       XR_FB_FOVEATION_EXTENSION_NAME,
-      XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
       XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
+      // XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
     }) {
       foveated_rendering_supported_ &= available_extensions_.contains(c);
     }
-    foveated_rendering_supported_ &= foveation_.init(instance_);
+    if (!foveation_profile_.init(instance_)) {
+      LOGW("[OpenXR] Foveation profile initialization failed.");
+    }
   }
-
   if (!foveated_rendering_supported_) {
-    LOGW("Foveated Rendering is not supported.");
+    LOGW("[OpenXR] Foveated Rendering is not supported.");
   }
 
   return true;
@@ -286,30 +287,38 @@ bool OpenXRContext::resetSwapchain() {
       .mipCount     = 1,
     };
 
-    // -------------------
+    // When supported, add foveation to the swapchain.
     auto foveation_info = XrSwapchainCreateInfoFoveationFB{
       .type  = XR_TYPE_SWAPCHAIN_CREATE_INFO_FOVEATION_FB,
       .flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB,
     };
-
     if (foveated_rendering_supported_) {
       foveation_info.next = const_cast<void*>(create_info.next);
-      create_info.next    = &foveation_info;
+      create_info.next = &foveation_info;
     }
-    // -------------------
 
+    // Create the XR swapchain and its images.
     if (!swapchain_.create(session_, create_info, graphics_.get(), foveated_rendering_supported_)) {
+      LOGE("[OpenXR] Swapchain creation failed.");
       return false;
     }
+
+    // ---------------------------------------------
+    // Update the swapchain foveation profile.
+    // [ the profile changes does not seem to be applied correctly ]
+    if (foveated_rendering_supported_) {
+      if (foveation_profile_.apply(session_, swapchain_.handle())) {
+        LOGD("[OpenXR] foveation swapchain profile applied.");
+      } else {
+        LOGW("[OpenXR] foveation swapchain profile update failed.");
+      }
+    }
+    // ---------------------------------------------
   }
 
   // [TODO]
   // we need a depth swapchain only to alter the perception of depth
   // for specific XR techniques.
-
-  if (foveated_rendering_supported_) {
-    return foveation_.apply(session_, swapchain_.handle());
-  }
 
   return true;
 }
@@ -352,7 +361,7 @@ void OpenXRContext::shutdown() {
   }
 
   if (foveated_rendering_supported_) {
-    foveation_.shutdown();
+    foveation_profile_.shutdown();
   }
 
   passthrough_.shutdown();
