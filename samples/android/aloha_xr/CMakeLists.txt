@@ -58,7 +58,7 @@ helpers_setupTarget(
     ${SAMPLE_SOURCE_DIR}
 
   LIBRARIES
-    ${FRAMEWORK_LIBRARIES}
+    aer::framework
     # android_native_app_glue
 
   DEFINITIONS

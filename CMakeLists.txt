@@ -26,7 +26,7 @@ set(PROJECT_ASSETS_DIR              ${PROJECT_ROOT_PATH}/assets)
 set(SAMPLES_PATH                    ${PROJECT_ROOT_PATH}/samples)
 set(PROJECT_BINARY_DIR              ${PROJECT_ROOT_PATH}/bin)
 set(PROJECT_THIRD_PARTY_DIR         ${PROJECT_ROOT_PATH}/third_party)
-set(DEFAULT_CPM_SOURCE_CACHE        ${PROJECT_THIRD_PARTY_DIR}/.cpmlocalcache)
+set(SHARED_THIRDPARTY_CACHE         "${PROJECT_THIRD_PARTY_DIR}/.shared_deps" CACHE PATH "Directory for shared FetchContent downloads")
 
 set(FRAMEWORK_PATH                  ${PROJECT_ROOT_PATH}/framework)
 set(FRAMEWORK_SOURCE_DIR            ${FRAMEWORK_PATH}/src)
@@ -73,33 +73,50 @@ endif()
 # Dependencies management
 # -----------------------------------------------------------------------------
 
-## Currently using CMake Package Manager (CPM)
-## but planning on switching to FetchContent.
-# include(FetchContent)
+set(FETCHCONTENT_BASE_DIR "${SHARED_THIRDPARTY_CACHE}" CACHE PATH "Directory where FetchContent stores dependencies" FORCE)
+set(FETCHCONTENT_QUIET OFF)
 
-# Download CPM.cmake
-set(CPM_DOWNLOAD_VERSION 0.43.1)
-set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+include(FetchContent)
 
-if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
-  message(STATUS "Downloading CPM.cmake...")
-  file(DOWNLOAD
-    https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
-    ${CPM_DOWNLOAD_LOCATION}
-  )
-endif()
+# Declare a GitHub dependency.
+#   SOURCE_ONLY : download only, never add_subdirectory (CPM's DOWNLOAD_ONLY).
+# SYSTEM marks the include dirs exported by the dependency's targets as system
+# ones (no warnings), EXCLUDE_FROM_ALL builds only what we actually link.
+function(aer_declare name repo tag)
+  cmake_parse_arguments(PARSE_ARGV 3 ARG "SOURCE_ONLY" "" "")
 
-# Set a share cache for CPM if none exist.
-if(NOT DEFINED CPM_SOURCE_CACHE)
-  if(DEFINED ENV{CPM_SOURCE_CACHE})
-    set(CPM_SOURCE_CACHE "$ENV{CPM_SOURCE_CACHE}")
-  else()
-    set(CPM_SOURCE_CACHE ${DEFAULT_CPM_SOURCE_CACHE})
+  set(extra "")
+  if(ARG_SOURCE_ONLY)
+    set(extra SOURCE_SUBDIR __no_cmake__)
   endif()
-  set(CPM_SOURCE_CACHE "${CPM_SOURCE_CACHE}" CACHE PATH "CPM cache location")
-endif()
 
-include(${CPM_DOWNLOAD_LOCATION})
+  set(shallow TRUE)
+  string(LENGTH "${tag}" tag_len)
+  if(tag_len EQUAL 40 AND tag MATCHES "^[0-9a-f]+$")
+    set(shallow FALSE)
+  endif()
+
+  FetchContent_Declare(${name}
+    GIT_REPOSITORY https://github.com/${repo}.git
+    GIT_TAG        ${tag}
+    GIT_SHALLOW    ${shallow}
+    SYSTEM
+    EXCLUDE_FROM_ALL
+    ${extra}
+  )
+endfunction()
+
+# Wrap a header-only dependency in an INTERFACE target.
+#   NO_SYSTEM : keep its include dirs as regular (-I) ones.
+function(aer_header_only name)
+  cmake_parse_arguments(PARSE_ARGV 1 ARG "NO_SYSTEM" "" "INCLUDE_DIRS")
+  set(system SYSTEM)
+  if(ARG_NO_SYSTEM)
+    set(system "")
+  endif()
+  add_library(${name} INTERFACE)
+  target_include_directories(${name} ${system} INTERFACE ${ARG_INCLUDE_DIRS})
+endfunction()
 
 # -----------------------------------------------------------------------------
 # CMake includes

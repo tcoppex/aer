@@ -34,7 +34,7 @@ function(add_sample dirname)
     INCLUDE_DIRECTORIES
       ${SAMPLE_PATH}
     LIBRARIES
-      ${FRAMEWORK_LIBRARIES}
+      aer::framework
     DEFINITIONS
       SAMPLE_SPIRV_DIR="${SAMPLE_SPIRV_DIR}"
   )
