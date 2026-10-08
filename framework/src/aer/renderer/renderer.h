@@ -103,6 +103,11 @@ class Renderer {
   }
 
   [[nodiscard]]
+  bool is_postprocess_enabled() const noexcept {
+    return postprocess_;
+  }
+
+  [[nodiscard]]
   bool is_foveated_rendering_enabled() const noexcept {
     return foveated_rendering_;
   }
@@ -117,8 +122,8 @@ class Renderer {
     }
   }
 
-  void enable_postprocess(bool status) noexcept {
-    enable_postprocess_ = status;
+  void set_postprocess_enabled(bool enabled) noexcept {
+    postprocess_ = enabled;
   }
 
   void set_foveated_rendering_enabled(bool enabled) noexcept {
@@ -172,7 +177,7 @@ class Renderer {
   uint32_t frame_index_{};
 
   /* Control whether the RT color should be blit to the swapchain or not. */
-  bool enable_postprocess_{true};
+  bool postprocess_{true};
 
   /* [XR] Control whether to use fragment density map when available. */
   bool foveated_rendering_{true};

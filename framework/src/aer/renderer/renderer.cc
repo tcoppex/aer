@@ -180,12 +180,13 @@ CommandEncoder& Renderer::beginFrame() {
 void Renderer::endFrame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
+  auto const& frame = frame_resource();
+
   /* Transition the final image then blit to the swapchain frame. */
-  if (enable_postprocess_) {
+  if (is_postprocess_enabled()) {
     applyPostProcess();
   }
 
-  auto const& frame = frame_resource();
   frame.cmd.end();
 
   /* Submit the CommandBuffer to the main queue. */
