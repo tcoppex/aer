@@ -356,6 +356,7 @@ if(USE_GCC OR USE_CLANG)
     -Wl,--gc-sections
   )
 elseif(USE_MSVC)
+  add_link_options(/IGNORE:4099)
   list(APPEND CXX_FLAGS
     # /permissive-
     # /GR-         # disable RTTI
@@ -369,7 +370,7 @@ elseif(USE_MSVC)
     /wd4100       # Disable: "unused parameter" warnings
     /utf-8
   )
-  list(APPEND CXX_FLAGS_DEBUG           /Zi)
+  list(APPEND CXX_FLAGS_DEBUG           /Z7)
   list(APPEND CXX_FLAGS_RELEASE         /Ox /INCREMENTAL:NO /DEBUG:NONE /DNDEBUG)
   # list(APPEND CXX_FLAGS_RELWITHDEBINFO  ${CXX_FLAGS_RELEASE} /Ox /Zi)
 
