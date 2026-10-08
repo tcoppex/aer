@@ -33,8 +33,7 @@ cmake --build build --config Release
 
 ##### Third parties
 
- * CMake 3.22.1
- * CPM 0.40.3
+ * CMake 3.28
  * Vulkan 1.4.321.0 headers
  * Volk 1.4.321.0
  * VulkanMemoryAllocator 3.2.0
@@ -55,7 +54,7 @@ cmake --build build --config Release
 * KTX (Khronos Texture) Library 4.4.2
 -->
 
-By default CPM downloads and caches third-party dependencies in the `$CPM_SOURCE_CACHE` directory (_either fetched from env or cmake variable_). When none exist it will default to `./third_party/.cpmlocalcache/`.
+By default FetchContent downloads and caches third-party dependencies in the `$SHARED_THIRDPARTY_CACHE` directory (_either fetched from env or cmake variable_). When none exist it will default to `./third_party/.shared_deps/`.
 
 ##### Vulkan device extensions
 
