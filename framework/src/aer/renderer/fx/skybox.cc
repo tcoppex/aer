@@ -153,7 +153,7 @@ bool Skybox::setup(std::string_view hdr_filename) {
     return false;
   }
 
-  if (!context_ptr_->get_features().maintenance5.maintenance5) {
+  if (!context_ptr_->features().maintenance5.maintenance5) {
     LOGW("Skybox IBLs requires the maintenance5 device extension.");
     return false;
   }

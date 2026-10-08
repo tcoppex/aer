@@ -108,7 +108,8 @@ backend::Image Context::createImage(
   uint32_t layers,
   VkSampleCountFlagBits samples,
   VkFormat format,
-  VkImageUsageFlags usage
+  VkImageUsageFlags usage,
+  VkImageCreateFlags create_flags
 ) const {
   // -----------
   VkImageAspectFlags aspect_mask{ VK_IMAGE_ASPECT_COLOR_BIT };
@@ -144,10 +145,9 @@ backend::Image Context::createImage(
   };
 
   // -----------
-  VkImageCreateFlags createFlags{}; //
   if (layers > 1u) {
     if (image_type == VK_IMAGE_TYPE_2D) {
-      createFlags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+      create_flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; //
     }
   }
   // -----------
@@ -155,7 +155,7 @@ backend::Image Context::createImage(
   auto const image_info = VkImageCreateInfo{
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
     .pNext = nullptr,
-    .flags = createFlags,
+    .flags = create_flags,
     .imageType = image_type,
     .format = format,
     .extent = size,
@@ -349,8 +349,7 @@ CommandEncoder Context::createTransientCommandEncoder(
     cmd,
     static_cast<uint32_t>(target_queue),
     handle_,
-    &allocator_, //
-    nullptr // (no render target for transient command buffer)
+    &allocator_
   );
   encoder.begin();
 
@@ -788,6 +787,22 @@ bool Context::initDevice() {
     );
 #endif
 
+    // ------------------
+    if (vulkan_xr_) {
+      add_device_feature(
+        VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME,
+        features_.fragment_density_map,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT
+      );
+
+      add_device_feature(
+        VK_EXT_FRAGMENT_DENSITY_MAP_2_EXTENSION_NAME,
+        features_.fragment_density_map2,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT
+      );
+    }
+    // ------------------
+
     vk_utils::PushNextVKStruct(&features_.base, &features_.v11);
     vk_utils::PushNextVKStruct(&features_.base, &features_.v12);
     vk_utils::PushNextVKStruct(&features_.base, &features_.v13);
@@ -796,6 +811,10 @@ bool Context::initDevice() {
     /* Check features. */
     if (vulkan_xr_) {
       LOG_CHECK(features_.v11.multiview && "Multiview required (Vulkan 1.1 core)");
+
+      vulkan_xr_->set_fragment_density_map_supported(
+        (features_.fragment_density_map.fragmentDensityMap == VK_TRUE)
+      );
     }
 
     // LOG_CHECK(features_.v12.shaderFloat16);

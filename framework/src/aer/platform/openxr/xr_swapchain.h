@@ -51,12 +51,18 @@ struct OpenXRSwapchain : public SwapchainInterface {
     return images_[current_image_index_];
   }
 
+  [[nodiscard]]
+  VkImageView fragment_density_map_view() const noexcept final {
+    return has_fdm() ? fdms_[current_image_index_].view : VK_NULL_HANDLE;
+  }
+
  public:
   [[nodiscard]]
   bool create(
     XrSession session,
     XrSwapchainCreateInfo const& info,
-    XRVulkanInterface *xr_graphics //
+    XRVulkanInterface *xr_graphics, //
+    bool use_foveation //
   );
 
   void destroy();
@@ -82,12 +88,21 @@ struct OpenXRSwapchain : public SwapchainInterface {
     return handle_;
   }
 
+  [[nodiscard]]
+  bool has_fdm() const noexcept {
+    return !fdms_.empty();
+  }
+
  private:
   XrSwapchainCreateInfo create_info_{};
   XrSwapchain handle_{XR_NULL_HANDLE};
+
   std::vector<backend::Image> images_{};
+  std::vector<backend::Image> fdms_{};
+
   uint32_t image_count_{};
   uint32_t current_image_index_{};
+
   XRVulkanInterface *xr_graphics_{};
 };
 

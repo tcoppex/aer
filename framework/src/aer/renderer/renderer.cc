@@ -88,13 +88,21 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
   auto const surface_size = VkExtent2D{ w, h };
-  auto const layers = swapchain().image_array_size();
 
-  if (frames_[0].main_rt != nullptr) [[likely]] {
+  if (frames_[0].main_rt != nullptr) [[likely]]
+  {
     for (auto &frame : frames_) {
       frame.main_rt->resize(w, h);
     }
-  } else {
+  }
+  else
+  {
+    auto const& sc = swapchain();
+    auto const layers = sc.image_array_size();
+
+    auto const foveated = context_ptr_->is_foveated_rendering_supported()
+                       && sc.has_fragment_density_map();
+
     for (size_t i = 0; i < frames_.size(); ++i) {
       auto &frame = frames_[i];
       frame.main_rt = context_ptr_->createRenderTarget({
@@ -108,6 +116,7 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
         .size = surface_size,
         .array_size = layers,
         .sample_count = sample_count(),
+        .foveated = foveated,
         .debug_prefix = "Renderer::MainRT_" + std::to_string(i),
       });
     }
@@ -124,10 +133,12 @@ bool Renderer::resize(uint32_t w, uint32_t h) {
 CommandEncoder& Renderer::beginFrame() {
   LOG_CHECK( context_ptr_ != nullptr );
 
+  auto &sc = swapchain();
+
   /* Handle Swapchain resize detection. */
   {
     // (suppose they use the same scale)
-    auto const& A = swapchain().surface_size();
+    auto const& A = sc.surface_size();
     auto const& B = surface_size();
     if (A.width != B.width || A.height != B.height) {
       resize(A.width, A.height);
@@ -136,13 +147,17 @@ CommandEncoder& Renderer::beginFrame() {
 
   /* Acquire next availables image in the swapchain. */
   LOG_CHECK(swapchain_ptr_);
-  if (!swapchain().acquireNextImage()) {
+  if (!sc.acquireNextImage()) {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
   /* Reset the frame command pool to record new command for this frame. */
   auto &frame = frame_resource();
   context_ptr_->resetCommandPool(frame.command_pool);
+
+  VkImageView fdm = is_foveated_rendering_enabled() ? sc.fragment_density_map_view()
+                                                    : VK_NULL_HANDLE
+                                                    ;
 
   // -----------------------
   /* Reset the command buffer wrapper. */
@@ -151,7 +166,8 @@ CommandEncoder& Renderer::beginFrame() {
     static_cast<uint32_t>(Context::TargetQueue::Main),
     context_ptr_->device(),
     &context_ptr_->allocator(), //
-    frame.main_rt.get()
+    frame.main_rt.get(),
+    fdm
   );
   // -----------------------
 
@@ -161,52 +177,16 @@ CommandEncoder& Renderer::beginFrame() {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::applyPostProcess() {
-  auto const& frame = frame_resource();
-  auto const& dst_img = swapchain().current_image();
-
-  // Blit Color to Swapchain.
-  auto const& src_rt = *frame.main_rt;
-  auto const& src_img = src_rt.resolve_attachment();
-  auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                        ;
-
-  uint32_t const layer_count = src_rt.layer_count();
-  LOG_CHECK(layer_count == swapchain().image_array_size());
-
-  frame.cmd.transitionColorImages(
-    { src_img },
-    VK_IMAGE_LAYOUT_UNDEFINED, //
-    src_layout,
-    layer_count
-  );
-
-  frame.cmd.blitImage2D(
-    src_img,
-    src_layout,
-    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-
-    dst_img,
-    VK_IMAGE_LAYOUT_UNDEFINED, // 
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-
-    surface_size(),
-    layer_count
-  );
-}
-
-// ----------------------------------------------------------------------------
-
 void Renderer::endFrame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
+  auto const& frame = frame_resource();
+
   /* Transition the final image then blit to the swapchain frame. */
-  if (enable_postprocess_) {
+  if (is_postprocess_enabled()) {
     applyPostProcess();
   }
 
-  auto const& frame = frame_resource();
   frame.cmd.end();
 
   /* Submit the CommandBuffer to the main queue. */
@@ -270,6 +250,43 @@ GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
   return loadGLTF(
     gltf_filename,
     VertexInternal_t::GetDefaultAttributeLocationMap()
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::applyPostProcess() {
+  auto const& frame = frame_resource();
+  auto const& dst_img = swapchain().current_image();
+
+  // Blit Color to Swapchain.
+  auto const& src_rt = *frame.main_rt;
+  auto const& src_img = src_rt.resolve_attachment();
+  auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                        ;
+
+  uint32_t const layer_count = src_rt.layer_count();
+  LOG_CHECK(layer_count == swapchain().image_array_size());
+
+  frame.cmd.transitionColorImages(
+    { src_img },
+    VK_IMAGE_LAYOUT_UNDEFINED, //
+    src_layout,
+    layer_count
+  );
+
+  frame.cmd.blitImage2D(
+    src_img,
+    src_layout,
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+    dst_img,
+    VK_IMAGE_LAYOUT_UNDEFINED, //
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+
+    surface_size(),
+    layer_count
   );
 }
 

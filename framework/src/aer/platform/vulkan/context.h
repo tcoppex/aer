@@ -42,6 +42,10 @@ class Context {
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure{};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_pipeline{};
     // VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptor_buffer_features{};         // (!Quest3)
+
+    // (for XR)
+    VkPhysicalDeviceFragmentDensityMapFeaturesEXT  fragment_density_map{};
+    VkPhysicalDeviceFragmentDensityMap2FeaturesEXT fragment_density_map2{}; // optionnal
   };
 
  public:
@@ -110,7 +114,7 @@ class Context {
   }
 
   [[nodiscard]]
-  VulkanContextFeatures const& get_features() const {
+  VulkanContextFeatures const& features() const {
     return features_;
   }
 
@@ -124,6 +128,17 @@ class Context {
 
   [[nodiscard]]
   VkSampleCountFlagBits max_sample_count() const noexcept;
+
+  [[nodiscard]]
+  bool has_xr() const noexcept {
+    return vulkan_xr_ != nullptr;
+  }
+
+  [[nodiscard]]
+  bool is_foveated_rendering_supported() const noexcept {
+    return has_xr()
+        && features().fragment_density_map.fragmentDensityMap;
+  }
 
   // --- Surface --
 
@@ -241,7 +256,8 @@ class Context {
     uint32_t layers,
     VkSampleCountFlagBits samples,
     VkFormat format,
-    VkImageUsageFlags usage
+    VkImageUsageFlags usage,
+    VkImageCreateFlags create_flags = {}
   ) const;
 
   // --------------
@@ -256,7 +272,8 @@ class Context {
     VkFormat format,
     VkSampleCountFlagBits sample_count,
     VkImageUsageFlags usage,
-    std::string_view debug_name
+    std::string_view debug_name,
+    VkImageCreateFlags create_flags = {}
   ) const {
     return createImage(
       debug_name,
@@ -266,7 +283,8 @@ class Context {
       array_layers,
       sample_count,
       format,
-      usage
+      usage,
+      create_flags
     );
   }
 
@@ -507,7 +525,7 @@ class Context {
     std::vector<char const*> const& dependencies = {}
   ) {
     if (!has_extension(extension_name, available_device_extensions_)) {
-      LOGI("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
+      LOGW("[Vulkan] Feature extension \"{:s}\" is not available.", extension_name);
       return false;
     }
     if (device_extension_names_.contains(extension_name)) {
@@ -535,7 +553,6 @@ class Context {
 
   [[nodiscard]]
   bool initDevice();
-
 
  private:
   static constexpr bool kEnableDebugValidationLayer{ true };

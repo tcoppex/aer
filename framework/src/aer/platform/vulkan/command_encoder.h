@@ -405,11 +405,13 @@ class CommandEncoder : public GenericCommandEncoder {
     uint32_t const target_queue_index,
     VkDevice const device,
     backend::Allocator const* allocator_ptr,
-    backend::RTInterface const* default_rt
+    backend::RTInterface const* default_rt = nullptr,
+    VkImageView fragment_density_map_view = VK_NULL_HANDLE
   ) : GenericCommandEncoder(command_buffer, target_queue_index)
     , device_{device}
     , allocator_ptr_{allocator_ptr}
     , default_render_target_ptr_(default_rt)
+    , fragment_density_map_view_(fragment_density_map_view)
   {}
 
   void begin() const {
@@ -433,6 +435,8 @@ class CommandEncoder : public GenericCommandEncoder {
 
   /* Link the bound backend::RTInterface for auto layout transition. */
   mutable backend::RTInterface const* current_render_target_ptr_{};
+
+  VkImageView fragment_density_map_view_{VK_NULL_HANDLE}; //
 
  public:
   friend class Context;

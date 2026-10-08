@@ -228,7 +228,7 @@ class SampleApp final : public Application {
  private:
   bool setup() final {
 
-    auto const& features = context_.get_features();
+    auto const& features = context_.features();
     if (!features.ray_tracing_pipeline.rayTracingPipeline) {
       LOGW("This device does not support ray tracing pipeline.");
       return false;

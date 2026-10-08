@@ -47,13 +47,25 @@ struct XRVulkanInterface {
   [[nodiscard]]
   int64_t selectColorSwapchainFormat(std::vector<int64_t> const& formats) const;
 
-  void allocateSwapchainImage(
-    std::vector<XrSwapchainImageVulkanKHR> const& base_images,
-    VkImageViewCreateInfo &view_info,
-    std::vector<backend::Image> &images
+  [[nodiscard]]
+  bool createSwapchainImages(
+    XrSwapchain swapchain,
+    XrSwapchainCreateInfo const& info,
+    bool use_foveation,
+    std::vector<backend::Image>& images,
+    std::vector<backend::Image>& fdms
   );
 
-  void releaseSwapchainImage(std::vector<backend::Image> &images) const noexcept;
+  void destroySwapchainImages(std::vector<backend::Image>& images);
+
+  void set_fragment_density_map_supported(bool supported) noexcept {
+    fragment_density_map_supported_ = supported;
+  }
+
+  [[nodiscard]]
+  bool is_fragment_density_map_supported() const noexcept {
+    return fragment_density_map_supported_;
+  }
 
  private:
   XrResult xrCreateVulkanInstanceKHR(
@@ -87,6 +99,8 @@ struct XRVulkanInterface {
   XrSystemId system_id_{XR_NULL_SYSTEM_ID};
 
   XrGraphicsBindingVulkan2KHR binding_{XR_TYPE_GRAPHICS_BINDING_VULKAN2_KHR};
+
+  bool fragment_density_map_supported_{false};
 };
 
 // ----------------------------------------------------------------------------

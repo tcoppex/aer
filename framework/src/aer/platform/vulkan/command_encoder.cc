@@ -416,7 +416,7 @@ backend::Buffer CommandEncoder::createBufferAndUpload(
 // ----------------------------------------------------------------------------
 
 RenderPassEncoder CommandEncoder::beginRendering(RenderPassDescriptor const& desc) const {
-  auto const rendering_info = VkRenderingInfoKHR{
+  auto rendering_info = VkRenderingInfoKHR{
     .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
     .pNext                = nullptr,
     .flags                = 0b0u,
@@ -428,6 +428,15 @@ RenderPassEncoder CommandEncoder::beginRendering(RenderPassDescriptor const& des
     .pDepthAttachment     = &desc.depthAttachment,
     .pStencilAttachment   = &desc.stencilAttachment, //
   };
+
+  auto fdm_info = VkRenderingFragmentDensityMapAttachmentInfoEXT{
+  .sType       = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT,
+  .imageView   = desc.fragmentDensityMapView,
+  .imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+  };
+  if (desc.fragmentDensityMapView != VK_NULL_HANDLE) {
+    rendering_info.pNext = &fdm_info;
+  }
 
   vkCmdBeginRendering(handle_, &rendering_info);
 
@@ -484,18 +493,32 @@ RenderPassEncoder CommandEncoder::beginRendering(
     .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     .storeOp            = VK_ATTACHMENT_STORE_OP_STORE,
   });
-  if (render_target.use_msaa()) {
+  if (render_target.use_msaa())
+  {
     for (size_t i = 0u; i < colors.size(); ++i) {
       auto& attach = desc.colorAttachments[i];
-      attach.imageView          = colors[i].view; //
-      attach.loadOp             = render_target.color_load_op(i);
-      attach.storeOp            = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      attach.clearValue         = render_target.color_clear_value(i);
-      attach.resolveMode        = VK_RESOLVE_MODE_AVERAGE_BIT; //
-      attach.resolveImageView   = render_target.resolve_attachment(i).view;
-      attach.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      attach.imageView  = colors[i].view;
+      attach.loadOp     = render_target.color_load_op(i);
+      attach.clearValue = render_target.color_clear_value(i);
+
+      if constexpr (kDebugManualMsaaResolve) {
+        attach.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+        attach.resolveMode        = VK_RESOLVE_MODE_NONE;
+        attach.resolveImageView   = VK_NULL_HANDLE;
+        attach.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      } else {
+        attach.storeOp            = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attach.resolveMode        = VK_RESOLVE_MODE_AVERAGE_BIT;
+        attach.resolveImageView   = render_target.resolve_attachment(i).view;
+        attach.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      }
     }
-  } else {
+    // depth & stencil attachment is transient under MSAA
+    desc.depthAttachment.storeOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    desc.stencilAttachment.storeOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  }
+  else
+  {
     for (size_t i = 0u; i < colors.size(); ++i) {
       auto& attach = desc.colorAttachments[i];
       attach.imageView  = colors[i].view;
@@ -503,6 +526,13 @@ RenderPassEncoder CommandEncoder::beginRendering(
       attach.clearValue = render_target.color_clear_value(i);
     }
   }
+
+  // -----------------------------
+  // Foveated Rendering.
+  if (&render_target == default_render_target_ptr_) {
+    desc.fragmentDensityMapView = fragment_density_map_view_; //
+  }
+  // -----------------------------
 
   current_render_target_ptr_ = &render_target;
 
@@ -523,24 +553,55 @@ RenderPassEncoder CommandEncoder::beginRendering() const {
 void CommandEncoder::endRendering() const {
   vkCmdEndRendering(handle_);
 
-  // Transition the color buffers.
   if (current_render_target_ptr_ != nullptr) [[likely]]
   {
-    auto const& images_to_transition = current_render_target_ptr_->use_msaa()
-      ? current_render_target_ptr_->resolve_attachments()
-      : current_render_target_ptr_->color_attachments();
+    auto const& rt = *current_render_target_ptr_;
+    uint32_t const layers = rt.layer_count();
 
-    // Determine final layout based on whether the target goes to display or shader
-    VkImageLayout const target_layout = false // (TODO)
-      ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    if (kDebugManualMsaaResolve && rt.use_msaa())
+    {
+      auto const& colors   = rt.color_attachments();
+      auto const& resolves = rt.resolve_attachments();
 
-    transitionColorImages(
-      images_to_transition,
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      target_layout,
-      current_render_target_ptr_->layer_count()
-    );
+      transitionColorImages(colors,   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, layers);
+      transitionColorImages(resolves, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layers);
+
+      VkExtent2D const size = rt.surface_size();
+      VkImageResolve const region{
+        .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers},
+        .srcOffset      = {0, 0, 0},
+        .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers},
+        .dstOffset      = {0, 0, 0},
+        .extent         = {size.width, size.height, 1},
+      };
+
+      for (size_t i = 0; i < colors.size(); ++i) {
+        vkCmdResolveImage(
+          handle_,
+          colors[i].image,
+          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          resolves[i].image,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          1, &region
+        );
+      }
+
+      transitionColorImages(resolves, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layers);
+    }
+    else
+    {
+      auto const& images = rt.use_msaa() ? rt.resolve_attachments()
+                                         : rt.color_attachments();
+      transitionColorImages(
+        images,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        layers
+      );
+    }
 
     current_render_target_ptr_ = nullptr;
   }

@@ -3,15 +3,19 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <string>
+#include <unordered_set>
+
 #include "aer/core/common.h"
 #include "aer/core/camera.h"
 
 #include "aer/platform/openxr/xr_common.h"
 #include "aer/platform/openxr/xr_utils.h"
 #include "aer/platform/openxr/xr_platform_interface.h"
-#include "aer/platform/openxr/xr_vulkan_interface.h" //
+#include "aer/platform/openxr/xr_vulkan_interface.h"
 #include "aer/platform/openxr/xr_swapchain.h"
-#include "aer/platform/openxr/xr_passthrough.h" //
+#include "aer/platform/openxr/xr_passthrough.h"
+#include "aer/platform/openxr/xr_foveation_profile.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -163,6 +167,8 @@ class OpenXRContext {
   XrSession session_{XR_NULL_HANDLE};
 
  private:
+  std::unordered_set<std::string> available_extensions_;
+
   XrEventDataBuffer event_data_buffer_{};
 
   bool session_running_ = false;
@@ -183,6 +189,9 @@ class OpenXRContext {
 
   OpenXRSwapchain swapchain_{}; // color swapchain
 
+  bool foveated_rendering_supported_{false};
+  XRFoveationProfile foveation_profile_{};
+
   XRPassthrough passthrough_{};
   XrCompositionLayerPassthroughFB pt_layer_{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB}; //
 
@@ -192,14 +201,14 @@ class OpenXRContext {
 
   std::vector<XrCompositionLayerBaseHeader const*> composition_layers_{};
 
+  bool should_render_{};
+
   // -----
 
   XRControlState_t controls_{};
   XRFrameData frame_data_{}; //
 
   Camera *camera_ptr_{};
-
-  bool should_render_{};
 
   struct ViewController final : Camera::ViewController {
     ViewController(XRFrameData const& frame_data)

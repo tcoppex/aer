@@ -25,7 +25,9 @@ void RenderTarget::release() {
 
   context_ptr_->destroyImage(depth_stencil_);
   for(auto& resolve : resolves_) {
-    context_ptr_->destroyImage(resolve);
+    if (resolve.valid()) {
+      context_ptr_->destroyImage(resolve);
+    }
   }
   for(auto& color : colors_) {
     context_ptr_->destroyImage(color);
@@ -47,10 +49,22 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
   };
   uint32_t const levels = 1u; //
 
+  VkImageCreateFlags create_flags{};
+
+  // [VK_EXT_fragment_density_map] when enabled and
+  // 'fragmentDensityMapNonSubsampledImages' is not set, each color/depth/stencil
+  // attachments within a foveated render pass need this flag.
+  if (use_msaa() && desc_.foveated) {
+    create_flags |= VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
+  }
+
   /* Create color images. */
-  auto colorUsages = use_msaa() ? VkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
-                                : kDefaultColorImageUsageFlags
-                                ;
+  auto colorUsages = use_msaa()
+    ? (kDebugManualMsaaResolve
+         ? VkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+         : VkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))
+    : kDefaultColorImageUsageFlags;
+
   for (size_t i = 0; i < colors_.size(); ++i) {
     colors_[i] = context_ptr_->createImage2D(
       surface_size_.width,
@@ -60,13 +74,21 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
       desc_.colors[i].format,
       desc_.sample_count,
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | colorUsages,
-      desc_.debug_prefix + "::Color" + std::to_string(i)
+      desc_.debug_prefix + "::Color" + std::to_string(i),
+      create_flags
     );
   }
 
   /* When using MSAA we need to allocate additional resolve buffers. */
   if (use_msaa()) {
     LOG_CHECK(resolves_.size() == colors_.size());
+
+    auto resolveColorUsages = VkImageUsageFlags{
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | kDefaultColorImageUsageFlags
+      | (kDebugManualMsaaResolve ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0)
+    };
+
     for (size_t i = 0; i < resolves_.size(); ++i) {
       resolves_[i] = context_ptr_->createImage2D(
         surface_size_.width,
@@ -75,7 +97,7 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
         levels,
         desc_.colors[i].format,
         VK_SAMPLE_COUNT_1_BIT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | kDefaultColorImageUsageFlags,
+        resolveColorUsages,
         desc_.debug_prefix + "::ResolveColor" + std::to_string(i)
       );
     }
@@ -94,10 +116,10 @@ bool RenderTarget::resize(uint32_t w, uint32_t h) {
       desc_.depth_stencil.format,
       desc_.sample_count,
       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | depthStencilUsage,
-      desc_.debug_prefix + "::DepthStencil"
+      desc_.debug_prefix + "::DepthStencil",
+      create_flags
     );
   }
-
 
   /* Transition image layouts */
   auto cmd = context_ptr_->createTransientCommandEncoder(Context::TargetQueue::Transfer);

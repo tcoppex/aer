@@ -1,8 +1,6 @@
 #include <cstring>
 #include <cctype>
 #include <algorithm>
-#include <string>
-#include <unordered_set>
 
 #include "aer/platform/openxr/openxr_context.h"
 #include "aer/platform/openxr/xr_utils.h"
@@ -91,10 +89,9 @@ bool OpenXRContext::init(
       nullptr, extensionCount, &extensionCount, supportedProperties.data()
     ));
 
-    std::unordered_set<std::string> availableExts;
     LOGI("Availables OpenXR extensions:");
     for (auto const& prop : supportedProperties) {
-      availableExts.insert(prop.extensionName);
+      available_extensions_.insert(prop.extensionName);
       LOGI("- {}", prop.extensionName);
     }
 
@@ -118,7 +115,7 @@ bool OpenXRContext::init(
     std::vector<char const*> enabledExtsCStr;
 
     for (auto const& ext : requestedExts) {
-      if (availableExts.contains(ext)) {
+      if (available_extensions_.contains(ext)) {
         enabledExtsStrings.push_back(ext);
       } else {
         // Log missing extensions for debugging
@@ -196,6 +193,27 @@ bool OpenXRContext::initSession() {
     return false;
   }
 
+  /* Foveation rendering support. */
+  if (graphics_->is_fragment_density_map_supported())
+  {
+    foveated_rendering_supported_ = true;
+
+    for (auto c : {
+      XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
+      XR_FB_FOVEATION_EXTENSION_NAME,
+      XR_FB_FOVEATION_VULKAN_EXTENSION_NAME,
+      // XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME,
+    }) {
+      foveated_rendering_supported_ &= available_extensions_.contains(c);
+    }
+    if (!foveation_profile_.init(instance_)) {
+      LOGW("[OpenXR] Foveation profile initialization failed.");
+    }
+  }
+  if (!foveated_rendering_supported_) {
+    LOGW("[OpenXR] Foveated Rendering is not supported.");
+  }
+
   return true;
 }
 
@@ -251,7 +269,7 @@ bool OpenXRContext::resetSwapchain() {
     auto& config_view{ view_config_views_[0] };
 
     // A multiview swapchain image is a 2D array image with 2 layers (left eye, right eye).
-    XrSwapchainCreateInfo create_info{
+    auto create_info = XrSwapchainCreateInfo{
       .type         = XR_TYPE_SWAPCHAIN_CREATE_INFO,
       .createFlags  = 0,
       .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
@@ -269,9 +287,33 @@ bool OpenXRContext::resetSwapchain() {
       .mipCount     = 1,
     };
 
-    if (!swapchain_.create(session_, create_info, graphics_.get())) {
+    // When supported, add foveation to the swapchain.
+    auto foveation_info = XrSwapchainCreateInfoFoveationFB{
+      .type  = XR_TYPE_SWAPCHAIN_CREATE_INFO_FOVEATION_FB,
+      .flags = XR_SWAPCHAIN_CREATE_FOVEATION_FRAGMENT_DENSITY_MAP_BIT_FB,
+    };
+    if (foveated_rendering_supported_) {
+      foveation_info.next = const_cast<void*>(create_info.next);
+      create_info.next = &foveation_info;
+    }
+
+    // Create the XR swapchain and its images.
+    if (!swapchain_.create(session_, create_info, graphics_.get(), foveated_rendering_supported_)) {
+      LOGE("[OpenXR] Swapchain creation failed.");
       return false;
     }
+
+    // ---------------------------------------------
+    // Update the swapchain foveation profile.
+    // [ the profile changes does not seem to be applied correctly ]
+    if (foveated_rendering_supported_) {
+      if (foveation_profile_.apply(session_, swapchain_.handle())) {
+        LOGD("[OpenXR] foveation swapchain profile applied.");
+      } else {
+        LOGW("[OpenXR] foveation swapchain profile update failed.");
+      }
+    }
+    // ---------------------------------------------
   }
 
   // [TODO]
@@ -318,13 +360,18 @@ void OpenXRContext::shutdown() {
     controls_.action_set = XR_NULL_HANDLE;
   }
 
+  if (foveated_rendering_supported_) {
+    foveation_profile_.shutdown();
+  }
+
+  passthrough_.shutdown();
+
   swapchain_.destroy();
 
   for (auto &space : spaces_) {
     xrDestroySpace(space);
   }
 
-  passthrough_.shutdown();
 
   if (session_ != XR_NULL_HANDLE) {
     xrDestroySession(session_);
@@ -978,7 +1025,7 @@ void OpenXRContext::handleControls() {
     frame.touch_trigger[side] = xrutils::GetBoolean(session_, touch.touch_trigger);
 
     // Thumbstick.
-    frame.button_thumbstick[side] = xrutils::GetBoolean(session_, touch.click_joystick);
+    frame.button_thumbstick[side] = xrutils::HasButtonSwitched(session_, touch.click_joystick);
     frame.touch_thumbstick[side]  = xrutils::GetBoolean(session_, touch.touch_joystick);
   }
 

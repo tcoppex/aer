@@ -37,7 +37,7 @@ bool OpenXRSwapchain::submitFrame(VkQueue queue, VkCommandBuffer command_buffer)
 
 bool OpenXRSwapchain::finishFrame(VkQueue queue) {
   XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-  CHECK_XR_RET(xrReleaseSwapchainImage(handle_, &releaseInfo));
+  CHECK_XR_RET(xrReleaseSwapchainImage(handle_, &releaseInfo))
   return true;
 }
 
@@ -46,65 +46,31 @@ bool OpenXRSwapchain::finishFrame(VkQueue queue) {
 bool OpenXRSwapchain::create(
   XrSession session,
   XrSwapchainCreateInfo const& info,
-  XRVulkanInterface *xr_graphics
+  XRVulkanInterface* xr_graphics,
+  bool use_foveation
 ) {
-  LOG_CHECK( xr_graphics != nullptr );
-
+  LOG_CHECK(handle_ == XR_NULL_HANDLE);
+  LOG_CHECK(xr_graphics != nullptr);
   create_info_ = info;
   xr_graphics_ = xr_graphics;
 
-  // Create the swapchain object.
   CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle_))
 
-  // Retrieve swapchain images.
-  CHECK_XR(xrEnumerateSwapchainImages(handle_, 0, &image_count_, nullptr));
-  std::vector<XrSwapchainImageVulkanKHR> base_images(image_count_, {
-    .type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR
-  });
-  CHECK_XR(xrEnumerateSwapchainImages(
-    handle_, image_count_, &image_count_,
-    reinterpret_cast<XrSwapchainImageBaseHeader*>(base_images.data())
-  ));
+  bool res = xr_graphics_->createSwapchainImages(
+    handle_, create_info_, use_foveation, images_, fdms_
+  );
+  image_count_ = static_cast<uint32_t>(images_.size());
 
-  auto const aspect_mask =
-      (info.usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-          ? VK_IMAGE_ASPECT_DEPTH_BIT
-          : VK_IMAGE_ASPECT_COLOR_BIT
-          ;
-  auto view_info = VkImageViewCreateInfo{
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .viewType = (info.arraySize > 1u) ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
-                                      : VK_IMAGE_VIEW_TYPE_2D,
-    .format = static_cast<VkFormat>(info.format),
-    .components = {
-      VK_COMPONENT_SWIZZLE_R,
-      VK_COMPONENT_SWIZZLE_G,
-      VK_COMPONENT_SWIZZLE_B,
-      VK_COMPONENT_SWIZZLE_A,
-    },
-    .subresourceRange = {
-      .aspectMask = static_cast<VkImageAspectFlags>(aspect_mask),
-      .baseMipLevel = 0,
-      .levelCount = 1,
-      .baseArrayLayer = 0,
-      .layerCount = info.arraySize,
-    }
-  };
-  xr_graphics->allocateSwapchainImage(base_images, view_info, images_);
-
-  return true;
+  return res;
 }
 
 // ----------------------------------------------------------------------------
 
 void OpenXRSwapchain::destroy() {
-  if (xr_graphics_ == nullptr) {
-    return;
+  if (xr_graphics_) {
+    xr_graphics_->destroySwapchainImages(fdms_);
+    xr_graphics_->destroySwapchainImages(images_);
   }
-
-  xr_graphics_->releaseSwapchainImage(images_);
-  images_.clear();
-
   if (handle_ != XR_NULL_HANDLE) {
     xrDestroySwapchain(handle_);
     handle_ = XR_NULL_HANDLE;

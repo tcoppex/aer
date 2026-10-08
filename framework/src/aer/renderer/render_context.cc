@@ -34,7 +34,7 @@ bool RenderContext::init(
   );
 
   // (a bit hacky)
-  default_view_mask_ = (vulkan_xr != nullptr) ? 0b11u : 0u; //
+  default_view_mask_ = has_xr() ? 0b11u : 0u; //
 
   /* Create the shared pipeline cache. */
   LOGD(" > PipelineCacheInfo");
@@ -96,7 +96,7 @@ std::unique_ptr<RenderTarget> RenderContext::createRenderTarget(
 
 // ----------------------------------------------------------------------------
 
-std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
+RenderTarget::Descriptor RenderContext::defaultRenderTargetDescriptor() const {
   auto desc = RenderTarget::Descriptor{
     .colors = {
       {
@@ -115,7 +115,13 @@ std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
   if (default_view_mask_ > 1) {
     desc.array_size = utils::CountBits(default_view_mask_);
   }
-  return createRenderTarget(desc);
+  return desc;
+}
+
+// ----------------------------------------------------------------------------
+
+std::unique_ptr<RenderTarget> RenderContext::createDefaultRenderTarget() const {
+  return createRenderTarget(defaultRenderTargetDescriptor());
 }
 
 // ----------------------------------------------------------------------------
@@ -191,6 +197,13 @@ VkGraphicsPipelineCreateInfo RenderContext::buildGraphicsPipelineCreateInfo(
   bool const useDynamicRendering{desc.renderPass == VK_NULL_HANDLE};
 
   data = {};
+
+  /* Pipeline Create flags */
+  if (is_foveated_rendering_supported()) //
+  {
+    data.flags |= VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+    LOGD("Graphics pipeline created with VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT");
+  }
 
   // Default color blend attachment.
   data.color_blend_attachments = {
@@ -435,7 +448,7 @@ VkGraphicsPipelineCreateInfo RenderContext::buildGraphicsPipelineCreateInfo(
 
   auto graphics_pipeline_create_info = VkGraphicsPipelineCreateInfo{
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-    .flags                = 0,
+    .flags                = data.flags,
     .stageCount           = static_cast<uint32_t>(data.shader_stages.size()),
     .pStages              = data.shader_stages.data(),
     .pVertexInputState    = &data.vertex_input,

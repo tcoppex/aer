@@ -38,6 +38,7 @@ class RenderTarget : public backend::RTInterface {
     VkExtent2D size{};
     uint32_t array_size{1u};
     VkSampleCountFlagBits sample_count{VK_SAMPLE_COUNT_1_BIT};
+    bool foveated{false}; //
     std::string debug_prefix{"RenderTarget"};
   };
 

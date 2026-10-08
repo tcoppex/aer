@@ -55,7 +55,7 @@ class SampleApp final : public Application {
 
     // Disable the default renderer internal postprocess to be able to
     // blit directly to the swapchain.
-    renderer_.enable_postprocess(false);
+    renderer_.set_postprocess_enabled(false);
 
     auto const& current_swapchain_image{ renderer_.swapchain_image() };
 
