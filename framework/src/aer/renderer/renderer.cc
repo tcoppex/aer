@@ -155,6 +155,10 @@ CommandEncoder& Renderer::beginFrame() {
   auto &frame = frame_resource();
   context_ptr_->resetCommandPool(frame.command_pool);
 
+  VkImageView fdm = is_foveated_rendering_enabled() ? sc.fragment_density_map_view()
+                                                    : VK_NULL_HANDLE
+                                                    ;
+
   // -----------------------
   /* Reset the command buffer wrapper. */
   frame.cmd = CommandEncoder(
@@ -163,7 +167,7 @@ CommandEncoder& Renderer::beginFrame() {
     context_ptr_->device(),
     &context_ptr_->allocator(), //
     frame.main_rt.get(),
-    sc.fragment_density_map_view()
+    fdm
   );
   // -----------------------
 

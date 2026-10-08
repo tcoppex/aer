@@ -7,7 +7,7 @@
 //  - Right Buttons A/B cycle through the basic spaces (head, local, global).
 //  - Right Index trigger rotate the triangle.
 //  - Right Grip squeeze move the triangle closer.
-//
+//  - Right Thumbstick button enable/disable foveated rendering.
 //
 /* -------------------------------------------------------------------------- */
 
@@ -177,6 +177,12 @@ class SampleApp final : public Application {
     float z_depth_delta{};
     {
       auto const& input = xr_->frame_control_state();
+
+      if (input.button_thumbstick[XRSide::Right]) {
+        renderer_.set_foveated_rendering_enabled(
+          !renderer_.is_foveated_rendering_enabled()
+        );
+      }
       if (input.button_a || input.button_x) {
         space_id_ = static_cast<XRSpaceId>(
           (space_id_ == 0u) ? frame.spaceMatrices.size() - 1u : space_id_ - 1

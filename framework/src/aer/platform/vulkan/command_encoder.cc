@@ -529,13 +529,8 @@ RenderPassEncoder CommandEncoder::beginRendering(
 
   // -----------------------------
   // Foveated Rendering.
-  bool const bEnableFoveatedRendering = true; //
-
-  if (bEnableFoveatedRendering)
-  {
-    if (&render_target == default_render_target_ptr_) {
-      desc.fragmentDensityMapView = fragment_density_map_view_;
-    }
+  if (&render_target == default_render_target_ptr_) {
+    desc.fragmentDensityMapView = fragment_density_map_view_; //
   }
   // -----------------------------
 

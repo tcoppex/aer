@@ -102,6 +102,11 @@ class Renderer {
     return main_render_target().surface_size(); //
   }
 
+  [[nodiscard]]
+  bool is_foveated_rendering_enabled() const noexcept {
+    return foveated_rendering_;
+  }
+
   // --- Setters ---
 
   void set_clear_color(vec4 const& color) {
@@ -114,6 +119,10 @@ class Renderer {
 
   void enable_postprocess(bool status) noexcept {
     enable_postprocess_ = status;
+  }
+
+  void set_foveated_rendering_enabled(bool enabled) noexcept {
+    foveated_rendering_ = enabled;
   }
 
  private:
@@ -164,6 +173,9 @@ class Renderer {
 
   /* Control whether the RT color should be blit to the swapchain or not. */
   bool enable_postprocess_{true};
+
+  /* [XR] Control whether to use fragment density map when available. */
+  bool foveated_rendering_{true};
 
   /* Internal Effects. */
   Skybox skybox_{};
