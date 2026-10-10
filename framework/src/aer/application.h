@@ -9,7 +9,6 @@ using namespace std::chrono_literals;
 #include "aer/settings.h"
 
 #include "aer/core/common.h"
-#include "aer/core/camera.h"
 #include "aer/core/event_callbacks.h"
 
 #include "aer/platform/common.h"
@@ -17,6 +16,8 @@ using namespace std::chrono_literals;
 #include "aer/platform/ui_controller.h"
 #include "aer/platform/swapchain_interface.h"
 #include "aer/platform/vulkan/swapchain.h" //
+
+#include "aer/scene/camera.h"
 
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/renderer.h"

@@ -1,7 +1,7 @@
 #ifndef AER_CORE_ARCBALL_CONTROLLER_H_
 #define AER_CORE_ARCBALL_CONTROLLER_H_
 
-#include "aer/core/camera.h"
+#include "aer/core/view_controller_interface.h"
 
 #ifndef ABC_USE_CUSTOM_TARGET
 #define ABC_USE_CUSTOM_TARGET   1
@@ -12,7 +12,7 @@
 //
 // Orbital ViewController for a camera around the Y axis / XZ plane and with 3D panning.
 //
-class ArcBallController : public Camera::ViewController {
+class ArcBallController : public ViewControllerInterface {
  public:
   static constexpr double kDefaultDollyZ{ 2.5 };
 
