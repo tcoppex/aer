@@ -43,18 +43,24 @@ class Events final : public Singleton<Events>
 
   /* Getters */
 
-  bool mouseMoved() const noexcept { return mouse_moved_; }
-  bool hasButtonDown() const noexcept { return mouse_button_down_; }
-  bool hasResized() const noexcept { return has_resized_; }
+  bool has_mouse_moved() const noexcept { return mouse_moved_; }
+  bool has_mouse_button_down() const noexcept { return mouse_button_down_; }
+  bool has_resized() const noexcept { return has_resized_; }
 
   uint32_t surface_width() const noexcept { return surface_w_; };
   uint32_t surface_height() const noexcept { return surface_h_; };
 
-  int mouseX() const noexcept { return mouse_x_; }
-  int mouseY() const noexcept { return mouse_y_; }
+  int mouse_x() const noexcept { return mouse_x_; }
+  int mouse_y() const noexcept { return mouse_y_; }
 
   float wheel() const noexcept { return mouse_wheel_; }
-  float wheelDelta() const noexcept { return mouse_wheel_delta_; }
+  float wheel_delta() const noexcept { return mouse_wheel_delta_; }
+
+  uint16_t last_input_char() const noexcept { return last_input_char_; }
+
+  // ---
+
+  vec2 mouseCoords() const noexcept { return vec2(mouse_x_, mouse_y_); }
 
   bool buttonDown(KeyCode_t button) const noexcept;
   bool buttonPressed(KeyCode_t button) const noexcept;
@@ -75,11 +81,6 @@ class Events final : public Singleton<Events>
   /* Return the last user's keystroke. */
   KeyCode_t lastKeyDown() const noexcept {
     return key_pressed_.empty() ? -1 : key_pressed_.top(); //
-  }
-
-  /* Return the last frame input char, if any. */
-  uint16_t lastInputChar() const noexcept {
-    return last_input_char_;
   }
 
  public:

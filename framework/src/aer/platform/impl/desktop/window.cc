@@ -39,8 +39,8 @@ void InitializeEventsCallbacks(GLFWwindow *handle) noexcept {
   // Mouse buttons.
   glfwSetMouseButtonCallback(handle, [](GLFWwindow* window, int button, int action, int mods) {
     auto &events = Events::Get();
-    auto const mouse_x = events.mouseX();
-    auto const mouse_y = events.mouseY();
+    auto const mouse_x = events.mouse_x();
+    auto const mouse_y = events.mouse_y();
 
     if (action == GLFW_PRESS) {
       events.onPointerDown(mouse_x, mouse_y, button);
@@ -52,8 +52,8 @@ void InitializeEventsCallbacks(GLFWwindow *handle) noexcept {
   // // Mouse Enter / Exit.
   // glfwSetCursorEnterCallback(handle, [](GLFWwindow* window, int entered) {
   //   auto &events = Events::Get();
-  //   auto const mouse_x = events.mouseX();
-  //   auto const mouse_y = events.mouseY();
+  //   auto const mouse_x = events.mouse_x();
+  //   auto const mouse_y = events.mouse_y();
 
   //   entered ? events.onPointerEntered(mouse_x, mouse_y)
   //           : events.onPointerExited(mouse_x, mouse_y)
