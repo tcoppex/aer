@@ -1,7 +1,7 @@
-#ifndef AER_CORE_CAMERA_H_
-#define AER_CORE_CAMERA_H_
+#ifndef AER_SCENE_CAMERA_H_
+#define AER_SCENE_CAMERA_H_
 
-#include "aer/core/common.h"
+#include "aer/core/view_controller_interface.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -14,22 +14,6 @@ class Camera {
   static constexpr float kDefaultNear = 0.1f;
   static constexpr float kDefaultFar = 500.0f;
   static constexpr uint32_t kDefaultSize = 512u;
-
-  class ViewController {
-   public:
-    virtual ~ViewController() = default;
-
-    /* Handle event inputs, return true when the view matrices has changed. */
-    virtual bool update(float dt) { return false; }
-
-    /* Retrieve the new view matrix. */
-    virtual void calculateViewMatrix(mat4 *m, uint32_t view_id = 0u) = 0;
-
-    /* Number of view supported by the controller, should be max 2. */
-    virtual uint32_t view_count() const noexcept { return 1u; }
-
-    virtual vec3 target() const = 0; //
-  };
 
   struct Transform {
     mat4 projection{lina::identity};
@@ -58,7 +42,7 @@ class Camera {
     , linear_params_{0.0f, 0.0f, 0.0f, 0.0f}
   {}
 
-  Camera(ViewController *controller) 
+  Camera(ViewControllerInterface *controller)
     : Camera()
   {
     controller_ = controller;
@@ -146,7 +130,7 @@ class Camera {
 
   /* --- Setters --- */
 
-  void set_controller(ViewController *controller) noexcept {
+  void set_controller(ViewControllerInterface *controller) noexcept {
     controller_ = controller;
     need_rebuild_ = true;
   }
@@ -163,12 +147,12 @@ class Camera {
   /* --- Getters --- */
 
   [[nodiscard]]
-  ViewController* controller() noexcept {
+  ViewControllerInterface* controller() noexcept {
     return controller_;
   }
 
   [[nodiscard]]
-  ViewController const* controller() const noexcept {
+  ViewControllerInterface const* controller() const noexcept {
     return controller_;
   }
 
@@ -298,7 +282,8 @@ class Camera {
   }
 
  private:
-  ViewController *controller_{};
+  ViewControllerInterface *controller_{};
+
   float fov_{};
   uint32_t width_{};
   uint32_t height_{};
@@ -314,4 +299,4 @@ class Camera {
 
 /* -------------------------------------------------------------------------- */
 
-#endif // AER_CORE_CAMERA_H_
+#endif // AER_SCENE_CAMERA_H_

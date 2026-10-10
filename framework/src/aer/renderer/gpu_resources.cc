@@ -1,10 +1,11 @@
 #include "aer/renderer/gpu_resources.h"
 
-#include "aer/core/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/fx/material/material_fx.h"
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h" //
+
 #include "aer/scene/vertex_internal.h" // for material_shader_interop::FrameData
+#include "aer/scene/camera.h"
 
 using namespace scene;
 

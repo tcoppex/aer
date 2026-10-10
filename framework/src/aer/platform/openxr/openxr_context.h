@@ -7,7 +7,9 @@
 #include <unordered_set>
 
 #include "aer/core/common.h"
-#include "aer/core/camera.h"
+#include "aer/core/view_controller_interface.h"
+
+#include "aer/scene/camera.h"
 
 #include "aer/platform/openxr/xr_common.h"
 #include "aer/platform/openxr/xr_utils.h"
@@ -210,7 +212,7 @@ class OpenXRContext {
 
   Camera *camera_ptr_{};
 
-  struct ViewController final : Camera::ViewController {
+  struct ViewController final : ViewControllerInterface {
     ViewController(XRFrameData const& frame_data)
       : frame_data_{frame_data}
     {}
