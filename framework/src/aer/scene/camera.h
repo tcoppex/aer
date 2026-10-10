@@ -1,7 +1,10 @@
 #ifndef AER_SCENE_CAMERA_H_
 #define AER_SCENE_CAMERA_H_
 
+#include "aer/core/common.h"
 #include "aer/core/view_controller_interface.h"
+
+#include "aer/scene/ray.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -235,6 +238,35 @@ class Camera {
   [[nodiscard]]
   mat4 const& viewproj(uint32_t view_id = 0u) const noexcept {
     return transforms_[view_id].view_projection;
+  }
+
+  [[nodiscard]]
+  scene::Ray screenToWorldRay(vec2 const& mouse_pos, uint32_t view_id = 0u) const {
+    auto const& T = transform(view_id);
+
+    // 1. Convert screen coordinates (in pixels)
+    //  to Normalized Device Coordinates (NDC) ranging from [-1, 1].
+    float const x = (2.0f * mouse_pos.x / static_cast<float>(width_)) - 1.0f;
+    float const y = 1.0f - (2.0f * mouse_pos.y / static_cast<float>(height_)); //
+
+    // 2. Near and Far points in NDC space (Vulkan / zero_to_one depth convention).
+    vec4 const ray_clip_near(x, y, 0.0f, 1.0f);
+    vec4 const ray_clip_far (x, y, 1.0f, 1.0f);
+
+    // 3. Unproject from clip space to eye (view) space.
+    vec4 ray_eye_near = lina::mul(T.projection_inverse, ray_clip_near);
+    vec4 ray_eye_far  = lina::mul(T.projection_inverse, ray_clip_far);
+    ray_eye_near = ray_eye_near / ray_eye_near.w;
+    ray_eye_far  = ray_eye_far / ray_eye_far.w;
+
+    // 4. Transform from eye space to world space using the camera's world matrix
+    vec4 const ray_world_near = lina::mul(T.world, ray_eye_near);
+    vec4 const ray_world_far  = lina::mul(T.world, ray_eye_far);
+
+    vec3 const origin = lina::to_vec3(ray_world_near);
+    vec3 const direction = lina::normalize(lina::to_vec3(ray_world_far) - origin);
+
+    return scene::Ray{ origin, direction };
   }
 
   // -------------------------------
