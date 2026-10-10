@@ -8,12 +8,12 @@ bool ArcBallController::update(float dt) {
 
   bool is_dirty = update(
     dt,
-    e.mouseMoved(),
+    e.has_mouse_moved(),
     e.buttonDown(2) || e.keyDown(342),  //   e.bMiddleMouse || e.bLeftAlt,
     e.buttonDown(1) || e.keyDown(340),  //   e.bRightMouse || e.bLeftShift,
-    (double)e.mouseX(),
-    (double)e.mouseY(),
-    (double)e.wheelDelta()
+    static_cast<double>(e.mouse_x()),
+    static_cast<double>(e.mouse_y()),
+    static_cast<double>(e.wheel_delta())
   );
 
   /// Event Signal processing.
@@ -33,7 +33,7 @@ bool ArcBallController::update(float dt) {
   bool is_dirty2 = true;
   bool const kSmoothTransition = true;
   bool const kFastTarget = true;
-  switch (e.lastInputChar()) {
+  switch (e.last_input_char()) {
     // "Default" view.
     case '0': //GLFW_KEY_0:
       resetTarget();
