@@ -89,6 +89,16 @@ aer_declare(utfcpp                  nemtrif/utfcpp              v4.0.8          
 aer_declare(mikktspace              mmikk/MikkTSpace            3e895b49d05ea07e4c2133156cfa94369e19e409  SOURCE_ONLY)
 aer_declare(miniply                 vilya/miniply               1a235c70390fadf789695c9ccbf285ae712416b3  SOURCE_ONLY)
 
+# msdfgen: core only (no FreeType/Skia/PNG/SVG, no standalone executable).
+set(MSDFGEN_CORE_ONLY          ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_BUILD_STANDALONE   OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_VCPKG          OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_SKIA           OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_SVG        ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_PNG        ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_INSTALL            OFF CACHE BOOL "" FORCE)
+aer_declare(msdfgen                 Chlumsky/msdfgen            v1.13)
+
 set(AER_DEPENDENCIES
   VulkanHeaders
   VulkanUtilityLibraries
@@ -104,6 +114,7 @@ set(AER_DEPENDENCIES
   imgui
   mikktspace
   miniply
+  msdfgen
 )
 
 # GLFW (desktop only).
@@ -157,10 +168,10 @@ endif()
 
 set(STB_COMMIT 2c980bb59875b0d32144a71867fbdebb2f77cd20)
 
-foreach(stb_lib stb_truetype.h stb_image.h)
+foreach(stb_lib truetype image image_write)
   download_file(
     ${PROJECT_THIRD_PARTY_DIR}/stb
-    https://raw.githubusercontent.com/nothings/stb/${STB_COMMIT}/${stb_lib}
+    https://raw.githubusercontent.com/nothings/stb/${STB_COMMIT}/stb_${stb_lib}.h
   )
 endforeach()
 
@@ -284,12 +295,12 @@ endif()
 
 set(PublicLibs
   ${PlatformLibs}
+  OpenXR::headers
   Vulkan::Headers
   volk
   VulkanMemoryAllocator
   fmt::fmt
   EnTT::EnTT
-  OpenXR::headers
   aer_vk_utility
   aer_linalg
   aer_utfcpp
@@ -302,6 +313,7 @@ set(PrivateLibs
   mikktspace
   aer_cgltf
   aer_earcut
+  msdfgen::msdfgen-core
 )
 if(NOT WIN32)
   list(APPEND PrivateLibs m)

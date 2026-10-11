@@ -71,7 +71,7 @@ cmake --build build --config Release
 | **[09_post_process](samples/desktop/09_post_process/)** | Screen-space contour effect via a post-processing pipeline. |
 | **[10_material](samples/desktop/10_material/)** | Showcase the internal PBR material system with scene graph ordering. |
 | **[11_ray_tracing](samples/desktop/11_ray_tracing/)** | Simple path tracer on a Cornell box via hardware-accelerated ray tracing. |
-| **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file. |
+| **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file, via MSDF and glyphes triangulation. |
 | **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)** | Implements *3D Gaussian Splatting for Real-Time Radiance Field Rendering*. |
 | **[14_marching_cubes](samples/desktop/14_marching_cubes/)** | Dynamic marching cubes mesh generation via signed distant function. |
 |   |   |

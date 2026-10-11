@@ -74,7 +74,7 @@ endif()
 # -----------------------------------------------------------------------------
 
 set(FETCHCONTENT_BASE_DIR "${SHARED_THIRDPARTY_CACHE}" CACHE PATH "Directory where FetchContent stores dependencies" FORCE)
-set(FETCHCONTENT_QUIET OFF)
+set(FETCHCONTENT_QUIET ON)
 
 include(FetchContent)
 

@@ -47,6 +47,9 @@ class Font {
   float pixelScaleFromSize(int fontsize) const noexcept;
 
   [[nodiscard]]
+  float emScale() const noexcept;
+
+  [[nodiscard]]
   bool hasGlyph(char16_t code) const {
     return glyph_map_.contains(code);
   }
@@ -62,7 +65,13 @@ class Font {
   }
 
   [[nodiscard]]
-  int kern_advance(char16_t c1, char16_t c2) const;
+  int getGlyphKernAdvance(char16_t c1, char16_t c2) const;
+
+  [[nodiscard]]
+  std::vector<stbtt_vertex> getGlyphShapeFromIndex(int glyph_index) const;
+
+  [[nodiscard]]
+  std::vector<stbtt_vertex> getGlyphShape(char16_t code) const;
 
   [[nodiscard]]
   auto const& glyph_map() const noexcept {

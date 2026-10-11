@@ -43,18 +43,14 @@ void Font::generateGlyphs(
     auto glyph = Glyph{
       .index = stbtt_FindGlyphIndex(&font_, c),
     };
-
     stbtt_GetGlyphHMetrics(
       &font_, glyph.index, &glyph.advanceWidth, &glyph.leftSideBearing
     );
-    // LOGD("{} {} {}", (char)c, glyph.advanceWidth, glyph.leftSideBearing);
-
-    stbtt_vertex *glyph_verts{};
-    auto const nvertices = stbtt_GetGlyphShape(&font_, glyph.index, &glyph_verts);
 
     auto &path = glyph.path;
-    for (int i = 0; i < nvertices; ++i) {
-      auto const& v = glyph_verts[i];
+    auto const glyph_vertices = getGlyphShapeFromIndex(glyph.index);
+
+    for (auto const& v : glyph_vertices) {
       auto const pt = vec2(v.x, v.y);
 
       if (v.type == STBTT_vmove) {
@@ -71,12 +67,6 @@ void Font::generateGlyphs(
         );
       }
     }
-    // for (auto &p : path.polylines()) {
-    //   auto& vertices = p.vertices();
-    //   if (vertices.front() == vertices.back()) {
-    //     vertices.pop_back();
-    //   }
-    // }
 
     // In TTF outer contours are clockwise & inner contour are counter-clockwise,
     // so we reverse them.
@@ -84,8 +74,7 @@ void Font::generateGlyphs(
       path.reverseOrientation();
     }
 
-    stbtt_FreeShape(&font_, glyph_verts);
-    glyph_map_[c] = glyph;
+    glyph_map_[c] = std::move(glyph);
   }
 }
 
@@ -133,7 +122,13 @@ float Font::pixelScaleFromSize(int fontsize) const noexcept {
 
 // ----------------------------------------------------------------------------
 
-int Font::kern_advance(char16_t c1, char16_t c2) const {
+float Font::emScale() const noexcept {
+  return stbtt_ScaleForMappingEmToPixels(&font_, 1.0f);
+}
+
+// ----------------------------------------------------------------------------
+
+int Font::getGlyphKernAdvance(char16_t c1, char16_t c2) const {
   if (hasGlyph(c1) && hasGlyph(c2)) {
     auto g1 = findGlyph(c1);
     auto g2 = findGlyph(c2);
@@ -144,6 +139,22 @@ int Font::kern_advance(char16_t c1, char16_t c2) const {
     );
   }
   return 0;
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<stbtt_vertex> Font::getGlyphShapeFromIndex(int glyph_index) const {
+  stbtt_vertex* verts{};
+  auto const n = stbtt_GetGlyphShape(&font_, glyph_index, &verts);
+  std::vector<stbtt_vertex> out(verts, verts + std::max(n, 0));
+  stbtt_FreeShape(&font_, verts);
+  return out;
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<stbtt_vertex> Font::getGlyphShape(char16_t code) const {
+  return getGlyphShapeFromIndex(stbtt_FindGlyphIndex(&font_, code));
 }
 
 /* -------------------------------------------------------------------------- */
