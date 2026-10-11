@@ -47,6 +47,9 @@ class Font {
   float pixelScaleFromSize(int fontsize) const noexcept;
 
   [[nodiscard]]
+  float emScale() const noexcept;
+
+  [[nodiscard]]
   bool hasGlyph(char16_t code) const {
     return glyph_map_.contains(code);
   }

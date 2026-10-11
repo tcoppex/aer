@@ -122,6 +122,12 @@ float Font::pixelScaleFromSize(int fontsize) const noexcept {
 
 // ----------------------------------------------------------------------------
 
+float Font::emScale() const noexcept {
+  return stbtt_ScaleForMappingEmToPixels(&font_, 1.0f);
+}
+
+// ----------------------------------------------------------------------------
+
 int Font::getGlyphKernAdvance(char16_t c1, char16_t c2) const {
   if (hasGlyph(c1) && hasGlyph(c2)) {
     auto g1 = findGlyph(c1);

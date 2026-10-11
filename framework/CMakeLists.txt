@@ -168,10 +168,10 @@ endif()
 
 set(STB_COMMIT 2c980bb59875b0d32144a71867fbdebb2f77cd20)
 
-foreach(stb_lib stb_truetype.h stb_image.h)
+foreach(stb_lib truetype image image_write)
   download_file(
     ${PROJECT_THIRD_PARTY_DIR}/stb
-    https://raw.githubusercontent.com/nothings/stb/${STB_COMMIT}/${stb_lib}
+    https://raw.githubusercontent.com/nothings/stb/${STB_COMMIT}/stb_${stb_lib}.h
   )
 endforeach()
 
