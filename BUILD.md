@@ -47,6 +47,7 @@ cmake --build build --config Release
  * linalg v2.2
  * earcut v2.2.4
  * utfcpp v4.0.8
+ * msdfgen v1.13
  * stb\_truetype.h
  * stb\_image.h
 
