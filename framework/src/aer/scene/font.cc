@@ -122,7 +122,7 @@ float Font::pixelScaleFromSize(int fontsize) const noexcept {
 
 // ----------------------------------------------------------------------------
 
-int Font::kern_advance(char16_t c1, char16_t c2) const {
+int Font::getGlyphKernAdvance(char16_t c1, char16_t c2) const {
   if (hasGlyph(c1) && hasGlyph(c2)) {
     auto g1 = findGlyph(c1);
     auto g2 = findGlyph(c2);

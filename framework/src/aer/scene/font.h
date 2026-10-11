@@ -62,7 +62,7 @@ class Font {
   }
 
   [[nodiscard]]
-  int kern_advance(char16_t c1, char16_t c2) const;
+  int getGlyphKernAdvance(char16_t c1, char16_t c2) const;
 
   [[nodiscard]]
   std::vector<stbtt_vertex> getGlyphShapeFromIndex(int glyph_index) const;

@@ -57,7 +57,7 @@ FontMesh::TextDrawInfo FontMesh::buildTextDrawInfo(
     int kernAdvance = 0;
     if (enableKerning && (i > 0)) {
       auto ucode_prev = text[i-1];
-      kernAdvance = font_ptr_->kern_advance(ucode_prev, ucode);
+      kernAdvance = font_ptr_->getGlyphKernAdvance(ucode_prev, ucode);
     }
 
     advance += kernAdvance;
