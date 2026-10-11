@@ -25,7 +25,7 @@ VSOutput vertexMain(VSInput input) {
   const float4x4 projection = uData.camera.projectionMatrix;
   const float4x4 view       = uData.camera.viewMatrix;
   const float4x4 viewProj   = mul(projection, view);
-  const float4x4 MVP        = mul(viewProj, pushConstant.model.worldMatrix);
+  const float4x4 MVP        = mul(viewProj, pushConstant.worldMatrix);
 
   float3 pos = input.position;
 
@@ -43,7 +43,7 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  return float4(0.76, 0.26, 0.36, 1.0);
+  return uData.fillColor;
 }
 
 // ----------------------------------------------------------------------------
