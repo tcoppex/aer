@@ -146,6 +146,22 @@ int Font::kern_advance(char16_t c1, char16_t c2) const {
   return 0;
 }
 
+// ----------------------------------------------------------------------------
+
+std::vector<stbtt_vertex> Font::getGlyphShapeFromIndex(int glyph_index) const {
+  stbtt_vertex* verts{};
+  auto const n = stbtt_GetGlyphShape(&font_, glyph_index, &verts);
+  std::vector<stbtt_vertex> out(verts, verts + std::max(n, 0));
+  stbtt_FreeShape(&font_, verts);
+  return out;
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<stbtt_vertex> Font::getGlyphShape(char16_t code) const {
+  return getGlyphShapeFromIndex(stbtt_FindGlyphIndex(&font_, code));
+}
+
 /* -------------------------------------------------------------------------- */
 
 } // namespace "scene"
