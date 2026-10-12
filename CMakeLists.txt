@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 
 # Allow CPM to use deprecated FetchContent_MakePopulate on CMake > 3.30
-if(POLICY CMP0168)
-  cmake_policy(SET CMP0168 OLD)
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
 endif()
 
 # -----------------------------------------------------------------------------
