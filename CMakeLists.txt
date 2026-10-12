@@ -123,6 +123,7 @@ endif()
 # ones (no warnings), EXCLUDE_FROM_ALL builds only what we actually link.
 function(aer_declare name repo tag)
   cmake_parse_arguments(PARSE_ARGV 3 ARG "SOURCE_ONLY" "" "")
+  string(TOLOWER "${name}" lc_name)
 
   if(USE_FETCH_CONTENT)
     set(extra "")
@@ -135,8 +136,6 @@ function(aer_declare name repo tag)
     if(tag_len EQUAL 40 AND tag MATCHES "^[0-9a-f]+$")
       set(shallow FALSE)
     endif()
-
-    string(TOLOWER "${name}" lc_name)
 
     FetchContent_Declare(${name}
       GIT_REPOSITORY https://github.com/${repo}.git
@@ -155,9 +154,9 @@ function(aer_declare name repo tag)
       DOWNLOAD_ONLY ${ARG_SOURCE_ONLY}
       SYSTEM YES
     )
-    set(${name}_SOURCE_DIR ${${name}_SOURCE_DIR} PARENT_SCOPE)
-    # Use lower case naming to match FetchContent variable.
+    # Match FetchContent lowercase variable.
     set(${lc_name}_SOURCE_DIR ${${name}_SOURCE_DIR} PARENT_SCOPE)
+    # set(${name}_SOURCE_DIR ${${name}_SOURCE_DIR} PARENT_SCOPE)
   endif()
 endfunction()
 
