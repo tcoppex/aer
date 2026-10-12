@@ -40,7 +40,8 @@ set(FRAMEWORK_COMPILED_SHADERS_DIR  ${PROJECT_BINARY_DIR}/spirv)
 
 # -----------------------------------------------------------------------------
 
-option(USE_FETCH_CONTENT    "Fetch dependencies via FetchContent"             ON)
+# FetchContent make the Android build fails..
+option(USE_FETCH_CONTENT    "Fetch dependencies via FetchContent"           OFF)
 
 if (USE_FETCH_CONTENT)
   set(SHARED_THIRDPARTY_CACHE         "${PROJECT_THIRD_PARTY_DIR}/.shared_deps" CACHE PATH "Directory for shared FetchContent downloads")
