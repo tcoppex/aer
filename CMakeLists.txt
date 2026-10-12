@@ -23,6 +23,7 @@ project(${PROJECT_NAME}
 
 # [wip] FetchContent currently fails on Android build.
 option(USE_FETCH_CONTENT    "Fetch dependencies via FetchContent"           OFF)
+option(AER_BUILD_SAMPLES    "Build all samples"                             ON)
 
 # -----------------------------------------------------------------------------
 # Paths.
@@ -450,7 +451,11 @@ endforeach()
 # -----------------------------------------------------------------------------
 
 add_subdirectory(${PROJECT_ASSETS_DIR})
+
 add_subdirectory(${FRAMEWORK_PATH})
-add_subdirectory(${PROJECT_SAMPLES_DIR})
+
+if(AER_BUILD_SAMPLES)
+  add_subdirectory(${PROJECT_SAMPLES_DIR})
+endif()
 
 # -----------------------------------------------------------------------------
