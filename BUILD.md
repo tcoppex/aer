@@ -55,7 +55,7 @@ cmake --build build --config Release
 * KTX (Khronos Texture) Library 4.4.2
 -->
 
-By default FetchContent downloads and caches third-party dependencies in the `$SHARED_THIRDPARTY_CACHE` directory (_either fetched from env or cmake variable_). When none exist it will default to `./third_party/.shared_deps/`.
+By default, third-party dependencies will be downloaded and cached in the `$DEFAULT_CPM_SOURCE_CACHE` directory (_either fetched from env or cmake variable_). When none exist it will default to `./third_party/.cpmlocalcache/`.
 
 ##### Vulkan device extensions
 

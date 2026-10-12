@@ -9,9 +9,9 @@
 ## special targets for CMake.
 
 if(NOT ANDROID)
-add_subdirectory(${SAMPLES_PATH}/desktop)
+add_subdirectory(${PROJECT_SAMPLES_DIR}/desktop)
 endif()
 
-add_subdirectory(${SAMPLES_PATH}/android)
+add_subdirectory(${PROJECT_SAMPLES_DIR}/android)
 
 # -----------------------------------------------------------------------------

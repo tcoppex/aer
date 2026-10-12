@@ -69,16 +69,20 @@ add_library(aer::framework ALIAS ${target})
 
 # --- Declarations ------------------------------------------------------------
 
-# for OpenXR's find_package(Sanitizers)
+# OpenXR calls find_package(Sanitizers): make its Find module reachable first.
 aer_declare(sanitizers              arsenm/sanitizers-cmake     bcb1fc68616e9645ca5acea2992412606373ab04  SOURCE_ONLY)
-aer_declare(OpenXR                  KhronosGroup/OpenXR-SDK     release-1.1.52)
+if(USE_FETCH_CONTENT)
+  FetchContent_MakeAvailable(sanitizers)
+endif()
+list(APPEND CMAKE_MODULE_PATH "${sanitizers_SOURCE_DIR}/cmake")
 
 set(VULKAN_SDK_TAG vulkan-sdk-1.4.321.0)
 aer_declare(VulkanHeaders           KhronosGroup/Vulkan-Headers             ${VULKAN_SDK_TAG})
 aer_declare(VulkanUtilityLibraries  KhronosGroup/Vulkan-Utility-Libraries   ${VULKAN_SDK_TAG}             SOURCE_ONLY)
 aer_declare(volk                    zeux/volk                               ${VULKAN_SDK_TAG})
-aer_declare(VulkanMemoryAllocator   GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator  v3.2.0)
 
+aer_declare(VulkanMemoryAllocator   GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator  v3.2.0)
+aer_declare(OpenXR                  KhronosGroup/OpenXR-SDK     release-1.1.52)
 aer_declare(fmt                     fmtlib/fmt                  12.0.0)
 aer_declare(entt                    skypjack/entt               v3.16.0)
 aer_declare(cgltf                   jkuhlmann/cgltf             v1.15                                     SOURCE_ONLY)
@@ -90,13 +94,13 @@ aer_declare(mikktspace              mmikk/MikkTSpace            3e895b49d05ea07e
 aer_declare(miniply                 vilya/miniply               1a235c70390fadf789695c9ccbf285ae712416b3  SOURCE_ONLY)
 
 # msdfgen: core only (no FreeType/Skia/PNG/SVG, no standalone executable).
-set(MSDFGEN_CORE_ONLY          ON  CACHE BOOL "" FORCE)
-set(MSDFGEN_BUILD_STANDALONE   OFF CACHE BOOL "" FORCE)
-set(MSDFGEN_USE_VCPKG          OFF CACHE BOOL "" FORCE)
-set(MSDFGEN_USE_SKIA           OFF CACHE BOOL "" FORCE)
-set(MSDFGEN_DISABLE_SVG        ON  CACHE BOOL "" FORCE)
-set(MSDFGEN_DISABLE_PNG        ON  CACHE BOOL "" FORCE)
-set(MSDFGEN_INSTALL            OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_CORE_ONLY           ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_BUILD_STANDALONE    OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_VCPKG           OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_USE_SKIA            OFF CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_SVG         ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_DISABLE_PNG         ON  CACHE BOOL "" FORCE)
+set(MSDFGEN_INSTALL             OFF CACHE BOOL "" FORCE)
 aer_declare(msdfgen                 Chlumsky/msdfgen            v1.13)
 
 set(AER_DEPENDENCIES
@@ -119,29 +123,29 @@ set(AER_DEPENDENCIES
 
 # GLFW (desktop only).
 if(NOT ANDROID)
-  set(GLFW_BUILD_DOCS        OFF CACHE BOOL "" FORCE)
-  set(GLFW_BUILD_EXAMPLES    OFF CACHE BOOL "" FORCE)
-  set(GLFW_BUILD_TESTS       OFF CACHE BOOL "" FORCE)
-  set(GLFW_BUILD_WAYLAND     OFF CACHE BOOL "" FORCE)
-  set(GLFW_INSTALL           OFF CACHE BOOL "" FORCE)
-  aer_declare(glfw glfw/glfw 3.4)
+  set(GLFW_BUILD_DOCS             OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_EXAMPLES         OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_TESTS            OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_WAYLAND          OFF CACHE BOOL "" FORCE)
+  set(GLFW_INSTALL                OFF CACHE BOOL "" FORCE)
+  aer_declare(glfw                    glfw/glfw                   3.4)
   list(APPEND AER_DEPENDENCIES glfw)
 endif()
 
 # --- Fetch -------------------------------------------------------------------
 
-# OpenXR calls find_package(Sanitizers): make its Find module reachable first.
-FetchContent_MakeAvailable(sanitizers)
-list(APPEND CMAKE_MODULE_PATH ${sanitizers_SOURCE_DIR}/cmake)
-
-FetchContent_MakeAvailable(${AER_DEPENDENCIES})
+if(USE_FETCH_CONTENT)
+  FetchContent_MakeAvailable(${AER_DEPENDENCIES})
+endif()
 
 # --- Targets for the dependencies we only use as sources ---------------------
 
 # Vulkan headers are deliberately NOT marked SYSTEM: the pinned headers must stay
 # ahead of any Vulkan SDK found on the include path (-I always beats -isystem),
 # otherwise SDK and pinned headers get mixed (version mismatch errors).
-aer_header_only(aer_vk_utility NO_SYSTEM INCLUDE_DIRS ${vulkanutilitylibraries_SOURCE_DIR}/include)
+aer_header_only(aer_vk_utility NO_SYSTEM INCLUDE_DIRS
+  "${vulkanutilitylibraries_SOURCE_DIR}/include"
+)
 
 get_target_property(vk_headers_real Vulkan::Headers ALIASED_TARGET)
 if(NOT vk_headers_real)

@@ -49,17 +49,29 @@ endif()
 # The "d4i3qtqj3r0z5.cloudfront.net" address is the public Omniverse Packman
 # server; it is not private.
 set(Slang_URLS
-    "https://github.com/shader-slang/slang/releases/download/v${Slang_VERSION}/slang-${Slang_VERSION}-${SLANG_OS}-${GITHUB_ARCH}.zip"
-    "https://d4i3qtqj3r0z5.cloudfront.net/slang%40v${Slang_VERSION}-${SLANG_OS}-${PACKMAN_ARCH}-release.zip"
+  "https://github.com/shader-slang/slang/releases/download/v${Slang_VERSION}/slang-${Slang_VERSION}-${SLANG_OS}-${GITHUB_ARCH}.zip"
+  "https://d4i3qtqj3r0z5.cloudfront.net/slang%40v${Slang_VERSION}-${SLANG_OS}-${PACKMAN_ARCH}-release.zip"
 )
 
-include(DownloadPackage)
-download_package(
-  NAME "Slang-${SLANG_OS}-${GITHUB_ARCH}"
-  URLS ${Slang_URLS}
-  VERSION ${Slang_VERSION}
-  LOCATION Slang_SOURCE_DIR
-)
+if(TRUE)
+  include(DownloadPackage)
+  download_package(
+    NAME "Slang-${SLANG_OS}-${GITHUB_ARCH}"
+    URLS ${Slang_URLS}
+    VERSION ${Slang_VERSION}
+    LOCATION Slang_SOURCE_DIR
+  )
+else()
+  # (Work In Progress)
+  include(FetchContent)
+  FetchContent_Declare(
+    slang_sdk
+    URL ${Slang_URLS}
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  )
+  FetchContent_MakeAvailable(slang_sdk)
+  set(Slang_SOURCE_DIR ${slang_sdk_SOURCE_DIR})
+endif()
 
 # On Linux, the Cloudfront download of Slang might not have the executable bit
 # set on its executables and DLLs. This causes find_program to fail. To fix this,
