@@ -26,48 +26,42 @@ void Renderer::init(
 
 void Renderer::initViewResources() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
-
   LOGD(" > Frames Resources");
 
-  auto const frame_count = swapchain().image_count();
-  LOG_CHECK( frame_count > 0u );
-  frames_.resize(frame_count);
+  auto const& sc = swapchain();
+  auto const& surface_size = sc.surface_size();
 
-  /* Initialize per-frame command buffers. */
-  VkCommandPoolCreateInfo const command_pool_create_info{
-    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .queueFamilyIndex = context_ptr_->queue(Context::TargetQueue::Main).family_index,
-  };
+  bool foveated = context_ptr_->is_foveated_rendering_supported()
+               && sc.has_fragment_density_map();
 
-  VkDevice const handle = context_ptr_->device();
-  for (auto& frame : frames_) {
-    CHECK_VK(vkCreateCommandPool(
-      handle, &command_pool_create_info, nullptr, &frame.command_pool
-    ));
-    VkCommandBufferAllocateInfo const cb_alloc_info{
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool = frame.command_pool,
-      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = 1u,
-    };
-    CHECK_VK(vkAllocateCommandBuffers(
-      handle, &cb_alloc_info, &frame.command_buffer
-    ));
-  }
-
-  /* Setup per-frame image buffers. */
-  auto const dimension = swapchain().surface_size();
-  resize(dimension.width, dimension.height);
+  frames_ = context_ptr_->createFrameResources(
+    sc,
+    {
+      .colors = {{
+        .format = color_format(),
+        .clear_value = kDefaultColorClearValue
+      }},
+      .depth_stencil = {
+        .format = depth_stencil_format(),
+      },
+      .size = surface_size,
+      .array_size = sc.image_array_size(),
+      .sample_count = sample_count(),
+      .foveated = foveated,
+      .debug_prefix = "Renderer::MainRT_",
+    }
+  );
+  resize(surface_size.width, surface_size.height);
 }
 
 // ----------------------------------------------------------------------------
 
 void Renderer::releaseViewResources() {
-  for (auto & frame : frames_) {
-    context_ptr_->freeCommandBuffer(frame.command_pool, frame.command_buffer);
-    context_ptr_->destroyCommandPool(frame.command_pool);
-    frame.main_rt->release();
+  if (context_ptr_ == nullptr) {
+    return;
   }
+  LOGD(" > Release Frames Resources");
+  context_ptr_->releaseFrameResources(frames_);
 }
 
 // ----------------------------------------------------------------------------
@@ -85,44 +79,15 @@ void Renderer::release() {
 bool Renderer::resize(uint32_t w, uint32_t h) {
   LOG_CHECK( context_ptr_ != nullptr );
   LOG_CHECK( w > 0 && h > 0 );
+  LOG_CHECK( !frames_.empty() );
   LOGD("[Renderer] Resize Images Buffers ({}, {})", w, h);
 
-  auto const surface_size = VkExtent2D{ w, h };
+  auto const surface_size = VkExtent2D{w, h};
 
-  if (frames_[0].main_rt != nullptr) [[likely]]
-  {
-    for (auto &frame : frames_) {
-      frame.main_rt->resize(w, h);
-    }
-  }
-  else
-  {
-    auto const& sc = swapchain();
-    auto const layers = sc.image_array_size();
+  // Resize the render targets.
+  context_ptr_->resizeFrameResources(surface_size, frames_);
 
-    auto const foveated = context_ptr_->is_foveated_rendering_supported()
-                       && sc.has_fragment_density_map();
-
-    for (size_t i = 0; i < frames_.size(); ++i) {
-      auto &frame = frames_[i];
-      frame.main_rt = context_ptr_->createRenderTarget({
-        .colors = {{
-          .format = color_format(),
-          .clear_value = kDefaultColorClearValue
-        }},
-        .depth_stencil = {
-          .format = depth_stencil_format(),
-        },
-        .size = surface_size,
-        .array_size = layers,
-        .sample_count = sample_count(),
-        .foveated = foveated,
-        .debug_prefix = "Renderer::MainRT_" + std::to_string(i),
-      });
-    }
-  }
-
-  /* Inform the RenderContext of the new size, if any subsystem needs it. */
+  // Inform the RenderContext of the new size, if any subsystem needs it.
   context_ptr_->set_default_surface_size(surface_size); //
 
   return true;
@@ -152,7 +117,7 @@ CommandEncoder& Renderer::beginFrame() {
   }
 
   /* Reset the frame command pool to record new command for this frame. */
-  auto &frame = frame_resource();
+  auto &frame = frame_resources();
   context_ptr_->resetCommandPool(frame.command_pool);
 
   VkImageView fdm = is_foveated_rendering_enabled() ? sc.fragment_density_map_view()
@@ -180,7 +145,7 @@ CommandEncoder& Renderer::beginFrame() {
 void Renderer::endFrame() {
   LOG_CHECK( swapchain_ptr_ != nullptr );
 
-  auto const& frame = frame_resource();
+  auto const& frame = frame_resources();
 
   /* Transition the final image then blit to the swapchain frame. */
   if (is_postprocess_enabled()) {
@@ -256,7 +221,7 @@ GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
 // ----------------------------------------------------------------------------
 
 void Renderer::applyPostProcess() {
-  auto const& frame = frame_resource();
+  auto const& frame = frame_resources();
   auto const& dst_img = swapchain().current_image();
 
   // Blit Color to Swapchain.

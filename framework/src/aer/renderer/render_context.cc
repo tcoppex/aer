@@ -78,6 +78,77 @@ void RenderContext::release() {
 
 // ----------------------------------------------------------------------------
 
+FrameResourcesBuffer RenderContext::createFrameResources(
+  SwapchainInterface const& swapchain,
+  RenderTarget::Descriptor const rt_desc
+) const {
+  auto const frame_count = swapchain.image_count();
+  LOG_CHECK( frame_count > 0u );
+
+  FrameResourcesBuffer frames(frame_count);
+
+  /* Initialize per-frame command buffers. */
+  auto const command_pool_create_info = VkCommandPoolCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .queueFamilyIndex = queue(Context::TargetQueue::Main).family_index,
+  };
+
+  for (size_t i = 0; i < frames.size(); ++i) {
+    auto &frame = frames[i];
+
+    CHECK_VK(vkCreateCommandPool(
+      device(), &command_pool_create_info, nullptr, &frame.command_pool
+    ));
+    auto const cb_alloc_info = VkCommandBufferAllocateInfo{
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = frame.command_pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1u,
+    };
+    CHECK_VK(vkAllocateCommandBuffers(
+      device(), &cb_alloc_info, &frame.command_buffer
+    ));
+
+    auto desc = rt_desc;
+    desc.debug_prefix += std::to_string(i);
+    frames[i].set_rt_descriptor(desc);
+  }
+
+  /* Setup per-frame image buffers. */
+  resizeFrameResources(swapchain.surface_size(), frames);
+
+  return frames;
+}
+
+// ----------------------------------------------------------------------------
+
+void RenderContext::resizeFrameResources(
+  VkExtent2D const& surface_size,
+  FrameResourcesBuffer& frame_resources
+) const {
+  if (frame_resources[0].main_rt != nullptr) [[likely]] {
+    for (auto &frame : frame_resources) {
+      frame.main_rt->resize(surface_size.width, surface_size.height);
+    }
+  } else {
+    for (auto &frame : frame_resources) {
+      frame.main_rt = createRenderTarget(frame.rt_descriptor());
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+void RenderContext::releaseFrameResources(FrameResourcesBuffer& frame_resources) {
+  for (auto & frame : frame_resources) {
+    freeCommandBuffer(frame.command_pool, frame.command_buffer);
+    destroyCommandPool(frame.command_pool);
+    frame.main_rt->release();
+  }
+}
+
+// ----------------------------------------------------------------------------
+
 std::unique_ptr<RenderTarget> RenderContext::createRenderTarget() const {
   return std::unique_ptr<RenderTarget>(new RenderTarget(*this));
 }

@@ -227,6 +227,8 @@ struct RTInterface {
 
   virtual ~RTInterface() {}
 
+  virtual void release() = 0;
+
   // -- Getters --
 
   virtual VkExtent2D surface_size() const = 0;

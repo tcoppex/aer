@@ -94,7 +94,7 @@ class Renderer {
 
   [[nodiscard]]
   backend::RTInterface const& main_render_target() const noexcept {
-    return *(frame_resource().main_rt);
+    return *(frame_resources().main_rt);
   }
 
   [[nodiscard]]
@@ -131,24 +131,19 @@ class Renderer {
   }
 
  private:
-  struct FrameResources {
-    VkCommandPool command_pool{};
-    VkCommandBuffer command_buffer{};
-    CommandEncoder cmd{};
-    std::unique_ptr<RenderTarget> main_rt{};
-  };
-
   void initViewResources();
 
   void releaseViewResources();
 
   void applyPostProcess();
 
-  FrameResources& frame_resource() noexcept {
+  [[nodiscard]]
+  FrameResources& frame_resources() noexcept {
     return frames_[frame_index_];
   }
 
-  FrameResources const& frame_resource() const noexcept {
+  [[nodiscard]]
+  FrameResources const& frame_resources() const noexcept {
     return frames_[frame_index_];
   }
 
