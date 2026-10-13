@@ -190,7 +190,7 @@ void Renderer::endFrame() {
   frame.cmd.end();
 
   /* Submit the CommandBuffer to the main queue. */
-  auto const& queue = context_ptr_->queue(Context::TargetQueue::Main).queue;
+  auto const& queue = context_ptr_->queue(Context::TargetQueue::Main).handle;
   if (!swapchain().submitFrame(queue, frame.cmd.handle())) {
     LOGV("{}: Invalid swapchain, skip that frame.", __FUNCTION__);
     return; 

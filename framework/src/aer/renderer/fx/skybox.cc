@@ -102,11 +102,11 @@ void Skybox::init(RenderContext& context) {
     /* Setup the graphics pipeline. */
     graphics_pipeline_ = context.createGraphicsPipeline(pipeline_layout_, {
       .vertex = {
-        .module = shaders[0u].module,
+        .module = shaders[0u].handle,
         .buffers = cube_.pipeline_vertex_buffer_descriptors(),
       },
       .fragment = {
-        .module = shaders[1u].module,
+        .module = shaders[1u].handle,
         .targets = {
           {
             .writeMask = VK_COLOR_COMPONENT_R_BIT

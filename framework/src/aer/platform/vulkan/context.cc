@@ -205,7 +205,7 @@ backend::ShaderModule Context::createShaderModule(
   std::string_view shader_name
 ) const {
   return {
-    .module = vk_utils::CreateShaderModule(
+    .handle = vk_utils::CreateShaderModule(
       handle_,
       directory.data(),
       shader_name.data()
@@ -245,7 +245,7 @@ std::vector<backend::ShaderModule> Context::createShaderModules(
 // ----------------------------------------------------------------------------
 
 void Context::releaseShaderModule(backend::ShaderModule const& shader) const {
-  vkDestroyShaderModule(handle_, shader.module, nullptr);
+  vkDestroyShaderModule(handle_, shader.handle, nullptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -254,7 +254,7 @@ void Context::releaseShaderModules(
   std::vector<backend::ShaderModule> const& shaders
 ) const {
   for (auto const& shader : shaders) {
-    vkDestroyShaderModule(handle_, shader.module, nullptr);
+    vkDestroyShaderModule(handle_, shader.handle, nullptr);
   }
 }
 
@@ -383,7 +383,7 @@ void Context::finishTransientCommandEncoder(
     static_cast<TargetQueue>(encoder.target_queue_index())
   };
 
-  CHECK_VK( vkQueueSubmit2(queue(target_queue).queue, 1u, &submit_info_2, fence) );
+  CHECK_VK( vkQueueSubmit2(queue(target_queue).handle, 1u, &submit_info_2, fence) );
 
   CHECK_VK( vkWaitForFences(handle_, 1u, &fence, VK_TRUE, 600000000ULL) ); // UINT64_MAX
   vkDestroyFence(handle_, fence, nullptr); // todo: use vkResetFences
@@ -986,7 +986,7 @@ bool Context::initDevice() {
   for (auto& pair : queues) {
     auto *queue = pair.first;
     vkGetDeviceQueue(
-      handle_, queue->family_index, queue->queue_index, &queue->queue
+      handle_, queue->family_index, queue->queue_index, &queue->handle
     );
   }
   if (vulkan_xr_) {
@@ -1001,9 +1001,9 @@ bool Context::initDevice() {
   }
   LOGD(" ");
 
-  setDebugObjectName(queues_[TargetQueue::Main].queue,     "Queue::Main");
-  setDebugObjectName(queues_[TargetQueue::Transfer].queue, "Queue::Transfer");
-  setDebugObjectName(queues_[TargetQueue::Compute].queue,  "Queue::Compute");
+  setDebugObjectName(queues_[TargetQueue::Main].handle,     "Queue::Main");
+  setDebugObjectName(queues_[TargetQueue::Transfer].handle, "Queue::Transfer");
+  setDebugObjectName(queues_[TargetQueue::Compute].handle,  "Queue::Compute");
 #endif
 
   return true;

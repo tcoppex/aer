@@ -124,10 +124,10 @@ GraphicsPipelineDescriptor_t MaterialFx::graphics_pipeline_descriptor(
       VK_DYNAMIC_STATE_CULL_MODE_EXT,
     },
     .vertex = {
-      .module = shaders.at(backend::ShaderStage::Vertex).module,
+      .module = shaders.at(backend::ShaderStage::Vertex).handle,
     },
     .fragment = {
-      .module = shaders.at(backend::ShaderStage::Fragment).module,
+      .module = shaders.at(backend::ShaderStage::Fragment).handle,
       .specializationConstants = {
         { 0u, VK_FALSE },  // <=> kUseAlphaCutoff
       },

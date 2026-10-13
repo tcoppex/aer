@@ -90,7 +90,7 @@ class SampleApp final : public Application {
      **/
     graphics_pipeline_ = context_.createGraphicsPipeline({
       .vertex = {
-        .module = shaders[kUseSlang ? kSlangShader : kGLSLVertexShader].module,
+        .module = shaders[kUseSlang ? kSlangShader : kGLSLVertexShader].handle,
         .entryPoint = kUseSlang ? "vertexMain" : "main",
         .buffers = {
           {
@@ -111,7 +111,7 @@ class SampleApp final : public Application {
         }
       },
       .fragment = {
-        .module = shaders[kUseSlang ? kSlangShader : kGLSLFragmentShader].module,
+        .module = shaders[kUseSlang ? kSlangShader : kGLSLFragmentShader].handle,
         .entryPoint = kUseSlang ? "fragmentMain" : "main",
         .targets = {
           {

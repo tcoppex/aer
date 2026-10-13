@@ -180,11 +180,11 @@ class SampleApp final : public Application {
           VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
         },
         .vertex = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "vertexMain",
         },
         .fragment = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "fragmentMain",
           .targets = {
             {

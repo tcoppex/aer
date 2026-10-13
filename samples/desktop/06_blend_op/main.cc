@@ -166,11 +166,11 @@ class SampleApp final : public Application {
         graphics_.pipeline_layout,
         {
           .vertex = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "vertexMain",
           },
           .fragment = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "fragmentMain",
             .targets = {
               {

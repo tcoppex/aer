@@ -618,7 +618,7 @@ void RenderContext::createComputePipelines(
     required_size_infos_ptr = &required_size_infos[i];
 #endif
 
-    stage.module  = desc.shader.module;
+    stage.module  = desc.shader.handle;
     stage.pNext   = required_size_infos_ptr;
     stage.pName   = name.empty() ? kDefaulShaderEntryPoint : name.c_str();
   }
@@ -727,7 +727,7 @@ Pipeline RenderContext::createRayTracingPipeline(
         stage_infos.push_back({
           .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
           .stage  = flag,
-          .module = stage.module,
+          .module = stage.handle,
           .pName  = entry_point(flag),
         });
       }

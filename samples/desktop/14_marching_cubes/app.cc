@@ -289,11 +289,11 @@ bool MarchingCubeSample::setup() {
 
     rendering_.pipeline = context_.createGraphicsPipeline(rendering_.layout, {
       .vertex = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "vertexMain",
       },
       .fragment = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "fragmentMain",
         .targets = { GraphicsPipelineDescriptor_t::Fragment::Target{} },
       },
