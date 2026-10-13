@@ -62,7 +62,7 @@ struct OpenXRSwapchain : public SwapchainInterface {
     XrSession session,
     XrSwapchainCreateInfo const& info,
     XRVulkanInterface *xr_graphics, //
-    bool use_foveation //
+    bool use_foveation = false //
   );
 
   void destroy();

@@ -51,7 +51,7 @@ using XRSidedBuffer_t = std::array<T, XRSide::kNumSide>;
 struct XRControlState_t {
   XrActionSet action_set{};
 
-  struct Handness {
+  struct Hand {
     XRSidedBuffer_t<XrPath> path{};
     XRSidedBuffer_t<XrSpace> aim_space{};
     XRSidedBuffer_t<XrSpace> grip_space{};
@@ -122,8 +122,9 @@ struct XRControlState_t {
 // ----------------------------------------------------------------------------
 
 struct XRFrameData {
-  std::array<mat4f, XRSide::kNumSide> viewMatrices{};
-  std::array<mat4f, XRSide::kNumSide> projMatrices{};
+  XRSidedBuffer_t<mat4f> viewMatrices{};
+  XRSidedBuffer_t<mat4f> projMatrices{};
+
   std::array<mat4f const*, XRSpaceId::kNumSpaceId> spaceMatrices{}; //
   double predictedDisplayTime{};
   bool shouldRender{};

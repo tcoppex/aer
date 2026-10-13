@@ -43,7 +43,8 @@ class OpenXRContext {
     XrCompositionLayerPassthroughFB passthrough;
   };
 
-  template<typename T> using XRStereoBuffer = std::array<T, kNumEyes>;
+  template<typename T>
+  using XRStereoBuffer = std::array<T, kNumEyes>;
 
  public:
   // -- Public XR Interface --
