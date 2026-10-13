@@ -76,6 +76,22 @@ class OpenXRContext {
     XRRenderFunc_t const& render_view_cb
   );
 
+  void pushCompositionLayer(CompositorLayerUnion_t const& layer) {
+    if (user_layers_.size() < kMaxNumCompositionLayers - 1u) {
+      user_layers_.push_back(layer);
+    } else {
+      LOGW("kMaxNumCompositionLayers exceeded.");
+    }
+  }
+
+  bool createCompositionSwapchain(
+    OpenXRSwapchain &swapchain,
+    uint32_t width,
+    uint32_t height = 0
+  ) const;
+
+  // -- Public instance getters / helpers --
+
   [[nodiscard]]
   bool isSessionRunning() const noexcept {
     return session_running_;
@@ -90,9 +106,6 @@ class OpenXRContext {
   bool shouldStopRender() const noexcept {
     return end_render_loop_;
   }
-
-
-  // -- Public instance getters / helpers --
 
   [[nodiscard]]
   XrSpace base_space() const {
@@ -199,6 +212,9 @@ class OpenXRContext {
   XrCompositionLayerPassthroughFB pt_layer_{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB}; //
 
   XRStereoBuffer<XrCompositionLayerProjectionView> layer_projection_views_{};
+
+  std::vector<CompositorLayerUnion_t> user_layers_{};
+
   std::array<CompositorLayerUnion_t, kMaxNumCompositionLayers> layers_{};
   uint32_t num_layers_{};
 

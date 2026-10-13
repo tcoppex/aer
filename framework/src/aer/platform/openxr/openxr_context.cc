@@ -437,6 +437,31 @@ void OpenXRContext::pollEvents() {
 
 // ----------------------------------------------------------------------------
 
+bool OpenXRContext::createCompositionSwapchain(
+  OpenXRSwapchain &swapchain,
+  uint32_t width,
+  uint32_t height
+) const {
+  LOG_CHECK(graphics_ != nullptr);
+  LOG_CHECK(width > 0);
+  height = (height > 0) ? height : width;
+  auto info = XrSwapchainCreateInfo{
+    .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+    .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
+                | XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
+    .format = VK_FORMAT_R8G8B8A8_SRGB,
+    .sampleCount = 1,
+    .width = width,
+    .height = height,
+    .faceCount = 1,
+    .arraySize = 1,
+    .mipCount = 1,
+  };
+  return swapchain.create(session_, info, graphics_.get(), false);
+}
+
+// ----------------------------------------------------------------------------
+
 void OpenXRContext::beginFrame() {
   // LOGD("-- OpenXRContext::beginFrame -- ");
   auto& frameState = controls_.frame.state;
@@ -519,6 +544,8 @@ void OpenXRContext::endFrame() {
     .layers     = composition_layers_.data(),
   };
   end_render_loop_ = CHECK_XR(xrEndFrame(session_, &frameEndInfo)) < 0;
+
+  user_layers_.clear();
   // composition_layers_.clear();
 }
 
@@ -596,12 +623,19 @@ void OpenXRContext::processFrame(
           .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT
                       ,
-          .space      = base_space(), //
+          .space      = base_space(),
           .viewCount  = kNumEyes,
           .views      = layer_projection_views_.data()
         };
       } else {
         LOGV("should_render_ is set to false");
+      }
+
+      // Extra layers: user specifics.
+      for (auto const& user_layer : user_layers_) {
+        if (num_layers_ < kMaxNumCompositionLayers) {
+          layers_[num_layers_++] = user_layer;
+        }
       }
 
       for (uint32_t i = 0; i < num_layers_; ++i) {
