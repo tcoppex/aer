@@ -67,6 +67,8 @@ struct OpenXRSwapchain : public SwapchainInterface {
 
   void destroy();
 
+  bool reset(XrSession session);
+
   [[nodiscard]]
   XrExtent2Di extent() const noexcept {
     return {
@@ -104,6 +106,7 @@ struct OpenXRSwapchain : public SwapchainInterface {
   uint32_t current_image_index_{};
 
   XRVulkanInterface *xr_graphics_{};
+  bool use_foveation_{};
 };
 
 /* -------------------------------------------------------------------------- */

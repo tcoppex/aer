@@ -51,8 +51,10 @@ bool OpenXRSwapchain::create(
 ) {
   LOG_CHECK(handle_ == XR_NULL_HANDLE);
   LOG_CHECK(xr_graphics != nullptr);
+
   create_info_ = info;
   xr_graphics_ = xr_graphics;
+  use_foveation_ = use_foveation;
 
   CHECK_XR_RET(xrCreateSwapchain(session, &info, &handle_))
 
@@ -75,6 +77,16 @@ void OpenXRSwapchain::destroy() {
     xrDestroySwapchain(handle_);
     handle_ = XR_NULL_HANDLE;
   }
+}
+
+// ----------------------------------------------------------------------------
+
+bool OpenXRSwapchain::reset(XrSession session) {
+  if (xr_graphics_ && (handle_ != XR_NULL_HANDLE)) {
+    destroy();
+    return create(session, create_info_, xr_graphics_, use_foveation_);
+  }
+  return false;
 }
 
 /* -------------------------------------------------------------------------- */
