@@ -260,8 +260,8 @@ void Context::releaseShaderModules(
 
 // ----------------------------------------------------------------------------
 
-void Context::resetCommandPool(VkCommandPool command_pool) const noexcept {
-  CHECK_VK( vkResetCommandPool(handle_, command_pool, 0x0u) );
+void Context::resetCommandPool(VkCommandPool command_pool, VkCommandPoolResetFlags flags) const noexcept {
+  CHECK_VK( vkResetCommandPool(handle_, command_pool, flags) );
 }
 
 // ----------------------------------------------------------------------------

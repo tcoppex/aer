@@ -343,7 +343,8 @@ class Context {
   // --- Command Pool / Buffer ---
 
   void resetCommandPool(
-    VkCommandPool command_pool
+    VkCommandPool command_pool,
+    VkCommandPoolResetFlags flags = 0x0
   ) const noexcept;
 
   void destroyCommandPool(
