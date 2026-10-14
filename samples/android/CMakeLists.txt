@@ -103,5 +103,6 @@ endfunction()
 
 add_android_sample(aloha)
 add_android_sample(aloha_xr)
+add_android_sample(composition_layer)
 
 # -----------------------------------------------------------------------------
