@@ -141,7 +141,7 @@ struct GPUProperties {
 };
 
 struct Queue {
-  VkQueue queue{};
+  VkQueue handle{};
   uint32_t family_index{UINT32_MAX};
   uint32_t queue_index{UINT32_MAX};
 };
@@ -150,7 +150,7 @@ struct Queue {
 // Shader
 
 struct ShaderModule {
-  VkShaderModule module{};
+  VkShaderModule handle{};
   std::string basename{};
   // std::string entryPoint{};
 };
@@ -226,6 +226,8 @@ struct RTInterface {
   RTInterface() = default;
 
   virtual ~RTInterface() {}
+
+  virtual void release() = 0;
 
   // -- Getters --
 

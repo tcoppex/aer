@@ -78,7 +78,7 @@ bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
     .PhysicalDevice = context.physical_device(),
     .Device = context.device(),
     .QueueFamily = main_queue.family_index,
-    .Queue = main_queue.queue,
+    .Queue = main_queue.handle,
     .DescriptorPool = imgui_descriptor_pool_,
     .MinImageCount = 2, //
     .ImageCount = renderer.swapchain_image_count(), //

@@ -320,6 +320,11 @@ bool OpenXRContext::resetSwapchain() {
   // we need a depth swapchain only to alter the perception of depth
   // for specific XR techniques.
 
+  /* Reset user-defined composition swapchains */
+  for (auto &sc : composition_swapchains_) {
+    sc->reset(session_);
+  }
+
   return true;
 }
 
@@ -367,6 +372,11 @@ void OpenXRContext::shutdown() {
   passthrough_.shutdown();
 
   swapchain_.destroy();
+
+  for (auto &sc : composition_swapchains_) {
+    sc->destroy();
+  }
+  composition_swapchains_.clear();
 
   for (auto &space : spaces_) {
     xrDestroySpace(space);
@@ -434,6 +444,38 @@ void OpenXRContext::pollEvents() {
     }
   }
 }
+
+// ----------------------------------------------------------------------------
+
+
+std::shared_ptr<OpenXRSwapchain> OpenXRContext::createCompositionSwapchain(
+  uint32_t w,
+  uint32_t h
+) {
+  LOG_CHECK(graphics_ != nullptr);
+  LOG_CHECK(w > 0 && h > 0);
+
+  if (auto sc = std::make_shared<OpenXRSwapchain>(); sc) {
+    auto const info = XrSwapchainCreateInfo{
+      .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+      .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
+                  | XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
+      .format = VK_FORMAT_R8G8B8A8_SRGB,
+      .sampleCount = 1,
+      .width = w,
+      .height = h,
+      .faceCount = 1,
+      .arraySize = 1,
+      .mipCount = 1,
+    };
+    if (sc->create(session_, info, graphics_.get(), false)) {
+      composition_swapchains_.push_back(sc);
+      return sc;
+    }
+  }
+  return nullptr;
+}
+
 
 // ----------------------------------------------------------------------------
 
@@ -519,6 +561,8 @@ void OpenXRContext::endFrame() {
     .layers     = composition_layers_.data(),
   };
   end_render_loop_ = CHECK_XR(xrEndFrame(session_, &frameEndInfo)) < 0;
+
+  user_layers_.clear();
   // composition_layers_.clear();
 }
 
@@ -596,12 +640,19 @@ void OpenXRContext::processFrame(
           .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT
                       ,
-          .space      = base_space(), //
+          .space      = base_space(),
           .viewCount  = kNumEyes,
           .views      = layer_projection_views_.data()
         };
       } else {
         LOGV("should_render_ is set to false");
+      }
+
+      // Extra layers: user specifics.
+      for (auto const& user_layer : user_layers_) {
+        if (num_layers_ < kMaxNumCompositionLayers) {
+          layers_[num_layers_++] = user_layer;
+        }
       }
 
       for (uint32_t i = 0; i < num_layers_; ++i) {
@@ -796,12 +847,12 @@ bool OpenXRContext::initControllers() {
     suggestInteractionProfileBindings(
       "/interaction_profiles/khr/simple_controller",
       {
-        left(touch.grip_squeeze,  "/select/click"),
+        left(touch.button_x,      "/select/click"),
         left(touch.grip_pose,     "/grip/pose"),
         left(touch.button_menu,   "/menu/click"),
         left(touch.vibrate,       "/haptic", false),
 
-        right(touch.grip_squeeze, "/select/click"),
+        right(touch.button_a,     "/select/click"),
         right(touch.grip_pose,    "/grip/pose"),
         right(touch.button_system,"/menu/click"), //
         right(touch.vibrate,      "/haptic", false),

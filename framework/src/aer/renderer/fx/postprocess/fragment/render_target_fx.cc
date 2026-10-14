@@ -59,10 +59,10 @@ GraphicsPipelineDescriptor_t RenderTargetFx::graphics_pipeline_descriptor(
    return {
     // .offscreenSingleView = true,
     .vertex = {
-      .module = shaders[0u].module,
+      .module = shaders[0u].handle,
     },
     .fragment = {
-      .module = shaders[1u].module,
+      .module = shaders[1u].handle,
       .targets = {
         { .format = render_target_->color_attachment().format },
       }

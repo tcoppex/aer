@@ -161,12 +161,12 @@ class SampleApp final : public Application {
         VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
       },
       .vertex = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "vertexMain",
         .buffers = mesh.pipeline_vertex_buffer_descriptors(),
       },
       .fragment = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "fragmentMain",
         .targets = {
           {
@@ -210,11 +210,11 @@ class SampleApp final : public Application {
 
     msdf_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
       .vertex = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "vertexMain",
       },
       .fragment = {
-        .module = shader.module,
+        .module = shader.handle,
         .entryPoint = "fragmentMain",
         .targets = {
           {

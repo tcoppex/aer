@@ -169,12 +169,12 @@ class SampleApp final : public Application {
       /* Pipeline descriptor "shared" between the stencil and the depth mask pipelines. */
       auto mask_pipeline_descriptor = GraphicsPipelineDescriptor_t{
         .vertex = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "vertexMain",
           .buffers = plane_.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "fragmentMain",
           .targets = { {.writeMask = 0u} },
         },
@@ -209,7 +209,7 @@ class SampleApp final : public Application {
         pipeline_layout_,
         {
           .vertex = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "vertexMain",
             .specializationConstants = {
               {
@@ -220,7 +220,7 @@ class SampleApp final : public Application {
             .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
           .fragment = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "fragmentMain",
             .targets = {
               {
@@ -265,12 +265,12 @@ class SampleApp final : public Application {
         pipeline_layout_,
         {
           .vertex = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "vertexMain",
             .buffers = torus_.pipeline_vertex_buffer_descriptors(),
           },
           .fragment = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "fragmentMain",
             .targets = {
               {

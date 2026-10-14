@@ -242,6 +242,16 @@ void Application::updateInternal() noexcept {
   /* Camera. */
   camera_.update(dt);
 
+  /* Resize renderer on swapchain resize. */
+  {
+    // (suppose they use the same scale)
+    auto const& A = swapchain_interface_->surface_size();
+    auto const& B = renderer_.surface_size();
+    if (A.width != B.width || A.height != B.height) {
+      renderer_.resize(A.width, A.height);
+    }
+  }
+
   /* Application. */
   update(dt);
 }

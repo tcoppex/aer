@@ -42,8 +42,7 @@ struct OpenXRSwapchain : public SwapchainInterface {
 
   [[nodiscard]]
   uint32_t view_mask() const noexcept final {
-    LOG_CHECK(create_info_.arraySize > 1u);
-    return 0b11;
+    return (create_info_.arraySize > 1u) ? 0b11 : 0b0; //
   }
 
   [[nodiscard]]
@@ -62,10 +61,12 @@ struct OpenXRSwapchain : public SwapchainInterface {
     XrSession session,
     XrSwapchainCreateInfo const& info,
     XRVulkanInterface *xr_graphics, //
-    bool use_foveation //
+    bool use_foveation = false //
   );
 
   void destroy();
+
+  bool reset(XrSession session);
 
   [[nodiscard]]
   XrExtent2Di extent() const noexcept {
@@ -104,6 +105,7 @@ struct OpenXRSwapchain : public SwapchainInterface {
   uint32_t current_image_index_{};
 
   XRVulkanInterface *xr_graphics_{};
+  bool use_foveation_{};
 };
 
 /* -------------------------------------------------------------------------- */

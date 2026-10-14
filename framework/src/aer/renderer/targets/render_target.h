@@ -47,7 +47,7 @@ class RenderTarget : public backend::RTInterface {
 
   void setup(Descriptor const& desc);
 
-  void release();
+  void release() final;
 
  public:
   // ----- RTInterface Overrides -----

@@ -222,6 +222,7 @@ class GenericCommandEncoder {
  **/
 class CommandEncoder : public GenericCommandEncoder {
  public:
+  CommandEncoder() = default;
   ~CommandEncoder() = default;
 
   // --- Buffers ---
@@ -396,8 +397,8 @@ class CommandEncoder : public GenericCommandEncoder {
 
   void endRenderPass() const;
 
- protected:
-  CommandEncoder() = default;
+ // protected:
+ //  CommandEncoder() = default;
 
  private:
   CommandEncoder(

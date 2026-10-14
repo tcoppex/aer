@@ -91,7 +91,7 @@ class SampleApp final : public Application {
         layout_desc,
         {
           .vertex = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "vertexMain",
             .buffers = {
               {
@@ -112,7 +112,7 @@ class SampleApp final : public Application {
             }
           },
           .fragment = {
-            .module = shader.module,
+            .module = shader.handle,
             .entryPoint = "fragmentMain",
             .targets = {
               {

@@ -8,6 +8,7 @@
 
 #include "aer/renderer/targets/framebuffer.h"
 #include "aer/renderer/targets/render_target.h"
+#include "aer/renderer/frame_resources.h"
 #include "aer/renderer/pipeline.h"
 #include "aer/renderer/sampler_pool.h"
 #include "aer/renderer/descriptor_registry.h" //
@@ -46,6 +47,22 @@ class RenderContext : public Context {
   );
 
   void release();
+
+  // --- FrameResources ---
+
+  FrameResourcesBuffer createFrameResources(
+    SwapchainInterface const& swapchain,
+    RenderTarget::Descriptor const rt_desc
+  ) const;
+
+  void resizeFrameResources(
+    VkExtent2D const& surface_size,
+    FrameResourcesBuffer& frame_resources
+  ) const;
+
+  void releaseFrameResources(
+    FrameResourcesBuffer& frame_resources
+  );
 
   // --- Render Target (Dynamic Rendering) ---
 

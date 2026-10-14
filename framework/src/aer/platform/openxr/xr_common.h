@@ -51,7 +51,7 @@ using XRSidedBuffer_t = std::array<T, XRSide::kNumSide>;
 struct XRControlState_t {
   XrActionSet action_set{};
 
-  struct Handness {
+  struct Hand {
     XRSidedBuffer_t<XrPath> path{};
     XRSidedBuffer_t<XrSpace> aim_space{};
     XRSidedBuffer_t<XrSpace> grip_space{};
@@ -117,13 +117,29 @@ struct XRControlState_t {
     bool touch_b{};
     bool button_system{};
   } frame;
+
+
+  XrSpace right_aim_space()     const noexcept { return hand.aim_space[XRSide::Right]; }
+  XrPosef right_aim_pose()      const noexcept { return frame.aim_pose[XRSide::Right]; }
+
+  XrSpace right_grip_space()    const noexcept { return hand.grip_space[XRSide::Right]; }
+  XrPosef right_grip_pose()     const noexcept { return frame.grip_pose[XRSide::Right]; }
+  float   right_grip_squeeze()  const noexcept { return frame.grip_squeeze[XRSide::Right]; }
+
+  XrSpace left_aim_space()      const noexcept { return hand.aim_space[XRSide::Left]; }
+  XrPosef left_aim_pose()       const noexcept { return frame.aim_pose[XRSide::Left]; }
+
+  XrSpace left_grip_space()     const noexcept { return hand.grip_space[XRSide::Left]; }
+  XrPosef left_grip_pose()      const noexcept { return frame.grip_pose[XRSide::Left]; }
+  float   left_grip_squeeze()   const noexcept { return frame.grip_squeeze[XRSide::Left]; }
 };
 
 // ----------------------------------------------------------------------------
 
 struct XRFrameData {
-  std::array<mat4f, XRSide::kNumSide> viewMatrices{};
-  std::array<mat4f, XRSide::kNumSide> projMatrices{};
+  XRSidedBuffer_t<mat4f> viewMatrices{};
+  XRSidedBuffer_t<mat4f> projMatrices{};
+
   std::array<mat4f const*, XRSpaceId::kNumSpaceId> spaceMatrices{}; //
   double predictedDisplayTime{};
   bool shouldRender{};

@@ -147,7 +147,7 @@ class SampleApp final : public Application {
 
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
         .vertex = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "vertexMain",
           /* Get buffer descriptors compatible with the mesh vertex inputs.
            *
@@ -156,7 +156,7 @@ class SampleApp final : public Application {
           .buffers = cube_.pipeline_vertex_buffer_descriptors(),
         },
         .fragment = {
-          .module = shader.module,
+          .module = shader.handle,
           .entryPoint = "fragmentMain",
           .targets = {
             {

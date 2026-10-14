@@ -31,6 +31,8 @@ struct WMInterface {
 
   virtual void set_title(std::string_view title) const noexcept = 0;
 
+  virtual void show_cursor(bool show) const noexcept = 0;
+
   virtual void close() noexcept = 0;
 
   [[nodiscard]]

@@ -4,6 +4,22 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <imgui.h> //
+
+/* Bypass if ImGui wants the mouse. */
+#define EVENTS_IMGUI_BYPASS_MOUSE() \
+{ \
+  if (ImGui::GetIO().WantCaptureMouse) { return; } \
+}
+
+/* Bypass if ImGui wants the keyboard. */
+#define EVENTS_IMGUI_BYPASS_KB() \
+{ \
+  if (ImGui::GetIO().WantCaptureKeyboard) { return; } \
+}
+
+// ----------------------------------------------------------------------------
+
 /* Dispatch event signal to sub callbacks handlers. */
 #define EVENTS_DISPATCH_SIGNAL(funcName, ...) \
   static_assert(std::string_view(#funcName)==__func__, "Incorrect dispatch signal used."); \
@@ -39,6 +55,8 @@ void Events::prepareNextFrame() {
 /* -------------------------------------------------------------------------- */
 
 void Events::onKeyPressed(KeyCode_t key) {
+  EVENTS_IMGUI_BYPASS_KB();
+
   keys_[key] = KeyState::Pressed;
   key_pressed_.push( key );
 
@@ -46,12 +64,16 @@ void Events::onKeyPressed(KeyCode_t key) {
 }
 
 void Events::onKeyReleased(KeyCode_t key) {
+  EVENTS_IMGUI_BYPASS_KB();
+
   keys_[key] = KeyState::Released;
 
   EVENTS_DISPATCH_SIGNAL(onKeyReleased, key);
 }
 
 void Events::onInputChar(uint16_t c) {
+  EVENTS_IMGUI_BYPASS_KB();
+
   last_input_char_ = c;
 
   EVENTS_DISPATCH_SIGNAL(onInputChar, c);

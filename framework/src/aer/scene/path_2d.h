@@ -77,13 +77,7 @@ class Path2D {
   bool triangulate();
 
   [[nodiscard]]
-  bool triangulated() const noexcept {
-    return std::any_of(
-      index_buffers_.begin(),
-      index_buffers_.end(),
-      [](const auto& v) { return !v.empty(); }
-    );
-  }
+  bool triangulated() const noexcept;
 
   [[nodiscard]]
   auto const& polylines() const noexcept {

@@ -58,7 +58,7 @@ private:
 
     graphics_pipeline_ = context_.createGraphicsPipeline({
       .vertex = {
-        .module = shaders[0u].module,
+        .module = shaders[0u].handle,
         .buffers = {
           {
             .stride = sizeof(Vertex_t),
@@ -78,7 +78,7 @@ private:
         }
       },
       .fragment = {
-        .module = shaders[1u].module,
+        .module = shaders[1u].handle,
         .targets = {
           {
             .writeMask = VK_COLOR_COMPONENT_R_BIT

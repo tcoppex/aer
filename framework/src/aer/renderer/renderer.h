@@ -22,6 +22,33 @@ class Renderer {
   }};
 
  public:
+  struct FrameHandler {
+    SwapchainInterface** swapchain_pptr{};
+    FrameResourcesBuffer frames{};
+    uint32_t index{};
+
+    [[nodiscard]]
+    SwapchainInterface& swapchain() const {
+      LOG_CHECK(swapchain_pptr && *swapchain_pptr);
+      return **swapchain_pptr;
+    }
+
+    [[nodiscard]]
+    FrameResources& frame() {
+      return frames[index];
+    }
+
+    [[nodiscard]]
+    FrameResources const& frame() const {
+      return frames[index];
+    }
+
+    void swapIndex() {
+      index = (index + 1u) % swapchain().image_count();
+    }
+  };
+
+ public:
   Renderer() = default;
   ~Renderer() = default;
 
@@ -35,11 +62,11 @@ class Renderer {
   bool resize(uint32_t w, uint32_t h);
 
   [[nodiscard]]
-  CommandEncoder& beginFrame();
+  CommandEncoder& beginFrame(FrameHandler *frame_handler = nullptr);
 
-  void endFrame();
+  bool endFrame();
 
-  /* Blit an image to the final color image, before the swapchain. */
+  /* Blit an image to the final default color image, before the swapchain. */
   void blitColor(
     CommandEncoder const& cmd,
     backend::Image const& src_image,
@@ -64,6 +91,7 @@ class Renderer {
     });
   }
 
+ public:
   // --- Getters ---
 
   [[nodiscard]]
@@ -78,8 +106,7 @@ class Renderer {
 
   [[nodiscard]]
   SwapchainInterface& swapchain() const {
-    LOG_CHECK(swapchain_ptr_ && *swapchain_ptr_);
-    return **swapchain_ptr_;
+    return default_frame_handler_.swapchain();
   }
 
   [[nodiscard]]
@@ -94,7 +121,7 @@ class Renderer {
 
   [[nodiscard]]
   backend::RTInterface const& main_render_target() const noexcept {
-    return *(frame_resource().main_rt);
+    return *(default_frame_handler_.frame().main_rt);
   }
 
   [[nodiscard]]
@@ -103,8 +130,8 @@ class Renderer {
   }
 
   [[nodiscard]]
-  bool is_postprocess_enabled() const noexcept {
-    return postprocess_;
+  bool is_swapchain_blit_enabled() const noexcept {
+    return swapchain_blit_enabled_;
   }
 
   [[nodiscard]]
@@ -115,15 +142,15 @@ class Renderer {
   // --- Setters ---
 
   void set_clear_color(vec4 const& color) {
-    for (auto & frame : frames_) {
+    for (auto & frame : default_frame_handler_.frames) {
       frame.main_rt->set_color_clear_value({
         .float32 = { color.x, color.y, color.z, color.w }
       });
     }
   }
 
-  void set_postprocess_enabled(bool enabled) noexcept {
-    postprocess_ = enabled;
+  void set_swapchain_blit_enabled(bool enabled) noexcept {
+    swapchain_blit_enabled_ = enabled;
   }
 
   void set_foveated_rendering_enabled(bool enabled) noexcept {
@@ -131,26 +158,12 @@ class Renderer {
   }
 
  private:
-  struct FrameResources {
-    VkCommandPool command_pool{};
-    VkCommandBuffer command_buffer{};
-    CommandEncoder cmd{};
-    std::unique_ptr<RenderTarget> main_rt{};
-  };
-
   void initViewResources();
 
   void releaseViewResources();
 
-  void applyPostProcess();
-
-  FrameResources& frame_resource() noexcept {
-    return frames_[frame_index_];
-  }
-
-  FrameResources const& frame_resource() const noexcept {
-    return frames_[frame_index_];
-  }
+  /* Blit the main rt color to the swapchain */
+  void blitColorToSwapchain(FrameHandler const& frame_handler);
 
   [[nodiscard]]
   VkFormat color_format() const noexcept {
@@ -170,14 +183,15 @@ class Renderer {
  private:
   /* Non owning References. */
   RenderContext* context_ptr_{};
-  SwapchainInterface** swapchain_ptr_{};
 
-  /* Timeline frame resources. */
-  std::vector<FrameResources> frames_{};
-  uint32_t frame_index_{};
+  /* Internal / Default renderer target. */
+  FrameHandler default_frame_handler_{};
+
+  /* Current render pass frame handler for changing target. */
+  FrameHandler* binded_frame_handler_{nullptr};
 
   /* Control whether the RT color should be blit to the swapchain or not. */
-  bool postprocess_{true};
+  bool swapchain_blit_enabled_{true};
 
   /* [XR] Control whether to use fragment density map when available. */
   bool foveated_rendering_{true};

@@ -225,11 +225,11 @@ class SampleApp final : public Application {
       /* Create the graphics pipeline. */
       graphics_pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
         .vertex = {
-          .module = shaders[1u].module,
+          .module = shaders[1u].handle,
           .entryPoint = "vertexMain",
         },
         .fragment = {
-          .module = shaders[1u].module,
+          .module = shaders[1u].handle,
           .entryPoint = "fragmentMain",
           .targets = {
             {

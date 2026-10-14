@@ -123,11 +123,11 @@ class SceneFx final : public RenderTargetFx {
         VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
       },
       .vertex = {
-        .module = shaders[0u].module,
+        .module = shaders[0u].handle,
         .entryPoint = "vertexMain",
       },
       .fragment = {
-        .module = shaders[1u].module,
+        .module = shaders[1u].handle,
         .entryPoint = "fragmentMain",
         .targets = {
           { .format = render_target_->resolve_attachment(0).format },
