@@ -162,7 +162,7 @@ class Renderer {
 
   void releaseViewResources();
 
-  void applyPostProcess(FrameHandler const& frame_handler);
+  void blitColorToSwapchain(FrameHandler const& frame_handler);
 
   [[nodiscard]]
   VkFormat color_format() const noexcept {

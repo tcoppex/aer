@@ -141,12 +141,7 @@ bool Renderer::endFrame() {
 
   /* Transition the final image then blit to the swapchain frame. */
   if (is_postprocess_enabled()) {
-    // [xx We only apply post process on default render pass xx]
-    if (binded_frame_handler_ == &default_frame_handler_) {
-      applyPostProcess(*binded_frame_handler_);
-    } else {
-      LOGW("No postprocess is applied for custom FrameHandler.");
-    }
+    blitColorToSwapchain(*binded_frame_handler_); //
   }
 
   frame.cmd.end();
@@ -225,11 +220,10 @@ GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
 
 // ----------------------------------------------------------------------------
 
-void Renderer::applyPostProcess(FrameHandler const& frame_handler) {
+void Renderer::blitColorToSwapchain(FrameHandler const& frame_handler) {
   auto const& frame = frame_handler.frame();
   auto const& sc = frame_handler.swapchain();
 
-  // Blit Color to Swapchain.
   auto const& src_rt = *frame.main_rt;
   auto const& src_img = src_rt.resolve_attachment();
   auto const src_layout = //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
