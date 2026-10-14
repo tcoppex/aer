@@ -847,12 +847,12 @@ bool OpenXRContext::initControllers() {
     suggestInteractionProfileBindings(
       "/interaction_profiles/khr/simple_controller",
       {
-        left(touch.grip_squeeze,  "/select/click"),
+        left(touch.button_x,      "/select/click"),
         left(touch.grip_pose,     "/grip/pose"),
         left(touch.button_menu,   "/menu/click"),
         left(touch.vibrate,       "/haptic", false),
 
-        right(touch.grip_squeeze, "/select/click"),
+        right(touch.button_a,     "/select/click"),
         right(touch.grip_pose,    "/grip/pose"),
         right(touch.button_system,"/menu/click"), //
         right(touch.vibrate,      "/haptic", false),
