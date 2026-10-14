@@ -130,8 +130,8 @@ class Renderer {
   }
 
   [[nodiscard]]
-  bool is_postprocess_enabled() const noexcept {
-    return postprocess_;
+  bool is_swapchain_blit_enabled() const noexcept {
+    return swapchain_blit_enabled_;
   }
 
   [[nodiscard]]
@@ -149,8 +149,8 @@ class Renderer {
     }
   }
 
-  void set_postprocess_enabled(bool enabled) noexcept {
-    postprocess_ = enabled;
+  void set_swapchain_blit_enabled(bool enabled) noexcept {
+    swapchain_blit_enabled_ = enabled;
   }
 
   void set_foveated_rendering_enabled(bool enabled) noexcept {
@@ -162,6 +162,7 @@ class Renderer {
 
   void releaseViewResources();
 
+  /* Blit the main rt color to the swapchain */
   void blitColorToSwapchain(FrameHandler const& frame_handler);
 
   [[nodiscard]]
@@ -190,7 +191,7 @@ class Renderer {
   FrameHandler* binded_frame_handler_{nullptr};
 
   /* Control whether the RT color should be blit to the swapchain or not. */
-  bool postprocess_{true};
+  bool swapchain_blit_enabled_{true};
 
   /* [XR] Control whether to use fragment density map when available. */
   bool foveated_rendering_{true};

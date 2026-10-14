@@ -140,7 +140,7 @@ bool Renderer::endFrame() {
   auto &frame = binded_frame_handler_->frame();
 
   /* Transition the final image then blit to the swapchain frame. */
-  if (is_postprocess_enabled()) {
+  if (is_swapchain_blit_enabled()) {
     blitColorToSwapchain(*binded_frame_handler_); //
   }
 
