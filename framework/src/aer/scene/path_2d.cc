@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "aer/scene/path_2d.h"
 #include "aer/scene/mesh.h"
 
@@ -360,6 +362,16 @@ bool Path2D::triangulate() {
   }
 
   return triangulated();
+}
+
+// -----------------------------------------------------------------------------
+
+bool Path2D::triangulated() const noexcept {
+  return std::any_of(
+    index_buffers_.begin(),
+    index_buffers_.end(),
+    [](const auto& v) { return !v.empty(); }
+  );
 }
 
 /* -------------------------------------------------------------------------- */
