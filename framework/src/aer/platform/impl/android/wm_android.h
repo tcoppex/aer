@@ -23,6 +23,8 @@ struct WMAndroid final : public WMInterface {
 
   void set_title(std::string_view title) const noexcept final {}
 
+  void show_cursor(bool show) const noexcept final {}
+
   void close() noexcept final;
 
   [[nodiscard]]

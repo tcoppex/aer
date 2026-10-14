@@ -223,6 +223,14 @@ void Window::set_title(std::string_view title) const noexcept {
 
 // ----------------------------------------------------------------------------
 
+void Window::show_cursor(bool show) const noexcept {
+  glfwSetInputMode(window_, GLFW_CURSOR,
+    show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED
+  );
+}
+
+// ----------------------------------------------------------------------------
+
 void Window::close() noexcept {
   glfwSetWindowShouldClose(window_, GLFW_TRUE);
 }
