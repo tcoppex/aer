@@ -141,7 +141,12 @@ bool Renderer::endFrame() {
 
   /* Transition the final image then blit to the swapchain frame. */
   if (is_postprocess_enabled()) {
-    applyPostProcess(*binded_frame_handler_);
+    // [xx We only apply post process on default render pass xx]
+    if (binded_frame_handler_ == &default_frame_handler_) {
+      applyPostProcess(*binded_frame_handler_);
+    } else {
+      LOGW("No postprocess is applied for custom FrameHandler.");
+    }
   }
 
   frame.cmd.end();
