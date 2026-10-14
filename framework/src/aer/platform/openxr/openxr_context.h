@@ -104,8 +104,13 @@ class OpenXRContext {
   }
 
   [[nodiscard]]
-  XrSpace base_space() const {
+  XrSpace base_space() const noexcept {
     return spaces_[base_space_index_];
+  }
+
+  [[nodiscard]]
+  XrSpace get_space(XRSpaceId space_id) const noexcept {
+    return spaces_[space_id];
   }
 
   [[nodiscard]]
@@ -145,6 +150,11 @@ class OpenXRContext {
   [[nodiscard]]
   XRFrameData const& frame_data() const noexcept {
     return frame_data_;
+  }
+
+  [[nodiscard]]
+  XRControlState_t const& control_state() const noexcept {
+    return controls_;
   }
 
   [[nodiscard]]

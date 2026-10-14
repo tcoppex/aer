@@ -117,6 +117,21 @@ struct XRControlState_t {
     bool touch_b{};
     bool button_system{};
   } frame;
+
+
+  XrSpace right_aim_space()     const noexcept { return hand.aim_space[XRSide::Right]; }
+  XrPosef right_aim_pose()      const noexcept { return frame.aim_pose[XRSide::Right]; }
+
+  XrSpace right_grip_space()    const noexcept { return hand.grip_space[XRSide::Right]; }
+  XrPosef right_grip_pose()     const noexcept { return frame.grip_pose[XRSide::Right]; }
+  float   right_grip_squeeze()  const noexcept { return frame.grip_squeeze[XRSide::Right]; }
+
+  XrSpace left_aim_space()      const noexcept { return hand.aim_space[XRSide::Left]; }
+  XrPosef left_aim_pose()       const noexcept { return frame.aim_pose[XRSide::Left]; }
+
+  XrSpace left_grip_space()     const noexcept { return hand.grip_space[XRSide::Left]; }
+  XrPosef left_grip_pose()      const noexcept { return frame.grip_pose[XRSide::Left]; }
+  float   left_grip_squeeze()   const noexcept { return frame.grip_squeeze[XRSide::Left]; }
 };
 
 // ----------------------------------------------------------------------------
