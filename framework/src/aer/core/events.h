@@ -43,42 +43,75 @@ class Events final : public Singleton<Events>
 
   /* Getters */
 
+  [[nodiscard]]
   bool has_mouse_moved() const noexcept { return mouse_moved_; }
+
+  [[nodiscard]]
   bool has_mouse_button_down() const noexcept { return mouse_button_down_; }
+
+  [[nodiscard]]
   bool has_resized() const noexcept { return has_resized_; }
 
+  [[nodiscard]]
   uint32_t surface_width() const noexcept { return surface_w_; };
+
+  [[nodiscard]]
   uint32_t surface_height() const noexcept { return surface_h_; };
 
+  [[nodiscard]]
   int mouse_x() const noexcept { return mouse_x_; }
+
+  [[nodiscard]]
   int mouse_y() const noexcept { return mouse_y_; }
 
+  [[nodiscard]]
   float wheel() const noexcept { return mouse_wheel_; }
+
+  [[nodiscard]]
   float wheel_delta() const noexcept { return mouse_wheel_delta_; }
 
+  [[nodiscard]]
   uint16_t last_input_char() const noexcept { return last_input_char_; }
 
   // ---
 
+  [[nodiscard]]
   vec2 mouseCoords() const noexcept { return vec2(mouse_x_, mouse_y_); }
 
+  [[nodiscard]]
   bool buttonDown(KeyCode_t button) const noexcept;
+
+  [[nodiscard]]
   bool buttonPressed(KeyCode_t button) const noexcept;
+
+  [[nodiscard]]
   bool buttonReleased(KeyCode_t button) const noexcept;
 
+  [[nodiscard]]
   bool keyDown(KeyCode_t key) const noexcept;
+
+  [[nodiscard]]
   bool keyPressed(KeyCode_t key) const noexcept;
+
+  [[nodiscard]]
   bool keyReleased(KeyCode_t key) const noexcept;
 
+  [[nodiscard]]
   bool gamepadButtonDown(KeyCode_t button) const noexcept;
+
+  [[nodiscard]]
   bool gamepadButtonPressed(KeyCode_t button) const noexcept;
+
+  [[nodiscard]]
   bool gamepadButtonReleased(KeyCode_t button) const noexcept;
 
+  [[nodiscard]]
   float gamepadAxis(int axe_id) const {
     return gamepad_axis_[axe_id];
   }
 
   /* Return the last user's keystroke. */
+  [[nodiscard]]
   KeyCode_t lastKeyDown() const noexcept {
     return key_pressed_.empty() ? -1 : key_pressed_.top(); //
   }
