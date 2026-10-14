@@ -109,7 +109,7 @@ CommandEncoder& Renderer::beginFrame(FrameHandler *frame_handler) {
   }
 
   /* Reset the frame command pool to record new command for this frame. */
-  context_ptr_->resetCommandPool(frame.command_pool);
+  context_ptr_->resetCommandPool(frame.command_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
   VkImageView fdm = is_foveated_rendering_enabled() ? sc.fragment_density_map_view()
                                                     : VK_NULL_HANDLE
