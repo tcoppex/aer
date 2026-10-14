@@ -320,6 +320,11 @@ bool OpenXRContext::resetSwapchain() {
   // we need a depth swapchain only to alter the perception of depth
   // for specific XR techniques.
 
+  /* Reset user-defined composition swapchains */
+  for (auto &sc : composition_swapchains_) {
+    sc->reset(session_);
+  }
+
   return true;
 }
 
@@ -367,6 +372,11 @@ void OpenXRContext::shutdown() {
   passthrough_.shutdown();
 
   swapchain_.destroy();
+
+  for (auto &sc : composition_swapchains_) {
+    sc->destroy();
+  }
+  composition_swapchains_.clear();
 
   for (auto &space : spaces_) {
     xrDestroySpace(space);
@@ -437,28 +447,35 @@ void OpenXRContext::pollEvents() {
 
 // ----------------------------------------------------------------------------
 
-bool OpenXRContext::createCompositionSwapchain(
-  OpenXRSwapchain &swapchain,
-  uint32_t width,
-  uint32_t height
-) const {
+
+std::shared_ptr<OpenXRSwapchain> OpenXRContext::createCompositionSwapchain(
+  uint32_t w,
+  uint32_t h
+) {
   LOG_CHECK(graphics_ != nullptr);
-  LOG_CHECK(width > 0);
-  height = (height > 0) ? height : width;
-  auto info = XrSwapchainCreateInfo{
-    .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
-    .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
-                | XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
-    .format = VK_FORMAT_R8G8B8A8_SRGB,
-    .sampleCount = 1,
-    .width = width,
-    .height = height,
-    .faceCount = 1,
-    .arraySize = 1,
-    .mipCount = 1,
-  };
-  return swapchain.create(session_, info, graphics_.get(), false);
+  LOG_CHECK(w > 0 && h > 0);
+
+  if (auto sc = std::make_shared<OpenXRSwapchain>(); sc) {
+    auto const info = XrSwapchainCreateInfo{
+      .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+      .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT
+                  | XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
+      .format = VK_FORMAT_R8G8B8A8_SRGB,
+      .sampleCount = 1,
+      .width = w,
+      .height = h,
+      .faceCount = 1,
+      .arraySize = 1,
+      .mipCount = 1,
+    };
+    if (sc->create(session_, info, graphics_.get(), false)) {
+      composition_swapchains_.push_back(sc);
+      return sc;
+    }
+  }
+  return nullptr;
 }
+
 
 // ----------------------------------------------------------------------------
 

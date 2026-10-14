@@ -84,11 +84,7 @@ class OpenXRContext {
     }
   }
 
-  bool createCompositionSwapchain(
-    OpenXRSwapchain &swapchain,
-    uint32_t width,
-    uint32_t height = 0
-  ) const;
+  std::shared_ptr<OpenXRSwapchain> createCompositionSwapchain(uint32_t w, uint32_t h);
 
   // -- Public instance getters / helpers --
 
@@ -213,6 +209,7 @@ class OpenXRContext {
 
   XRStereoBuffer<XrCompositionLayerProjectionView> layer_projection_views_{};
 
+  std::vector<std::shared_ptr<OpenXRSwapchain>> composition_swapchains_{}; // (use a map instead?)
   std::vector<CompositorLayerUnion_t> user_layers_{};
 
   std::array<CompositorLayerUnion_t, kMaxNumCompositionLayers> layers_{};
