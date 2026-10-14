@@ -42,8 +42,7 @@ struct OpenXRSwapchain : public SwapchainInterface {
 
   [[nodiscard]]
   uint32_t view_mask() const noexcept final {
-    LOG_CHECK(create_info_.arraySize > 1u);
-    return 0b11;
+    return (create_info_.arraySize > 1u) ? 0b11 : 0b0; //
   }
 
   [[nodiscard]]
