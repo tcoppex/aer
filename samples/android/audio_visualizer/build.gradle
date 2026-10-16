@@ -87,6 +87,20 @@ android {
 
 // ----------------------------------------------------------------------------
 
+afterEvaluate {
+  android.applicationVariants.all { variant ->
+    def variantName = variant.name.capitalize()
+    def mergeAssetsTask = tasks.findByName("merge${variantName}Assets")
+    def externalNativeBuildTask = tasks.findByName("externalNativeBuild${variantName}")
+
+    if (mergeAssetsTask != null && externalNativeBuildTask != null) {
+      mergeAssetsTask.dependsOn(externalNativeBuildTask)
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+
 dependencies {
   implementation project(":framework")
   implementation "androidx.core:core-ktx:1.13.1"
