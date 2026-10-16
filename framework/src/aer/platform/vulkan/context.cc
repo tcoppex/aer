@@ -65,6 +65,22 @@ void Context::release() {
 
 // ----------------------------------------------------------------------------
 
+uint32_t Context::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
+  auto const& props = memory_properties();
+  LOG_CHECK(props.memoryTypeCount > 0);
+
+  for (uint32_t i = 0; i < props.memoryTypeCount; ++i) {
+    if ((typeFilter & (1 << i))
+     && (props.memoryTypes[i].propertyFlags & properties) == properties) {
+      return i;
+    }
+  }
+
+  return kInvalidIndexU32;
+}
+
+// ----------------------------------------------------------------------------
+
 VkSampleCountFlags Context::sample_counts() const noexcept {
   auto const& limits = properties_.gpu2.properties.limits;
   return limits.framebufferColorSampleCounts
@@ -779,6 +795,7 @@ bool Context::initDevice() {
     //   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT
     // );
 
+    // Desktop only.
 #if !defined(ANDROID)
     add_device_feature(
       VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -787,7 +804,15 @@ bool Context::initDevice() {
     );
 #endif
 
-    // ------------------
+    // Android only.
+#if defined(ANDROID)
+    device_extension_names_.insert(
+      VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
+    );
+    features_.v11.samplerYcbcrConversion = VK_TRUE;
+#endif
+
+    // XR only.
     if (vulkan_xr_) {
       add_device_feature(
         VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME,
@@ -801,7 +826,6 @@ bool Context::initDevice() {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT
       );
     }
-    // ------------------
 
     vk_utils::PushNextVKStruct(&features_.base, &features_.v11);
     vk_utils::PushNextVKStruct(&features_.base, &features_.v12);
@@ -816,6 +840,10 @@ bool Context::initDevice() {
         (features_.fragment_density_map.fragmentDensityMap == VK_TRUE)
       );
     }
+
+#if defined(ANDROID)
+    LOG_CHECK(features_.v11.samplerYcbcrConversion);
+#endif
 
     // LOG_CHECK(features_.v12.shaderFloat16);
     LOG_CHECK(features_.v12.descriptorIndexing);

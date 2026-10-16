@@ -57,7 +57,7 @@ cmake --build build --config Release
 
 ### Samples
 
-|   |   |
+| **Desktop** |   |
 | --- | --- |
 | **[00_hello](samples/desktop/00_hello/)** | Display a surface and clear its color. |
 | **[01_triangle](samples/desktop/01_triangle/)** | Draw a simple triangle. |
@@ -74,7 +74,10 @@ cmake --build build --config Release
 | **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file, via MSDF and glyphes triangulation. |
 | **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)** | Implements *3D Gaussian Splatting for Real-Time Radiance Field Rendering*. |
 | **[14_marching_cubes](samples/desktop/14_marching_cubes/)** | Dynamic marching cubes mesh generation via signed distant function. |
-|   |   |
+|  **Android XR** |   |
+|  **[aloha_xr](samples/android/aloha_xr/)** |  Display a triangle in XR with passthrough, foveation, and controller inputs. |
+|  **[composition_layer](samples/android/composition_layer/)** |  Display a quad composition layer on top of the right controller. |
+|  **[video_player](samples/android/video_player/)** | Stream a video on a quad composition layer.  |
 
 <!--
 Samples are linear in progression: when a feature is introduced the

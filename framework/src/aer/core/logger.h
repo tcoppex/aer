@@ -220,13 +220,15 @@ class Logger : public Singleton<Logger> {
 #define LOGV(...)   Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
 #define LOGD(...)   Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
 #define LOGI(...)   Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
-#define LOGW(...)   Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
-#define LOGE(...)   Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define LOGW(...)   Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
+#define LOGE(...)   Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, false, __VA_ARGS__)
 
-/* Hashed version of loggers. Warnings and Errors are always hashed. */
+/* Hashed version of loggers. */
 #define HLOGV(...)  Logger::Get().verbose( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
 #define HLOGD(...)  Logger::Get().debug  ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
 #define HLOGI(...)  Logger::Get().info   ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define HLOGW(...)  Logger::Get().warning( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
+#define HLOGE(...)  Logger::Get().error  ( __FILE__, __FUNCTION__, __LINE__, true, __VA_ARGS__)
 
 // ----------------------------------------------------------------------------
 // Special aliases.

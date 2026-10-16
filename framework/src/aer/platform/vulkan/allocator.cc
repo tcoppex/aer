@@ -181,11 +181,11 @@ backend::Image Allocator::createImage(
 
   backend::Image image{};
 
-  VmaAllocationCreateInfo const alloc_create_info{
+  auto alloc_create_info = VmaAllocationCreateInfo{
     .usage = memory_usage, //
   };
-  VmaAllocationInfo alloc_info{};
 
+  VmaAllocationInfo alloc_info{};
   CHECK_VK(vmaCreateImage(
     handle_,
     &image_info,

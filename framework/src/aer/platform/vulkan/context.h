@@ -64,6 +64,9 @@ class Context {
     CHECK_VK(vkDeviceWaitIdle(handle_));
   }
 
+  [[nodiscard]]
+  uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+
   // --- Getters ---
 
   [[nodiscard]]
