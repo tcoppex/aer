@@ -18,6 +18,17 @@ class SamplerPool {
   void init(VkDevice device) noexcept {
     device_ = device;
 
+    clampedge_linear_ = get({
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      .anisotropyEnable = VK_FALSE,
+      .maxAnisotropy = 1.0f,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    });
     anyso_clampedge_nearest_ = get({
       .magFilter = VK_FILTER_NEAREST,
       .minFilter = VK_FILTER_NEAREST,
@@ -78,17 +89,25 @@ class SamplerPool {
   // }
 
   [[nodiscard]]
+  VkSampler clampedge_linear() const noexcept {
+    return clampedge_linear_;
+  }
+
+  [[nodiscard]]
   VkSampler anyso_clampedge_nearest() const noexcept {
     return anyso_clampedge_nearest_;
   }
+
   [[nodiscard]]
   VkSampler anyso_clampedge_linear() const noexcept {
     return anyso_clampedge_linear_;
   }
+
   [[nodiscard]]
   VkSampler anyso_repeat_nearest() const noexcept {
     return anyso_repeat_nearest_;
   }
+
   [[nodiscard]]
   VkSampler anyso_repeat_linear() const noexcept {
     return anyso_repeat_linear_;
@@ -163,6 +182,7 @@ class SamplerPool {
 
  private:
   VkDevice device_{};
+  VkSampler clampedge_linear_{};
   VkSampler anyso_repeat_nearest_{};
   VkSampler anyso_repeat_linear_{};
   VkSampler anyso_clampedge_nearest_{};
