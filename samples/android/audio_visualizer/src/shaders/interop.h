@@ -10,6 +10,10 @@ struct UniformCameraData {
 
 struct PushConstant {
   float4x4 modelMatrix;
+  float audioAmplitude;
+  float audioMids;
+  float audioHighs;
+  float time;
 };
 
 // ---------------------------------------------------------------------------
