@@ -31,12 +31,12 @@
 /* -------------------------------------------------------------------------- */
 
 bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
-  // IMGUI_CHECKVERSION();
+  IMGUI_CHECKVERSION();
 
-  // wm_ptr_ = &wm;
+  wm_ptr_ = &wm;
 
-  // ImGui::CreateContext();
-  // ImGui::StyleColorsDark();
+  ImGui::CreateContext();
+  ImGui::StyleColorsDark();
 
   // if (!ImGui_ImplGlfw_InitForVulkan(reinterpret_cast<GLFWwindow*>(wm.handle()), true)) {
   //   return false;
@@ -97,7 +97,7 @@ bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
 void UIController::release(Context const& context) {
   // ImGui_ImplVulkan_Shutdown();
   // ImGui_ImplGlfw_Shutdown();
-  // ImGui::DestroyContext();
+  ImGui::DestroyContext();
   // vkDestroyDescriptorPool(context.device(), imgui_descriptor_pool_, nullptr);
 }
 
