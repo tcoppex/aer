@@ -65,6 +65,22 @@ void Context::release() {
 
 // ----------------------------------------------------------------------------
 
+uint32_t Context::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const {
+  auto const& props = memory_properties();
+  LOG_CHECK(props.memoryTypeCount > 0);
+
+  for (uint32_t i = 0; i < props.memoryTypeCount; ++i) {
+    if ((typeFilter & (1 << i))
+     && (props.memoryTypes[i].propertyFlags & properties) == properties) {
+      return i;
+    }
+  }
+
+  return kInvalidIndexU32;
+}
+
+// ----------------------------------------------------------------------------
+
 VkSampleCountFlags Context::sample_counts() const noexcept {
   auto const& limits = properties_.gpu2.properties.limits;
   return limits.framebufferColorSampleCounts
