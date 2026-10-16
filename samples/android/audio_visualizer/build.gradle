@@ -1,0 +1,95 @@
+// ----------------------------------------------------------------------------
+//
+//  Android Sample - Audio Visualizer
+//
+// ----------------------------------------------------------------------------
+
+plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+
+// ----------------------------------------------------------------------------
+
+def appName = projectDir.name
+def packageName = "${rootProject.ext.orgPrefix}.samples.${appName}"
+
+// ----------------------------------------------------------------------------
+
+base {
+  archivesName = appName
+}
+
+android {
+  namespace = packageName
+
+  ndkVersion = "29.0.14033849"
+  compileSdk = 36
+
+  defaultConfig {
+    applicationId = packageName
+
+    minSdk = 29
+    versionCode = 1
+    versionName = "1.0"
+
+    //noinspection ExpiredTargetSdkVersion
+    targetSdk = 32
+
+    externalNativeBuild {
+      ndk {
+        abiFilters("arm64-v8a")
+      }
+      cmake {
+        targets(appName)
+      }
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+
+  kotlinOptions {
+    jvmTarget = '17'
+  }
+
+  externalNativeBuild {
+    cmake {
+      version = "3.28.0+"
+      path(file("${rootProject.ext.rootPath}/CMakeLists.txt"))
+    }
+  }
+
+  sourceSets {
+    main {
+      manifest.srcFile "src/main/AndroidManifest.xml"
+      res.srcDirs = ["src/main/res"]
+      assets.srcDirs = ["${projectDir}/src/main/assets"]
+    }
+  }
+
+  buildFeatures {
+    shaders = false
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled = false
+    }
+  }
+
+  packagingOptions {
+    pickFirst "lib/arm64-v8a/libopenxr_loader.so" //
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+dependencies {
+  implementation project(":framework")
+  implementation "androidx.core:core-ktx:1.13.1"
+}
+
+// ----------------------------------------------------------------------------

@@ -108,5 +108,6 @@ add_android_sample(aloha)
 add_android_sample(aloha_xr)
 add_android_sample(composition_layer)
 add_android_sample(video_player)
+add_android_sample(audio_visualizer)
 
 # -----------------------------------------------------------------------------
