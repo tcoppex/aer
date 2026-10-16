@@ -101,8 +101,12 @@ endfunction()
 
 # -----------------------------------------------------------------------------
 
+# Classical
 add_android_sample(aloha)
+
+# XR
 add_android_sample(aloha_xr)
 add_android_sample(composition_layer)
+add_android_sample(video_player)
 
 # -----------------------------------------------------------------------------
