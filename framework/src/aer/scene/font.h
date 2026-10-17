@@ -78,6 +78,11 @@ class Font {
     return glyph_map_;
   }
 
+  [[nodiscard]]
+  bool loaded() const noexcept {
+    return !glyph_map_.empty();
+  }
+
  private:
   utils::FileReader file_reader_{};
   stbtt_fontinfo font_{};
