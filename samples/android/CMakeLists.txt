@@ -92,7 +92,7 @@ function(add_activity_target suffix)
         COMMAND
           ${ADB_CMD} logcat -c
         COMMAND
-          ${ADB_LOGCAT_CMD} | grep --line-buffered -E "${SAMPLES_PACKAGE_NAME}|${LOGGER_ANDROID_TAG}|AndroidRuntime|ExoPlayer" | tee ${LOGCAT_OUTPUT_FILEPATH}
+          ${ADB_LOGCAT_CMD} | grep --line-buffered -E "${SAMPLES_PACKAGE_NAME}|${LOGGER_ANDROID_TAG}|AndroidRuntime" | tee ${LOGCAT_OUTPUT_FILEPATH}
         DEPENDS
           run_${suffix}
         WORKING_DIRECTORY

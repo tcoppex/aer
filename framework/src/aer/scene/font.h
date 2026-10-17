@@ -37,7 +37,7 @@ class Font {
   );
 
   void release() {
-    file_reader_.clear();
+    file_reader_.clear(); //
     glyph_map_.clear();
   }
 
