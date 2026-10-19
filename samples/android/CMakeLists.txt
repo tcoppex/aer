@@ -76,15 +76,29 @@ function(add_activity_target suffix)
         COMMAND
           ${ADB_CMD} logcat -c
         COMMAND
+          ${ADB_LOGCAT_CMD} *:F ${LOGGER_ANDROID_TAG}:D | tee ${LOGCAT_OUTPUT_FILEPATH}
           # ${ADB_LOGCAT_CMD} | grep --line-buffered "${SAMPLES_PACKAGE_NAME}"
           # ${ADB_LOGCAT_CMD} | grep ${LOGGER_ANDROID_TAG}
-          ${ADB_LOGCAT_CMD} *:F ${LOGGER_ANDROID_TAG}:D | tee ${LOGCAT_OUTPUT_FILEPATH}
         DEPENDS
           run_${suffix}#${BuildType}_${suffix}
         WORKING_DIRECTORY
           ${ANDROID_BUILD_DIR}
         COMMENT
           "Log Android target \"${suffix}\" on device.\n(copy at ${LOGCAT_OUTPUT_FILEPATH})"
+        VERBATIM
+      )
+
+      add_custom_target(debuglog_${suffix}
+        COMMAND
+          ${ADB_CMD} logcat -c
+        COMMAND
+          ${ADB_LOGCAT_CMD} | grep --line-buffered -E "${SAMPLES_PACKAGE_NAME}|${LOGGER_ANDROID_TAG}|AndroidRuntime" | tee ${LOGCAT_OUTPUT_FILEPATH}
+        DEPENDS
+          run_${suffix}
+        WORKING_DIRECTORY
+          ${ANDROID_BUILD_DIR}
+        COMMENT
+          "Debug Log Android target \"${suffix}\" on device.\n(copy at ${LOGCAT_OUTPUT_FILEPATH})"
         VERBATIM
       )
     endforeach()
@@ -108,5 +122,6 @@ add_android_sample(aloha)
 add_android_sample(aloha_xr)
 add_android_sample(composition_layer)
 add_android_sample(video_player)
+add_android_sample(audio_visualizer)
 
 # -----------------------------------------------------------------------------

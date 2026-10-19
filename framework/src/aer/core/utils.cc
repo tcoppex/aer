@@ -1,4 +1,5 @@
 #include "aer/core/utils.h"
+#include "aer/core/logger.h"
 
 #include <cstdio>
 #include <iostream>
@@ -19,16 +20,16 @@ bool FileReader::Read(std::string_view filename, std::vector<uint8_t>& out) {
 
   std::ifstream file(filename.data(), std::ios::binary | std::ios::ate);
   if (!file) {
-    std::cerr << "[WARNING] File \"" << filename << "\" not found." << std::endl;
+    LOGW("File \"{}\" not found.", filename);
     return false;
   }
 
   std::size_t filesize = file.tellg();
   if (filesize > kMaxReadFileSize) {
-    std::cerr << "[WARNING] Read size exceed for \"" << filename << "\"." << std::endl;
+    LOGW("Read size exceed for \"{}\".", filename);
     return false;
   } else if (filesize == static_cast<std::size_t>(-1)) {
-    std::cerr << "[ERROR] Unable to determine file size for \"" << filename << "\"." << std::endl;
+    LOGE("Unable to determine file size for \"{}\".", filename);
     return false;
   }
 
@@ -37,7 +38,7 @@ bool FileReader::Read(std::string_view filename, std::vector<uint8_t>& out) {
 
   file.seekg(0, std::ios::beg);
   if (!file.read(reinterpret_cast<char*>(out.data()), filesize)) {
-    std::cerr << "[ERROR] Failed to read file \"" << filename << "\"." << std::endl;
+    LOGE("Failed to read file \"{}\".", filename);
     return false;
   }
 

@@ -38,6 +38,8 @@ bool UIController::init(Renderer const& renderer, WMInterface const& wm) {
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
 
+  imgui_descriptor_pool_ = VK_NULL_HANDLE;
+
   // if (!ImGui_ImplGlfw_InitForVulkan(reinterpret_cast<GLFWwindow*>(wm.handle()), true)) {
   //   return false;
   // }

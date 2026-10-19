@@ -4,6 +4,12 @@
 #include "aer/core/common.h"
 #include "aer/scene/font.h"
 
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 namespace scene {
 
 /* -------------------------------------------------------------------------- */
@@ -53,6 +59,26 @@ class FontAtlas {
 
  public:
   [[nodiscard]]
+  static uint64_t MakeKey(std::u16string const& corpus, Params const& params);
+
+  /* Try to load a cache .mtsdf file or generating it if none were found. */
+  [[nodiscard]]
+  static bool LoadOrGenerate(
+    FontAtlas& out,
+    std::string_view cache_file,
+    std::string_view font_file,
+    std::u16string const& corpus,
+    Params const& params
+  );
+
+ public:
+  [[nodiscard]]
+  bool load(std::vector<uint8_t> const& bytes, uint64_t key, uint64_t* font_hash = nullptr);
+
+  [[nodiscard]]
+  bool save(std::string const& filename, uint64_t key, uint64_t font_hash) const;
+
+  [[nodiscard]]
   bool generate(Font const& font, std::u16string const& corpus, FontAtlas::Params const& params);
 
   [[nodiscard]]
@@ -62,6 +88,9 @@ class FontAtlas {
 
   [[nodiscard]]
   TextLayout layout(Font const& font, std::u16string const& text, bool kerning = true) const;
+
+  [[nodiscard]]
+  TextLayout layout(std::u16string const& text, bool kerning = true) const;
 
   bool writePNG(std::string const& filename) const;
 
@@ -102,6 +131,7 @@ class FontAtlas {
   uint32_t height_{};
   std::vector<uint8_t> pixels_{};  // RGBA8, width_ * height_ * 4
   std::unordered_map<char16_t, GlyphInfo> glyphs_{};
+  std::unordered_map<uint32_t, float> kerning_{};  // (c1 << 16 | c2) -> em
 };
 
 /* -------------------------------------------------------------------------- */

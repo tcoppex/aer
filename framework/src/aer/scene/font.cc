@@ -16,10 +16,9 @@ const std::u16string Font::kDefaultCorpus = std::u16string(
 bool Font::load(std::string_view filename) {
   release();
 
-  auto const fullpath = std::string(ASSETS_DIR "fonts/") + filename.data(); //xxx
   is_ttf_ = utils::ExtractExtension(filename) == "ttf";
 
-  if (!file_reader_.read(fullpath)) {
+  if (!file_reader_.read(filename)) {
     return false;
   }
 

@@ -63,7 +63,9 @@ void Application::drawUI(CommandEncoder const& cmd) {
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
   );
 
+#if !defined(ANDROID)
   ui_->draw(cmd, image.view, renderer_.surface_size());
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -227,9 +229,13 @@ void Application::updateInternal() noexcept {
 
   /* User Interface. */
   if (ui_) {
+#if !defined(ANDROID)
     ui_->beginFrame();
     buildUI();
     ui_->endFrame();
+#elif !defined(NDEBUG)
+    HLOGW("Imgui ui is disabled on Android.");
+#endif
   }
 
   /* Set default space on OpenXR */

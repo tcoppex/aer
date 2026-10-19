@@ -37,7 +37,7 @@ class Font {
   );
 
   void release() {
-    file_reader_.clear();
+    file_reader_.clear(); //
     glyph_map_.clear();
   }
 
@@ -76,6 +76,11 @@ class Font {
   [[nodiscard]]
   auto const& glyph_map() const noexcept {
     return glyph_map_;
+  }
+
+  [[nodiscard]]
+  bool loaded() const noexcept {
+    return !glyph_map_.empty();
   }
 
  private:

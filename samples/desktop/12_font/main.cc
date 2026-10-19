@@ -258,7 +258,8 @@ class SampleApp final : public Application {
   /* ---------------------------------------------------------------------- */
 
   bool loadFont() {
-    std::string const filename = kFontSelection[ui_.fontArrayIndex];
+    std::string const filename = std::string(ASSETS_DIR "fonts/")
+                               + kFontSelection[ui_.fontArrayIndex];
     if (!font_.load(filename)) {
       LOGW("Cannot load font \"{}\".", filename);
       return false;

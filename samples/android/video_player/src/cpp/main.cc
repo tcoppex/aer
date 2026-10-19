@@ -595,10 +595,10 @@ class VideoPlayerSample final : public Application {
   // --------------
 
   backend::Buffer uniform_buffer_{};
-  VkDescriptorSetLayout descriptor_set_layout_{};
-  VkDescriptorSet descriptor_set_{};
+  VkDescriptorSetLayout descriptor_set_layout_{VK_NULL_HANDLE};
+  VkDescriptorSet descriptor_set_{VK_NULL_HANDLE};
 
-  VkPipelineLayout pipeline_layout_{};
+  VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE};
   Pipeline graphics_pipeline_{};
   shader_interop::PushConstant push_constant_{};
 };
