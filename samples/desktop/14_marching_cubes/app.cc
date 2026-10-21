@@ -134,7 +134,7 @@ void SampleApp::buildUI() {
     ImGui::Text("Slots: %u free / %u (%u retiring)", chunk_grid_.free_slot_count(), chunk_grid_.size(), chunk_grid_.retired_slot_count());
 
     int budget = static_cast<int>(chunk_grid_.settings().build_budget);
-    if (ImGui::SliderInt("Build budget / frame", &budget, 1, 64)) {
+    if (ImGui::SliderInt("Build budget / frame", &budget, 1, 128)) {
       chunk_grid_.settings().build_budget = static_cast<uint32_t>(budget);
     }
     if (ImGui::Button("Rebuild world")) {

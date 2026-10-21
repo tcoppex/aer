@@ -32,7 +32,7 @@ class ChunkGrid {
     float radius_y{ 4.0f };
     float unload_margin{ 1.5f };
     uint32_t max_slots{ 1536u };
-    uint32_t build_budget{ 8u };
+    uint32_t build_budget{ 64u };
   };
 
  public:
