@@ -124,11 +124,11 @@ void main(uint3 coords : SV_DispatchThreadID)
 
   let ext_coords    = float3(coords) * float3(kChunkDim * kInvChunkDimMinusOne);
   let voxelCoords   = (ext_coords - float3(kChunkMargin)) * kInvChunkDim;
-  let voxelCoordsWS = fma(voxelCoords, float3(kChunkSize), pushConstant.chunkAttributes.xyz);
 
-  let density = computeDensity(voxelCoordsWS);
+  // (chunkAttributes.w holds the chunk size in world space)
+  let voxelCoordsWS = fma(voxelCoords, float3(pushConstant.chunkAttributes.w), pushConstant.chunkAttributes.xyz);
 
-  outDensityVolume[coords] = density;
+  outDensityVolume[coords] = computeDensity(voxelCoordsWS);
 
   // [reset atomic count buffer]
   if (all(coords == uint3(0))) {
