@@ -423,6 +423,22 @@ void MarchingCubeSample::buildUI() {
   {
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Separator();
+
+    ImGui::TextUnformatted("RMB + mouse: look | WASD: move | E/Q: up/down");
+    ImGui::TextUnformatted("Shift: faster | Ctrl: slower");
+    ImGui::SliderFloat("Speed", fly_controller_.speed_ptr(), 2.0f, 400.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
+    ImGui::Separator();
+
+    ImGui::Text("Chunks: %u resident, %u pending", chunk_grid_.resident_count(), static_cast<uint32_t>(chunk_grid_.pending().size()));
+    ImGui::Text("Slots: %u free / %u (%u retiring)", chunk_grid_.free_slot_count(), chunk_grid_.size(), chunk_grid_.retired_slot_count());
+
+    int budget = static_cast<int>(chunk_grid_.settings().build_budget);
+    if (ImGui::SliderInt("Build budget / frame", &budget, 1, 64)) {
+      chunk_grid_.settings().build_budget = static_cast<uint32_t>(budget);
+    }
+    if (ImGui::Button("Rebuild world")) {
+      chunk_grid_.invalidate(frame_index());
+    }
   }
   ImGui::End();
 }
