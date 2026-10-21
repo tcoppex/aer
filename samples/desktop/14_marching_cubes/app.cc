@@ -41,7 +41,7 @@ bool MarchingCubeSample::setup() {
   {
     VkDeviceSize const bytes_before = allocator.getTotalAllocationBytes();
 
-    chunk_grid_.setup(context_, uint3(4, 4, 4)); //
+    chunk_grid_.setup(context_);
 
     VkDeviceSize const bytes_after = allocator.getTotalAllocationBytes();
     VkDeviceSize const net_allocation_delta = bytes_after - bytes_before;
@@ -69,7 +69,7 @@ bool MarchingCubeSample::setup() {
 
     non_empty_cells_sbo_ = context_.createBuffer(
       "MarchingCubes::Buffer::NonEmptyCells",
-      ChunkGrid::kHeuristicChunkMaxNonEmptyCellsSize,
+      ChunkGrid::kScratchNonEmptyCellsSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
       kDefaultBufferMemoryUsage
@@ -77,7 +77,7 @@ bool MarchingCubeSample::setup() {
 
     vertices_to_generate_sbo_ = context_.createBuffer(
       "MarchingCubes::Buffer::VerticesToGenerate",
-      ChunkGrid::kHeuristicChunkIndicesBufferSize,
+      ChunkGrid::kScratchVerticesToGenerateSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
       kDefaultBufferMemoryUsage
@@ -147,8 +147,7 @@ bool MarchingCubeSample::setup() {
   VkDeviceSize const net_allocation_delta = bytes_after - bytes_before;
   double const delta_mb = static_cast<double>(net_allocation_delta) / (1024.0 * 1024.0);
 
-  LOGD("Scratch buffer usage: {:.2f} MB allocated ({:.2f} MB if extended)",
-         delta_mb, delta_mb * chunk_grid_.chunks().size());
+  LOGD("Scratch buffer usage: {:.2f} MB allocated.", delta_mb);
 
   /* Descriptor set. */
   {
@@ -258,7 +257,8 @@ bool MarchingCubeSample::setup() {
       "splat_vertex_indices.slang",
       "setup_dispatch_indirect.slang",
       "generate_vertices.slang",
-      "generate_indices.slang"
+      "generate_indices.slang",
+      "finalize_chunk.slang"
     });
     context_.createComputePipelines(
       pipeline_layout_,
@@ -695,6 +695,10 @@ void MarchingCubeSample::buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk 
 
     cmd.dispatchIndirect(indirect_sbo_, indirect_cells_offset_);
   }
+
+  // 9. Finalize : publish the index count to the draw command, last.
+  cmd.bindPipeline(compute_pipelines_[Compute_FinalizeChunk]);
+  cmd.dispatch();
 }
 
 // ----------------------------------------------------------------------------
@@ -705,25 +709,29 @@ void MarchingCubeSample::update(float const dt) {
 
   // -------
 
-  if (frame_index() > 0) {
+  // Stream the world around the camera.
+  chunk_grid_.update(fly_controller_.position(), frame_index());
+
+  auto const& pending = chunk_grid_.pending();
+  if (pending.empty()) {
     return;
   }
 
+  // (blocking submission : the budget per frame keeps the stall small)
   auto cmd = context_.createTransientCommandEncoder(Context::TargetQueue::Compute);
-  for (auto &chunk : chunk_grid_.chunks()) {
+  for (auto const& chunk : pending) {
     buildChunk(cmd, chunk);
-    // (wip)
-    cmd.pipelineMemoryBarrier({
-      .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
-                     | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-      .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
-                     | VK_ACCESS_2_INDEX_READ_BIT
-                     | VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
-    });
   }
+
+  // Make the results visible to the rendering.
+  cmd.pipelineMemoryBarrier({
+    .srcStageMask  = kStageCompute,
+    .srcAccessMask = kWrite,
+    .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+    .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+                   | VK_ACCESS_2_INDEX_READ_BIT
+                   | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+  });
   context_.finishTransientCommandEncoder(cmd);
 }
 
@@ -754,29 +762,9 @@ void MarchingCubeSample::draw(CommandEncoder const& cmd) {
     );
     pass.bindDescriptorSet(ds.set, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-#if 1
     pass.drawIndexedIndirect(
       grid_buffers.draw_indirect, 0u, chunk_grid_.size(), ChunkGrid::kDrawIndexedIndirectSize
     );
-#else
-    // -----------------------
-    for (auto const& chunk : chunk_grid_.chunks())
-    {
-      auto const& offsets = chunk.offsets();
-
-      uint64_t const vertices_addr = grid_buffers.vertex.address + offsets.vertex;
-      pc.vertices = reinterpret_cast<shader_interop::MarchingCubeVertex*>(vertices_addr);
-      pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-      // pass.bindIndexBuffer(
-      //   grid_buffers.index, VK_INDEX_TYPE_UINT32,
-      //   offsets.index, ChunkGrid::kHeuristicChunkIndicesBufferSize
-      // );
-
-      pass.drawIndexedIndirect(grid_buffers.draw_indirect, offsets.draw_indirect);
-    }
-    // -----------------------
-#endif
 
   }
   cmd.endRendering();

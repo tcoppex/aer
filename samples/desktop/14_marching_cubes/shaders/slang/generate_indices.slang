@@ -326,7 +326,8 @@ void main(uint gid : SV_DispatchThreadID)
     return;
   }
 
-  let g_indexCount    = ((uint32_t*)pushConstant.drawIndexedIndirectBuffer);
+  // (published to the draw command by finalize_chunk.slang)
+  let g_indexCount    = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDEX];
   let g_outIndices    = ((uint32_t*)pushConstant.indicesBuffer);
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);

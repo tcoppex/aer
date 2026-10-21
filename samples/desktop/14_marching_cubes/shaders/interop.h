@@ -13,6 +13,9 @@ static const float kChunkSize           = 12.0f;
 static const uint32_t kChunkMaxVertices = (1u << 14u);   // 16384
 static const uint32_t kChunkMaxIndices  = (1u << 16u) - 1u; // 65535 (multiple of 3)
 
+static const float kSurfaceMinY         = -64.0f;
+static const float kSurfaceMaxY         = 96.0f;
+
 // ----------------------------------------------------------------------------
 
 static const uint32_t kWindowDim        = kChunkDim + 2 * kChunkMargin;
@@ -63,6 +66,7 @@ static const uint32_t kDescriptorSetBinding_VertexIndicesVolume       = 4;
 
 static const uint32_t ATOMIC_COUNT_CELL = 0u;
 static const uint32_t ATOMIC_COUNT_VERT = 1u;
+static const uint32_t ATOMIC_COUNT_INDEX = 2u;
 
 // ----------------------------------------------------------------------------
 
