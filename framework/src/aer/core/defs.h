@@ -30,35 +30,6 @@ template<typename T>
 concept NonSpanConvertible = !SpanConvertible<T>;
 
 // ----------------------------------------------------------------------------
-/* -- custom type -- */
-
-// Wrap an array to accept enum class as indexer.
-// Original code from Daniel P. Wright.
-template<typename T, typename Indexer>
-class EnumArray : public std::array<T, static_cast<size_t>(Indexer::kCount)> {
-  using super = std::array<T, static_cast<size_t>(Indexer::kCount)>;
-
- public:
-  constexpr EnumArray(std::initializer_list<T> il) {
-    assert( il.size() == super::size());
-    std::copy(il.begin(), il.end(), super::begin());
-  }
-
-  T&       operator[](Indexer i)       { return super::at((size_t)i); }
-  const T& operator[](Indexer i) const { return super::at((size_t)i); }
-
-  EnumArray() : super() {}
-  using super::operator[];
-};
-
-struct NullType {};
-
-// ----------------------------------------------------------------------------
-/* -- constants -- */
-
-static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max() };
-
-// ----------------------------------------------------------------------------
 /* -- macros -- */
 
 // Trivial POD check (trivially copyable + moveable)
@@ -78,6 +49,16 @@ static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max()
                   #T " must be move constructible");                \
     static_assert(std::is_move_assignable_v<T>,                     \
                   #T " must be move assignable")
+
+// ----------------------------------------------------------------------------
+/* -- constants -- */
+
+static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max() };
+
+// ----------------------------------------------------------------------------
+/* -- custom type -- */
+
+struct NullType {};
 
 /* -------------------------------------------------------------------------- */
 

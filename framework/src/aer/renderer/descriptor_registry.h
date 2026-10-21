@@ -1,6 +1,7 @@
 #pragma once
 
 #include "aer/core/common.h"
+#include "aer/core/enum_array.h"
 #include "aer/platform/vulkan/types.h"
 #include "aer/platform/vulkan/command_encoder.h"
 

@@ -7,6 +7,8 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
+
+#include "aer/core/enum_array.h"
 #include "aer/scene/mesh.h"
 
 namespace shader_interop {

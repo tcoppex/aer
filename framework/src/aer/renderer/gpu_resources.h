@@ -3,6 +3,7 @@
 
 #include "aer/scene/host_resources.h"
 
+#include "aer/core/enum_array.h"
 #include "aer/renderer/raytracing_scene.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
