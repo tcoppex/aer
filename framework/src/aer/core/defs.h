@@ -3,19 +3,19 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <cassert>
 #include <cstddef>
-#include <array>
+
 #include <concepts>
+#include <limits>
 #include <span>
+#include <type_traits>
+
+/* -------------------------------------------------------------------------- */
+/* -- Maths (with aliases) -- */
 
 #include "lina/lina.h"
 using namespace lina::aliases;
-
-/* -------------------------------------------------------------------------- */
-/* -- Aliases -- */
-
-// Mainly use for shader interoperability, along lina aliases.
-using uint = uint32_t; //
 
 /* -------------------------------------------------------------------------- */
 /* -- c++ features -- */
@@ -31,17 +31,6 @@ concept NonSpanConvertible = !SpanConvertible<T>;
 
 // ----------------------------------------------------------------------------
 /* -- custom type -- */
-
-// Holds an abstraction over the main argument list.
-struct ArgList : public std::span<char*> {
-  ArgList(int argc, char *argv[])
-    : std::span<char*>{argv, static_cast<size_t>(argc)}
-  {}
-
-  ArgList()
-    : ArgList(0, nullptr)
-  {}
-};
 
 // Wrap an array to accept enum class as indexer.
 // Original code from Daniel P. Wright.
