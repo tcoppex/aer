@@ -47,9 +47,11 @@ VSOutput vertexMain(
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  var color = float4(0.5 * input.normal + 0.5, 1.0);
+  let nor = normalize(input.normal);
+  var color = float4(0.5 * nor + 0.5, 1.0);
+  let irradiance = uEnvMapIrradiance.Sample(nor).rgb;
 
-  color.rgb = uEnvMapIrradiance.Sample(normalize(input.normal)).rgb;
+  color.rgb = color.rgb * irradiance;
   color.rgb *= 0.25;
   color.rgb *= input.ao;
 
