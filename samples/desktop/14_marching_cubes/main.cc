@@ -2,11 +2,12 @@
 //
 //    14 - Marching Cubes
 //
+//  Where we generate weird triangles inside cubes.
 //
 /* -------------------------------------------------------------------------- */
 
 #include "app.h"
 
-ENTRY_POINT(MarchingCubeSample)
+ENTRY_POINT(SampleApp)
 
 /* -------------------------------------------------------------------------- */

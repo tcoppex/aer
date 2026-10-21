@@ -1,13 +1,13 @@
 // ----------------------------------------------------------------------------
 
-#include <material/interop.h>
+#include "../interop_rendering.h"
 
-#include "../interop.h" //
+#include <material/interop.h>
 
 // ----------------------------------------------------------------------------
 
 [[vk::push_constant]]
-PushConstant_Rendering pushConstant;
+PushConstant pushConstant;
 
 [vk::binding(kDescriptorSet_Scene_IBL_Irradiance, 0)]
 SamplerCube uEnvMapIrradiance;

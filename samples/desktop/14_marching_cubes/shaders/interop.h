@@ -1,31 +1,7 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
-// ----------------------------------------------------------------------------
-
-static const uint32_t kChunkDim         = 24u;
-static const uint32_t kChunkMargin      = 4u;
-
-static const float kChunkSize           = 12.0f;
-
-// ----------------------------------------------------------------------------
-
-static const uint32_t kChunkMaxVertices = (1u << 14u);   // 16384
-static const uint32_t kChunkMaxIndices  = (1u << 16u) - 1u; // 65535 (multiple of 3)
-
-static const float kSurfaceMinY         = -64.0f;
-static const float kSurfaceMaxY         = 96.0f;
-
-// ----------------------------------------------------------------------------
-
-static const uint32_t kWindowDim        = kChunkDim + 2 * kChunkMargin;
-static const uint32_t kVoxelsPerSlice   = kChunkDim * kChunkDim;
-static const uint32_t kVoxelsPerChunk   = kChunkDim * kVoxelsPerSlice;
-
-static const float kInvChunkDim         = 1.0 / float(kChunkDim);
-static const float kInvChunkDimMinusOne = 1.0 / float(kChunkDim - 1);
-static const float kDensityVolumeTexRes = kWindowDim;
-static const float kTexelSize           = 1.0 / kDensityVolumeTexRes;
+#include "chunk_constants.h" //
 
 // ----------------------------------------------------------------------------
 
@@ -67,21 +43,6 @@ static const uint32_t kDescriptorSetBinding_VertexIndicesVolume       = 4;
 static const uint32_t ATOMIC_COUNT_CELL = 0u;
 static const uint32_t ATOMIC_COUNT_VERT = 1u;
 static const uint32_t ATOMIC_COUNT_INDEX = 2u;
-
-// ----------------------------------------------------------------------------
-
-#ifdef __cplusplus
-#define ALIGNAS(x)  alignas(x)
-#else
-#define ALIGNAS(x)
-#endif
-
-struct ALIGNAS(16) MarchingCubeVertex {
-  float3 position;
-  float ao;
-  float3 normal;
-  float unused;
-};
 
 // ---------------------------------------------------------------------------
 

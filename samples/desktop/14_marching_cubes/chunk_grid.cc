@@ -11,11 +11,17 @@ namespace shader_interop {
 
 // ----------------------------------------------------------------------------
 
-// Keep the host-side budgets in sync with the shaders.
-static_assert(ChunkGrid::kChunkDim == shader_interop::kChunkDim);
-static_assert(ChunkGrid::kHeuristicChunkMaxVertices == shader_interop::kChunkMaxVertices);
-static_assert(ChunkGrid::kHeuristicChunkMaxIndices == shader_interop::kChunkMaxIndices);
-static_assert(ChunkGrid::kHeuristicChunkMaxIndices % 3u == 0u);
+namespace {
+
+constexpr uint32_t kVertexStride = 2u * sizeof(float4);
+constexpr uint32_t kHeuristicChunkVerticesBufferSize = shader_interop::kChunkMaxVertices
+                                                     * kVertexStride;
+
+constexpr uint32_t kIndexStride  = sizeof(uint32_t);
+constexpr uint32_t kHeuristicChunkIndicesBufferSize  = shader_interop::kChunkMaxIndices
+                                                     * kIndexStride;
+
+}
 
 // ----------------------------------------------------------------------------
 
@@ -70,7 +76,7 @@ void ChunkGrid::setup(RenderContext const& context, Settings const& settings) {
 
     for (size_t i = 0; i < slot_count_; ++i) {
       data[i].instanceCount = 1u;
-      data[i].firstIndex    = static_cast<uint32_t>(i * kHeuristicChunkMaxIndices);
+      data[i].firstIndex    = static_cast<uint32_t>(i * shader_interop::kChunkMaxIndices);
 
       // (vertices are pulled from a device address in the vertex shader,
       //  using SV_DrawIndex, so vertexOffset has no effect)
@@ -201,7 +207,7 @@ uint64_t ChunkGrid::PackKey(int3 const& c) noexcept {
 
 // ----------------------------------------------------------------------------
 
-ChunkGrid::Chunk ChunkGrid::makeChunk(uint32_t slot, int3 const& coords) const {
+Chunk ChunkGrid::makeChunk(uint32_t slot, int3 const& coords) const {
   float3 const coordsWS = shader_interop::kChunkSize * float3(
     static_cast<float>(coords.x),
     static_cast<float>(coords.y),
@@ -220,7 +226,7 @@ ChunkGrid::Chunk ChunkGrid::makeChunk(uint32_t slot, int3 const& coords) const {
 bool ChunkGrid::isOutsideSurfaceSlab(int3 const& coords) const noexcept {
   float const y0 = shader_interop::kChunkSize * static_cast<float>(coords.y);
   float const y1 = y0 + shader_interop::kChunkSize;
-  return (y1 < shader_interop::kSurfaceMinY) || (y0 > shader_interop::kSurfaceMaxY);
+  return (y1 < kSurfaceMinY) || (y0 > kSurfaceMaxY);
 }
 
 // ----------------------------------------------------------------------------

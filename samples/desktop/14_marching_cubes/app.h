@@ -1,33 +1,14 @@
 #pragma once
 
 #include "aer/application.h"
-#include "chunk_grid.h"
 #include "aer/core/fly_view_controller.h"
 
-namespace shader_interop {
-#include "shaders/interop.h"
-}
+#include "marching_cubes.h"
+#include "chunk_grid.h"
 
-// ----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 
-class MarchingCubeSample final : public Application {
- public:
-  static constexpr bool kEnableDebugRun = false;
-
- public:
-  enum Compute {
-    Compute_BuildDensityVolume,
-    Compute_ListNonEmptyCells,
-    Compute_ListVertices,
-    Compute_SplatVertexIndices,
-    Compute_SetupDispatchIndirect,
-    Compute_GenerateVertices,
-    Compute_GenerateIndices,
-    Compute_FinalizeChunk,
-
-    Compute_kCount,
-  };
-
+class SampleApp final : public Application {
  public:
   AppSettings settings() const noexcept final {
     AppSettings S{};
@@ -42,8 +23,6 @@ class MarchingCubeSample final : public Application {
 
   void release() final;
 
-  void buildChunk(CommandEncoder const& cmd, ChunkGrid::Chunk const& chunk);
-
   void update(float const dt) final;
 
   void draw(CommandEncoder const& cmd) final;
@@ -51,37 +30,14 @@ class MarchingCubeSample final : public Application {
  private:
   FlyViewController fly_controller_{};
 
-  shader_interop::UniformBufferData host_data_{};
-  backend::Buffer uniform_buffer_{};
-
-  ChunkGrid chunk_grid_{};
-
-  // ----------
-
-  backend::Buffer non_empty_cells_sbo_{};
-  backend::Buffer vertices_to_generate_sbo_{};
-
-  backend::Buffer atomic_count_sbo_{};
-
-  backend::Buffer indirect_sbo_{};
-  VkDeviceSize indirect_cells_offset_{};
-  VkDeviceSize indirect_vertices_offset_{};
-
-  backend::Image density_volume_{};
-  backend::Image vertex_indices_volume_{};
-
-  VkDescriptorSetLayout descriptor_set_layout_{};
-  VkDescriptorSet descriptor_set_{};
-  VkPipelineLayout pipeline_layout_{};
-  shader_interop::PushConstant push_constant_{};
-  std::array<Pipeline, Compute_kCount> compute_pipelines_{};
-
-  // ----------
-
   struct {
+    backend::Buffer uniform_buffer{};
     VkPipelineLayout layout{};
     Pipeline pipeline{};
   } rendering_;
+
+  MarchingCubes generator_{};
+  ChunkGrid chunk_grid_{};
 };
 
 /* -------------------------------------------------------------------------- */

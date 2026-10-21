@@ -9,48 +9,21 @@
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/renderer/render_context.h"
 
+#include "chunk_types.h"
+
 // ----------------------------------------------------------------------------
 
 //
 // Streams chunks around a view position.
 //
 class ChunkGrid {
+ private:
+  static constexpr float kSurfaceMinY = -64.0f;
+  static constexpr float kSurfaceMaxY = 96.0f;
+
  public:
-  // [must match shaders/interop.h, checked in chunk_grid.cc]
-  static constexpr uint32_t kChunkDim = 24u;
-
-  // Theoretical maxima of the scratch buffers, one chunk at a time.
-  static constexpr uint32_t kScratchMaxCells    = kChunkDim * kChunkDim * kChunkDim;
-  static constexpr uint32_t kScratchMaxVertices = 3u * kScratchMaxCells;
-
-  // Per-chunk output budgets (GPU-side clamped).
-  static constexpr uint32_t kHeuristicChunkMaxCells    = kScratchMaxCells;
-  static constexpr uint32_t kHeuristicChunkMaxVertices = (1u << 14u);
-  static constexpr uint32_t kHeuristicChunkMaxIndices  = (1u << 16u) - 1u;
-
-  // -----------------------
-
-  static constexpr uint32_t kVertexStride     = 2u * sizeof(float4); //
-  static constexpr uint32_t kIndexStride      = sizeof(uint32_t);
-
-  static constexpr uint32_t kScratchNonEmptyCellsSize = kScratchMaxCells
-                                                      * sizeof(uint32_t);
-
-  static constexpr uint32_t kScratchVerticesToGenerateSize = kScratchMaxVertices
-                                                           * sizeof(uint32_t);
-
-  static constexpr uint32_t kHeuristicChunkVerticesBufferSize = kHeuristicChunkMaxVertices
-                                                              * kVertexStride;
-
-  static constexpr uint32_t kHeuristicChunkIndicesBufferSize = kHeuristicChunkMaxIndices
-                                                             * kIndexStride;
-
   static constexpr uint32_t kDrawIndexedIndirectSize = sizeof(VkDrawIndexedIndirectCommand);
-
-  // -----------------------
-
   static constexpr uint32_t kSlotRetireDelay = 4u;
-
   static constexpr uint32_t kNoSlot = ~0u;
 
  public:
@@ -60,55 +33,6 @@ class ChunkGrid {
     float unload_margin{ 1.5f };
     uint32_t max_slots{ 1536u };
     uint32_t build_budget{ 8u };
-  };
-
-  class Chunk {
-   public:
-    struct Offsets {
-      uint32_t vertex{};
-      uint32_t index{};
-      uint32_t draw_indirect{};
-    };
-
-   public:
-    Chunk(
-      uint32_t slot,
-      int3 const& coords,
-      float3 const& coordsWS,
-      Chunk::Offsets const& offsets
-    )
-    : slot_(slot)
-    , coords_(coords)
-    , coordsWS_(coordsWS)
-    , offsets_(offsets)
-    {}
-
-    [[nodiscard]]
-    Offsets const& offsets() const noexcept { return offsets_; }
-
-    [[nodiscard]]
-    float3 const& worldspace_coords() const noexcept { return coordsWS_; }
-
-    [[nodiscard]]
-    int3 const& coords() const noexcept { return coords_; }
-
-    [[nodiscard]]
-    uint32_t slot() const noexcept { return slot_; }
-
-   private:
-    uint32_t slot_{};
-    int3 coords_{};
-    float3 coordsWS_{};
-    Offsets offsets_{};
-  };
-
-  struct Buffers {
-    backend::Buffer vertex{};
-    backend::Buffer index{};
-    backend::Buffer draw_indirect{};
-
-    [[nodiscard]]
-    bool allocated() const noexcept { return vertex.buffer != VK_NULL_HANDLE; }
   };
 
  public:
@@ -127,7 +51,7 @@ class ChunkGrid {
   std::vector<Chunk> const& pending() const noexcept { return pending_; }
 
   [[nodiscard]]
-  Buffers const& buffers() const noexcept { return buffers_; }
+  ChunkBuffers const& buffers() const noexcept { return buffers_; }
 
   [[nodiscard]]
   uint32_t size() const noexcept { return slot_count_; }
@@ -162,8 +86,11 @@ class ChunkGrid {
   bool isInsideEllipsoid(int3 const& delta, float radius_xz, float radius_y) const noexcept;
 
   void buildLoadOffsets();
+
   void unloadFarChunks(int3 const& center, uint32_t frame_index);
+
   void retireSlot(uint32_t slot, uint32_t frame_index);
+
   void recycleSlots(uint32_t frame_index);
 
  private:
@@ -186,7 +113,7 @@ class ChunkGrid {
   bool out_of_slots_warned_{};
   uint32_t resident_non_empty_{};
 
-  Buffers buffers_{};
+  ChunkBuffers buffers_{};
 };
 
 // ----------------------------------------------------------------------------
