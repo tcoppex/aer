@@ -17,7 +17,7 @@ void main()
   let out_indirect  = ((uint3*)pushConstant.indirectBuffer);
 
   if (pushConstant.atomicCountLimit > 0) {
-    *g_totalCount   = *g_totalCount % pushConstant.atomicCountLimit;
+    *g_totalCount   = min(*g_totalCount, pushConstant.atomicCountLimit);
   }
 
   out_indirect->x = uint32_t((*g_totalCount + (kTargetGroupSize - 1u)) / kTargetGroupSize);

@@ -1,9 +1,8 @@
 #pragma once
 
 #include "aer/application.h"
-#include "aer/core/arcball_controller.h"
-
 #include "chunk_grid.h"
+#include "aer/core/fly_view_controller.h"
 
 namespace shader_interop {
 #include "shaders/interop.h"
@@ -24,6 +23,7 @@ class MarchingCubeSample final : public Application {
     Compute_SetupDispatchIndirect,
     Compute_GenerateVertices,
     Compute_GenerateIndices,
+    Compute_FinalizeChunk,
 
     Compute_kCount,
   };
@@ -49,7 +49,7 @@ class MarchingCubeSample final : public Application {
   void draw(CommandEncoder const& cmd) final;
 
  private:
-  ArcBallController arcball_controller_{};
+  FlyViewController fly_controller_{};
 
   shader_interop::UniformBufferData host_data_{};
   backend::Buffer uniform_buffer_{};

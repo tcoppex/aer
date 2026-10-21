@@ -6,16 +6,34 @@
 /* -------------------------------------------------------------------------- */
 
 //
-// Free-Fly / First-Person ViewController using WASD translation and mouse-look rotation.
+// Free-Fly / First-Person ViewController.
+//
+//  * Right mouse button + move : look around.
+//  * W / S / A / D            : move forward / backward / left / right.
+//  * E / Q                    : move up / down (world axis).
 //
 class FlyViewController : public ViewControllerInterface {
  public:
-  static constexpr float kDefaultSpeed{ 5.0f };
+  static constexpr float kDefaultSpeed{ 15.0f };
   static constexpr float kMouseSensitivity{ 0.0012f };
+  static constexpr float kMaxPitch{ 1.55f };
+  static constexpr float kAccelerationFactor{ 4.0f };
+  static constexpr float kDecelerationFactor{ 1.0f / kAccelerationFactor };
 
   enum class MovementMode {
     FreeFly,
     FirstPerson
+  };
+
+  enum Key : int32_t {
+    Key_A = 65,
+    Key_D = 68,
+    Key_E = 69,
+    Key_Q = 81,
+    Key_S = 83,
+    Key_W = 87,
+    Key_LeftShift   = 340,
+    Key_LeftControl = 341,
   };
 
  public:
@@ -26,7 +44,7 @@ class FlyViewController : public ViewControllerInterface {
       yaw2_(0.0f),
       position_(0.0f, 0.0f, 0.0f),
       position2_(0.0f, 0.0f, 0.0f),
-      move_speed_(kDefaultSpeed),
+      speed_(kDefaultSpeed),
       movement_mode_(MovementMode::FreeFly),
       invert_x_(false),
       invert_y_(false)
@@ -39,8 +57,12 @@ class FlyViewController : public ViewControllerInterface {
               bool const bLook,
               bool const bForward,
               bool const bBackward,
+              bool const bUp,
+              bool const bDown,
               bool const bLeft,
               bool const bRight,
+              bool const bAccelerate,
+              bool const bDecelerate,
               double const mouseX,
               double const mouseY);
 
@@ -52,6 +74,15 @@ class FlyViewController : public ViewControllerInterface {
   [[nodiscard]]
   vec3 position() const noexcept {
     return position_;
+  }
+
+  [[nodiscard]]
+  float speed() const noexcept {
+    return speed_;
+  }
+
+  float* speed_ptr() noexcept {
+    return &speed_;
   }
 
   [[nodiscard]]
@@ -108,7 +139,19 @@ class FlyViewController : public ViewControllerInterface {
 
  private:
   void eventMouseMoved(bool const bLook, double const mouseX, double const mouseY);
-  void eventMove(double const deltatime, bool const bForward, bool const bBackward, bool const bLeft, bool const bRight);
+
+  void eventMove(
+    double const deltatime,
+    bool const bForward,
+    bool const bBackward,
+    bool const bUp,
+    bool const bDown,
+    bool const bLeft,
+    bool const bRight,
+    bool const bAccelerate,
+    bool const bDecelerate
+  );
+
   void smoothTransition(double const deltatime);
 
  private:
@@ -125,7 +168,7 @@ class FlyViewController : public ViewControllerInterface {
 
   vec3 position_{};
   vec3 position2_{};
-  float move_speed_{};
+  float speed_{};
 
   MovementMode movement_mode_{ MovementMode::FreeFly };
   bool invert_x_{};

@@ -1,6 +1,16 @@
 ## 14 - Marching Cube
 
-Dynamic marching cubes mesh generation via signed distant function.
+Dynamic marching cubes mesh generation via signed distant function, streamed
+around a free-fly camera to explore an infinite procedural world.
+
+### Controls
+
+| Input              | Action                    |
+|--------------------|---------------------------|
+| RMB + mouse        | look around               |
+| W / A / S / D      | move                      |
+| E / Q              | up / down                 |
+| Left Shift / Ctrl  | faster / slower           |
 
 ## References
 

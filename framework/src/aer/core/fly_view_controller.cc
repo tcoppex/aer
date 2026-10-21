@@ -10,10 +10,14 @@ bool FlyViewController::update(float dt) {
     static_cast<double>(dt),
     e.has_mouse_moved(),
     e.buttonDown(1),
-    e.keyDown(87),
-    e.keyDown(83),
-    e.keyDown(65),
-    e.keyDown(68),
+    e.keyDown(Key_W),
+    e.keyDown(Key_S),
+    e.keyDown(Key_Q),
+    e.keyDown(Key_E),
+    e.keyDown(Key_A),
+    e.keyDown(Key_D),
+    e.keyDown(Key_LeftShift),
+    e.keyDown(Key_LeftControl),
     static_cast<double>(e.mouse_x()),
     static_cast<double>(e.mouse_y())
   );
@@ -29,8 +33,12 @@ bool FlyViewController::update(
   bool const bLook,
   bool const bForward,
   bool const bBackward,
+  bool const bUp,
+  bool const bDown,
   bool const bLeft,
   bool const bRight,
+  bool const bAccelerate,
+  bool const bDecelerate,
   double const mouseX,
   double const mouseY
 ) {
@@ -41,11 +49,11 @@ bool FlyViewController::update(
     last_mouse_y_ = mouseY;
   }
 
-  eventMove(deltatime, bForward, bBackward, bLeft, bRight);
+  eventMove(deltatime, bForward, bBackward, bUp, bDown, bLeft, bRight, bAccelerate, bDecelerate);
   smoothTransition(deltatime);
 
   bool is_dirty = (bMoving && bLook)
-    || bForward || bBackward || bLeft || bRight
+    || bForward || bBackward || bUp || bDown || bLeft || bRight
     || !lina::almost_equal<float>(pitch_, pitch2_, 0.01f)
     || !lina::almost_equal<float>(yaw_, yaw2_, 0.01f)
     || !lina::almost_equal(position_, position2_, 0.0001f);
@@ -93,10 +101,7 @@ void FlyViewController::eventMouseMoved(
 
   yaw2_ -= dv_x * kMouseSensitivity * inv_x;
   pitch2_ -= dv_y * kMouseSensitivity * inv_y;
-
-  float const max_pitch = static_cast<float>(M_PI / 2.0 - 0.01);
-  if (pitch2_ > max_pitch) pitch2_ = max_pitch;
-  if (pitch2_ < -max_pitch) pitch2_ = -max_pitch;
+  pitch2_ = std::fmax(-kMaxPitch, std::fmin(kMaxPitch, pitch2_));
 }
 
 // ----------------------------------------------------------------------------
@@ -105,18 +110,27 @@ void FlyViewController::eventMove(
   double const deltatime,
   bool const bForward,
   bool const bBackward,
+  bool const bUp,
+  bool const bDown,
   bool const bLeft,
-  bool const bRight
+  bool const bRight,
+  bool const bAccelerate,
+  bool const bDecelerate
 ) {
-  if (!bForward && !bBackward && !bLeft && !bRight) {
+  if (!(bForward || bBackward || bUp || bDown || bLeft || bRight)) {
     return;
   }
 
   vec3 move_dir(0.0f, 0.0f, 0.0f);
   if (bForward)  move_dir.z -= 1.0f;
   if (bBackward) move_dir.z += 1.0f;
+  if (movement_mode_ == MovementMode::FreeFly) {
+    if (bDown)     move_dir.y -= 1.0f;
+    if (bUp)       move_dir.y += 1.0f;
+  }
   if (bLeft)     move_dir.x -= 1.0f;
   if (bRight)    move_dir.x += 1.0f;
+
 
   move_dir = lina::normalize(move_dir);
 
@@ -129,7 +143,11 @@ void FlyViewController::eventMove(
 
   auto const world_move = lina::row_mul(vec4(move_dir, 0.0f), rotation).xyz();
 
-  position2_ += world_move * (move_speed_ * static_cast<float>(deltatime));
+  float speed = speed_;
+  if (bAccelerate) speed *= kAccelerationFactor;
+  if (bDecelerate) speed *= kDecelerationFactor;
+
+  position2_ += world_move * (speed * static_cast<float>(deltatime));
 }
 
 // ----------------------------------------------------------------------------

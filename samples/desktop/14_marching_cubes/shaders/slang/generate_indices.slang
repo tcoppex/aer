@@ -326,7 +326,8 @@ void main(uint gid : SV_DispatchThreadID)
     return;
   }
 
-  let g_indexCount    = ((uint32_t*)pushConstant.drawIndexedIndirectBuffer);
+  // (published to the draw command by finalize_chunk.slang)
+  let g_indexCount    = &((uint32_t*)pushConstant.atomicCountBuffer)[ATOMIC_COUNT_INDEX];
   let g_outIndices    = ((uint32_t*)pushConstant.indicesBuffer);
 
   let g_nonEmptyCells = ((uint32_t*)pushConstant.nonEmptyCellsBuffer);
@@ -343,9 +344,20 @@ void main(uint gid : SV_DispatchThreadID)
   }
 
   let numTriangles = kNumTriangleLUT[cube_case];
+  let numIndices   = 3u * numTriangles;
 
   uint offset;
-  InterlockedAdd(*g_indexCount, 3u * numTriangles, offset);
+  InterlockedAdd(*g_indexCount, numIndices, offset);
+
+  // Budget guard
+  if ((offset + numIndices) > kChunkMaxIndices) {
+    uint unused;
+    InterlockedAdd(*g_indexCount, 0u - numIndices, unused);
+    return;
+  }
+
+  // (atomicCountLimit holds the vertex budget of the chunk)
+  let vertexLimit = pushConstant.atomicCountLimit;
 
   // [unroll]
   for (uint i = 0u; i < numTriangles; i++) {
@@ -355,22 +367,19 @@ void main(uint gid : SV_DispatchThreadID)
     for (uint j = 0u; j < 3u; j++) {
       let index_id = offset + 3u * i + j;
 
-      // if ((pushConstant.atomicCountLimit > 0) && (index_id < pushConstant.atomicCountLimit))
-      {
-        let edge_id = (uint)tri_edge[j];
-        var edge_coords = coords + uint3(kEdgeStart[edge_id]);
-        edge_coords.x = 3u * edge_coords.x + kEdgeAxis[edge_id];
+      let edge_id = (uint)tri_edge[j];
+      var edge_coords = coords + uint3(kEdgeStart[edge_id]);
+      edge_coords.x = 3u * edge_coords.x + kEdgeAxis[edge_id];
 
-        g_outIndices[index_id] = inIndicesVolume.Load(edge_coords).r;
+      var vertex_index = inIndicesVolume.Load(edge_coords).r;
+
+      if ((vertexLimit > 0u) && (vertex_index >= vertexLimit)) {
+        vertex_index = 0u;
       }
+
+      g_outIndices[index_id] = vertex_index;
     }
   }
-
-  // if (all(coords == uint3(0))) {
-  //   if (pushConstant.atomicCountLimit > 0) {
-  //     InterlockedMin(*g_indexCount, pushConstant.atomicCountLimit);
-  //   }
-  // }
 }
 
 // ----------------------------------------------------------------------------
