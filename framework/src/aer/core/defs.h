@@ -3,19 +3,19 @@
 
 /* -------------------------------------------------------------------------- */
 
+#include <cassert>
 #include <cstddef>
-#include <array>
+
 #include <concepts>
+#include <limits>
 #include <span>
+#include <type_traits>
+
+/* -------------------------------------------------------------------------- */
+/* -- Maths (with aliases) -- */
 
 #include "lina/lina.h"
 using namespace lina::aliases;
-
-/* -------------------------------------------------------------------------- */
-/* -- Aliases -- */
-
-// Mainly use for shader interoperability, along lina aliases.
-using uint = uint32_t; //
 
 /* -------------------------------------------------------------------------- */
 /* -- c++ features -- */
@@ -28,46 +28,6 @@ concept SpanConvertible = requires(T t) { std::span(t); };
 
 template<typename T>
 concept NonSpanConvertible = !SpanConvertible<T>;
-
-// ----------------------------------------------------------------------------
-/* -- custom type -- */
-
-// Holds an abstraction over the main argument list.
-struct ArgList : public std::span<char*> {
-  ArgList(int argc, char *argv[])
-    : std::span<char*>{argv, static_cast<size_t>(argc)}
-  {}
-
-  ArgList()
-    : ArgList(0, nullptr)
-  {}
-};
-
-// Wrap an array to accept enum class as indexer.
-// Original code from Daniel P. Wright.
-template<typename T, typename Indexer>
-class EnumArray : public std::array<T, static_cast<size_t>(Indexer::kCount)> {
-  using super = std::array<T, static_cast<size_t>(Indexer::kCount)>;
-
- public:
-  constexpr EnumArray(std::initializer_list<T> il) {
-    assert( il.size() == super::size());
-    std::copy(il.begin(), il.end(), super::begin());
-  }
-
-  T&       operator[](Indexer i)       { return super::at((size_t)i); }
-  const T& operator[](Indexer i) const { return super::at((size_t)i); }
-
-  EnumArray() : super() {}
-  using super::operator[];
-};
-
-struct NullType {};
-
-// ----------------------------------------------------------------------------
-/* -- constants -- */
-
-static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max() };
 
 // ----------------------------------------------------------------------------
 /* -- macros -- */
@@ -89,6 +49,16 @@ static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max()
                   #T " must be move constructible");                \
     static_assert(std::is_move_assignable_v<T>,                     \
                   #T " must be move assignable")
+
+// ----------------------------------------------------------------------------
+/* -- constants -- */
+
+static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max() };
+
+// ----------------------------------------------------------------------------
+/* -- custom type -- */
+
+struct NullType {};
 
 /* -------------------------------------------------------------------------- */
 

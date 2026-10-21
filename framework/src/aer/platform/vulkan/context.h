@@ -5,10 +5,10 @@
 
 #include <set>
 
+#include "aer/core/enum_array.h"
 #include "aer/platform/vulkan/types.h"
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/platform/vulkan/allocator.h"
-
 #include "aer/platform/openxr/xr_vulkan_interface.h" //
 
 /* -------------------------------------------------------------------------- */

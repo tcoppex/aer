@@ -2,6 +2,7 @@
 #define AER_RENDERER_FX_ENVMAP_H_
 
 #include "aer/core/common.h"
+#include "aer/core/enum_array.h"
 #include "aer/core/utils.h"
 
 #include "aer/platform/vulkan/command_encoder.h"
