@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "aer/core/common.h"
-#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/renderer/render_context.h"
 
 #include "chunk_types.h"

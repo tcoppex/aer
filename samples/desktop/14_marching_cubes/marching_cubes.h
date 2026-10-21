@@ -1,5 +1,6 @@
 #pragma once
 
+#include "aer/renderer/render_context.h"
 #include "chunk_types.h"
 
 /* -------------------------------------------------------------------------- */

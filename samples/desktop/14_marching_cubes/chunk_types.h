@@ -3,9 +3,6 @@
 
 #include "aer/core/common.h"
 
-#include "aer/platform/vulkan/command_encoder.h" //
-#include "aer/renderer/render_context.h" //
-
 /* -------------------------------------------------------------------------- */
 
 class Chunk {
