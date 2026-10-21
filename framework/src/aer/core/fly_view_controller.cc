@@ -53,7 +53,7 @@ bool FlyViewController::update(
   smoothTransition(deltatime);
 
   bool is_dirty = (bMoving && bLook)
-    || bForward || bBackward || bLeft || bRight
+    || bForward || bBackward || bUp || bDown || bLeft || bRight
     || !lina::almost_equal<float>(pitch_, pitch2_, 0.01f)
     || !lina::almost_equal<float>(yaw_, yaw2_, 0.01f)
     || !lina::almost_equal(position_, position2_, 0.0001f);
@@ -117,7 +117,7 @@ void FlyViewController::eventMove(
   bool const bAccelerate,
   bool const bDecelerate
 ) {
-  if (!bForward && !bBackward && !bLeft && !bRight) {
+  if (!(bForward || bBackward || bUp || bDown || bLeft || bRight)) {
     return;
   }
 
