@@ -1,6 +1,10 @@
+module density_custom;
 
-// import "density_common.slang";
-#include "sdf_shared.slang.h" //
+// ----------------------------------------------------------------------------
+
+import density_utils;
+
+#define PUBLIC public
 
 // ----------------------------------------------------------------------------
 //
@@ -9,42 +13,43 @@
 // ----------------------------------------------------------------------------
 
 // Ground.
-static const float kGroundLevel       = 8.0;
+PUBLIC static const float kGroundLevel       = 8.0;
 
 // Relief (3 + 3 + 2 octaves of 3D noise).
-static const float kReliefFreq        = 0.0065;   // base frequency (1 / world unit)
-static const float kReliefAmp         = 36.0;     // base amplitude (world unit)
-static const float kDetailFreq        = 0.052;
-static const float kDetailAmp         = 6.5;
-static const float kGrainFreq         = 0.31;
-static const float kGrainAmp          = 0.9;
-static const float kVerticalSquash    = 0.75;
+PUBLIC static const float kReliefFreq        = 0.0065;   // base frequency (1 / world unit)
+PUBLIC static const float kReliefAmp         = 36.0;     // base amplitude (world unit)
+PUBLIC static const float kDetailFreq        = 0.052;
+PUBLIC static const float kDetailAmp         = 6.5;
+PUBLIC static const float kGrainFreq         = 0.31;
+PUBLIC static const float kGrainAmp          = 0.9;
+PUBLIC static const float kVerticalSquash    = 0.75;
 
 // Domain warp.
-static const float kWarpFreq          = 0.006;
-static const float3 kWarpAmp          = float3(24.0, 9.0, 24.0);
+PUBLIC static const float kWarpFreq          = 0.006;
+PUBLIC static const float3 kWarpAmp          = float3(24.0, 9.0, 24.0);
 
 // Terraces.
-static const float kTerraceHeight     = 13.0;
-static const float kTerraceStrength   = 0.7;
+PUBLIC static const float kTerraceHeight     = 13.0;
+PUBLIC static const float kTerraceStrength   = 0.7;
 
 // Canyons.
-static const float kCanyonFreq        = 0.0036;
-static const float kCanyonWidth       = 0.085;
-static const float kCanyonDepth       = 26.0;
+PUBLIC static const float kCanyonFreq        = 0.0036;
+PUBLIC static const float kCanyonWidth       = 0.085;
+PUBLIC static const float kCanyonDepth       = 26.0;
 
 // Pillars.
-static const float kPillarCell        = 96.0;
-static const float kPillarChance      = 0.42;
-static const float kPillarHalfHeight  = 44.0;
+PUBLIC static const float kPillarCell        = 96.0;
+PUBLIC static const float kPillarChance      = 0.42;
+PUBLIC static const float kPillarHalfHeight  = 44.0;
 
 // Caves & floor.
-static const float kCaveFreq          = 0.022;
-static const float kCaveRadius        = 4.5;
-static const float kFloorLevel        = -30.0;
+PUBLIC static const float kCaveFreq          = 0.022;
+PUBLIC static const float kCaveRadius        = 4.5;
+PUBLIC static const float kFloorLevel        = -30.0;
 
 // ----------------------------------------------------------------------------
 
+PUBLIC
 float sdPillars(float3 p) {
   let cell = floor(p.xz / kPillarCell);
   let h    = float3(pcg3d(uint3(int3(int(cell.x), 7, int(cell.y))))) * (1.0f / 4294967295.0f);
@@ -66,6 +71,7 @@ float sdPillars(float3 p) {
 
 // ----------------------------------------------------------------------------
 
+PUBLIC
 float sdTerrain(float3 p) {
   // Domain warp.
   let wp = p * kWarpFreq;
@@ -115,6 +121,7 @@ float sdTerrain(float3 p) {
 
 // ----------------------------------------------------------------------------
 
+PUBLIC
 float computeDensity(float3 ws) {
   return sdTerrain(ws);
 }

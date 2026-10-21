@@ -1,6 +1,6 @@
 #include "../interop.h"
 
-#include "custom_density.slang.h" //
+import shared.density_custom;
 
 // ----------------------------------------------------------------------------
 
