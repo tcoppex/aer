@@ -35,20 +35,20 @@ void Mesh::initializeSubmeshDescriptors(
 
 // ----------------------------------------------------------------------------
 
-PipelineVertexBufferDescriptors Mesh::pipeline_vertex_buffer_descriptors() const {
+VertexBufferDescriptors Mesh::pipeline_vertex_buffer_descriptors() const {
   if (submeshes.empty()) {
     LOGW("{}: called while no submeshes were defined.", __FUNCTION__);
     return {};
   }
 
   auto const& vi{ submeshes[0u].draw_descriptor.vertexInput };
-  PipelineVertexBufferDescriptors result(vi.bindings.size());
+  VertexBufferDescriptors result(vi.bindings.size());
 
   std::transform(
     vi.bindings.cbegin(),
     vi.bindings.cend(),
     result.begin(),
-    [&vi](auto const& binding) -> PipelineVertexBufferDescriptor {
+    [&vi](auto const& binding) -> VertexBufferDescriptor {
       std::vector<VkVertexInputAttributeDescription> attribs{};
       for (auto const& attrib : vi.attributes) {
         if (attrib.binding == binding.binding) {

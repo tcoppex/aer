@@ -4,8 +4,7 @@
 #include "aer/core/common.h"
 
 #include "aer/scene/geometry.h"
-#include "aer/platform/vulkan/types.h"      // for VertexInputDescriptor
-#include "aer/renderer/pipeline.h"          // for PipelineVertexBufferDescriptors
+#include "aer/platform/vulkan/types.h"      // for VertexInputDescriptor, VertexBufferDescriptors
 
 namespace scene {
 
@@ -63,7 +62,7 @@ struct Mesh : Geometry {
 
  public:
   [[nodiscard]]
-  PipelineVertexBufferDescriptors pipeline_vertex_buffer_descriptors() const;
+  VertexBufferDescriptors pipeline_vertex_buffer_descriptors() const;
 
   [[nodiscard]]
   VkIndexType vk_index_type() const;

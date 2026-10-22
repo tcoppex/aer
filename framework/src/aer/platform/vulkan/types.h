@@ -373,6 +373,13 @@ struct DrawDescriptor {
   uint32_t instanceCount{1u};
 };
 
+struct VertexBufferDescriptor {
+  uint32_t stride{};
+  VkVertexInputRate inputRate{};
+  std::vector<VkVertexInputAttributeDescription> attributes{};
+};
+using VertexBufferDescriptors = std::vector<VertexBufferDescriptor>;
+
 /* -------------------------------------------------------------------------- */
 
 #endif

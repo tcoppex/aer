@@ -1,10 +1,13 @@
 /* -------------------------------------------------------------------------- */
 
+#include "aer/renderer/fx/skybox.h"
+
 #include "aer/scene/camera.h"
 #include "aer/renderer/render_context.h"
-#include "aer/renderer/fx/skybox.h"
+#include "aer/renderer/pipeline.h"
 #include "aer/renderer/fx/postprocess/compute/compute_fx.h" //
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
+
 
 /* -------------------------------------------------------------------------- */
 
