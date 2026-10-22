@@ -1,4 +1,4 @@
-//  lina.h - v0.11.0
+//  lina.h - v0.12.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -227,6 +227,13 @@ template<class T>
 constexpr T saturate(T const& a) {
   static_assert( std::is_floating_point<T>::value );
   return clamp(a, 0, 1);
+}
+
+// ----------------------------------------------------------------------------
+
+template<class T>
+vec<T,4> normalize_plane(vec<T,4> const& a) {
+  return a / length(to_vec3(a));
 }
 
 // ----------------------------------------------------------------------------
