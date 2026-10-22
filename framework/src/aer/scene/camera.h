@@ -4,6 +4,7 @@
 #include "aer/core/common.h"
 #include "aer/core/view_controller_interface.h"
 
+#include "aer/scene/frustum.h"
 #include "aer/scene/ray.h"
 
 /* -------------------------------------------------------------------------- */
@@ -238,6 +239,11 @@ class Camera {
   [[nodiscard]]
   mat4 const& viewproj(uint32_t view_id = 0u) const noexcept {
     return transforms_[view_id].view_projection;
+  }
+
+  [[nodiscard]]
+  Frustum frustum(uint32_t view_id = 0u) const {
+    return Frustum::FromViewProj(viewproj(view_id));
   }
 
   [[nodiscard]]
