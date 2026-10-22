@@ -170,7 +170,7 @@ void SampleApp::update(float const dt) {
 
   // Stream the world around the camera.
   {
-    chunk_grid_.update(fly_controller_.position(), frame_index());
+    chunk_grid_.update(camera_, frame_index());
     generator_.build(chunk_grid_.buffers(), chunk_grid_.pending());
   }
 }

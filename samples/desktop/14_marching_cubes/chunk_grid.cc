@@ -130,17 +130,15 @@ void ChunkGrid::invalidate(uint32_t frame_index) {
 
 // ----------------------------------------------------------------------------
 
-void ChunkGrid::update(float3 const& view_position, uint32_t frame_index) {
-  pending_.clear();
+void ChunkGrid::update(Camera const& camera, uint32_t frame_index) {
+  auto const& view_position = camera.position();
+  auto const& frustum       = camera.frustum();
 
+  pending_.clear();
   recycleSlots(frame_index);
 
   float const inv_size = 1.0f / shader_interop::kChunkSize;
-  int3 const center(
-    static_cast<int32_t>(std::floor(view_position.x * inv_size)),
-    static_cast<int32_t>(std::floor(view_position.y * inv_size)),
-    static_cast<int32_t>(std::floor(view_position.z * inv_size))
-  );
+  int3 const center(lina::floor(view_position * inv_size));
 
   bool const center_changed = !has_center_
                            || (center.x != last_center_.x)

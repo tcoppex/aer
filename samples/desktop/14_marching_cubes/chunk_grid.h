@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "aer/core/common.h"
+#include "aer/scene/camera.h"
 #include "aer/renderer/render_context.h"
 
 #include "chunk_types.h"
@@ -42,7 +43,7 @@ class ChunkGrid {
 
   void release();
 
-  void update(float3 const& view_position, uint32_t frame_index);
+  void update(Camera const& camera, uint32_t frame_index);
 
   void invalidate(uint32_t frame_index);
 
