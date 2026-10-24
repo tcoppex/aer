@@ -26,6 +26,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
 
   /* Framework initialization. */
   if (!presetup(app_data)) {
+    shutdown();
     return EXIT_FAILURE;
   }
 
@@ -87,7 +88,6 @@ bool Application::presetup(AppData_t app_data) {
   wm_ = std::make_unique<Window>();
   if (!wm_ || !wm_->init(settings_.surface, app_data)) {
     LOGE("Window creation fails");
-    shutdown();
     return false;
   }
 
@@ -100,7 +100,6 @@ bool Application::presetup(AppData_t app_data) {
                      xrExtensions()))
       {
         LOGE("XR initialization fails.");
-        shutdown();
         return false;
       }
     }
@@ -114,7 +113,6 @@ bool Application::presetup(AppData_t app_data) {
                      xr_ ? xr_->graphics_interface() : nullptr))
   {
     LOGE("Vulkan context initialization fails");
-    shutdown();
     return false;
   }
 
@@ -122,7 +120,6 @@ bool Application::presetup(AppData_t app_data) {
   if (xr_) {
     if (!xr_->initSession()) {
       LOGE("OpenXR sessions initialization fails.");
-      shutdown();
       return false;
     }
   }
@@ -130,7 +127,6 @@ bool Application::presetup(AppData_t app_data) {
   /* Surface & Swapchain. */
   if (!resetSwapchain()) {
     LOGE("Surface creation fails");
-    shutdown();
     return false;
   }
 
@@ -140,7 +136,6 @@ bool Application::presetup(AppData_t app_data) {
   if (xr_) {
     if (!xr_->completeSetup(camera_)) {
       LOGE("OpenXR initialization completion fails.");
-      shutdown();
       return false;
     }
   }
@@ -151,7 +146,6 @@ bool Application::presetup(AppData_t app_data) {
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {
     LOGE("UI creation fails");
-    shutdown();
     return false;
   }
 
