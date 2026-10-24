@@ -141,9 +141,17 @@ void RenderContext::resizeFrameResources(
 
 void RenderContext::releaseFrameResources(FrameResourcesBuffer& frame_resources) {
   for (auto & frame : frame_resources) {
-    freeCommandBuffer(frame.command_pool, frame.command_buffer);
-    destroyCommandPool(frame.command_pool);
-    frame.main_rt->release();
+    if (frame.command_pool != VK_NULL_HANDLE) {
+      if (frame.command_buffer != VK_NULL_HANDLE) {
+        freeCommandBuffer(frame.command_pool, frame.command_buffer);
+        frame.command_buffer = VK_NULL_HANDLE;
+      }
+      destroyCommandPool(frame.command_pool);
+      frame.command_pool = VK_NULL_HANDLE;
+    }
+    if (frame.main_rt) {
+      frame.main_rt->release();
+    }
   }
 }
 
