@@ -241,7 +241,8 @@ class Logger : public Singleton<Logger> {
 // Special aliases.
 
 #define LOG_FATAL(...)  LOGE(__VA_ARGS__); exit(-1)
-#define LOG_LINE()      LOGD("{} {}", __FILE__, __LINE__)
+#define LOG_LINE()      LOGD("{} {}", Logger::Trim(__FILE__), __LINE__)
+#define LOG_TODO()      HLOGW("[TODO] ({} {} L.{:})", Logger::Trim(__FILE__), __FUNCTION__, __LINE__)
 
 #if defined(NDEBUG)
 #define LOG_CHECK(x)    if (!(x)) { LOGE("" #x); }
@@ -253,12 +254,17 @@ class Logger : public Singleton<Logger> {
 // Disable Debug log on release.
 
 #if defined(NDEBUG)
+
 #undef LOGD
 #define LOGD(...)
 
 #undef LOG_LINE
 #define LOG_LINE()
-#endif
+
+#undef LOG_TODO
+#define LOG_TODO()
+
+#endif //defined(NDEBUG)
 
 // ----------------------------------------------------------------------------
 // Undef verbose log when not asked for.
