@@ -167,7 +167,7 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
   }
 
   /* Setup triangle list indices. */
-  uint32_t const index_count = resy * resy * 6u;
+  uint32_t const index_count = resx * resy * 6u;
   std::vector<uint32_t> indices(index_count);
   {
     uint32_t index = 0u;
