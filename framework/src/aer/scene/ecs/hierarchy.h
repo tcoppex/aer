@@ -1,59 +1,17 @@
 #ifndef AER_SCENE_ECS_HIERARCHY_H_
 #define AER_SCENE_ECS_HIERARCHY_H_
 
-#include <entt/entt.hpp>
-#include "aer/core/common.h"
+#include "entt/entt.hpp"
+#include "aer/scene/ecs/components.h"
 
 namespace scene {
 
 /* -------------------------------------------------------------------------- */
 
-namespace component {
-
-/* Hierarchy relationships */
-struct Node {
-  entt::entity parent{entt::null};
-
-  // siblings
-  entt::entity next{entt::null};
-  entt::entity prev{entt::null};
-
-  // Children
-  entt::entity firstChild{entt::null};
-  size_t numChildren{0};
-};
-
-/* Local Transforms */
-struct Transform {
-  vec3 position{};
-  quat rotation{lina::identity};
-  vec3 scale{1.0f, 1.0f, 1.0f};
-};
-
-/* World matrix for the entity */
-struct GlobalTransform {
-  mat4f worldMatrix{lina::identity};
-};
-
-// -----------
-
-struct Mesh {
-  uint32_t meshIndex{kInvalidIndexU32};
-};
-
-} // namespace "component"
-
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
 class Hierarchy {
- public:
-  using EntityMap = std::unordered_map<std::string, entt::entity>;
-
  public:
   entt::registry registry{};
   entt::entity root{};
-  EntityMap entity_map{};
 
  public:
   using StagingGroup = decltype(registry.group<
@@ -106,8 +64,16 @@ class Hierarchy {
   /* Move an entity to a new parent or the root when newParent is null. */
   void moveEntity(entt::entity e, entt::entity newParent);
 
-  [[nodiscard]]
-  entt::entity findByName(std::string_view entity_name) const;
+  // [todo]
+  // ----------------------
+  // void destroySubtree(entt::entity root);
+  // entt::entity find(std::string_view path, entt::entity root = {}) const;
+  // ----------------------
+
+  // find("A/B/C", root) walks children from root,
+  // comparing each Name against one path segment.
+  // It’s O(children) per level, which is fine for lookups that happen
+  // occasionally. If you later need hot lookups, build a per-instance cache then.
 
  private:
   void updateGlobalTransform(StagingGroup &group, entt::entity e, mat4 const& parent_matrix);

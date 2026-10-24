@@ -74,14 +74,6 @@ void Hierarchy::moveEntity(entt::entity e, entt::entity newParent) {
 }
 
 // ----------------------------------------------------------------------------
-
-entt::entity Hierarchy::findByName(std::string_view entity_name) const {
-  if (auto it = entity_map.find(std::string(entity_name)); it != entity_map.end()) {
-    return it->second;
-  }
-  return entt::null;
-}
-
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
@@ -94,7 +86,7 @@ void Hierarchy::updateGlobalTransform(
 
   // [todo] cache local transform.
   auto const& localMatrix = lina::transform_matrix(
-    transform.position,
+    transform.translation,
     transform.rotation,
     transform.scale
   );
