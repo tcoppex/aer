@@ -43,8 +43,15 @@ class Logger : public Singleton<Logger> {
   friend class Singleton<Logger>;
 
  public:
-  static std::string TrimFilename(std::string const& filename) {
-    return filename.substr(filename.find_last_of("/\\") + 1);
+  static
+  constexpr const char* Trim(const char* path) {
+    const char* file = path;
+    for (const char* p = path; *p; ++p) {
+      if (*p == '/' || *p == '\\') {
+        file = p + 1;
+      }
+    }
+    return file;
   }
 
   enum class LogType {
