@@ -141,11 +141,14 @@ bool Application::presetup(AppData_t app_data) {
   }
 
   /* Default Renderer. */
-  renderer_.init(context_, &swapchain_interface_);
+  if (!renderer_.init(context_, &swapchain_interface_)) {
+    LOGE("Renderer failed to initialized.");
+    return false;
+  }
 
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {
-    LOGE("UI creation fails");
+    LOGE("[UI] imgui initialization failed.");
     return false;
   }
 
