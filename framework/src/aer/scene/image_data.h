@@ -47,7 +47,7 @@ struct ImageData {
     auto* data = static_cast<uint8_t*>(malloc(width * height * channels));
     int index(0);
     for (int j=0; j<height; ++j) {
-      for (int i=0; i<width; ++i, ++index) {
+      for (int i=0; i<width; ++i, index+=channels) {
         data[index+0] = r;
         data[index+1] = g;
         data[index+2] = b;
