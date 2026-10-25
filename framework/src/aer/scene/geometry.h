@@ -125,7 +125,7 @@ class Geometry {
 
  public:
   Geometry() = default;
-  ~Geometry() = default;
+  // no destructor, no copy/move declarations
 
   void reset() {
     *this = {};
@@ -200,8 +200,8 @@ class Geometry {
 
   /* --- Setters --- */
 
-  void set_attributes(AttributeInfoMap const attributes) noexcept {
-    attributes_ = attributes;
+  void set_attributes(AttributeInfoMap attributes) noexcept {
+    attributes_ = std::move(attributes);
   }
 
   void set_topology(Topology const topology) noexcept {
