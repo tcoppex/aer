@@ -1,6 +1,5 @@
 #include "aer/renderer/fx/material/material_fx.h"
-
-#include "aer/scene/vertex_internal.h" // (for material_shader_interop)
+#include "aer/renderer/vertex_layout.h"
 
 /* -------------------------------------------------------------------------- */
 

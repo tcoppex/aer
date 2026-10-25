@@ -42,9 +42,19 @@ class MaterialFx {
   virtual uint32_t createMaterial(scene::MaterialProxy const& material_proxy) = 0;
   virtual void uploadMaterialStorageBuffer() const = 0;
 
+  /* Check if `count` more materials fit in this fx's buffer. */
+  [[nodiscard]]
+  virtual bool has_room(uint32_t count) const = 0;
+
+ public:
   /* Check if the MaterialFx has been setup. */
   bool valid() const {
     return pipeline_layout_ != VK_NULL_HANDLE;
+  }
+
+  [[nodiscard]]
+  bool has_pipeline(scene::MaterialStates const& states) const {
+    return pipelines_.contains(states);
   }
 
   [[nodiscard]]
@@ -120,7 +130,7 @@ class TMaterialFx : public MaterialFx {
   }
 
   void uploadMaterialStorageBuffer() const override {
-    LOG_CHECK(materials_.size() < kDefaultMaterialCount);
+    LOG_CHECK(materials_.size() <= kDefaultMaterialCount);
 
     if (materials_.empty()) {
       return;
@@ -142,6 +152,12 @@ class TMaterialFx : public MaterialFx {
     }
     // ------------------------------
   }
+
+  bool has_room(uint32_t count) const final {
+    return static_cast<uint32_t>(materials_.size() + count) <= kDefaultMaterialCount;
+  }
+
+ public:
 
   ShaderMaterial const& material(uint32_t index) const {
     return materials_[index];

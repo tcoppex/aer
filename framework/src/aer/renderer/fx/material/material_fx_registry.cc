@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "aer/renderer/fx/material/material_fx_registry.h"
 
 #include "aer/renderer/render_context.h"
@@ -35,39 +37,67 @@ void MaterialFxRegistry::release() {
 
 // ----------------------------------------------------------------------------
 
-void MaterialFxRegistry::setup(
-  std::vector<scene::MaterialProxy> const& material_proxies,
-  std::vector<std::unique_ptr<scene::MaterialRef>>& material_refs
+std::vector<MaterialFxRegistry::Entry> MaterialFxRegistry::add(
+  std::span<scene::MaterialProxy const> proxies,
+  std::span<scene::MaterialRef> refs
 ) {
-  LOG_CHECK(material_proxies.size() == material_refs.size());
+  using States = std::set<scene::MaterialStates>;
 
-  // Register the needed MaterialFx+MaterialStates for every material proxies.
-  for (auto const& material_ref : material_refs) {
-    states_map_[material_ref->model].insert(material_ref->states);
+  /* 1. Validate, without touching anything. */
+  std::unordered_map<MaterialModel, uint32_t> counts{};
+  std::unordered_map<MaterialModel, States> new_states{};
+
+  for (auto const& ref : refs) {
+    auto it = fx_map_.find(ref.model);
+    if (it == fx_map_.end()) {
+      LOGE("MaterialFxRegistry::add: unknown material model.");
+      return {};
+    }
+    if (ref.proxy_index >= proxies.size()) {
+      LOGE("MaterialFxRegistry::add: proxy index out of range.");
+      return {};
+    }
+    ++counts[ref.model];
+    if (!it->second->has_pipeline(ref.states)) {
+      new_states[ref.model].insert(ref.states);
+    }
+  }
+  for (auto const& [model, count] : counts) {
+    if (!fx_map_.at(model)->has_room(count)) {
+      LOGE("MaterialFxRegistry::add: material buffer is full.");
+      return {};
+    }
   }
 
-  // ----------------------
-  // Create associated pipelines and internal buffers for each active MaterialFx.
-  active_fx_.clear();
-  for (auto const& [model, states_set] : states_map_) {
-    MaterialFx *fx = fx_map_.at(model);
+  /* 2. Setup fx on first use, create only the missing pipelines. */
+  for (auto const& [model, _] : counts) {
+    MaterialFx* fx = fx_map_.at(model);
     if (!fx->valid()) {
       fx->setup();
     }
-    fx->createPipelines({states_set.cbegin(), states_set.cend()});
-    active_fx_.emplace_back(fx);
+    if (std::ranges::find(active_fx_, fx) == active_fx_.end()) {
+      active_fx_.push_back(fx);
+    }
+    if (auto it = new_states.find(model); it != new_states.end()) {
+      fx->createPipelines({it->second.cbegin(), it->second.cend()});
+    }
   }
-  // Clear the states for possible future setup.
-  states_map_.clear();
-  // ----------------------
 
-  // Create internal material for each MaterialFx.
-  for (size_t i = 0; i < material_refs.size(); ++i) {
-    auto &matref = *material_refs[i];
-    auto const& proxy = material_proxies[matref.proxy_index];
-    MaterialFx* fx = fx_map_.at(matref.model);
-    matref.material_index = fx->createMaterial(proxy);
+  /* 3. Create the materials. */
+  std::vector<Entry> entries{};
+  entries.reserve(refs.size());
+  for (auto& ref : refs) {
+    MaterialFx* fx = fx_map_.at(ref.model);
+    ref.material_index = fx->createMaterial(proxies[ref.proxy_index]);
+    entries.push_back({ fx, ref.material_index });
   }
+
+  /* 4. Upload each touched buffer once. */
+  for (auto const& [model, _] : counts) {
+    fx_map_.at(model)->uploadMaterialStorageBuffer();
+  }
+
+  return entries;
 }
 
 // ----------------------------------------------------------------------------
