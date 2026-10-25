@@ -1,10 +1,10 @@
 #include "aer/renderer/descriptor_registry.h"
 
 #include "aer/renderer/renderer.h"
+#include "aer/renderer/vertex_layout.h"
 
-#include "aer/scene/vertex_internal.h" // (for material_shader_interop)
-#include "aer/renderer/fx/skybox.h" //
-#include "aer/renderer/raytracing_scene.h" //
+// #include "aer/renderer/fx/skybox.h" //
+// #include "aer/renderer/raytracing_scene.h" //
 
 /* -------------------------------------------------------------------------- */
 

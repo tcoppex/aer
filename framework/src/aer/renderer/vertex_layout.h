@@ -1,15 +1,14 @@
 #pragma once
 
-// ----------------------------------------------------------------------------
-
 #include "aer/core/common.h"
 #include "aer/scene/geometry.h"
+#include "aer/platform/vulkan/types.h"
 
 namespace material_shader_interop {
 #include "aer/shaders/material/interop.h"
 }
 
-// ----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 
 //
 // Internal interleaved vertex structure used when bRestructureAttribs is set to true.
@@ -89,4 +88,26 @@ struct VertexInternal_t : material_shader_interop::Vertex {
   }
 };
 
-// ----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+
+VkFormat ToVkFormat(Geometry::AttributeFormat f);
+
+VkIndexType ToVkIndexType(Geometry::IndexFormat f);
+
+VkPrimitiveTopology ToVkPrimitiveTopology(Geometry::Topology t);
+
+/* -------------------------------------------------------------------------- */
+
+VertexInputDescriptor CreateVertexInputDescriptor(
+  Geometry const& geo,
+  Geometry::AttributeOffsetMap const& attribute_to_offset,
+  Geometry::AttributeLocationMap const& attribute_to_location,
+  uint64_t base_vertex_offset // absolute offset of the mesh's vertices
+);
+
+/* -------------------------------------------------------------------------- */
+
+// VertexBufferDescriptors pipeline_vertex_buffer_descriptors(/*DeviceMesh*/) const;
+
+/* -------------------------------------------------------------------------- */
+
