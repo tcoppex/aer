@@ -242,7 +242,7 @@ class Logger : public Singleton<Logger> {
 
 #define LOG_FATAL(...)  LOGE(__VA_ARGS__); exit(-1)
 #define LOG_LINE()      LOGD("{} {}", Logger::Trim(__FILE__), __LINE__)
-#define LOG_TODO()      HLOGW("[TODO] ({} {} L.{:})", Logger::Trim(__FILE__), __FUNCTION__, __LINE__)
+#define LOG_TODO(...)   HLOGW("[TODO] ({} {} L.{:})" __VA_OPT__(" - {}"), Logger::Trim(__FILE__), __FUNCTION__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
 
 #if defined(NDEBUG)
 #define LOG_CHECK(x)    if (!(x)) { LOGE("" #x); }
