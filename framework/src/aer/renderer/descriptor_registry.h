@@ -17,7 +17,7 @@ class RayTracingSceneInterface;
 ///   - RayTracing, for the TopLevel acceleration structure.
 ///
 class DescriptorRegistry {
- private:
+ public:
   static constexpr uint32_t kMaxNumTextures = 1 << 14; // 16384
 
  public:

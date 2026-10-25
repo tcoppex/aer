@@ -157,18 +157,17 @@ bool Application::presetup(AppData_t app_data) {
         .width = w,
         .height = h,
       };
-      LOGV("> Surface resize (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+      LOGV("[Surface resize (w: {}, h: {})]", viewport_size_.width, viewport_size_.height);
       resetSwapchain();
     };
     default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
     Events::Get().registerCallbacks(default_callbacks_.get());
 
-    LOGD("> Retrieve original viewport size.");
     viewport_size_ = {
       .width = wm_->surface_width(),
       .height = wm_->surface_height(),
     };
-    LOGD("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+    LOGD("[original viewport size (w: {}, h: {})]", viewport_size_.width, viewport_size_.height);
   }
 
   /* Framework internal data. */

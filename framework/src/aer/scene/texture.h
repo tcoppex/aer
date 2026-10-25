@@ -24,7 +24,7 @@ struct Texture {
     return host_image_index;
   }
 
-  uint32_t host_image_index{UINT32_MAX};
+  uint32_t host_image_index{kInvalidIndexU32};
   Sampler sampler{}; // (or sampler_index ?)
 };
 

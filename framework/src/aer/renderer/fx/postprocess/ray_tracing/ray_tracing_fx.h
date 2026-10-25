@@ -2,7 +2,7 @@
 #define AER_RENDERER_FX_PP_RT_RAY_TRACING_FX_H_
 
 #include "aer/renderer/fx/postprocess/post_generic_fx.h"
-#include "aer/renderer/renderer.h" //
+#include "aer/platform/vulkan/accel_struct.h"
 
 /* -------------------------------------------------------------------------- */
 

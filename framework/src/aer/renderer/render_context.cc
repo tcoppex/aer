@@ -1050,41 +1050,4 @@ bool RenderContext::loadImage2D(
   return result;
 }
 
-// ----------------------------------------------------------------------------
-
-// GLTFScene RenderContext::loadGLTF(
-//   std::string_view gltf_filename,
-//   scene::Mesh::AttributeLocationMap const& attribute_to_location
-// ) {
-//   if (auto scene = std::make_shared<GPUResources>(*this); scene) {
-//     scene->setup();
-//     if (scene->loadFile(gltf_filename)) {
-//       scene->initializeSubmeshDescriptors(attribute_to_location);
-//       scene->uploadToDevice();
-//       return scene;
-//     }
-//   }
-
-//   return {};
-// }
-
-// // ----------------------------------------------------------------------------
-
-// GLTFScene RenderContext::loadGLTF(std::string_view gltf_filename) {
-//   // -----------------------
-//   // -----------------------
-//   // [temporary, this should be set elsewhere ideally]
-//   static const scene::Mesh::AttributeLocationMap kDefaultFxPipelineAttributeLocationMap{
-//     {
-//       { Geometry::AttributeType::Position, kAttribLocation_Position },
-//       { Geometry::AttributeType::Normal,   kAttribLocation_Normal },
-//       { Geometry::AttributeType::Texcoord, kAttribLocation_Texcoord },
-//       { Geometry::AttributeType::Tangent,  kAttribLocation_Tangent }, //
-//     }
-//   };
-//   // -----------------------
-//   // -----------------------
-//   return loadGLTF(gltf_filename, kDefaultFxPipelineAttributeLocationMap);
-// }
-
 /* -------------------------------------------------------------------------- */
