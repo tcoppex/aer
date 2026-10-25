@@ -49,12 +49,22 @@ class Application : public EventCallbacks
     return {};
   }
 
+  /* User debug UI definition. */
   virtual void buildUI() {}
 
+  /* User update before the internal scene tree. */
   virtual void update(float const dt) {}
 
-  virtual void draw(CommandEncoder const& cmd) {}
+  /* User update after the internal scene tree. */
+  virtual void lateUpdate(float const dt) {}
 
+  /* Default generic draw: draw internal scene tree, user pass then debug ui */
+  virtual void draw(CommandEncoder const& cmd);
+
+  /* User defined single draw pass to the swapchain. */
+  virtual void drawPass(RenderPassEncoder const& pass) {}
+
+  /* Default debug UI draw. */
   virtual void drawUI(CommandEncoder const& cmd);
 
  protected:

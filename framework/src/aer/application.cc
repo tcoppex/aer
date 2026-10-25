@@ -55,6 +55,19 @@ float Application::elapsed_time() const noexcept {
 
 // ----------------------------------------------------------------------------
 
+void Application::draw(CommandEncoder const& cmd) {
+  auto pass = cmd.beginRendering();
+  {
+    renderer_.render(pass);
+    drawPass(pass);
+  }
+  cmd.endRendering();
+
+  drawUI(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
 void Application::drawUI(CommandEncoder const& cmd) {
   auto const& image = renderer_.main_render_target().resolve_attachment();
 
@@ -256,6 +269,8 @@ void Application::updateInternal() noexcept {
 
   /* Application. */
   update(dt);
+  renderer_.update(camera_, elapsed_time());
+  lateUpdate(dt);
 }
 
 // ----------------------------------------------------------------------------
