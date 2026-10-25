@@ -15,9 +15,6 @@ namespace shader_interop {
 /* -------------------------------------------------------------------------- */
 
 class SampleApp final : public Application {
- public:
-  static bool constexpr kFlipScreenVertically{ true };
-
   /* Shortcut to the uniform data type used. */
   using HostData_t = shader_interop::UniformData;
 
@@ -43,10 +40,6 @@ class SampleApp final : public Application {
     0, 2, 1,  0, 1, 3,
     0, 3, 2,  1, 2, 3
   };
-
- public:
-  SampleApp() = default;
-  ~SampleApp() = default;
 
  private:
   bool setup() final {
@@ -218,37 +211,31 @@ class SampleApp final : public Application {
     );
   }
 
-  void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.beginRendering();
-    {
-      pass.setViewportScissor(viewport_size_, kFlipScreenVertically);
+  void drawPass(RenderPassEncoder const& pass) final {
+    pass.bindPipeline(graphics_pipeline_);
+    pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
-      pass.bindPipeline(graphics_pipeline_);
-      pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+    /**
+     * We need to bind the descriptor set(s) used by each pipeline layout in
+     * used.
+     *
+     * Like push_constant, if a pipeline is currently bound, the RenderPassEncoder
+     * will automaticaly use their's as the targeted pipeline layout.
+     **/
+    pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
 
-      /**
-       * We need to bind the descriptor set(s) used by each pipeline layout in
-       * used.
-       *
-       * Like push_constant, if a pipeline is currently bound, the RenderPassEncoder
-       * will automaticaly use their's as the targeted pipeline layout.
-       **/
-      pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+    pass.bindVertexBuffer(vertex_buffer_);
 
-      pass.bindVertexBuffer(vertex_buffer_);
-
-      /**
-       * The 'bindIndexBuffer' function specifies the buffer from which indices
-       * are retrieved during 'drawIndexed' operations. By default, it expects
-       * an index buffer with 32-bit unsigned integers (uint32).
-       *
-       * The second parameter allows you to specify a different index type,
-       * such as VK_INDEX_TYPE_UINT16, for compatibility with smaller index formats.
-       */
-      pass.bindIndexBuffer(index_buffer_, VK_INDEX_TYPE_UINT16);
-      pass.drawIndexed(kIndices.size());
-    }
-    cmd.endRendering();
+    /**
+     * The 'bindIndexBuffer' function specifies the buffer from which indices
+     * are retrieved during 'drawIndexed' operations. By default, it expects
+     * an index buffer with 32-bit unsigned integers (uint32).
+     *
+     * The second parameter allows you to specify a different index type,
+     * such as VK_INDEX_TYPE_UINT16, for compatibility with smaller index formats.
+     */
+    pass.bindIndexBuffer(index_buffer_, VK_INDEX_TYPE_UINT16);
+    pass.drawIndexed(kIndices.size());
   }
 
  private:

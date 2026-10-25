@@ -14,6 +14,7 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
+#include "aer/core/events.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -146,37 +147,41 @@ class SampleApp final : public Application {
     context_.destroyBuffer(vertex_buffer_);
   }
 
-  void draw(CommandEncoder const& cmd) final {
-    /**
-     * 'beginRendering' (dynamic_rendering) or 'beginRenderPass' (legacy rendering)
-     * returns a RenderPassEncoder, which is a specialized CommandEncoder to specify
-     * rendering operations to a specific output (here the swapchain directly).
-     **/
-    auto pass = cmd.beginRendering();
-    {
-      /**
-       * Set the viewport and scissor.
-       * Use the flag 'flip_y' to false to flip the Y-axis downward as per the
-       * default Vulkan specs. It is set to true by default.
-       *
-       * As GraphicPipeline uses dynamic Viewport and Scissor states by default,
-       * we need to specify them when using a graphic pipeline.
-       *
-       * As dynamic states are not bound to a pipeline they can be set whenever
-       * during rendering before the draw command.
-       **/
-      pass.setViewportScissor(viewport_size_, false);
+  void update(float) {
+    auto& e = Events::Get();
 
-      pass.bindPipeline(graphics_pipeline_);
-      pass.bindVertexBuffer(vertex_buffer_);
-      pass.draw(kVertices.size());
+    if (e.buttonPressed(Button_MouseLeft)) {
+      flip_y_ = !flip_y_;
     }
-    cmd.endRendering();
+  }
+
+  /** Using the virtual method 'drawPass' allow you to bypass the rendering
+   * setup of draw(CommandEncoder const& cmd).
+   */
+  void drawPass(RenderPassEncoder const& pass) final {
+    /**
+     * Set the viewport and scissor.
+     * Use the flag 'flip_y' to false to flip the Y-axis downward as per the
+     * default Vulkan specs. It is set to true by default.
+     *
+     * As GraphicPipeline uses dynamic Viewport and Scissor states by default,
+     * we need to specify them when using a graphic pipeline.
+     *
+     * As dynamic states are not bound to a pipeline they can be set whenever
+     * during rendering before the draw command.
+     **/
+    pass.setViewportScissor(viewport_size_, flip_y_);
+
+    pass.bindPipeline(graphics_pipeline_);
+    pass.bindVertexBuffer(vertex_buffer_);
+    pass.draw(kVertices.size());
   }
 
  private:
   backend::Buffer vertex_buffer_;
   Pipeline graphics_pipeline_;
+
+  bool flip_y_{false};
 };
 
 // ----------------------------------------------------------------------------

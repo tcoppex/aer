@@ -16,14 +16,8 @@ namespace shader_interop {
 /* -------------------------------------------------------------------------- */
 
 class SampleApp final : public Application {
- public:
   using HostData_t = shader_interop::UniformData;
 
- public:
-  SampleApp() = default;
-  ~SampleApp()  = default;
-
- private:
   bool setup() final {
     wm_->set_title("04 - خوراي ، كىشىلەر ماڭا دىققەت قىلىۋاتىدۇ");
 
@@ -214,24 +208,20 @@ class SampleApp final : public Application {
     );
   }
 
-  void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.beginRendering();
+  void drawPass(RenderPassEncoder const& pass) final {
+    pass.setViewportScissor(viewport_size_);
+
+    pass.bindPipeline(graphics_pipeline_);
     {
-      pass.setViewportScissor(viewport_size_);
+      pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
-      pass.bindPipeline(graphics_pipeline_);
-      {
-        pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+      pass.bindVertexBuffer(vertex_buffer_);
+      pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
+      pass.drawIndexed(cube_.index_count());
 
-        pass.bindVertexBuffer(vertex_buffer_);
-        pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
-        pass.drawIndexed(cube_.index_count());
-
-        // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
-      }
+      // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
     }
-    cmd.endRendering();
   }
 
  private:
