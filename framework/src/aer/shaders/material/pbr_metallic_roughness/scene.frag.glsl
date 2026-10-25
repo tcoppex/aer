@@ -4,9 +4,11 @@
 
 // ----------------------------------------------------------------------------
 
-#include <material/pbr_metallic_roughness/interop.h>
 #include <shared/maths.glsl>
 #include <shared/lighting/pbr.glsl>
+
+#include <material/pbr_metallic_roughness/interop.h>
+#include <material/renderer_flags.h>
 
 // ----------------------------------------------------------------------------
 
@@ -140,7 +142,7 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
   {
     // Irradiance.
     vec3 irradiance = vec3(1.0);
-    if (has_render_state(kRendererState_IrradianceBit)) //
+    if (has_render_state(RendererFlags_IrradianceBit)) //
     {
       irradiance = texture(uEnvMapIrradiance, frag.N).rgb;
       irradiance *= 0.5; //

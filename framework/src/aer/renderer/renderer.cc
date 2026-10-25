@@ -2,6 +2,7 @@
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/descriptor_registry.h"
 #include "aer/renderer/vertex_layout.h"
+#include "aer/renderer/renderer_flags.h"
 #include "aer/scene/asset.h"
 #include "aer/scene/ecs/instantiate.h"
 
@@ -338,6 +339,19 @@ entt::entity Renderer::load(
     releaseAsset(ah);
   }
   return entt::null;
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::update(Camera const& camera, float elapsed_time) {
+  scene_tree_.update();
+  scene_renderer_.update(
+    scene_tree_,
+    camera,
+    elapsed_time,
+    default_frame_handler_.index,
+    RendererFlags::All
+  );
 }
 
 /* -------------------------------------------------------------------------- */

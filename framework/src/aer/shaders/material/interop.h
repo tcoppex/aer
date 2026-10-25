@@ -1,5 +1,10 @@
-#ifndef SHADERS_SCENE_INTEROP_H_
-#define SHADERS_SCENE_INTEROP_H_
+#ifndef SHADERS_MATERIAL_INTEROP_H_
+#define SHADERS_MATERIAL_INTEROP_H_
+
+// (don't include here to avoid conflict in host namespace)
+// #include "material/renderer_flags.h"
+
+// ----------------------------------------------------------------------------
 
 #if defined(_GLSL_)
 
@@ -102,8 +107,6 @@ struct CameraData {
   mat4 viewProjMatrix;
 };
 
-STATIC_CONST uint kRendererState_IrradianceBit = 0x1 << 0;
-
 // ----------------------------------------------------------------------------
 // -- Uniform Buffer(s) --
 
@@ -113,7 +116,7 @@ struct FrameData {
   vec4 cameraPos_Time;   // xxx
   vec2 resolution;
   uint frame;
-  uint renderer_states; // (wip)
+  uint renderer_states; // (wip) (cf. renderer_flags.h)
 };
 
 // ----------------------------------------------------------------------------
@@ -125,4 +128,4 @@ struct TransformData {
 
 // ----------------------------------------------------------------------------
 
-#endif // SHADERS_SCENE_INTEROP_H_
+#endif // SHADERS_MATERIAL_INTEROP_H_

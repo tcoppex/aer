@@ -6,6 +6,7 @@
 #include "aer/scene/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/vertex_layout.h" // for material_shader_interop::FrameData
+#include "aer/renderer/renderer_flags.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -70,13 +71,13 @@ void SceneRenderer::update(
   scene::Hierarchy& scene,
   Camera const& camera,
   float elapsed_time,
-  uint32_t frame_index
+  uint32_t frame_index,
+  RendererFlags renderer_flags
 ) {
   LOG_CHECK(frame_sbo_.valid());
   LOG_CHECK(transforms_sbo_.valid());
   LOG_CHECK(frame_index < frames_in_flight_);
 
-  // [CPU]
   ring_slot_ = frame_index;
   collectRetired();
 
@@ -90,8 +91,7 @@ void SceneRenderer::update(
     }
   }
 
-  // [GPU]
-  updateFrameData(camera, elapsed_time);
+  updateFrameData(camera, elapsed_time, renderer_flags);
   uploadTransforms();
 
   ++frame_counter_;
@@ -290,7 +290,9 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
 
 // ----------------------------------------------------------------------------
 
-void SceneRenderer::updateFrameData(Camera const& camera, float elapsed_time) {
+void SceneRenderer::updateFrameData(
+  Camera const& camera, float elapsed_time, RendererFlags renderer_flags
+) {
   // Current surface size, provided by the Renderer to the RenderContext.
   auto const& surface_size = context_ptr_->default_surface_size(); //
 
@@ -299,10 +301,8 @@ void SceneRenderer::updateFrameData(Camera const& camera, float elapsed_time) {
     .cameraPos_Time = vec4(camera.position(), elapsed_time),
     .resolution = vec2(surface_size.width, surface_size.height),
     .frame = static_cast<uint32_t>(frame_counter_),
-    .renderer_states = 0xFFFFFFFFu,
+    .renderer_states = underlying_cast(renderer_flags),
   };
-  HLOGW("FrameData.renderer_states use a default value, "\
-        "its irradiance bit should be set by the Skybox state.");
 
   /* Copy the multiview camera transforms (bounded by the destination size). */
   {

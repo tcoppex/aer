@@ -208,12 +208,7 @@ class Renderer {
 
   // ----
 
-  void update(Camera const& camera, float dt) {
-    scene_tree_.update();
-    scene_renderer_.update(
-      scene_tree_, camera, dt, default_frame_handler_.index
-    );
-  }
+  void update(Camera const& camera, float elapsed_time);
 
   void render(RenderPassEncoder const& pass) {
     scene_renderer_.render(pass);

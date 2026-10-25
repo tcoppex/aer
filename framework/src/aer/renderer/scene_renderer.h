@@ -16,6 +16,8 @@ class Camera;
 class RenderContext;
 class RenderPassEncoder;
 
+enum class RendererFlags : uint32_t;
+
 /* -------------------------------------------------------------------------- */
 
 ///
@@ -29,7 +31,13 @@ class SceneRenderer {
 
   void release();
 
-  void update(scene::Hierarchy&, Camera const&, float elapsed_time, uint32_t frame_index);
+  void update(
+    scene::Hierarchy&,
+    Camera const&,
+    float elapsed_time,
+    uint32_t frame_index,
+    RendererFlags renderer_flags
+  );
 
   void render(RenderPassEncoder const&);
 
@@ -37,11 +45,14 @@ class SceneRenderer {
 
  private:
   bool growTransforms(uint32_t min_count);
+
   void uploadTransforms();
+
   void collectRetired();
 
   void buildDrawLists(scene::Hierarchy&, Camera const&);
-  void updateFrameData(Camera const& camera, float elapsed_time);
+
+  void updateFrameData(Camera const& camera, float elapsed_time, RendererFlags renderer_flags);
 
  private:
   static constexpr uint32_t kInitialRenderableCapacity = 1024u;
