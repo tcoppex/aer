@@ -219,7 +219,8 @@ void Allocator::destroyImage(backend::Image &image) const {
 /* -------------------------------------------------------------------------- */
 
 VmaVirtualBlock Allocator::createVirtualBlock(VkDeviceSize const size) const {
-  VmaVirtualBlockCreateInfo blockInfo = {
+  LOG_CHECK(size > 0);
+  auto blockInfo = VmaVirtualBlockCreateInfo{
     .size = size
   };
   VmaVirtualBlock block = VK_NULL_HANDLE;
@@ -237,24 +238,27 @@ void Allocator::destroyVirtualBlock(VmaVirtualBlock const block) const {
 
 // ----------------------------------------------------------------------------
 
-VkDeviceSize Allocator::allocateVirtual(
+bool Allocator::allocateVirtual(
   VmaVirtualBlock const block,
   VkDeviceSize const size,
   VkDeviceSize const alignment,
-  VmaVirtualAllocation *out_allocation
+  VmaVirtualAllocation *out_allocation,
+  VkDeviceSize *out_offset
 ) const {
-  VmaVirtualAllocationCreateInfo allocInfo = {
+  LOG_CHECK(size > 0);
+  auto const allocInfo = VmaVirtualAllocationCreateInfo{
     .size = size,
     .alignment = alignment,
   };
-  VkDeviceSize offset = 0;
-  CHECK_VK( vmaVirtualAllocate(block, &allocInfo, out_allocation, &offset) );
-  return offset;
+  return vmaVirtualAllocate(block, &allocInfo, out_allocation, out_offset) == VK_SUCCESS;
 }
 
 // ----------------------------------------------------------------------------
 
-void Allocator::freeVirtual(VmaVirtualBlock const block, VmaVirtualAllocation const allocation) const {
+void Allocator::freeVirtual(
+  VmaVirtualBlock const block,
+  VmaVirtualAllocation const allocation
+) const {
   vmaVirtualFree(block, allocation);
 }
 
