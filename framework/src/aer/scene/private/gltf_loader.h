@@ -1,83 +1,53 @@
 #ifndef AER_SCENE_PRIVATE_GLTF_LOADER_H_
 #define AER_SCENE_PRIVATE_GLTF_LOADER_H_
 
+#include <vector>
+#include <memory>
+
 #include "aer/core/common.h"
-
-#include "aer/scene/host_resources.h"
+#include "aer/scene/asset.h"
+#include "aer/scene/load_options.h"
 #include "aer/scene/private/cgltf_wrapper.h"
-
-#include "aer/scene/ecs/hierarchy.h"
 
 /* -------------------------------------------------------------------------- */
 
 namespace internal::gltf_loader {
 
-template<typename T>
-using PointerMap_t = std::unordered_map<void const*, T>;
-
-using PointerToIndexMap_t = PointerMap_t<uint32_t>;
-using PointerToEntityMap_t = PointerMap_t<entt::entity>;
-using PointerToSamplerMap_t = PointerMap_t<scene::Sampler>;
-
-/* -------------------------------------------------------------------------- */
-
-PointerToEntityMap_t ExtractSceneHierarchy(
-  cgltf_data const* data,
-  scene::Hierarchy& scene
+void ExtractImages(
+  cgltf_data const*,
+  std::vector<scene::ImageData>&
 );
 
-PointerToSamplerMap_t ExtractSamplers(
-  cgltf_data const* data,
-  std::vector<scene::Sampler>& samplers
+void ExtractTextures(
+  cgltf_data const*,
+  std::vector<scene::Texture>&
 );
 
-PointerToIndexMap_t ExtractImages(
-  cgltf_data const* data,
-  std::vector<scene::ImageData>& images
+// Appends the default material last
+void ExtractMaterials(
+  cgltf_data const*,
+  std::vector<scene::ImageData> const&,
+  std::vector<scene::Texture> const&,
+  std::vector<scene::MaterialProxy>&,
+  std::vector<scene::MaterialRef>&
 );
 
-PointerToIndexMap_t ExtractTextures(
-  cgltf_data const* data,
-  PointerToIndexMap_t const& image_indices,
-  PointerToSamplerMap_t const& samplers_lut, //
-  std::vector<scene::Texture>& textures
+// Returns mesh_remap
+[[nodiscard]]
+std::vector<uint32_t> ExtractMeshes(
+  cgltf_data const*,
+  uint32_t default_material,
+  scene::LoadOptions const&,
+  std::vector<scene::Mesh>&
 );
 
-PointerToIndexMap_t ExtractMaterials(
-  cgltf_data const* data,
-  PointerToIndexMap_t const& textures_indices,
-  std::vector<scene::MaterialProxy>& material_proxies,
-  scene::ResourceBuffer<scene::MaterialRef>& material_refs,
-  scene::MaterialProxy::TextureBinding const& bindings
+[[nodiscard]]
+std::shared_ptr<scene::Prefab> ExtractPrefab(
+  cgltf_data const*,
+  std::vector<uint32_t> const& mesh_remap
 );
 
-PointerToIndexMap_t ExtractSkeletons(
-  cgltf_data const* data,
-  scene::ResourceBuffer<scene::Skeleton>& skeletons
-);
-
-void ExtractMeshes(
-  cgltf_data const* data,
-  scene::Hierarchy &scene,
-  PointerToEntityMap_t &entities_lut,
-  PointerToIndexMap_t const& materials_indices,
-  scene::ResourceBuffer<scene::MaterialRef>const& material_refs,
-  PointerToIndexMap_t const& skeleton_indices,
-  scene::ResourceBuffer<scene::Skeleton>const& skeletons,
-  scene::ResourceBuffer<scene::Mesh>& meshes,
-  scene::IndexMap &mesh_indices_map,
-  bool const bRestructureAttribs,
-  bool const bForce32bitsIndex
-);
-
-void ExtractAnimations(
-  cgltf_data const* data,
-  std::string const& basename,
-  scene::ResourceMap<scene::Skeleton>& skeletons_map,
-  scene::ResourceMap<scene::AnimationClip>& animations_map
-);
-
-} // namespace internal::gltf_loader
+} // namespace "internal::gltf_loader"
 
 /* -------------------------------------------------------------------------- */
 
