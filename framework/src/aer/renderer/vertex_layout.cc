@@ -78,44 +78,41 @@ VertexInputDescriptor CreateVertexInputDescriptor(
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
-
-VertexBufferDescriptors Mesh::pipeline_vertex_buffer_descriptors() const {
-  if (submeshes.empty()) {
-    LOGW("{}: called while no submeshes were defined.", __FUNCTION__);
+VertexBufferDescriptors CreatePipelineVertexBufferDescriptors(
+  Geometry const& geo,
+  Geometry::AttributeLocationMap const& attribute_to_location,
+  uint32_t primitive_index
+) {
+  if (primitive_index >= geo.primitive_count()) {
+    LOGW("{}: primitive index out of range.", __FUNCTION__);
     return {};
   }
+  auto const& prim = geo.primitive(primitive_index);
 
-  auto const& vi{ submeshes[0u].draw_descriptor.vertexInput };
-  VertexBufferDescriptors result(vi.bindings.size());
-
-  std::transform(
-    vi.bindings.cbegin(),
-    vi.bindings.cend(),
-    result.begin(),
-    [&vi](auto const& binding) -> VertexBufferDescriptor {
-      std::vector<VkVertexInputAttributeDescription> attribs{};
-      for (auto const& attrib : vi.attributes) {
-        if (attrib.binding == binding.binding) {
-          attribs.push_back({
-            .location = attrib.location,
-            .binding = attrib.binding,
-            .format = attrib.format,
-            .offset = attrib.offset,
-          });
-        }
-      }
-      return {
-        .stride = binding.stride,
-        .inputRate = binding.inputRate,
-        .attributes = attribs,
-      };
+  std::map<uint64_t, std::vector<Geometry::AttributeType>> by_offset{};
+  for (auto const& [type, offset] : prim.bufferOffsets) {
+    if (attribute_to_location.contains(type) && geo.hasAttribute(type)) {
+      by_offset[offset].push_back(type);
     }
-  );
+  }
 
+  VertexBufferDescriptors result{};
+  for (auto const& [offset, types] : by_offset) {
+    VertexBufferDescriptor buffer{
+      .stride = geo.attribute_stride(types[0]),
+      .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
+    for (auto const type : types) {
+      // (the binding index is filled by RenderContext::buildGraphicsPipelineCreateInfo)
+      buffer.attributes.push_back({
+        .location = attribute_to_location.at(type),
+        .format = ToVkFormat(geo.attribute_format(type)),
+        .offset = geo.attribute_offset(type),
+      });
+    }
+    result.push_back(std::move(buffer));
+  }
   return result;
 }
-
-#endif
 
 /* -------------------------------------------------------------------------- */

@@ -107,7 +107,14 @@ VertexInputDescriptor CreateVertexInputDescriptor(
 
 /* -------------------------------------------------------------------------- */
 
-// VertexBufferDescriptors pipeline_vertex_buffer_descriptors(/*DeviceMesh*/) const;
+/* Static pipeline vertex input for a geometry primitive: one binding per distinct
+ * buffer offset (attributes sharing an offset are interleaved). Bindings come in
+ * ascending offset order, the same order as CreateVertexInputDescriptor. */
+VertexBufferDescriptors CreatePipelineVertexBufferDescriptors(
+  Geometry const& geo,
+  Geometry::AttributeLocationMap const& attribute_to_location,
+  uint32_t primitive_index = 0u
+);
 
 /* -------------------------------------------------------------------------- */
 
