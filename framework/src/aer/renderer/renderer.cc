@@ -47,13 +47,17 @@ bool Renderer::init(
   }
   // --------------------------------------
 
-  LOGD(" > Internal Fx");
-  {
-    LOGW("[TODO] Skybox");
-    // skybox_.init(context);
-  }
-
   return true;
+}
+
+// ----------------------------------------------------------------------------
+
+bool Renderer::setSkybox(std::string_view hdr_filename) {
+  if (!skybox_initialized_) {
+    skybox_.init(*context_ptr_);
+    skybox_initialized_ = true;
+  }
+  return skybox_.setup(hdr_filename);
 }
 
 // ----------------------------------------------------------------------------
@@ -105,8 +109,7 @@ void Renderer::release() {
     return;
   }
   context_ptr_->deviceWaitIdle();
-
-  // skybox_.release(*context_ptr_);
+  if (skybox_initialized_) { skybox_.release(); }
   scene_renderer_.release();
   gpu_pool_.release();
   material_fx_registry_.release();
@@ -344,14 +347,28 @@ entt::entity Renderer::load(
 // ----------------------------------------------------------------------------
 
 void Renderer::update(Camera const& camera, float elapsed_time) {
+  RendererFlags renderer_flags{};
+
+  if (skybox_.is_valid()) {
+    skybox_.update(camera);
+    renderer_flags |= RendererFlags::EnableIrradiance;
+  }
+
   scene_tree_.update();
   scene_renderer_.update(
     scene_tree_,
     camera,
     elapsed_time,
     default_frame_handler_.index,
-    RendererFlags::All
+    renderer_flags
   );
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::render(RenderPassEncoder const& pass) {
+  skybox_.render(pass);
+  scene_renderer_.render(pass);
 }
 
 /* -------------------------------------------------------------------------- */

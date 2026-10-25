@@ -3,9 +3,8 @@
 
 #include "aer/core/common.h"
 
-#include "aer/platform/vulkan/command_encoder.h"
+#include "aer/scene/geometry.h"
 #include "aer/renderer/pipeline.h"
-#include "aer/scene/mesh.h"
 #include "aer/renderer/fx/envmap.h"
 
 namespace shader_interop::skybox {
@@ -15,6 +14,7 @@ namespace shader_interop::skybox {
 class Context;
 class RenderContext;
 class Camera;
+class RenderPassCommander;
 
 /* -------------------------------------------------------------------------- */
 
@@ -27,11 +27,13 @@ class Skybox {
 
   void init(RenderContext& context); //
 
-  void release(RenderContext const& context);
+  void release();
 
   bool setup(std::string_view hdr_filename); //
 
-  void render(RenderPassEncoder& pass, Camera const& camera) const;
+  void update(Camera const& camera);
+
+  void render(RenderPassEncoder const& pass) const;
 
   Envmap const& envmap() const {
     return envmap_;
@@ -74,7 +76,7 @@ class Skybox {
   backend::Image specular_brdf_lut_{};
   VkSampler sampler_LinearClampMipMap_{};
 
-  scene::Mesh cube_{};
+  Geometry cube_{};
   backend::Buffer vertex_buffer_{};
   backend::Buffer index_buffer_{};
 

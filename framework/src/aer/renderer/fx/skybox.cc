@@ -2,12 +2,13 @@
 
 #include "aer/renderer/fx/skybox.h"
 
+#include "aer/platform/vulkan/command_encoder.h"
 #include "aer/scene/camera.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/pipeline.h"
+#include "aer/renderer/vertex_layout.h"
 #include "aer/renderer/fx/postprocess/compute/compute_fx.h" //
 #include "aer/renderer/fx/postprocess/post_fx_pipeline.h"
-
 
 /* -------------------------------------------------------------------------- */
 
@@ -34,13 +35,13 @@ void Skybox::init(RenderContext& context) {
     .maxLod = VK_LOD_CLAMP_NONE,
   });
 
+  Geometry::AttributeLocationMap const locations{
+    { Geometry::AttributeType::Position, shader_interop::skybox::kAttribLocation_Position },
+  };
+
   /* Create the skybox geometry on the device. */
   {
     Geometry::MakeCube(cube_);
-
-    cube_.initializeSubmeshDescriptors({
-      { Geometry::AttributeType::Position, shader_interop::skybox::kAttribLocation_Position },
-    });
 
     auto cmd = context.createTransientCommandEncoder();
 
@@ -106,7 +107,7 @@ void Skybox::init(RenderContext& context) {
     graphics_pipeline_ = context.createGraphicsPipeline(pipeline_layout_, {
       .vertex = {
         .module = shaders[0u].handle,
-        .buffers = cube_.pipeline_vertex_buffer_descriptors(),
+        .buffers = CreatePipelineVertexBufferDescriptors(cube_, locations),
       },
       .fragment = {
         .module = shaders[1u].handle,
@@ -125,7 +126,7 @@ void Skybox::init(RenderContext& context) {
         .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
       },
       .primitive = {
-        .topology = cube_.vk_primitive_topology(),
+        .topology = ToVkPrimitiveTopology(cube_.topology()),
         .cullMode = VK_CULL_MODE_NONE,
       }
     });
@@ -136,8 +137,11 @@ void Skybox::init(RenderContext& context) {
 
 // ----------------------------------------------------------------------------
 
-void Skybox::release(RenderContext const& context) {
-  context.destroyResources(
+void Skybox::release() {
+  if (!context_ptr_) {
+    return;
+  }
+  context_ptr_->destroyResources(
     specular_brdf_lut_,
     graphics_pipeline_,
     pipeline_layout_,
@@ -172,56 +176,46 @@ bool Skybox::setup(std::string_view hdr_filename) {
 
 // ----------------------------------------------------------------------------
 
-void Skybox::render(RenderPassEncoder & pass, Camera const& camera) const {
+void Skybox::update(Camera const& camera) {
   if (!is_valid()) {
-    LOGW("Trying to render a non setup skybox.");
     return;
   }
 
-  auto pc = push_constant_;
-
-  /* Compute the MVP matrix while remove the translation part to keep the
-   * skybox always centered on the camera. */
+  /* Remove the translation part to keep the skybox centered on the camera. */
   auto const world_matrix = lina::remove_translation(
     context_ptr_->default_world_matrix()
   );
 
-  uint32_t eyes_count = camera.view_count();
-
-  // -------------------
-  // XR hacky trick
-  // To save space on the push constant struct we consider the skybox
-  // far enough not to need stereoscopic view.
-  // The alternative would be to use a dynamic uniform buffer.
-  eyes_count = 1u; //
-  // -------------------
+  // XR: the skybox is considered far enough not to need a stereoscopic view
+  // (saves space in the push constant), so only the first eye is computed.
+  uint32_t const eyes_count = 1u;
 
   for (uint32_t i = 0; i < eyes_count; ++i) {
-    auto view = lina::remove_translation(camera.view(i));
-    pc.mvpMatrix[i] = lina::mul(
+    auto const view = lina::remove_translation(camera.view(i));
+    push_constant_.mvpMatrix[i] = lina::mul(
       lina::mul(camera.proj(i), view),
       world_matrix
     );
   }
+}
+
+// ----------------------------------------------------------------------------
+
+void Skybox::render(RenderPassEncoder const& pass) const {
+  if (!is_valid()) {
+    return;  // no warning, the Renderer may call this every frame
+  }
+
+  constexpr VkShaderStageFlags kStages = VK_SHADER_STAGE_VERTEX_BIT
+                                       | VK_SHADER_STAGE_FRAGMENT_BIT;
 
   pass.bindPipeline(graphics_pipeline_);
-  {
-    pass.bindDescriptorSet(
-      descriptor_set_,
-        VK_SHADER_STAGE_VERTEX_BIT
-      | VK_SHADER_STAGE_FRAGMENT_BIT
-    );
+  pass.bindDescriptorSet(descriptor_set_, kStages);
+  pass.pushConstant(push_constant_, kStages);
 
-    pass.pushConstant(
-      pc,
-        VK_SHADER_STAGE_VERTEX_BIT
-      | VK_SHADER_STAGE_FRAGMENT_BIT
-    );
-
-    pass.bindVertexBuffer(vertex_buffer_);
-    pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
-    pass.drawIndexed(cube_.index_count());
-  }
+  pass.bindVertexBuffer(vertex_buffer_);
+  pass.bindIndexBuffer(index_buffer_, ToVkIndexType(cube_.index_format()));
+  pass.drawIndexed(cube_.index_count());
 }
 
 // ----------------------------------------------------------------------------
@@ -307,7 +301,7 @@ void Skybox::computeSpecularBRDFLookup() {
   specular_brdf_lut_ = brdf_pipeline.image_output();
   brdf_pipeline.release();
 
-  // [TODO] Calculate mip-maps.
+  LOG_TODO("computeSpecularBRDFLookup: Calculate mip maps");
 }
 
 /* -------------------------------------------------------------------------- */

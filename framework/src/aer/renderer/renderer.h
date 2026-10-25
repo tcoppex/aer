@@ -118,8 +118,8 @@ class Renderer {
   [[nodiscard]]
   bool is_foveated_rendering_enabled() const noexcept { return foveated_rendering_; }
 
-  // [[nodiscard]]
-  // Skybox& skybox() noexcept { return skybox_; }
+  [[nodiscard]]
+  Skybox& skybox() noexcept { return skybox_; }
 
   // --- Setters ---
 
@@ -134,6 +134,9 @@ class Renderer {
   void set_swapchain_blit_enabled(bool enabled) noexcept { swapchain_blit_enabled_ = enabled; }
 
   void set_foveated_rendering_enabled(bool enabled) noexcept { foveated_rendering_ = enabled; }
+
+  /* Load an HDR environment (initializes the skybox on first call). */
+  bool setSkybox(std::string_view hdr_filename);
 
  private:
   void initViewResources();
@@ -210,9 +213,7 @@ class Renderer {
 
   void update(Camera const& camera, float elapsed_time);
 
-  void render(RenderPassEncoder const& pass) {
-    scene_renderer_.render(pass);
-  }
+  void render(RenderPassEncoder const& pass);
 
   // ----
 
@@ -238,8 +239,8 @@ class Renderer {
 
   // --- miscs ---
 
-  // Skybox skybox_{}; //
-
+  Skybox skybox_{};
+  bool skybox_initialized_{};
 };
 
 /* -------------------------------------------------------------------------- */
