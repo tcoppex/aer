@@ -7,7 +7,6 @@
 
 class Context;
 class Skybox;
-class RayTracingSceneInterface;
 
 /* -------------------------------------------------------------------------- */
 

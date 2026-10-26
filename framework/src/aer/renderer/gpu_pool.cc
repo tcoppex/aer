@@ -522,8 +522,6 @@ void GpuPool::writeTextureDescriptor(
   uint32_t image_slot,
   scene::Sampler const& sampler
 ) {
-  HLOGW("GpuPool::writeTextureDescriptor : can probably do better");
-
   context_ptr_->descriptor_registry().updateSceneTexture(texture_slot, {
     .sampler = context_ptr_->sampler_pool().convert(sampler),
     .imageView = images_[image_slot].view,

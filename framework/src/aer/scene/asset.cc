@@ -92,6 +92,8 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
   return A;
 }
 
+} // namespace "scene"
+
 /* -------------------------------------------------------------------------- */
 
 #if !defined(NDEBUG)
