@@ -7,7 +7,8 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-#include "aer/scene/mesh.h"
+#include "aer/scene/geometry.h"
+#include "aer/renderer/vertex_layout.h" //
 
 namespace shader_interop {
 #include "shaders/interop.h"
@@ -26,9 +27,9 @@ class SampleApp final : public Application {
     /* Initialize the scene data. */
     host_data_.scene.camera = {
       .viewMatrix = lina::lookat_matrix(
-        vec3f(1.0f, 2.0f, 3.0f),
-        vec3f(0.0f, 0.0f, 0.0f),
-        vec3f(0.0f, 1.0f, 0.0f)
+        vec3(1.0f, 2.0f, 3.0f),
+        vec3(0.0f, 0.0f, 0.0f),
+        vec3(0.0f, 1.0f, 0.0f)
       ),
       .projectionMatrix = lina::perspective_matrix(
         lina::radians(60.0f),
@@ -44,11 +45,18 @@ class SampleApp final : public Application {
     Geometry::MakeCube(cube_);
 
     /* Map to bind vertex attributes with their shader input location. */
-    cube_.initializeSubmeshDescriptors({
+    VertexBufferDescriptors buffer_descriptors{};
+#if 0
+    // Set it up manually.
+    buffer_descriptors = CreatePipelineVertexBufferDescriptors(cube_, Geometry::AttributeLocationMap({
       { Geometry::AttributeType::Position, shader_interop::kAttribLocation_Position },
       { Geometry::AttributeType::Texcoord, shader_interop::kAttribLocation_Texcoord },
-      { Geometry::AttributeType::Normal, shader_interop::kAttribLocation_Normal },
+      { Geometry::AttributeType::Normal,   shader_interop::kAttribLocation_Normal },
     });
+#else
+    // Use the default internal one (must match shader definition).
+    buffer_descriptors = VertexInternal_t::GetPipelineVertexBufferDescriptors(cube_);
+#endif
 
     /* Create Buffers & Image(s). */
     {
@@ -143,11 +151,11 @@ class SampleApp final : public Application {
         .vertex = {
           .module = shader.handle,
           .entryPoint = "vertexMain",
+
           /* Get buffer descriptors compatible with the mesh vertex inputs.
-           *
            * Most Geometry::MakeX functions used the same interleaved layout,
-           * so they can be used interchangeably on the same static pipeline.*/
-          .buffers = cube_.pipeline_vertex_buffer_descriptors(),
+           * so they can be used interchangeably on the same static pipeline. */
+          .buffers = buffer_descriptors,
         },
         .fragment = {
           .module = shader.handle,
@@ -172,7 +180,7 @@ class SampleApp final : public Application {
           .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
         },
         .primitive = {
-          .topology = cube_.vk_primitive_topology(),
+          .topology = ToVkPrimitiveTopology(cube_.topology()),
           .cullMode = VK_CULL_MODE_BACK_BIT,
         }
       });
@@ -217,9 +225,8 @@ class SampleApp final : public Application {
       pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
 
       pass.bindVertexBuffer(vertex_buffer_);
-      pass.bindIndexBuffer(index_buffer_, cube_.vk_index_type());
+      pass.bindIndexBuffer(index_buffer_, ToVkIndexType(cube_.index_format()));
       pass.drawIndexed(cube_.index_count());
-
       // pass.draw(cube_.get_draw_descriptor(), vertex_buffer_, index_buffer_);
     }
   }
@@ -228,7 +235,7 @@ class SampleApp final : public Application {
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 
-  scene::Mesh cube_{};
+  Geometry cube_{};
   backend::Buffer vertex_buffer_{};
   backend::Buffer index_buffer_{};
   backend::Image image_{};

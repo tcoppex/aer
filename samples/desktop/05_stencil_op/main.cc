@@ -7,8 +7,9 @@
 /* -------------------------------------------------------------------------- */
 
 #include "aer/application.h"
-
 #include "aer/core/enum_array.h"
+
+// scene::Mesh is Geometry with syntaxic sugar.
 #include "aer/scene/mesh.h"
 
 namespace shader_interop {
@@ -23,6 +24,7 @@ class SampleApp final : public Application {
 
   static constexpr float kPortalSize = 2.35f;
 
+  /* Local Device geometry handler for the sample. */
   struct StaticMesh_t : scene::Mesh {
     backend::Buffer vertex;
     backend::Buffer index;
@@ -78,20 +80,10 @@ class SampleApp final : public Application {
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
       );
 
-      /* Map to bind vertex attributes with their shader input location. */
-      Geometry::AttributeLocationMap const attrib_location_map{
-        { Geometry::AttributeType::Position, shader_interop::kAttribLocation_Position },
-        { Geometry::AttributeType::Texcoord, shader_interop::kAttribLocation_Texcoord },
-        { Geometry::AttributeType::Normal, shader_interop::kAttribLocation_Normal },
-      };
-
       // Plane
       {
         auto &mesh = plane_;
         Geometry::MakePlane(mesh, kPortalSize);
-
-        /* Initialize the descriptors used to bind vertex inputs. */
-        mesh.initializeSubmeshDescriptors(attrib_location_map);
 
         mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
@@ -109,8 +101,6 @@ class SampleApp final : public Application {
 
         float const r = 0.5f * kPortalSize;
         Geometry::MakeTorus2(mesh, r, r * lina::kSqrtTwo, 48u, 32u);
-
-        mesh.initializeSubmeshDescriptors(attrib_location_map);
 
         mesh.vertex = cmd.createBufferAndUpload(
           mesh.vertices(),
@@ -166,14 +156,25 @@ class SampleApp final : public Application {
 
     auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "main.slang");
 
+
     /* Setup the pipelines. */
     {
+      // Set the the attribute location manually,
+      // we could also use the default renderer layout which is the same here.
+      auto attrib_locations = Geometry::AttributeLocationMap({
+        { Geometry::AttributeType::Position, shader_interop::kAttribLocation_Position },
+        { Geometry::AttributeType::Texcoord, shader_interop::kAttribLocation_Texcoord },
+        { Geometry::AttributeType::Normal,   shader_interop::kAttribLocation_Normal },
+      });;
+      auto plane_buffer_descs = plane_.createPipelineVertexBufferDescriptors(attrib_locations);
+      auto torus_buffer_descs = torus_.createPipelineVertexBufferDescriptors(attrib_locations);
+
       /* Pipeline descriptor "shared" between the stencil and the depth mask pipelines. */
       auto mask_pipeline_descriptor = GraphicsPipelineDescriptor_t{
         .vertex = {
           .module = shader.handle,
           .entryPoint = "vertexMain",
-          .buffers = plane_.pipeline_vertex_buffer_descriptors(),
+          .buffers = plane_buffer_descs,
         },
         .fragment = {
           .module = shader.handle,
@@ -219,7 +220,7 @@ class SampleApp final : public Application {
                 VK_TRUE
               },
             },
-            .buffers = torus_.pipeline_vertex_buffer_descriptors(),
+            .buffers = torus_buffer_descs,
           },
           .fragment = {
             .module = shader.handle,
@@ -269,7 +270,7 @@ class SampleApp final : public Application {
           .vertex = {
             .module = shader.handle,
             .entryPoint = "vertexMain",
-            .buffers = torus_.pipeline_vertex_buffer_descriptors(),
+            .buffers = torus_buffer_descs,
           },
           .fragment = {
             .module = shader.handle,
@@ -334,10 +335,9 @@ class SampleApp final : public Application {
     );
 
     /* All objects but the last one use the same world matrix. */
-    push_constant_.model.worldMatrix = portal_world_matrix;
-    cmd.pushConstant(
-      push_constant_, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT
-    );
+    auto pc = push_constant_;
+    pc.model.worldMatrix = portal_world_matrix;
+    cmd.pushConstant(pc, pipeline_layout_, VK_SHADER_STAGE_VERTEX_BIT);
 
     auto pass = cmd.beginRendering();
     {
@@ -362,11 +362,12 @@ class SampleApp final : public Application {
         torus_.draw(pass);
 
         // Outer-ring.
-        push_constant_.model.worldMatrix = lina::mul(
+        auto local_pc = pc;
+        local_pc.model.worldMatrix = lina::mul(
           lina::scaling_matrix(vec3(3.0)),
           lina::rotation_matrix_z(-0.32f * tick)
         );
-        pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
+        pass.pushConstant(local_pc, VK_SHADER_STAGE_VERTEX_BIT);
         torus_.draw(pass);
       }
     }
@@ -377,8 +378,7 @@ class SampleApp final : public Application {
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 
-  StaticMesh_t plane_;
-  StaticMesh_t torus_;
+  StaticMesh_t plane_{}, torus_{};
 
   VkPipelineLayout pipeline_layout_{};
   VkDescriptorSetLayout descriptor_set_layout_{};

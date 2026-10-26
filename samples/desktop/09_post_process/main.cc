@@ -13,6 +13,8 @@
 #include "aer/renderer/fx/postprocess/fragment/impl/normaldepth_edge.h"
 #include "aer/renderer/fx/postprocess/fragment/impl/object_edge.h"
 
+#include "aer/scene/asset.h"
+
 namespace shader_interop {
 #include "shaders/interop.h"
 }
@@ -49,7 +51,6 @@ class SceneFx final : public RenderTargetFx {
 
   void release() final {
     context_ptr_->destroyBuffer(uniform_buffer_);
-    scene_.reset();
     RenderTargetFx::release();
   }
 
@@ -149,40 +150,64 @@ class SceneFx final : public RenderTargetFx {
   }
 
   void draw(RenderPassEncoder const& pass) const final {
+    LOG_CHECK(asset_ != nullptr);
+
     uint32_t instance_index = 0u;
-    for (auto const& mesh : scene_->meshes) {
-      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
+    push_constant_.model.worldMatrix = world_matrix_;
 
-      push_constant_.model.worldMatrix = lina::mul(
+    for (auto const& mesh : asset_->meshes) {
+      pass.setPrimitiveTopology(mesh.topology);
+      push_constant_.model.worldMatrix =  lina::mul(
         world_matrix_,
-        scene_->transforms[mesh->transform_index]
+        asset_->root_transform().toLocalMatrix() //
       );
-
-      for (auto const& submesh : mesh->submeshes) {
-        auto const& mat = scene_->material_proxy(*submesh.material_ref);
-        push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
-        push_constant_.model.material_index = submesh.material_ref->material_index;
+      for (auto const& submesh : mesh.submeshes) {
+        // auto const& mat = scene_->material_proxy(*submesh.material_ref);
+        // push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
+        push_constant_.model.material_index = submesh.asset_material_index; //
         push_constant_.model.instance_index = instance_index++;
         pushConstant(pass);
-        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+
+        pass.bindAndDraw(
+          submesh.draw_descriptor, gpu_pool_->vertex_buffer(), gpu_pool_->index_buffer()
+        );
       }
     }
   }
 
  public:
-  void setModel(GLTFScene model) {
-    LOG_CHECK(model->device_images.size() <= kMaxNumTextures); //
+  void loadAsset(Renderer &renderer, std::string_view filename) {
+    asset_handle_ = renderer.loadAsset(filename);
+    gpu_pool_     = &renderer.gpu_pool();
+    asset_        = gpu_pool_->find(asset_handle_);
 
-    scene_ = model;
-
+    // ---------------------------------
     /* Update the Sampler Atlas descriptor with the currently loaded textures. */
-    context_ptr_->updateDescriptorSet(descriptor_set_, {
-      {
-        .binding = shader_interop::kDescriptorSetBinding_Scene_Textures,
-        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .images = scene_->buildDescriptorImageInfos()
+    {
+      std::vector<VkDescriptorImageInfo> image_infos{};
+      image_infos.reserve(asset_->texture_count);
+
+      auto const& sampler_pool = context_ptr_->sampler_pool();
+      auto const& images       = renderer.gpu_pool().images();
+
+      for (uint32_t i = 0; i < asset_->texture_count; ++i) {
+        auto const& img = images.at(asset_->first_texture + i);
+        image_infos.push_back({
+          .sampler = sampler_pool.default_sampler(),
+          .imageView = img.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        });
       }
-    });
+
+      context_ptr_->updateDescriptorSet(descriptor_set_, {
+        {
+          .binding = shader_interop::kDescriptorSetBinding_Scene_Textures,
+          .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .images = std::move(image_infos)
+        }
+      });
+    }
+    // ---------------------------------
   }
 
   void setWorldMatrix(mat4 const& world_matrix) {
@@ -213,8 +238,11 @@ class SceneFx final : public RenderTargetFx {
   shader_interop::UniformData host_data_{};
   backend::Buffer uniform_buffer_{};
 
-  GLTFScene scene_{};
   mat4 world_matrix_{};
+
+  AssetHandle asset_handle_{};
+  GpuPool const* gpu_pool_{};
+  DeviceAsset const* asset_{};
 };
 
 // ----------------------------------------------------------------------------
@@ -287,24 +315,12 @@ class SampleApp final : public Application {
       arcball_controller_.set_dolly(4.0f, false);
     }
 
-    /* Load a glTF Scene. */
-    std::string const gltf_filename{ASSETS_DIR "models/"
-      "DamagedHelmet.glb"
-    };
-
     /* Fx Pipeline. */
     toon_pipeline_.init(context_);
     toon_pipeline_.setup(renderer_.surface_size()); //
 
     if (auto sceneFx = toon_pipeline_.entry_fx(); sceneFx) {
-      auto scene = renderer_.loadGLTF(gltf_filename, {
-        { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
-        { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
-        { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
-      });
-      scene->uploadToDevice();
-
-      sceneFx->setModel(scene); //
+      sceneFx->loadAsset(renderer_, ASSETS_DIR "models/DamagedHelmet.glb");
       sceneFx->setProjectionMatrix(camera_.proj());
       sceneFx->updateUniforms();
     }

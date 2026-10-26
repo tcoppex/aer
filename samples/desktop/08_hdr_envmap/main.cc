@@ -74,26 +74,24 @@ class SampleApp final : public Application {
 
     /* Initialize the skybox and setup the HDR diffuse envmap used to calculate
      * IBL convolutions. */
-    auto &skybox = renderer_.skybox();
-    skybox.setup(ASSETS_DIR "textures/qwantani_dusk_2_2k.hdr");
+    renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_2k.hdr");
 
     /* Load glTF Scene / Scene. */
     {
-      auto const gltf_filename = std::string{ASSETS_DIR "models/"
-        "suzanne.glb"
-      };
+      auto const gltf_filename = std::string{ASSETS_DIR "models/suzanne.glb"};
 
-      /* Load the model directly on device, as we do not change the model's internal data
-       * layout we need to specify how to map its attributes to the shader used. */
-      scene_ = renderer_.loadGLTF(gltf_filename, {
-          { Geometry::AttributeType::Position,  shader_interop::kAttribLocation_Position },
-          { Geometry::AttributeType::Texcoord,  shader_interop::kAttribLocation_Texcoord },
-          { Geometry::AttributeType::Normal,    shader_interop::kAttribLocation_Normal   },
-        }
-      );
-      scene_->uploadToDevice();
+      /* Load the model asset directly on device memory (but not on the scene tree). */
+      if (auto ah = renderer_.loadAsset(gltf_filename); ah.valid()) {
+        asset_ = renderer_.gpu_pool().find(ah);
+      } else {
+        LOGE("Asset \"{}\" failed to load.", gltf_filename);
+        return false;
+      }
 
-      LOG_CHECK(scene_->device_images.size() <= kMaxNumTextures); //
+      if (!asset_) {
+        LOGE("Asset \"{}\" not found.", gltf_filename);
+        return false;
+      }
     }
 
     /* Release the temporary staging buffers.
@@ -140,7 +138,7 @@ class SampleApp final : public Application {
           .images = {
             {
               .sampler = context_.default_sampler(),
-              .imageView = skybox.irradiance_map().view,
+              .imageView = renderer_.skybox().irradiance_map().view,
               .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             }
           },
@@ -148,14 +146,38 @@ class SampleApp final : public Application {
       });
     }
 
+    // ---------------------------------
     /* Update the Sampler Atlas descriptor with the currently loaded textures. */
-    context_.updateDescriptorSet(descriptor_set_, {
-      {
-        .binding = shader_interop::kDescriptorSetBinding_Sampler,
-        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .images = scene_->buildDescriptorImageInfos()
+    {
+      std::vector<VkDescriptorImageInfo> image_infos{};
+      image_infos.reserve(asset_->texture_count);
+
+      auto const& sampler_pool = context_.sampler_pool();
+      auto const& images       = renderer_.gpu_pool().images();
+
+      /* Here the asset has already been uploaded on device with its internal
+       * sampler to its material fx pipeline. As we lost its internal resoruces,
+       * to bind textures (already on memory) to our custom pipeline
+       * we have to give it a custom sampler.
+       */
+      for (uint32_t i = 0; i < asset_->texture_count; ++i) {
+        auto const& img = images.at(asset_->first_texture + i);
+        image_infos.push_back({
+          .sampler = sampler_pool.default_sampler(),
+          .imageView = img.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        });
       }
-    });
+
+      context_.updateDescriptorSet(descriptor_set_, {
+        {
+          .binding = shader_interop::kDescriptorSetBinding_Sampler,
+          .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .images = std::move(image_infos)
+        }
+      });
+    }
+    // ---------------------------------
 
 
     /* Setup the graphics pipeline. */
@@ -220,7 +242,6 @@ class SampleApp final : public Application {
       graphics_pipeline_,
       uniform_buffer_
     );
-    scene_.reset();
   }
 
   void update(float const dt) final {
@@ -230,56 +251,46 @@ class SampleApp final : public Application {
     }
   }
 
-  void draw(CommandEncoder const& cmd) final {
-    mat4 const worldMatrix{
-      lina::rotation_matrix_axis(
-        vec3(-0.25f, 1.0f, -0.15f),
-        frame_time() * 0.4f
-      )
-    };
-
-    auto pass = cmd.beginRendering();
-    {
-      pass.setViewportScissor(viewport_size_);
-
-      /* First render the skybox. */
-      renderer_.skybox().render(pass, camera_);
-
-      /* Then the scene / model. */
-      pass.bindPipeline(graphics_pipeline_);
-      {
-        pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
-        draw_model(pass, worldMatrix);
-      }
+  void drawPass(RenderPassEncoder const& pass) final {
+    if (!asset_) {
+      return;
     }
-    cmd.endRendering();
-  }
 
+    mat4 const world_matrix = lina::rotation_matrix_axis(
+      vec3(-0.25f, 1.0f, -0.15f),
+      frame_time() * 0.4f
+    );
 
-  void draw_model(RenderPassEncoder const& pass, mat4 const& world_matrix) {
-    for (auto const& mesh : scene_->meshes) {
-      pass.setPrimitiveTopology(mesh->vk_primitive_topology());
+    pass.bindPipeline(graphics_pipeline_);
+    pass.bindDescriptorSet(descriptor_set_, VK_SHADER_STAGE_VERTEX_BIT);
 
-      auto root_matrix = scene_->root_matrix();
-      push_constant_.model.worldMatrix = lina::mul(
-        world_matrix,
-        root_matrix //
-      );
+    auto const& pool = renderer_.gpu_pool();
 
-      for (auto const& submesh : mesh->submeshes) {
-        if (submesh.material_ref) {
-          auto const& mat = scene_->material_proxy(*submesh.material_ref);
-          push_constant_.model.albedo_texture_index = mat.bindings.basecolor;
-          pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    for (auto const& mesh : asset_->meshes) {
+      pass.setPrimitiveTopology(mesh.topology);
+
+      auto pc = push_constant_;
+      pc.model.worldMatrix = world_matrix;
+
+      for (auto const& submesh : mesh.submeshes) {
+        if (submesh.asset_material_index != kInvalidIndexU32) {
+          // auto const& mat = scene_->material_proxy(*submesh.material_ref);
+          // pc.model.albedo_texture_index = mat.bindings.basecolor;
         } else {
           LOGW("Submesh lack a material reference.");
         }
-        pass.bindAndDraw(submesh.draw_descriptor, scene_->vertex_buffer, scene_->index_buffer);
+        pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        pass.bindAndDraw(submesh.draw_descriptor, pool.vertex_buffer(), pool.index_buffer());
       }
     }
+
   }
 
  private:
+  ArcBallController arcball_controller_{};
+
+  DeviceAsset const* asset_{};
+
   HostData_t host_data_{};
   backend::Buffer uniform_buffer_{};
 
@@ -287,9 +298,6 @@ class SampleApp final : public Application {
   VkDescriptorSet descriptor_set_{};
   shader_interop::PushConstant push_constant_{};
   Pipeline graphics_pipeline_{};
-
-  ArcBallController arcball_controller_{};
-  GLTFScene scene_{};
 };
 
 // ----------------------------------------------------------------------------

@@ -15,9 +15,11 @@
 
 #include "aer/application.h"
 #include "aer/core/arcball_controller.h"
+
 #include "aer/scene/font.h"
 #include "aer/scene/font_mesh.h"
 #include "aer/scene/font_atlas.h"
+#include "aer/renderer/vertex_layout.h"
 
 namespace shader_interop {
 #include "shaders/interop.h"
@@ -157,13 +159,15 @@ class SampleApp final : public Application {
     auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "mesh.slang");
 
     mesh_pipeline_ = context_.createGraphicsPipeline(pipeline_layout, {
-      .dynamicStates = {
-        VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
-      },
+      // .dynamicStates = {
+      //   VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,
+      // },
       .vertex = {
         .module = shader.handle,
         .entryPoint = "vertexMain",
-        .buffers = mesh.pipeline_vertex_buffer_descriptors(),
+        .buffers = mesh.createPipelineVertexBufferDescriptors({
+          { Geometry::AttributeType::Position, shader_interop::kAttribLocation_Position },
+        }),
       },
       .fragment = {
         .module = shader.handle,
@@ -291,14 +295,6 @@ class SampleApp final : public Application {
       return false;
     }
 
-    // Bind mesh attributes to shader location.
-    mesh.initializeSubmeshDescriptors({
-      {
-        Geometry::AttributeType::Position,
-        shader_interop::kAttribLocation_Position
-      },
-    });
-
     context_.deviceWaitIdle();
 
     context_.destroyResources(
@@ -317,6 +313,8 @@ class SampleApp final : public Application {
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT
       );
     }
+    context_.clearStagingBuffers();
+
     return true;
   }
 
@@ -376,6 +374,7 @@ class SampleApp final : public Application {
       atlas_image_,
       VkExtent3D{atlas_.width(), atlas_.height(), 1u}
     );
+    context_.clearStagingBuffers(); //
 
     context_.updateDescriptorSet(descriptor_set_, { atlasDescriptorEntry() });
     return true;
@@ -442,30 +441,22 @@ class SampleApp final : public Application {
     }
   }
 
-  void draw(CommandEncoder const& cmd) final {
-    auto pass = cmd.beginRendering();
-    {
-      pass.setViewportScissor(viewport_size_);
-
-      if (ui_.mode == RenderMode::Mesh) {
-        drawMesh(pass);
-      } else {
-        drawMsdf(pass);
-      }
+  void drawPass(RenderPassEncoder const& pass) final {
+    if (ui_.mode == RenderMode::Mesh) {
+      drawMesh(pass);
+    } else {
+      drawMsdf(pass);
     }
-    cmd.endRendering();
-
-    drawUI(cmd);
   }
 
   void drawMesh(RenderPassEncoder const& pass) {
     auto const scaleMatrix = lina::scaling_matrix(
       vec3(font_.pixelScaleFromSize(2))
     );
-    auto const centerMatrix = lina::translation_matrix(
-      vec3(text_draw_info_.cx, 0, 0)
+    auto const centerMatrix = lina::translation_matrix_x(
+      static_cast<float>(text_draw_info_.cx)
     );
-    auto const worldMatrix = lina::mul(scaleMatrix, centerMatrix);
+    auto const worldMatrix  = lina::mul(scaleMatrix, centerMatrix);
 
     pass.bindPipeline(mesh_pipeline_);
     pass.bindDescriptorSet(
@@ -477,16 +468,30 @@ class SampleApp final : public Application {
     push_constant_.animate = ui_.enableAnimation;
 
     for (size_t i = 0; i < text_draw_info_.glyphs.size(); ++i) {
-      auto const& glyph_draw_info = text_draw_info_.glyphs[i];
-      push_constant_.instanceID = static_cast<uint32_t>(i);
-      push_constant_.worldMatrix = lina::mul(
-        worldMatrix,
-        glyph_draw_info.matrix
-      );
-      pass.pushConstant(push_constant_, VK_SHADER_STAGE_VERTEX_BIT);
-      for (auto const& submesh : glyph_draw_info.submeshes) {
-        pass.bindAndDraw(submesh.draw_descriptor, vertex_buffer_, index_buffer_);
+      auto const& glyph = text_draw_info_.glyphs[i];
+      if (glyph.primitive_count == 0u) {
+        continue;
       }
+
+      auto pc = push_constant_;
+      pc.instanceID = static_cast<uint32_t>(i);
+      pc.worldMatrix = lina::mul(worldMatrix, glyph.matrix);
+      pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT);
+
+      // ---------------------------
+      for (uint32_t p = 0; p < glyph.primitive_count; ++p) {
+        auto const& prim = font_mesh_.primitive(glyph.primitive_index + p);
+        pass.bindVertexBuffer(
+          vertex_buffer_, 0u, prim.bufferOffsets.at(Geometry::AttributeType::Position)
+        );
+        if (prim.indexCount > 0u) {
+          pass.bindIndexBuffer(index_buffer_, font_mesh_.vk_index_type(), prim.indexOffset);
+          pass.drawIndexed(prim.indexCount);
+        } else {
+          pass.draw(prim.vertexCount);
+        }
+      }
+      // ---------------------------
     }
   }
 
