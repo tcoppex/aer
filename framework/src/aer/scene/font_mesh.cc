@@ -40,7 +40,6 @@ FontMesh::TextDrawInfo FontMesh::buildTextDrawInfo(
   LOG_CHECK(font_ptr_ != nullptr);
 
   FontMesh::TextDrawInfo result;
-
   result.glyphs.resize(text.size());
 
   int advance = 0;
@@ -64,10 +63,14 @@ FontMesh::TextDrawInfo FontMesh::buildTextDrawInfo(
     float const tx = static_cast<float>(advance + glyph.leftSideBearing);
     advance += glyph.advanceWidth;
 
+    auto const info_it = glyph_info_map_.find(ucode);
+    bool const has_info = (info_it != glyph_info_map_.end());
+
     result.glyphs[i] = {
       .code = ucode,
-      .matrix = lina::translation_matrix(vec3(tx, 0, 0)),
-      .submeshes = glyph_submeshes(ucode),
+      .matrix = lina::translation_matrix_x(tx),
+      .primitive_index = has_info ? info_it->second.primitive_index : 0u,
+      .primitive_count = has_info ? info_it->second.count : 0u,
     };
   }
   result.cx -= advance / 2;
