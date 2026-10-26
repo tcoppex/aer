@@ -6,14 +6,10 @@
 #include "aer/core/common.h"
 #include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor
 #include "aer/scene/material.h"
-// #include "aer/renderer/fx/material/material_fx_registry.h"
+
+#include "aer/scene/asset.h" // (needed for DeviceAsset::root_transform())
 
 class MaterialFx;
-
-namespace scene {
-struct Prefab;
-struct Asset;
-}
 
 /* -------------------------------------------------------------------------- */
 
@@ -66,8 +62,10 @@ struct DeviceAsset {
   uint32_t texture_count{};
 
   std::shared_ptr<const scene::Prefab> prefab{}; // shared with scene::Asset
-
   uint32_t instance_count{};
+
+  [[nodiscard]]
+  auto const& root_transform() const { return prefab->nodes[0].transform; }
 };
 
 /* -------------------------------------------------------------------------- */
