@@ -333,6 +333,12 @@ template<class T> mat<T,4,4> rotation_matrix_z(T const angle) { return rotation_
 
 // ----------------------------------------------------------------------------
 
+template<class T> mat<T,4,4> translation_matrix_x(T const x) { return translation_matrix(vec<T, 3>(   x, 0.0f, 0.0f)); }
+template<class T> mat<T,4,4> translation_matrix_y(T const y) { return translation_matrix(vec<T, 3>(0.0f,    y, 0.0f)); }
+template<class T> mat<T,4,4> translation_matrix_z(T const z) { return translation_matrix(vec<T, 3>(0.0f, 0.0f,    z)); }
+
+// ----------------------------------------------------------------------------
+
 template<class T>
 mat<T,4,4> look_dir_matrix(vec<T,3> const& U) {
   auto Z = -normalize(U);
