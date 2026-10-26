@@ -139,7 +139,7 @@ class Renderer {
   void set_foveated_rendering_enabled(bool enabled) noexcept { foveated_rendering_ = enabled; }
 
   /* Load an HDR environment (initializes the skybox on first call). */
-  bool setSkybox(std::string_view hdr_filename);
+  bool setSkybox(std::string_view hdr_filename, float hdr_intensity = 1.0f);
 
  private:
   void initViewResources();

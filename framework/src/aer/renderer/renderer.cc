@@ -52,11 +52,12 @@ bool Renderer::init(
 
 // ----------------------------------------------------------------------------
 
-bool Renderer::setSkybox(std::string_view hdr_filename) {
+bool Renderer::setSkybox(std::string_view hdr_filename, float hdr_intensity) {
   if (!skybox_initialized_) {
     skybox_.init(*context_ptr_);
     skybox_initialized_ = true;
   }
+  skybox_.set_hdr_intensity(hdr_intensity);
   return skybox_.setup(hdr_filename);
 }
 
