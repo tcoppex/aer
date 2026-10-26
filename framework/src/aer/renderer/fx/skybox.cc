@@ -35,10 +35,6 @@ void Skybox::init(RenderContext& context) {
     .maxLod = VK_LOD_CLAMP_NONE,
   });
 
-  Geometry::AttributeLocationMap const locations{
-    { Geometry::AttributeType::Position, shader_interop::skybox::kAttribLocation_Position },
-  };
-
   /* Create the skybox geometry on the device. */
   {
     Geometry::MakeCube(cube_);
@@ -107,7 +103,9 @@ void Skybox::init(RenderContext& context) {
     graphics_pipeline_ = context.createGraphicsPipeline(pipeline_layout_, {
       .vertex = {
         .module = shaders[0u].handle,
-        .buffers = CreatePipelineVertexBufferDescriptors(cube_, locations),
+        .buffers = CreatePipelineVertexBufferDescriptors(cube_, {
+          { Geometry::AttributeType::Position, shader_interop::skybox::kAttribLocation_Position },
+        }),
       },
       .fragment = {
         .module = shaders[1u].handle,

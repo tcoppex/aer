@@ -26,7 +26,7 @@ scene::MaterialModel GetMaterialModel(cgltf_material const& mat) {
 }
 
 scene::MaterialStates GetMaterialStates(cgltf_material const& mat) {
-  scene::MaterialStates states{
+  return scene::MaterialStates{
     .alpha_mode = (mat.alpha_mode == cgltf_alpha_mode_opaque) ?
         scene::MaterialStates::AlphaMode::Opaque
       : (mat.alpha_mode == cgltf_alpha_mode_blend) ?
@@ -34,7 +34,6 @@ scene::MaterialStates GetMaterialStates(cgltf_material const& mat) {
       : scene::MaterialStates::AlphaMode::Mask
       ,
   };
-  return states;
 }
 
 // ---------------------------------
@@ -43,11 +42,11 @@ void ReadNodeTransform(cgltf_node const& node, scene::component::Transform& t) {
   if (node.has_matrix) {
     auto const& m = reinterpret_cast<mat4 const&>(node.matrix);
     lina::decompose_transform_from_matrix(m, t.translation, t.rotation, t.scale);
-    return;
+  } else {
+    if (node.has_translation) { t.translation = vec3(node.translation); }
+    if (node.has_rotation)    { t.rotation    = quat(node.rotation); }
+    if (node.has_scale)       { t.scale       = vec3(node.scale); }
   }
-  if (node.has_translation) { t.translation = vec3(node.translation); }
-  if (node.has_rotation)    { t.rotation    = quat(node.rotation); }
-  if (node.has_scale)       { t.scale       = vec3(node.scale); }
 }
 
 // Appends `node` and its subtree (parents first). Returns the node's prefab index.
@@ -105,7 +104,7 @@ void ExtractImages(
     cgltf_buffer_view const* view = data->images[i].buffer_view;
     if (!view || !view->buffer || !view->buffer->data) {
       LOGW("[GLTF] image {} has no embedded data (external URIs unsupported).", uint32_t(i));
-      continue;   // placeholder stays empty
+      continue;
     }
 
     auto const* bytes = reinterpret_cast<stbi_uc const*>(view->buffer->data) + view->offset;
@@ -198,11 +197,13 @@ void ExtractMaterials(
 
   // Default material (glTF spec) for primitives without one: always last.
   {
-    scene::MaterialProxy proxy{};
-    proxy.pbr_mr.basecolor_factor = vec4(1.0f);
-    proxy.pbr_mr.metallic_factor  = 1.0f;
-    proxy.pbr_mr.roughness_factor = 1.0f;
-    proxy.bindings = {};   // all sentinels
+    scene::MaterialProxy proxy{
+      .pbr_mr = {
+        .basecolor_factor = vec4(1.0f),
+        .metallic_factor  = 1.0f,
+        .roughness_factor = 1.0f,
+      }
+    };
     push(std::move(proxy), scene::MaterialModel::PBRMetallicRoughness, {});
   }
 }
@@ -230,8 +231,7 @@ std::vector<uint32_t> ExtractMeshes(
 
     scene::Mesh mesh{};
     if (restructure) {
-      // [LAYOUT]
-      mesh.set_attributes(VertexInternal_t::GetAttributeInfoMap());
+      mesh.set_attributes(VertexInternal_t::GetAttributeInfoMap()); //
       mesh.set_topology(Geometry::Topology::TriangleList);
     }
 

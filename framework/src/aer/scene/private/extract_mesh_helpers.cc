@@ -288,8 +288,7 @@ bool AppendPrimitiveRestructured(
   scene::Mesh& mesh,
   Geometry::Primitive& primitive
 ) {
-  vertices.clear();   // otherwise attributes missing from this primitive keep the
-                      // previous primitive's values (was a bug in the old code)
+  vertices.clear();
 
   if (prim.has_draco_mesh_compression) {
     std::vector<uint32_t> indices{};
@@ -308,10 +307,10 @@ bool AppendPrimitiveRestructured(
     }
   }
 
-  // [LAYOUT]
   uint64_t const offset = mesh.addVerticesData(std::as_bytes(std::span(vertices)));
   primitive.vertexCount   = static_cast<uint32_t>(vertices.size());
-  primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(offset);
+  primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(offset); //
+
   return true;
 }
 
