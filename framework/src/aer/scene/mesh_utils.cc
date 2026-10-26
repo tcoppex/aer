@@ -1,4 +1,4 @@
-#include "aer/renderer/vertex_layout.h"
+#include "aer/scene/mesh_utils.h"
 
 /* -------------------------------------------------------------------------- */
 
