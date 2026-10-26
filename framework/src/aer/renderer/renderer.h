@@ -121,6 +121,9 @@ class Renderer {
   [[nodiscard]]
   Skybox& skybox() noexcept { return skybox_; }
 
+  [[nodiscard]]
+  GpuPool const& gpu_pool() const noexcept { return gpu_pool_; }
+
   // --- Setters ---
 
   void set_clear_color(vec4 const& color) {

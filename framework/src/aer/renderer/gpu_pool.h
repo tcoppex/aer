@@ -63,6 +63,9 @@ class GpuPool {
   [[nodiscard]]
   backend::Buffer const& index_buffer() const noexcept { return index_buffer_; }
 
+  [[nodiscard]]
+  std::vector<backend::Image> const& images() const noexcept { return images_; }
+
  private:
   bool uploadImages(
     std::span<scene::ImageData const> images,
