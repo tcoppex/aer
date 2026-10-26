@@ -171,11 +171,7 @@ void Hierarchy::updateGlobalTransform(
   auto [node, transform, global] = group.get(e);
 
   // [todo] cache local transform.
-  auto const& localMatrix = lina::transform_matrix(
-    transform.translation,
-    transform.rotation,
-    transform.scale
-  );
+  auto const localMatrix{ transform.toLocalMatrix() };
 
   global.worldMatrix = lina::mul(parent_matrix, localMatrix);
 

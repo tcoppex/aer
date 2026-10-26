@@ -32,6 +32,11 @@ struct Transform {
   vec3 translation{};
   quat rotation{lina::identity};
   vec3 scale{1.0f, 1.0f, 1.0f};
+
+  [[nodiscard]]
+  mat4 toLocalMatrix() const noexcept {
+    return lina::transform_matrix(translation, rotation, scale);
+  }
 };
 
 // ----------------------------------------------------------------------------
