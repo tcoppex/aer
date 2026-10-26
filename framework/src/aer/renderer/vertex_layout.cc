@@ -36,9 +36,9 @@ VkPrimitiveTopology ToVkPrimitiveTopology(Geometry::Topology t) {
 
 VertexInputDescriptor CreateVertexInputDescriptor(
   Geometry const& geo,
+  uint64_t base_vertex_offset,
   Geometry::AttributeOffsetMap const& attribute_to_offset,
-  Geometry::AttributeLocationMap const& attribute_to_location,
-  uint64_t base_vertex_offset
+  Geometry::AttributeLocationMap const& attribute_to_location
 ) {
   VertexInputDescriptor result{};
   std::map<uint64_t, std::vector<Geometry::AttributeType>> by_offset{};

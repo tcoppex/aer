@@ -241,7 +241,11 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
       dm.submeshes.push_back({
         .draw_descriptor = {
           .vertexInput = CreateVertexInputDescriptor(
-            mesh, prim.bufferOffsets, locations, dm.buffer_range.vertex.offset),
+            mesh,
+            dm.buffer_range.vertex.offset,
+            prim.bufferOffsets,
+            locations
+          ),
           .indexType     = ToVkIndexType(mesh.index_format()),
           .indexOffset   = dm.buffer_range.index.offset + prim.indexOffset,
           .vertexOffset  = dm.buffer_range.vertex.offset + pos->second,

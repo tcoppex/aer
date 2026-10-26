@@ -9,6 +9,37 @@ namespace material_shader_interop {
 }
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+[[nodiscard]]
+VkFormat ToVkFormat(Geometry::AttributeFormat f);
+
+[[nodiscard]]
+VkIndexType ToVkIndexType(Geometry::IndexFormat f);
+
+[[nodiscard]]
+VkPrimitiveTopology ToVkPrimitiveTopology(Geometry::Topology t);
+
+[[nodiscard]]
+VertexInputDescriptor CreateVertexInputDescriptor(
+  Geometry const& geo,
+  uint64_t base_vertex_offset,
+  Geometry::AttributeOffsetMap const& attribute_to_offset,
+  Geometry::AttributeLocationMap const& attribute_to_location
+);
+
+/* Static pipeline vertex input for a geometry primitive: one binding per distinct
+ * buffer offset (attributes sharing an offset are interleaved). Bindings come in
+ * ascending offset order, the same order as CreateVertexInputDescriptor. */
+[[nodiscard]]
+VertexBufferDescriptors CreatePipelineVertexBufferDescriptors(
+  Geometry const& geo,
+  Geometry::AttributeLocationMap const& attribute_to_location,
+  uint32_t primitive_index = 0u
+);
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
 //
 // Internal interleaved vertex structure used when bRestructureAttribs is set to true.
@@ -21,6 +52,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
   // vec4 tangent;
   // vec2 texcoord; float _pad2[2];
 
+  [[nodiscard]]
   static
   Geometry::AttributeInfoMap GetAttributeInfoMap() {
     return {
@@ -59,6 +91,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   }
 
+  [[nodiscard]]
   static
   Geometry::AttributeOffsetMap GetAttributeOffsetMap(uint64_t buffer_offset) {
     return {
@@ -69,6 +102,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   }
 
+  [[nodiscard]]
   static
   Geometry::AttributeLocationMap GetDefaultAttributeLocationMap() {
     return {
@@ -79,6 +113,33 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   };
 
+  [[nodiscard]]
+  static
+  VertexInputDescriptor GetVertexInputDescriptor(
+    Geometry const& geo,
+    uint64_t base_vertex_offset,
+    uint64_t buffer_offset
+  ) {
+    return CreateVertexInputDescriptor(
+      geo,
+      base_vertex_offset,
+      GetAttributeOffsetMap(buffer_offset),
+      GetDefaultAttributeLocationMap()
+    );
+  }
+
+  [[nodiscard]]
+  static
+  VertexBufferDescriptors GetPipelineVertexBufferDescriptors(
+    Geometry const& geo,
+    uint32_t primitive_index = 0u
+  ) {
+    return CreatePipelineVertexBufferDescriptors(
+      geo, GetDefaultAttributeLocationMap(), primitive_index
+    );
+  }
+
+ public:
   void applyTransform(mat4 const& matrix) {
     position = lina::to_vec3(lina::mul(matrix, lina::to_vec4(position, 1.0f)));
     auto const normalMatrix = lina::to_mat3(matrix);
@@ -89,32 +150,3 @@ struct VertexInternal_t : material_shader_interop::Vertex {
 };
 
 /* -------------------------------------------------------------------------- */
-
-VkFormat ToVkFormat(Geometry::AttributeFormat f);
-
-VkIndexType ToVkIndexType(Geometry::IndexFormat f);
-
-VkPrimitiveTopology ToVkPrimitiveTopology(Geometry::Topology t);
-
-/* -------------------------------------------------------------------------- */
-
-VertexInputDescriptor CreateVertexInputDescriptor(
-  Geometry const& geo,
-  Geometry::AttributeOffsetMap const& attribute_to_offset,
-  Geometry::AttributeLocationMap const& attribute_to_location,
-  uint64_t base_vertex_offset // absolute offset of the mesh's vertices
-);
-
-/* -------------------------------------------------------------------------- */
-
-/* Static pipeline vertex input for a geometry primitive: one binding per distinct
- * buffer offset (attributes sharing an offset are interleaved). Bindings come in
- * ascending offset order, the same order as CreateVertexInputDescriptor. */
-VertexBufferDescriptors CreatePipelineVertexBufferDescriptors(
-  Geometry const& geo,
-  Geometry::AttributeLocationMap const& attribute_to_location,
-  uint32_t primitive_index = 0u
-);
-
-/* -------------------------------------------------------------------------- */
-
