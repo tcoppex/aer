@@ -34,35 +34,31 @@
   FrameBufferRef(pushConstant.frame_buffer_address) \
     .uFrameData
 
-#define GetRTInstanceData() \
-  InstanceDataBufferRef(pushConstant.instance_buffer_address) \
-    .instances[gl_InstanceID]
-
 #elif defined(__SLANG__)
 
 #define GetFrameData() \
   *(FrameData*)(pushConstant.frame_buffer_address)
 
-#define GetRTInstanceData() \
-  ((RTInstanceData*)(pushConstant.instance_buffer_address))[InstanceID()]
+#define GetRTGeometry() \
+  rt_geometry::fetch_geometry( \
+    pushConstant.geometry_table_address, InstanceID() + GeometryIndex() \
+  )
 
-#define GetRayTracingMaterial(material_id) \
-  ((RayTracingMaterial*)(pushConstant.material_buffer_address))[NonUniformResourceIndex(material_id)]
+// `geo` is a RTGeometryData (only valid if geo.material_address != 0)
+#define GetRayTracingMaterial(geo) \
+  ((RayTracingMaterial*)((geo).material_address))[(geo).material_index]
 
 #endif
 
 // -----------------------------------------------------------------------------
 
 STATIC_CONST uint kDescriptorSetBinding_RayTracing_AccumImage   = 0;
-STATIC_CONST uint kDescriptorSetBinding_RayTracing_MaterialSBO  = 1;
 
 // -----------------------------------------------------------------------------
 
 struct PushConstant {
   uint64_t frame_buffer_address;
-  uint64_t material_buffer_address;
-  uint64_t instance_buffer_address;
-  uint64_t tlas_address;
+  uint64_t geometry_table_address;    // RTGeometryData[] (RayTracingView)
   // ----
   int accumulation_frame_count;
   int num_samples;
@@ -86,12 +82,14 @@ struct HitPayload_t {
 
 // -----------------------------------------------------------------------------
 
-// Simple RayTracing proxy material.
+// [wip] RayTracing material.
 
 STATIC_CONST uint kRayTracingMaterialType_Diffuse  = 0;
 STATIC_CONST uint kRayTracingMaterialType_Mirror   = 1;
 STATIC_CONST uint kRayTracingMaterialType_Emissive = 2;
 
+// Mirrors fx::material::PBRMetallicRoughnessMaterial (the fx material SSBO).
+// Any change on one side MUST be done on the other.
 struct RayTracingMaterial {
   vec3 emissive_factor;
   uint emissive_texture_id;
@@ -100,15 +98,10 @@ struct RayTracingMaterial {
   uint orm_texture_id;
   float metallic_factor;
   float roughness_factor;
+  uint normal_texture_id;
+  uint occlusion_texture_id;
   float alpha_cutoff;
-  uint _pad0[3];
-};
-
-// -----------------------------------------------------------------------------
-
-struct RTInstanceData {
-  uint64_t vertexAddr;
-  uint64_t indexAddr;
+  uint double_sided;
 };
 
 /* -------------------------------------------------------------------------- */

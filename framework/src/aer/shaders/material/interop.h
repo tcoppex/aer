@@ -80,6 +80,18 @@ struct Vertex {
 };
 
 // ----------------------------------------------------------------------------
+// -- Ray Tracing --
+
+SLANG_PUBLIC
+struct RTGeometryData {
+  SLANG_PUBLIC uint64_t vertex_address;    // first vertex of the submesh (Vertex layout)
+  SLANG_PUBLIC uint64_t index_address;     // first index of the submesh
+  SLANG_PUBLIC uint64_t material_address;  // fx material buffer, 0 = no material
+  SLANG_PUBLIC uint     material_index;    // slot in that buffer
+  SLANG_PUBLIC uint     index_is_u16;      // 1: 16 bit indices, 0: 32 bit
+};
+
+// ----------------------------------------------------------------------------
 // -- Descriptor Sets --
 
 // set index as used for MaterialFx and bindings as defined in descriptor_registry.

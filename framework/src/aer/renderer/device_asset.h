@@ -5,8 +5,8 @@
 
 #include "aer/core/common.h"
 #include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor
+#include "aer/platform/vulkan/accel_struct.h"
 #include "aer/scene/material.h"
-
 #include "aer/scene/asset.h" // (needed for DeviceAsset::root_transform())
 
 class MaterialFx;
@@ -32,7 +32,11 @@ struct DeviceMesh {
   MeshBufferRange buffer_range{};
   VkPrimitiveTopology topology{};
   std::vector<DeviceSubmesh> submeshes{};
-  // [TODO] BLAS (for ray tracing)
+
+  backend::AccelerationStructure blas{};
+
+  [[nodiscard]]
+  bool has_blas() const noexcept { return blas.handle != VK_NULL_HANDLE; }
 };
 
 // ----------------------------------------------------------------------------

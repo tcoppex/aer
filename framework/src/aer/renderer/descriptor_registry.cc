@@ -4,7 +4,6 @@
 #include "aer/renderer/vertex_layout.h"
 
 // #include "aer/renderer/fx/skybox.h" //
-// #include "aer/renderer/raytracing_scene.h" //
 
 /* -------------------------------------------------------------------------- */
 

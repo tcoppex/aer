@@ -17,6 +17,7 @@
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/gpu_pool.h"
 #include "aer/renderer/scene_renderer.h"
+#include "aer/renderer/ray_tracing_view.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 #include "aer/renderer/fx/skybox.h" //
 
@@ -79,12 +80,49 @@ class Renderer {
 
   bool endFrame();
 
+  void update(Camera const& camera, float elapsed_time);
+
+  void render(RenderPassEncoder const& pass);
+
   /* Blit an image to the final default color image, before the swapchain. */
   void blitColor(
     CommandEncoder const& cmd,
     backend::Image const& src_image,
     VkImageLayout src_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
   ) const noexcept;
+
+  // -- Ray tracing --
+
+  /* Record current frame's acceleration structures. */
+  void buildAccelerationStructures(CommandEncoder const& cmd);
+
+  // -- Scene --
+
+  [[nodiscard]]
+  AssetHandle loadAsset(std::string_view filename, scene::LoadOptions = {});
+
+  bool releaseAsset(AssetHandle);
+
+  // (rename instantiate?)
+  entt::entity createInstance(
+    AssetHandle,
+    entt::entity parent = entt::null,
+    mat4 const& local = lina::identity
+  );
+
+  void destroyInstance(entt::entity instance_root);
+
+  entt::entity load(
+    std::string_view filename,
+    entt::entity parent = entt::null,
+    mat4 const& local = lina::identity,
+    scene::LoadOptions = {}
+  );
+
+  // ----
+  // std::future<std::optional<Asset>> asyncLoad(std::string file); // workers
+  // AssetHandle commit(std::future<...>&); // main thread
+  // ----
 
  public:
   // --- Getters ---
@@ -124,6 +162,16 @@ class Renderer {
   [[nodiscard]]
   GpuPool const& gpu_pool() const noexcept { return gpu_pool_; }
 
+  [[nodiscard]]
+  scene::Hierarchy& scene() noexcept { return scene_tree_; }
+
+  [[nodiscard]]
+  scene::Hierarchy const& scene() const noexcept { return scene_tree_; }
+
+  /* Data to trace the current frame (invalid if nothing can be traced). */
+  [[nodiscard]]
+  RayTracingView ray_tracing_view() const;
+
   // --- Setters ---
 
   void set_clear_color(vec4 const& color) {
@@ -137,6 +185,10 @@ class Renderer {
   void set_swapchain_blit_enabled(bool enabled) noexcept { swapchain_blit_enabled_ = enabled; }
 
   void set_foveated_rendering_enabled(bool enabled) noexcept { foveated_rendering_ = enabled; }
+
+  void set_rasterization_enabled(bool enabled); //
+
+  bool setRayTracingEnabled(bool enabled); //
 
   /* Load an HDR environment (initializes the skybox on first call). */
   bool setSkybox(std::string_view hdr_filename, float hdr_intensity = 1.0f);
@@ -162,7 +214,6 @@ class Renderer {
   /* Non owning References. */
   RenderContext* context_ptr_{};
 
-
   // --- Frame ---
 
   /* Internal / Default renderer target. */
@@ -170,7 +221,6 @@ class Renderer {
 
   /* Current render pass frame handler for changing target. */
   FrameHandler* binded_frame_handler_{nullptr};
-
 
   // --- Rendering States ---
 
@@ -180,53 +230,8 @@ class Renderer {
   /* [XR] Control whether to use fragment density map when available. */
   bool foveated_rendering_{true};
 
+  // --- Scene ---
 
-  // -----------------------------------------------------------------------
-  // -----------------------------------------------------------------------
-
- public:
-
-  [[nodiscard]]
-  AssetHandle loadAsset(std::string_view filename, scene::LoadOptions = {});
-
-  bool releaseAsset(AssetHandle);
-
-  // (rename instantiate?)
-  entt::entity createInstance(
-    AssetHandle,
-    entt::entity parent = entt::null,
-    mat4 const& local = lina::identity
-  );
-
-  void destroyInstance(entt::entity instance_root);
-
-  entt::entity load(
-    std::string_view filename,
-    entt::entity parent = entt::null,
-    mat4 const& local = lina::identity,
-    scene::LoadOptions = {}
-  );
-
-  // ----
-
-  // std::future<std::optional<Asset>> asyncLoad(std::string file); // workers
-  // AssetHandle commit(std::future<...>&); // main thread
-
-  // ----
-
-  void update(Camera const& camera, float elapsed_time);
-
-  void render(RenderPassEncoder const& pass);
-
-  // ----
-
-  [[nodiscard]]
-  scene::Hierarchy& scene() noexcept { return scene_tree_; }
-
-  [[nodiscard]]
-  scene::Hierarchy const& scene() const noexcept { return scene_tree_; }
-
- private:
   // pipelines + per-model material buffers (made incremental)
   // (pipelines setup copied from GPUResources::upload)
   MaterialFxRegistry material_fx_registry_{};

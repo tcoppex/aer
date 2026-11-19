@@ -2,6 +2,7 @@
 
 #include "aer/scene/asset.h"
 #include "aer/renderer/render_context.h"
+#include "aer/renderer/blas_builder.h"
 #include "aer/renderer/vertex_layout.h"
 #include "aer/renderer/fx/material/material_fx.h"
 
@@ -145,6 +146,42 @@ void GpuPool::release() {
 
 // ----------------------------------------------------------------------------
 
+void GpuPool::buildBLAS(DeviceAsset& da) {
+  if (!accel::BuildBLAS(*context_ptr_, vertex_buffer_, index_buffer_, settings_.attribute_locations, da)) {
+    LOGW("GpuPool: some meshes could not get a BLAS and will be ignored by ray tracing.");
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+bool GpuPool::setRayTracingEnabled(bool enabled) {
+  if (enabled == ray_tracing_enabled_) {
+    return true;
+  }
+  if (enabled && !settings_.ray_tracing) {
+    LOGE("GpuPool: ray tracing is not supported (Settings::ray_tracing is false).");
+    return false;
+  }
+  ray_tracing_enabled_ = enabled;
+
+  // A TLAS of a frame in flight may reference these BLAS.
+  context_ptr_->deviceWaitIdle();
+
+  for (auto& slot : slots_) {
+    if (!slot.alive) {
+      continue;
+    }
+    if (enabled) {
+      buildBLAS(slot.asset);
+    } else {
+      accel::DestroyBLAS(*context_ptr_, slot.asset);
+    }
+  }
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
 AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
   if (!context_ptr_ || !registry_ptr_) {
     LOGE("GpuPool::uploadAsset called before setup.");
@@ -213,6 +250,7 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
     rebase(b.roughness_metallic, default_binding_.roughness_metallic);
   }
 
+  //---------------------------------------------------
   // 5. Device meshes, absolute offsets.
   // (previously initializeSubmeshDescriptors)
   auto const& locations = settings_.attribute_locations;
@@ -257,6 +295,7 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
       });
     }
   }
+  //---------------------------------------------------
 
   // 6. Copy geometry to the device.
   if (!uploadGeometry(asset, rel, da)) {
@@ -299,7 +338,12 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
     }
   }
 
-  // 9. Publish in a slot.
+  // 9. [optionnal] Build the Bottom level acceleration structures.
+  if (ray_tracing_enabled_) {
+    buildBLAS(da);
+  }
+
+  // 10. Publish in a slot.
   uint32_t index;
   if (!free_slots_.empty()) {
     index = free_slots_.back();
@@ -532,11 +576,17 @@ void GpuPool::writeTextureDescriptor(
 // ----------------------------------------------------------------------------
 
 void GpuPool::freeDeviceResources(DeviceAsset& da) {
+  if (!context_ptr_) {
+    return;
+  }
   auto const& allocator = context_ptr_->allocator();
-  if (da.vertex_alloc  != VK_NULL_HANDLE) {
+
+  accel::DestroyBLAS(*context_ptr_, da);
+
+  if (da.vertex_alloc != VK_NULL_HANDLE) {
     allocator.freeVirtual(vertex_vblock_,  da.vertex_alloc);
   }
-  if (da.index_alloc   != VK_NULL_HANDLE) {
+  if (da.index_alloc != VK_NULL_HANDLE) {
     allocator.freeVirtual(index_vblock_,   da.index_alloc);
   }
   if (da.texture_alloc != VK_NULL_HANDLE) {

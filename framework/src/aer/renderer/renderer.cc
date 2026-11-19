@@ -28,11 +28,13 @@ bool Renderer::init(
 
   // --------------------------------------
   LOGD(" > GPU Pool");
+  auto const &F = context.features();
   auto const pool_settings = GpuPool::Settings{
     .vertex_capacity  = kDefaultPoolVertexCapacity,
     .index_capacity   = kDefaultPoolIndexCapacity,
     .max_textures     = DescriptorRegistry::kMaxNumTextures,
-    .ray_tracing      = false, //
+    .ray_tracing      = F.acceleration_structure.accelerationStructure
+                     && F.ray_tracing_pipeline.rayTracingPipeline,
     .attribute_locations = VertexInternal_t::GetDefaultAttributeLocationMap(),
   };
   if (!gpu_pool_.setup(context, material_fx_registry_, pool_settings)) {
@@ -147,7 +149,9 @@ CommandEncoder& Renderer::beginFrame(FrameHandler *frame_handler) {
   auto &frame = binded_frame_handler_->frame();
 
   /* Acquire next availables image in the swapchain. */
-  if (!sc.acquireNextImage()) {
+  if (sc.acquireNextImage()) {
+    scene_renderer_.upload(default_frame_handler_.index); //
+  } else {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
@@ -360,7 +364,6 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
     scene_tree_,
     camera,
     elapsed_time,
-    default_frame_handler_.index,
     renderer_flags
   );
 }
@@ -370,6 +373,34 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
 void Renderer::render(RenderPassEncoder const& pass) {
   skybox_.render(pass);
   scene_renderer_.render(pass);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void Renderer::buildAccelerationStructures(CommandEncoder const& cmd) {
+  scene_renderer_.recordAccelerationStructures(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+RayTracingView Renderer::ray_tracing_view() const {
+  return scene_renderer_.ray_tracing_view();
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::set_rasterization_enabled(bool enabled) {
+  scene_renderer_.set_rasterization_enabled(enabled);
+}
+
+// ----------------------------------------------------------------------------
+
+bool Renderer::setRayTracingEnabled(bool enabled) {
+  if (!gpu_pool_.setRayTracingEnabled(enabled)) {
+    return false;
+  }
+  scene_renderer_.set_ray_tracing_enabled(enabled);
+  return true;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -19,14 +19,8 @@ void main(
   inout HitPayload_t payload,
   BuiltInTriangleIntersectionAttributes attr
 ) {
-  let kInvalidIndexU24 = 0x00FFFFFF;
-  let materialID  = InstanceIndex();
-  let primitiveID = PrimitiveIndex();
-  let instance = GetRTInstanceData();
-
-  let tri = rt_geometry::unpack_triangle(
-    instance.vertexAddr, instance.indexAddr, primitiveID
-  );
+  let geo = GetRTGeometry();
+  let tri = rt_geometry::unpack_triangle(geo, PrimitiveIndex());
 
   let uv = rt_geometry::calculate_texcoord(
     tri, rt_geometry::barycenter_from_hit(attr.barycentrics)
@@ -34,8 +28,8 @@ void main(
 
   var opacity = 1.0f;
 
-  if (materialID != kInvalidIndexU24) {
-    let mat = GetRayTracingMaterial(materialID);
+  if (geo.material_address != 0) {
+    let mat = GetRayTracingMaterial(geo);
 
     let albedo = GetTexture(mat.diffuse_texture_id).SampleLevel(uv, 0.0f);
     let color = mat.diffuse_factor * albedo;

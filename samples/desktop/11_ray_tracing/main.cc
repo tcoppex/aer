@@ -68,22 +68,20 @@ class BasicRayTracingFx : public RayTracingFx {
   }
 
   void execute(CommandEncoder const& cmd) const final {
-    LOG_CHECK(push_constant_.frame_buffer_address != 0);
-    LOG_CHECK(push_constant_.instance_buffer_address != 0);
-    // LOG_CHECK(push_constant_.tlas_address != 0);
-
     if (push_constant_.accumulation_frame_count < max_accumulation_frame_count_) {
-      push_constant_.material_buffer_address = material_storage_buffer_.address; //
-      RayTracingFx::execute(cmd);
+      RayTracingFx::execute(cmd);   // (does nothing if the view is not valid)
     }
   }
 
-  void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) final {
-    push_constant_.frame_buffer_address = frame_buffer_address;
-  }
+  void set_view(RayTracingView const& view) final {
+    RayTracingFx::set_view(view);
+    push_constant_.frame_buffer_address    = view.frame_data_address;
+    push_constant_.geometry_table_address  = view.geometry_table_address;
 
-  void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) final {
-    push_constant_.instance_buffer_address = instance_buffer_address;
+    if (view.generation != last_generation_) {
+      last_generation_ = view.generation;
+      resetFrameAccumulation();
+    }
   }
 
  protected:
@@ -176,41 +174,10 @@ class BasicRayTracingFx : public RayTracingFx {
     push_constant_.accumulation_frame_count += 1u;
   }
 
-  void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) final {
-    if (proxy_materials.empty()) {
-      return;
-    }
-
-    materials_.reserve(proxy_materials.size());
-
-    // [we should probably sent the material proxy buffer directly to the GPU]
-    for (auto const& proxy : proxy_materials) {
-      materials_.push_back({
-        .emissive_factor      = proxy.emissive_factor,
-        .emissive_texture_id  = proxy.bindings.emissive,
-        .diffuse_factor       = proxy.pbr_mr.basecolor_factor,
-        .diffuse_texture_id   = proxy.bindings.basecolor,
-        .orm_texture_id       = proxy.bindings.roughness_metallic,
-        .metallic_factor      = proxy.pbr_mr.metallic_factor,
-        .roughness_factor     = proxy.pbr_mr.roughness_factor,
-        .alpha_cutoff         = proxy.alpha_cutoff,
-      });
-    }
-  }
-
-  void const* material_buffer_data() const final {
-    return materials_.data();
-  }
-
-  size_t material_buffer_size() const final {
-    return materials_.empty()
-      ? size_t(0)
-      : materials_.size() * sizeof(materials_[0])
-      ;
-  }
-
  private:
   int32_t max_accumulation_frame_count_{100};
+
+  uint64_t last_generation_{~uint64_t(0)};
 
   mutable shader_interop::PushConstant push_constant_{
     .num_samples      = 8,
@@ -219,9 +186,11 @@ class BasicRayTracingFx : public RayTracingFx {
     .sky_intensity    = 0.6f,
   };
 
-  std::vector<shader_interop::RayTracingMaterial> materials_{};
 };
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
 class SampleApp final : public Application {
@@ -231,6 +200,9 @@ class SampleApp final : public Application {
     auto const& features = context_.features();
     if (!features.ray_tracing_pipeline.rayTracingPipeline) {
       LOGW("This device does not support ray tracing pipeline.");
+      return false;
+    }
+    if (!renderer_.setRayTracingEnabled(true)) {
       return false;
     }
 
@@ -256,38 +228,27 @@ class SampleApp final : public Application {
 
     /* Setup the RayTracing effect. */
     ray_tracing_fx_.init(context_);
-    ray_tracing_fx_.setup(renderer_.surface_size()); //
+    ray_tracing_fx_.setup(renderer_.surface_size());
 
     /* Load a glTF Scene. */
-    std::string gtlf_filename{ASSETS_DIR "models/"
-      "CornellBox-Original.gltf"
-    };
-
-    future_scene_ = renderer_.asyncLoadGLTF(gtlf_filename);
+    root_ = renderer_.load(ASSETS_DIR "models/CornellBox-Original.gltf");
+    if (root_ == entt::null) {
+      return false;
+    }
 
     return true;
   }
 
   void release() final {
     ray_tracing_fx_.release();
-    scene_.reset();
+    if (root_ != entt::null) {
+      renderer_.destroyInstance(root_);
+      root_ = entt::null;
+    }
   }
 
   void update(float const dt) final {
-    if (future_scene_.valid()
-     && future_scene_.wait_for(0ms) == std::future_status::ready) {
-      scene_ = future_scene_.get();
-      scene_->setupRayTracingFx(&ray_tracing_fx_);
-      scene_->uploadToDevice(
-          GPUResources::kUploadFlagBits_BuildRayTracingData
-        | GPUResources::kUploadFlagBits_ReleaseHostDataOnUpload
-      );
-      future_scene_ = {};
-    }
-
-    if (scene_) {
-      scene_->update(camera_, elapsed_time());
-    }
+    renderer_.set_rasterization_enabled(!ray_tracing_fx_.is_enable());
 
     if (camera_.rebuilt()) {
       ray_tracing_fx_.resetFrameAccumulation();
@@ -295,32 +256,35 @@ class SampleApp final : public Application {
   }
 
   void draw(CommandEncoder const& cmd) final {
-    if (ray_tracing_fx_.is_enable() && scene_)
-    {
-      // -- RAY TRACING --
+    bool traced = false;
 
-      ray_tracing_fx_.execute(cmd);
+    // -- RAY TRACING --
+    if (ray_tracing_fx_.is_enable()) {
+      renderer_.buildAccelerationStructures(cmd);    // outside any render pass
 
-      auto const& src_image = ray_tracing_fx_.image_output();
+      if (auto const view = renderer_.ray_tracing_view(); view.valid()) {
+        ray_tracing_fx_.set_view(view);
+        ray_tracing_fx_.execute(cmd);
 
-      /* Blitting the image will change the layout to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
-      renderer_.blitColor(cmd, src_image);
+        auto const& src_image = ray_tracing_fx_.image_output();
 
-      /* So we need to transition it back before the next frame start. */
-      cmd.transitionColorImages(
-        {src_image},
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-      );
-    }
-    else
-    {
-      // -- RASTERIZING --
+        /* Blitting the image will change the layout to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
+        renderer_.blitColor(cmd, src_image);
 
-      auto pass = cmd.beginRendering();
-      if (scene_) {
-        scene_->render(pass);
+        /* So we need to transition it back before the next frame start. */
+        cmd.transitionColorImages(
+          {src_image},
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        );
+        traced = true;
       }
+    }
+
+    // -- RASTERIZING --
+    if (!traced) {
+      auto pass = cmd.beginRendering();
+      renderer_.render(pass);
       cmd.endRendering();
     }
 
@@ -343,9 +307,7 @@ class SampleApp final : public Application {
 
  private:
   ArcBallController arcball_controller_{};
-  std::future<GLTFScene> future_scene_{};
-  GLTFScene scene_{};
-
+  entt::entity root_{entt::null};
   BasicRayTracingFx ray_tracing_fx_{};
 };
 

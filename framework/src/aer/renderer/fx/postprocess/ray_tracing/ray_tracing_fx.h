@@ -3,6 +3,7 @@
 
 #include "aer/renderer/fx/postprocess/post_generic_fx.h"
 #include "aer/platform/vulkan/accel_struct.h"
+#include "aer/renderer/ray_tracing_view.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -16,12 +17,10 @@ class RayTracingFx : public PostGenericFx {
  public:
   // -------------------------------
   static constexpr uint kDescriptorSetBinding_RayTracing_AccumImage      = 0;
-  static constexpr uint kDescriptorSetBinding_RayTracing_MaterialSBO     = 1;
   // -------------------------------
 
  public:
   void release() override {
-    context_ptr_->destroyBuffer(material_storage_buffer_);
     context_ptr_->destroyBuffer(sbt_storage_buffer_);
     releaseOutputImagesAndBuffers();
     GenericFx::release();
@@ -47,45 +46,15 @@ class RayTracingFx : public PostGenericFx {
 
   void execute(CommandEncoder const& cmd) const override;
 
-  void buildMaterialStorageBuffer(
-    std::vector<scene::MaterialProxy> const& proxy_materials
-  ) {
-    buildMaterials(proxy_materials);
-    if (size_t bufferSize = material_buffer_size(); bufferSize > 0) {
-      // Setup the SSBO for rarer device-to-device transfer.
-      material_storage_buffer_ = context_ptr_->createBuffer(
-        bufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
-      );
-
-      context_ptr_->transientUploadBuffer(
-        material_buffer_data(),
-        bufferSize,
-        material_storage_buffer_
-      );
-
-      context_ptr_->updateDescriptorSet(descriptor_set_, {
-        {
-          .binding = kDescriptorSetBinding_RayTracing_MaterialSBO,
-          .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .buffers = { { material_storage_buffer_.buffer } },
-        },
-      });
-
-      // (we could release the internal material buffer here)
-    }
-  }
-
   virtual void resetFrameAccumulation() = 0;
 
-  virtual void set_frame_buffer_address(VkDeviceAddress const frame_buffer_address) = 0;
+  virtual void set_view(RayTracingView const& view) {
+    view_ = view;
+  }
 
-  virtual void set_instance_buffer_address(VkDeviceAddress const instance_buffer_address) = 0;
-
-  void set_tlas(backend::TLAS const& tlas) {
-    tlas_ = tlas;
+  [[nodiscard]]
+  RayTracingView const& view() const noexcept {
+    return view_;
   }
 
  public:
@@ -129,16 +98,6 @@ class RayTracingFx : public PostGenericFx {
         .stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
       },
-      // [use BDA instead ?]
-      {
-        .binding = kDescriptorSetBinding_RayTracing_MaterialSBO,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .descriptorCount = 1u,
-        .stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR
-                    | VK_SHADER_STAGE_ANY_HIT_BIT_KHR
-                    ,
-        .bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-      },
     };
   }
 
@@ -174,22 +133,6 @@ class RayTracingFx : public PostGenericFx {
     out_buffers_.clear();
   }
 
-  // ----------------------------
-  // Build optionnal ray tracing materials based on proxy materials.
-  virtual void buildMaterials(std::vector<scene::MaterialProxy> const& proxy_materials) {
-  }
-
-  [[nodiscard]]
-  virtual void const* material_buffer_data() const {
-    return nullptr;
-  }
-
-  [[nodiscard]]
-  virtual size_t material_buffer_size() const {
-    return 0;
-  }
-  // ----------------------------
-
  protected:
   VkExtent2D dimension_{};
   std::vector<backend::Image> out_images_{};
@@ -203,9 +146,7 @@ class RayTracingFx : public PostGenericFx {
   backend::Buffer sbt_storage_buffer_{};
   backend::RayTracingAddressRegion region_{};
 
-  backend::Buffer material_storage_buffer_{};
-
-  backend::TLAS tlas_{}; //
+  RayTracingView view_{};
 };
 
 /* -------------------------------------------------------------------------- */

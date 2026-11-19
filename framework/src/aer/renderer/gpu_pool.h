@@ -29,7 +29,11 @@ class GpuPool {
     uint64_t vertex_capacity{};
     uint64_t index_capacity{};
     uint32_t max_textures{};
-    bool ray_tracing{};
+
+    /* Give the vertex/index buffers the usage flags needed by acceleration
+     * structures (fixed at buffer creation).
+     * Building the BLAS stays opt-in, see setRayTracingEnabled(). */
+    bool ray_tracing{}; //
 
     // (might migrate elsewhere)
     Geometry::AttributeLocationMap attribute_locations{}; //
@@ -41,6 +45,13 @@ class GpuPool {
 
   AssetHandle uploadAsset(scene::Asset&&);
   bool releaseAsset(AssetHandle);
+
+  /* Build (true) or destroy (false) the BLAS of every alive asset, and
+   * of the ones uploaded afterwards. Needs Settings::ray_tracing. */
+  bool setRayTracingEnabled(bool enabled);
+
+  [[nodiscard]]
+  bool ray_tracing_enabled() const noexcept { return ray_tracing_enabled_; }
 
   // void beginFrame(uint32_t frame_index);     // (retire garbage)
   // void bindTextures();
@@ -85,6 +96,8 @@ class GpuPool {
     scene::Sampler const& sampler
   );
 
+  void buildBLAS(DeviceAsset&);
+
   void freeDeviceResources(DeviceAsset&);
 
  private:
@@ -92,6 +105,8 @@ class GpuPool {
   MaterialFxRegistry * registry_ptr_{};
 
   Settings settings_{};
+
+  bool ray_tracing_enabled_{};
 
   VmaVirtualBlock vertex_vblock_{};
   backend::Buffer vertex_buffer_{};
