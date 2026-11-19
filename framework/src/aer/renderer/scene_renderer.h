@@ -1,0 +1,176 @@
+#ifndef AER_RENDERER_SCENE_RENDERER_H_
+#define AER_RENDERER_SCENE_RENDERER_H_
+
+#include <map>
+#include <utility>
+#include <vector>
+
+#include "aer/core/common.h"
+#include "aer/core/enum_array.h"
+#include "aer/platform/vulkan/types.h"
+#include "aer/scene/ecs/hierarchy.h"
+#include "aer/renderer/gpu_pool.h"
+#include "aer/renderer/vertex_layout.h" //
+#include "aer/renderer/ray_tracing_view.h"
+#include "aer/renderer/fx/material/material_fx_registry.h"
+
+class Camera;
+class RenderContext;
+class CommandEncoder;
+class RenderPassEncoder;
+
+enum class RendererFlags : uint32_t;
+
+/* -------------------------------------------------------------------------- */
+
+///
+/// Per-frame drawing
+/// owns what depends on scene content (draw lists, transforms, TLAS)
+/// allocated as ring buffers
+///
+class SceneRenderer {
+ public:
+  SceneRenderer();
+  ~SceneRenderer();
+
+  bool setup(RenderContext const&, GpuPool&, MaterialFxRegistry&, uint32_t frames_in_flight);
+
+  void release();
+
+  void update(
+    scene::Hierarchy&,
+    Camera const&,
+    float elapsed_time,
+    RendererFlags renderer_flags
+  );
+
+  void upload(uint32_t frame_index);
+
+  void render(RenderPassEncoder const&);
+
+  // void onFramesInFlightChanged(uint32_t frames_in_fligh);
+
+ private:
+  bool growTransforms(uint32_t min_count);
+
+  void uploadTransforms();
+
+  void collectRetired();
+
+  void buildDrawLists(scene::Hierarchy&, Camera const&);
+
+  void buildFrameData(Camera const& camera, float elapsed_time, RendererFlags renderer_flags);
+
+  void writeFrameData();
+
+ private:
+  static constexpr uint32_t kInitialRenderableCapacity = 1024u;
+  static constexpr VkDeviceSize kSliceAlignment = 256u;
+
+ private:
+  struct RetiredBuffer {
+    backend::Buffer buffer{};
+    uint64_t frame{};
+  };
+
+  struct DrawItem {
+    DeviceSubmesh const*  submesh{};
+    DeviceMaterial const* material{};
+    DeviceMesh const*     mesh{};
+    uint32_t              transform_slot{};
+    float                 sort_key{};
+  };
+
+  using FxHashPair        = std::pair<MaterialFx*, scene::MaterialStates>;
+  using DrawItems         = std::vector<DrawItem>;
+  using FxDrawablesLookup = std::map<FxHashPair, DrawItems>;
+  using AlphaMode         = scene::MaterialStates::AlphaMode;
+
+ private:
+  RenderContext const* context_ptr_{};
+  GpuPool* pool_ptr_{};
+
+  bool pending_upload_{};
+  uint32_t ring_slot_{}; //
+
+  uint32_t frames_in_flight_{};
+  uint64_t frame_counter_{}; //
+
+  backend::Buffer frame_sbo_{};
+  VkDeviceSize    frame_data_stride_{};
+  VkDeviceAddress frame_data_current_address_{};
+
+  material_shader_interop::FrameData frame_data_{}; //
+
+  backend::Buffer   transforms_sbo_{};
+  uint32_t          transforms_capacity_{};
+  VkDeviceSize      transforms_slice_stride_{};
+  VkDeviceAddress   transforms_current_address_{};
+  std::vector<mat4> transforms_staging_{};
+
+  std::vector<RetiredBuffer> retired_buffers_{};
+
+  EnumArray<FxDrawablesLookup, AlphaMode> lookups_{};
+
+  bool raster_enabled_{true}; //
+
+  // -------------------------------
+  // -- Ray tracing (CPU side) --
+
+ public:
+  /* When false skip building the raster draw lists (eg. for ray traced only frame). */
+  void set_rasterization_enabled(bool enabled) noexcept {
+    raster_enabled_ = enabled;
+  }
+
+  /* When false skip building TLAS data. */
+  void set_ray_tracing_enabled(bool enabled);
+
+  void recordAccelerationStructures(CommandEncoder const& cmd);
+
+  // [[nodiscard]]
+  // uint64_t ray_tracing_version() const noexcept { return rt_version_; }
+
+  /* Current frame's ray tracing data.
+   * Invalid when RT is disabled, nothing is traceable, or recordAccelerationStructures()
+   * was not called this frame. */
+  [[nodiscard]]
+  RayTracingView ray_tracing_view() const;
+
+ private:
+  static constexpr uint64_t kNoVersion = kInvalidIndexU64;
+
+  struct RayTracingFrame {
+    backend::AccelerationStructure tlas{};
+    backend::Buffer tlas_scratch{};
+    backend::Buffer instances{};
+    backend::Buffer geometry_table{};
+
+    uint32_t instance_capacity{};
+    uint32_t geometry_capacity{};
+    uint32_t instance_count{};
+    uint64_t built_version{kNoVersion};
+  };
+
+  void collectRayTracingInstances(scene::Hierarchy& scene);
+
+  bool ensureRayTracingFrame(RayTracingFrame&);
+
+  void releaseRayTracing();
+
+  struct {
+    bool enabled{};
+    uint64_t version{};
+
+    std::vector<VkAccelerationStructureInstanceKHR> instances{};
+    std::vector<VkAccelerationStructureInstanceKHR> prev_instances{};
+    std::vector<material_shader_interop::RTGeometryData> geometries{};
+    std::vector<material_shader_interop::RTGeometryData> prev_geometries{};
+    std::vector<RayTracingFrame> frames{};
+  } rt_;
+
+};
+
+/* -------------------------------------------------------------------------- */
+
+#endif // AER_RENDERER_SCENE_RENDERER_H_

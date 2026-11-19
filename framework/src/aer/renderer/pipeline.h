@@ -125,16 +125,10 @@ struct GraphicsPipelineDescriptor_t {
   bool offscreenSingleView{}; //
 
   struct Vertex {
-    struct Buffer {
-      uint32_t stride{};
-      VkVertexInputRate inputRate{};
-      std::vector<VkVertexInputAttributeDescription> attributes{};
-    };
-
     VkShaderModule module{}; //
     std::string entryPoint{};
     SpecializationConstants specializationConstants{};
-    std::vector<Vertex::Buffer> buffers{};
+    VertexBufferDescriptors buffers{};
   } vertex{};
 
   struct Fragment {
@@ -351,10 +345,6 @@ struct RayTracingPipelineDescriptor_t {
   uint32_t maxPipelineRayRecursionDepth{1};
 };
 
-// ----------------------------------------------------------------------------
-
-using PipelineVertexBufferDescriptor = GraphicsPipelineDescriptor_t::Vertex::Buffer;
-using PipelineVertexBufferDescriptors = std::vector<PipelineVertexBufferDescriptor>;
 
 /* -------------------------------------------------------------------------- */
 

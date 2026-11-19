@@ -117,6 +117,14 @@ class Context {
   }
 
   [[nodiscard]]
+  VkDeviceSize max_buffer_allocation_size() const noexcept {
+    return std::min(
+      properties_.maintenance3.maxMemoryAllocationSize,
+      properties_.maintenance4.maxBufferSize
+    );
+  }
+
+  [[nodiscard]]
   VulkanContextFeatures const& features() const {
     return features_;
   }

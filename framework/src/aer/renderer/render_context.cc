@@ -141,9 +141,17 @@ void RenderContext::resizeFrameResources(
 
 void RenderContext::releaseFrameResources(FrameResourcesBuffer& frame_resources) {
   for (auto & frame : frame_resources) {
-    freeCommandBuffer(frame.command_pool, frame.command_buffer);
-    destroyCommandPool(frame.command_pool);
-    frame.main_rt->release();
+    if (frame.command_pool != VK_NULL_HANDLE) {
+      if (frame.command_buffer != VK_NULL_HANDLE) {
+        freeCommandBuffer(frame.command_pool, frame.command_buffer);
+        frame.command_buffer = VK_NULL_HANDLE;
+      }
+      destroyCommandPool(frame.command_pool);
+      frame.command_pool = VK_NULL_HANDLE;
+    }
+    if (frame.main_rt) {
+      frame.main_rt->release();
+    }
   }
 }
 
@@ -1041,42 +1049,5 @@ bool RenderContext::loadImage2D(
   finishTransientCommandEncoder(cmd);
   return result;
 }
-
-// ----------------------------------------------------------------------------
-
-// GLTFScene RenderContext::loadGLTF(
-//   std::string_view gltf_filename,
-//   scene::Mesh::AttributeLocationMap const& attribute_to_location
-// ) {
-//   if (auto scene = std::make_shared<GPUResources>(*this); scene) {
-//     scene->setup();
-//     if (scene->loadFile(gltf_filename)) {
-//       scene->initializeSubmeshDescriptors(attribute_to_location);
-//       scene->uploadToDevice();
-//       return scene;
-//     }
-//   }
-
-//   return {};
-// }
-
-// // ----------------------------------------------------------------------------
-
-// GLTFScene RenderContext::loadGLTF(std::string_view gltf_filename) {
-//   // -----------------------
-//   // -----------------------
-//   // [temporary, this should be set elsewhere ideally]
-//   static const scene::Mesh::AttributeLocationMap kDefaultFxPipelineAttributeLocationMap{
-//     {
-//       { Geometry::AttributeType::Position, kAttribLocation_Position },
-//       { Geometry::AttributeType::Normal,   kAttribLocation_Normal },
-//       { Geometry::AttributeType::Texcoord, kAttribLocation_Texcoord },
-//       { Geometry::AttributeType::Tangent,  kAttribLocation_Tangent }, //
-//     }
-//   };
-//   // -----------------------
-//   // -----------------------
-//   return loadGLTF(gltf_filename, kDefaultFxPipelineAttributeLocationMap);
-// }
 
 /* -------------------------------------------------------------------------- */

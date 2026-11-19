@@ -43,8 +43,15 @@ class Logger : public Singleton<Logger> {
   friend class Singleton<Logger>;
 
  public:
-  static std::string TrimFilename(std::string const& filename) {
-    return filename.substr(filename.find_last_of("/\\") + 1);
+  static
+  constexpr const char* Trim(const char* path) {
+    const char* file = path;
+    for (const char* p = path; *p; ++p) {
+      if (*p == '/' || *p == '\\') {
+        file = p + 1;
+      }
+    }
+    return file;
   }
 
   enum class LogType {
@@ -234,7 +241,8 @@ class Logger : public Singleton<Logger> {
 // Special aliases.
 
 #define LOG_FATAL(...)  LOGE(__VA_ARGS__); exit(-1)
-#define LOG_LINE()      LOGD("{} {}", __FILE__, __LINE__)
+#define LOG_LINE()      LOGD("{} {}", Logger::Trim(__FILE__), __LINE__)
+#define LOG_TODO(...)   HLOGW("[TODO] ({} {} L.{:})" __VA_OPT__(" - {}"), Logger::Trim(__FILE__), __FUNCTION__, __LINE__ __VA_OPT__(,) __VA_ARGS__)
 
 #if defined(NDEBUG)
 #define LOG_CHECK(x)    if (!(x)) { LOGE("" #x); }
@@ -246,12 +254,17 @@ class Logger : public Singleton<Logger> {
 // Disable Debug log on release.
 
 #if defined(NDEBUG)
+
 #undef LOGD
 #define LOGD(...)
 
 #undef LOG_LINE
 #define LOG_LINE()
-#endif
+
+#undef LOG_TODO
+#define LOG_TODO()
+
+#endif //defined(NDEBUG)
 
 // ----------------------------------------------------------------------------
 // Undef verbose log when not asked for.

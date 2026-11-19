@@ -1,15 +1,16 @@
 #pragma once
 
-// ----------------------------------------------------------------------------
-
 #include "aer/core/common.h"
+#include "aer/platform/vulkan/types.h"
+
 #include "aer/scene/geometry.h"
+#include "aer/scene/mesh_utils.h"
 
 namespace material_shader_interop {
 #include "aer/shaders/material/interop.h"
 }
 
-// ----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 
 //
 // Internal interleaved vertex structure used when bRestructureAttribs is set to true.
@@ -22,6 +23,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
   // vec4 tangent;
   // vec2 texcoord; float _pad2[2];
 
+  [[nodiscard]]
   static
   Geometry::AttributeInfoMap GetAttributeInfoMap() {
     return {
@@ -60,6 +62,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   }
 
+  [[nodiscard]]
   static
   Geometry::AttributeOffsetMap GetAttributeOffsetMap(uint64_t buffer_offset) {
     return {
@@ -70,6 +73,7 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   }
 
+  [[nodiscard]]
   static
   Geometry::AttributeLocationMap GetDefaultAttributeLocationMap() {
     return {
@@ -80,6 +84,33 @@ struct VertexInternal_t : material_shader_interop::Vertex {
     };
   };
 
+  [[nodiscard]]
+  static
+  VertexInputDescriptor GetVertexInputDescriptor(
+    Geometry const& geo,
+    uint64_t base_vertex_offset,
+    uint64_t buffer_offset
+  ) {
+    return CreateVertexInputDescriptor(
+      geo,
+      base_vertex_offset,
+      GetAttributeOffsetMap(buffer_offset),
+      GetDefaultAttributeLocationMap()
+    );
+  }
+
+  [[nodiscard]]
+  static
+  VertexBufferDescriptors GetPipelineVertexBufferDescriptors(
+    Geometry const& geo,
+    uint32_t primitive_index = 0u
+  ) {
+    return CreatePipelineVertexBufferDescriptors(
+      geo, GetDefaultAttributeLocationMap(), primitive_index
+    );
+  }
+
+ public:
   void applyTransform(mat4 const& matrix) {
     position = lina::to_vec3(lina::mul(matrix, lina::to_vec4(position, 1.0f)));
     auto const normalMatrix = lina::to_mat3(matrix);
@@ -89,4 +120,4 @@ struct VertexInternal_t : material_shader_interop::Vertex {
   }
 };
 
-// ----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */

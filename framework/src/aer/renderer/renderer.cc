@@ -1,25 +1,66 @@
 #include "aer/renderer/renderer.h"
-
 #include "aer/renderer/render_context.h"
-#include "aer/scene/vertex_internal.h"
+#include "aer/renderer/descriptor_registry.h"
+#include "aer/renderer/vertex_layout.h"
+#include "aer/renderer/renderer_flags.h"
+#include "aer/scene/asset.h"
+#include "aer/scene/ecs/instantiate.h"
 
 /* -------------------------------------------------------------------------- */
 
-void Renderer::init(
+bool Renderer::init(
   RenderContext& context,
   SwapchainInterface** swapchain_pptr
 ) {
   LOGD("-- Renderer --");
+  LOG_CHECK(swapchain_pptr && *swapchain_pptr);
 
   context_ptr_ = &context;
-
   default_frame_handler_.swapchain_pptr = swapchain_pptr;
+
   initViewResources();
 
-  LOGD(" > Internal Fx");
-  {
-    skybox_.init(context);
+  LOGD(" > Material Fx Registry");
+  material_fx_registry_.init(context);
+
+  LOGD(" > Scene Hierarchy");
+  scene_tree_.setup();
+
+  // --------------------------------------
+  LOGD(" > GPU Pool");
+  auto const &F = context.features();
+  auto const pool_settings = GpuPool::Settings{
+    .vertex_capacity  = kDefaultPoolVertexCapacity,
+    .index_capacity   = kDefaultPoolIndexCapacity,
+    .max_textures     = DescriptorRegistry::kMaxNumTextures,
+    .ray_tracing      = F.acceleration_structure.accelerationStructure
+                     && F.ray_tracing_pipeline.rayTracingPipeline,
+    .attribute_locations = VertexInternal_t::GetDefaultAttributeLocationMap(),
+  };
+  if (!gpu_pool_.setup(context, material_fx_registry_, pool_settings)) {
+    LOGE("GpuPool failed to initialize.");
+    return false;
   }
+
+  LOGD(" > SceneRenderer");
+  if (!scene_renderer_.setup(context, gpu_pool_, material_fx_registry_, frames_in_flight())) {
+    LOGE("SceneRenderer failed to initialize.");
+    return false;
+  }
+  // --------------------------------------
+
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+bool Renderer::setSkybox(std::string_view hdr_filename, float hdr_intensity) {
+  if (!skybox_initialized_) {
+    skybox_.init(*context_ptr_);
+    skybox_initialized_ = true;
+  }
+  skybox_.set_hdr_intensity(hdr_intensity);
+  return skybox_.setup(hdr_filename);
 }
 
 // ----------------------------------------------------------------------------
@@ -70,7 +111,11 @@ void Renderer::release() {
   if (context_ptr_ == nullptr) {
     return;
   }
-  skybox_.release(*context_ptr_);
+  context_ptr_->deviceWaitIdle();
+  if (skybox_initialized_) { skybox_.release(); }
+  scene_renderer_.release();
+  gpu_pool_.release();
+  material_fx_registry_.release();
   releaseViewResources();
 }
 
@@ -104,7 +149,9 @@ CommandEncoder& Renderer::beginFrame(FrameHandler *frame_handler) {
   auto &frame = binded_frame_handler_->frame();
 
   /* Acquire next availables image in the swapchain. */
-  if (!sc.acquireNextImage()) {
+  if (sc.acquireNextImage()) {
+    scene_renderer_.upload(default_frame_handler_.index); //
+  } else {
     LOGV("{}: Invalid swapchain, should skip current frame.", __FUNCTION__);
   }
 
@@ -191,35 +238,6 @@ void Renderer::blitColor(
 
 // ----------------------------------------------------------------------------
 
-GLTFScene Renderer::loadGLTF(
-  std::string_view gltf_filename,
-  scene::Mesh::AttributeLocationMap const& attribute_to_location
-) {
-  uint32_t const max_frames_in_flights = swapchain_image_count(); //
-  auto scene = std::make_shared<GPUResources>(*context_ptr_, max_frames_in_flights);
-
-  if (scene) {
-    scene->setup();
-    if (scene->loadFile(gltf_filename)) {
-      scene->initializeSubmeshDescriptors(attribute_to_location);
-      // scene->uploadToDevice(/*max_frames_in_flights*/); // (do it manually instead?)
-      return scene;
-    }
-  }
-  return {};
-}
-
-// ----------------------------------------------------------------------------
-
-GLTFScene Renderer::loadGLTF(std::string_view gltf_filename) {
-  return loadGLTF(
-    gltf_filename,
-    VertexInternal_t::GetDefaultAttributeLocationMap()
-  );
-}
-
-// ----------------------------------------------------------------------------
-
 void Renderer::blitColorToSwapchain(FrameHandler const& frame_handler) {
   auto const& frame = frame_handler.frame();
   auto const& sc = frame_handler.swapchain();
@@ -252,6 +270,137 @@ void Renderer::blitColorToSwapchain(FrameHandler const& frame_handler) {
     sc.surface_size(),
     layer_count
   );
+}
+
+/* -------------------------------------------------------------------------- */
+
+AssetHandle Renderer::loadAsset(std::string_view filename, scene::LoadOptions options) {
+  if (auto asset = scene::LoadGLTF(filename, options); asset) {
+    return gpu_pool_.uploadAsset(std::move(*asset));
+  }
+  LOGE("[Renderer] failed to load asset \"{}\"", filename);
+  return {};
+}
+
+// ----------------------------------------------------------------------------
+
+bool Renderer::releaseAsset(AssetHandle ah) {
+  return gpu_pool_.releaseAsset(ah);
+}
+
+// ----------------------------------------------------------------------------
+
+entt::entity Renderer::createInstance(
+  AssetHandle ah,
+  entt::entity parent,
+  mat4 const& local
+) {
+  auto* da = gpu_pool_.find(ah);
+  if (!da || !da->prefab) {
+    LOGE("[Renderer] createInstance: stale or invalid asset handle.");
+    return entt::null;
+  }
+  int const scene_index = -1; //
+  auto const root = scene::Instantiate(
+    scene_tree_, *da->prefab, ah, parent, local, scene_index
+  );
+  if (root != entt::null) {
+    ++da->instance_count;
+  }
+  return root;
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::destroyInstance(entt::entity instance_root) {
+  auto& reg = scene_tree_.registry;
+  if (!reg.valid(instance_root) || !reg.all_of<scene::component::Instance>(instance_root)) {
+    LOGE("[Renderer] destroyInstance: entity is not an instance root.");
+    return;
+  }
+
+  /* As the subtree may contain nested instances (children instantiated under it)
+   * we release every count, not just the root's. */
+  for (auto const e : scene_tree_.collectSubtree(instance_root)) {
+    if (auto const* inst = reg.try_get<scene::component::Instance>(e)) {
+      if (auto* da = gpu_pool_.find(inst->asset); da && da->instance_count > 0u) {
+        --da->instance_count;
+      }
+    }
+  }
+  scene_tree_.destroySubtree(instance_root);
+}
+
+// ----------------------------------------------------------------------------
+
+entt::entity Renderer::load(
+  std::string_view filename,
+  entt::entity parent,
+  mat4 const& local,
+  scene::LoadOptions options
+) {
+  auto const ah = loadAsset(filename, options);
+  if (ah.valid()) {
+    if (auto e = createInstance(ah, parent, local); e != entt::null) {
+      return e;
+    }
+    releaseAsset(ah);
+  }
+  return entt::null;
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::update(Camera const& camera, float elapsed_time) {
+  RendererFlags renderer_flags{};
+
+  if (skybox_.is_valid()) {
+    skybox_.update(camera);
+    renderer_flags |= RendererFlags::EnableIrradiance;
+  }
+
+  scene_tree_.update();
+  scene_renderer_.update(
+    scene_tree_,
+    camera,
+    elapsed_time,
+    renderer_flags
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::render(RenderPassEncoder const& pass) {
+  skybox_.render(pass);
+  scene_renderer_.render(pass);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void Renderer::buildAccelerationStructures(CommandEncoder const& cmd) {
+  scene_renderer_.recordAccelerationStructures(cmd);
+}
+
+// ----------------------------------------------------------------------------
+
+RayTracingView Renderer::ray_tracing_view() const {
+  return scene_renderer_.ray_tracing_view();
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::set_rasterization_enabled(bool enabled) {
+  scene_renderer_.set_rasterization_enabled(enabled);
+}
+
+// ----------------------------------------------------------------------------
+
+bool Renderer::setRayTracingEnabled(bool enabled) {
+  if (!gpu_pool_.setRayTracingEnabled(enabled)) {
+    return false;
+  }
+  scene_renderer_.set_ray_tracing_enabled(enabled);
+  return true;
 }
 
 /* -------------------------------------------------------------------------- */

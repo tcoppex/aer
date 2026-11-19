@@ -153,7 +153,7 @@ class SampleApp final : public Application {
     context_.destroyBuffer(vertex_buffer_);
   }
 
-  void draw(CommandEncoder const& cmd) final {
+  void drawPass(RenderPassEncoder const& pass) final {
     /* Retrieve the current frame time. */
     float const tick{ frame_time() };
 
@@ -169,34 +169,30 @@ class SampleApp final : public Application {
 
     /* By specifying the pipeline layout to target, we can push constants
      * before the actual pipeline is bound. */
-    cmd.pushConstant(tick * 1.4f, graphics_pipeline_.layout());
+    pass.pushConstant(tick * 1.4f, graphics_pipeline_.layout());
 
-    auto pass = cmd.beginRendering();
+    pass.bindPipeline(graphics_pipeline_);
+    pass.bindVertexBuffer(vertex_buffer_);
+
+    // Left-side (unflipped).
     {
-      pass.bindPipeline(graphics_pipeline_);
-      pass.bindVertexBuffer(vertex_buffer_);
-
-      // Left-side (unflipped).
-      {
-        /* Set viewport-scissor using a VkExtent2D (with no offset). */
-        pass.setViewportScissor(half_screen, !kFlipScreenVertically);
-        pass.draw(kVertices.size());
-      }
-
-      // Right-side (flipped, default behavior).
-      {
-        /* Set viewport-scissor using a VkRect2D (with offset). */
-        pass.setViewportScissor(right_side/*, kFlipScreenVertically*/);
-
-        /**
-         * If no pipeline layout is specified, the pass encoder will take the
-         * one from the currently bound pipeline, when available.
-         **/
-        pass.pushConstant(tick * 4.0f);
-        pass.draw(kVertices.size());
-      }
+      /* Set viewport-scissor using a VkExtent2D (with no offset). */
+      pass.setViewportScissor(half_screen, !kFlipScreenVertically);
+      pass.draw(kVertices.size());
     }
-    cmd.endRendering();
+
+    // Right-side (flipped, default behavior).
+    {
+      /* Set viewport-scissor using a VkRect2D (with offset). */
+      pass.setViewportScissor(right_side/*, kFlipScreenVertically*/);
+
+      /**
+       * If no pipeline layout is specified, the pass encoder will take the
+       * one from the currently bound pipeline, when available.
+       **/
+      pass.pushConstant(tick * 4.0f);
+      pass.draw(kVertices.size());
+    }
   }
 
  private:

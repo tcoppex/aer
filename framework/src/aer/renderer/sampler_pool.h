@@ -83,10 +83,10 @@ class SamplerPool {
     *this = {};
   }
 
-  // [[nodiscard]]
-  // VkSampler default_sampler() const noexcept {
-  //   return anyso_repeat_linear_;
-  // }
+  [[nodiscard]]
+  VkSampler default_sampler() const noexcept {
+    return anyso_repeat_linear_;
+  }
 
   [[nodiscard]]
   VkSampler clampedge_linear() const noexcept {
@@ -126,7 +126,7 @@ class SamplerPool {
 
   [[nodiscard]]
   VkSampler convert(scene::Sampler const& scene_sampler) const {
-    return scene_sampler.use_default() ? anyso_repeat_linear()
+    return scene_sampler.use_default() ? default_sampler()
                                        : get(scene_sampler.info)
                                        ;
   }

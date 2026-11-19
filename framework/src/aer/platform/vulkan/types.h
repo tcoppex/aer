@@ -114,8 +114,20 @@ struct GPUProperties {
 
   VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT,
+    .pNext = &maintenance4
+  };
+
+  VkPhysicalDeviceMaintenance4Properties maintenance4{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES,
+    .pNext = &maintenance3
+  };
+
+  VkPhysicalDeviceMaintenance3Properties maintenance3{
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES,
     .pNext = nullptr
   };
+
+  // --------
 
   VkPhysicalDeviceMemoryProperties2 memory2{
     .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
@@ -372,6 +384,13 @@ struct DrawDescriptor {
   uint32_t vertexCount{};
   uint32_t instanceCount{1u};
 };
+
+struct VertexBufferDescriptor {
+  uint32_t stride{};
+  VkVertexInputRate inputRate{};
+  std::vector<VkVertexInputAttributeDescription> attributes{};
+};
+using VertexBufferDescriptors = std::vector<VertexBufferDescriptor>;
 
 /* -------------------------------------------------------------------------- */
 

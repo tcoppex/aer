@@ -218,4 +218,50 @@ void Allocator::destroyImage(backend::Image &image) const {
 
 /* -------------------------------------------------------------------------- */
 
+VmaVirtualBlock Allocator::createVirtualBlock(VkDeviceSize const size) const {
+  LOG_CHECK(size > 0);
+  auto blockInfo = VmaVirtualBlockCreateInfo{
+    .size = size
+  };
+  VmaVirtualBlock block = VK_NULL_HANDLE;
+  CHECK_VK( vmaCreateVirtualBlock(&blockInfo, &block) );
+  return block;
+}
+
+// ----------------------------------------------------------------------------
+
+void Allocator::destroyVirtualBlock(VmaVirtualBlock const block) const {
+  if (block != VK_NULL_HANDLE) {
+    vmaDestroyVirtualBlock(block);
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+bool Allocator::allocateVirtual(
+  VmaVirtualBlock const block,
+  VkDeviceSize const size,
+  VkDeviceSize const alignment,
+  VmaVirtualAllocation *out_allocation,
+  VkDeviceSize *out_offset
+) const {
+  LOG_CHECK(size > 0);
+  auto const allocInfo = VmaVirtualAllocationCreateInfo{
+    .size = size,
+    .alignment = alignment,
+  };
+  return vmaVirtualAllocate(block, &allocInfo, out_allocation, out_offset) == VK_SUCCESS;
+}
+
+// ----------------------------------------------------------------------------
+
+void Allocator::freeVirtual(
+  VmaVirtualBlock const block,
+  VmaVirtualAllocation const allocation
+) const {
+  vmaVirtualFree(block, allocation);
+}
+
+/* -------------------------------------------------------------------------- */
+
 } // namespace "backend"

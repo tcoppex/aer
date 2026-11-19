@@ -59,6 +59,10 @@ constexpr uint32_t CountBits(uint32_t x) {
   return std::popcount(x);
 }
 
+constexpr uint64_t KiloBytes(uint64_t x) { return x << 10u; }
+constexpr uint64_t MegaBytes(uint64_t x) { return x << 20u; }
+constexpr uint64_t GigaBytes(uint64_t x) { return x << 30u; }
+
 // --- template functions ---
 
 size_t HashCombine(size_t seed, auto const& value) {

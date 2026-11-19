@@ -1,6 +1,11 @@
 #ifndef AER_SCENE_FONT_MESH_H_
 #define AER_SCENE_FONT_MESH_H_
 
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "aer/core/common.h"
 #include "aer/scene/mesh.h"
 #include "aer/scene/font.h"
@@ -19,7 +24,8 @@ class FontMesh : public Mesh {
   struct GlyphDrawInfo {
     char16_t code{};
     mat4 matrix{lina::identity};
-    std::span<const SubMesh> submeshes{};
+    uint32_t primitive_index{};
+    uint32_t primitive_count{};
   };
 
   struct TextDrawInfo {
@@ -47,18 +53,6 @@ class FontMesh : public Mesh {
     std::u16string const& text,
     bool enableKerning = true
   ) const;
-
-  [[nodiscard]]
-  auto glyph_submeshes(char16_t code) const {
-    if (auto it = glyph_info_map_.find(code); it == glyph_info_map_.end()) {
-      return std::span(submeshes).subspan(0,0);
-    }
-    auto glyph_info = glyph_info_map_.at(code);
-    return std::span(submeshes).subspan(
-      glyph_info.primitive_index,
-      glyph_info.count
-    );
-  }
 
  private:
   Font const* font_ptr_{};

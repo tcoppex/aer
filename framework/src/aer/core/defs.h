@@ -54,6 +54,7 @@ concept NonSpanConvertible = !SpanConvertible<T>;
 /* -- constants -- */
 
 static constexpr uint32_t kInvalidIndexU32{ std::numeric_limits<uint32_t>::max() };
+static constexpr uint64_t kInvalidIndexU64{ std::numeric_limits<uint64_t>::max() };
 
 // ----------------------------------------------------------------------------
 /* -- custom type -- */

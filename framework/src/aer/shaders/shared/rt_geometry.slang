@@ -15,24 +15,38 @@ struct Triangle_t {
 
 public
 Triangle_t unpack_triangle(
-  uint64_t vertexAddr,
-  uint64_t indexAddr,
+  RTGeometryData geometry,
   uint primitive_id
 ) {
-  uint32_t* indices = (uint32_t*)indexAddr;
-  Vertex* vertices = (Vertex*)vertexAddr;
+  Vertex* vertices = (Vertex*)geometry.vertex_address;
 
   let base_index = 3 * primitive_id;
-  let i0 = indices[base_index + 0];
-  let i1 = indices[base_index + 1];
-  let i2 = indices[base_index + 2];
+  uint i0, i1, i2;
+
+  if (geometry.index_is_u16 != 0u) {
+    uint16_t* indices = (uint16_t*)geometry.index_address;
+    i0 = uint(indices[base_index + 0]);
+    i1 = uint(indices[base_index + 1]);
+    i2 = uint(indices[base_index + 2]);
+  } else {
+    uint32_t* indices = (uint32_t*)geometry.index_address;
+    i0 = indices[base_index + 0];
+    i1 = indices[base_index + 1];
+    i2 = indices[base_index + 2];
+  }
 
   Triangle_t tri;
   tri.v0 = vertices[i0];
   tri.v1 = vertices[i1];
   tri.v2 = vertices[i2];
-
   return tri;
+}
+
+// ----------------------------------------------------------------------------
+
+public
+RTGeometryData fetch_geometry(uint64_t table_address, uint index) {
+  return ((RTGeometryData*)table_address)[index];
 }
 
 // ----------------------------------------------------------------------------

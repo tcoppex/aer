@@ -77,7 +77,7 @@ class Allocator {
   }
 
   void destroyBuffer(backend::Buffer const& buffer) const {
-    if (buffer.buffer != VK_NULL_HANDLE) {
+    if (buffer.valid()) {
       vmaDestroyBuffer(handle_, buffer.buffer, buffer.allocation);
     }
   }
@@ -131,6 +131,24 @@ class Allocator {
   ) const;
 
   void destroyImage(backend::Image &image) const;
+
+  // ----- Virtual Blocks (Sub-allocation management) -----
+
+  [[nodiscard]]
+  VmaVirtualBlock createVirtualBlock(VkDeviceSize const size) const;
+
+  void destroyVirtualBlock(VmaVirtualBlock const block) const;
+
+  [[nodiscard]]
+  bool allocateVirtual(
+    VmaVirtualBlock const block,
+    VkDeviceSize const size,
+    VkDeviceSize const alignment,
+    VmaVirtualAllocation *out_allocation,
+    VkDeviceSize *out_offset
+  ) const;
+
+  void freeVirtual(VmaVirtualBlock const block, VmaVirtualAllocation const allocation) const;
 
  private:
   VkDevice device_{};

@@ -19,7 +19,7 @@ struct Sampler {
     return !set_;
   }
 
-  // (should be changed to not use Vulkan internally)
+  // (might be changed to not use Vulkan internally)
   VkSamplerCreateInfo info{}; //
 
  private:

@@ -26,6 +26,7 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
 
   /* Framework initialization. */
   if (!presetup(app_data)) {
+    shutdown();
     return EXIT_FAILURE;
   }
 
@@ -50,6 +51,19 @@ int Application::run(AppSettings const& app_settings, AppData_t app_data) {
 float Application::elapsed_time() const noexcept {
   auto now{ std::chrono::high_resolution_clock::now() };
   return std::chrono::duration<float>(now - chrono_).count();
+}
+
+// ----------------------------------------------------------------------------
+
+void Application::draw(CommandEncoder const& cmd) {
+  auto pass = cmd.beginRendering();
+  {
+    renderer_.render(pass);
+    drawPass(pass);
+  }
+  cmd.endRendering();
+
+  drawUI(cmd);
 }
 
 // ----------------------------------------------------------------------------
@@ -87,7 +101,6 @@ bool Application::presetup(AppData_t app_data) {
   wm_ = std::make_unique<Window>();
   if (!wm_ || !wm_->init(settings_.surface, app_data)) {
     LOGE("Window creation fails");
-    shutdown();
     return false;
   }
 
@@ -100,7 +113,6 @@ bool Application::presetup(AppData_t app_data) {
                      xrExtensions()))
       {
         LOGE("XR initialization fails.");
-        shutdown();
         return false;
       }
     }
@@ -114,7 +126,6 @@ bool Application::presetup(AppData_t app_data) {
                      xr_ ? xr_->graphics_interface() : nullptr))
   {
     LOGE("Vulkan context initialization fails");
-    shutdown();
     return false;
   }
 
@@ -122,7 +133,6 @@ bool Application::presetup(AppData_t app_data) {
   if (xr_) {
     if (!xr_->initSession()) {
       LOGE("OpenXR sessions initialization fails.");
-      shutdown();
       return false;
     }
   }
@@ -130,7 +140,6 @@ bool Application::presetup(AppData_t app_data) {
   /* Surface & Swapchain. */
   if (!resetSwapchain()) {
     LOGE("Surface creation fails");
-    shutdown();
     return false;
   }
 
@@ -140,18 +149,19 @@ bool Application::presetup(AppData_t app_data) {
   if (xr_) {
     if (!xr_->completeSetup(camera_)) {
       LOGE("OpenXR initialization completion fails.");
-      shutdown();
       return false;
     }
   }
 
   /* Default Renderer. */
-  renderer_.init(context_, &swapchain_interface_);
+  if (!renderer_.init(context_, &swapchain_interface_)) {
+    LOGE("Renderer failed to initialized.");
+    return false;
+  }
 
   /* User Interface. */
   if (ui_ = std::make_unique<UIController>(); !ui_ || !ui_->init(renderer_, *wm_)) {
-    LOGE("UI creation fails");
-    shutdown();
+    LOGE("[UI] imgui initialization failed.");
     return false;
   }
 
@@ -163,18 +173,17 @@ bool Application::presetup(AppData_t app_data) {
         .width = w,
         .height = h,
       };
-      LOGV("> Surface resize (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+      LOGV("[Surface resize (w: {}, h: {})]", viewport_size_.width, viewport_size_.height);
       resetSwapchain();
     };
     default_callbacks_ = std::make_unique<DefaultAppEventCallbacks>(on_resize);
     Events::Get().registerCallbacks(default_callbacks_.get());
 
-    LOGD("> Retrieve original viewport size.");
     viewport_size_ = {
       .width = wm_->surface_width(),
       .height = wm_->surface_height(),
     };
-    LOGD("> (w: {}, h: {})", viewport_size_.width, viewport_size_.height);
+    LOGD("[original viewport size (w: {}, h: {})]", viewport_size_.width, viewport_size_.height);
   }
 
   /* Framework internal data. */
@@ -260,6 +269,8 @@ void Application::updateInternal() noexcept {
 
   /* Application. */
   update(dt);
+  renderer_.update(camera_, elapsed_time());
+  lateUpdate(dt);
 }
 
 // ----------------------------------------------------------------------------

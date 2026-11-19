@@ -41,15 +41,8 @@ void main(
   // ----------------------------
   // TOPOLOGY.
 
-  let kInvalidIndexU24 = 0x00FFFFFF;
-  let materialID  = InstanceIndex();
-  let primitiveID = PrimitiveIndex();
-
-  let instance = GetRTInstanceData();
-
-  let tri = rt_geometry::unpack_triangle(
-    instance.vertexAddr, instance.indexAddr, primitiveID
-  );
+  let geo = GetRTGeometry();
+  let tri = rt_geometry::unpack_triangle(geo, PrimitiveIndex());
 
   let v = rt_geometry::calculate_vertex(
     tri,
@@ -66,9 +59,9 @@ void main(
   var emissive = float3(0.0f);
   var color = float4(1.0f);
 
-  if (materialID != kInvalidIndexU24)
+  if (geo.material_address != 0)
   {
-    let mat = GetRayTracingMaterial(materialID);
+    let mat = GetRayTracingMaterial(geo);
 
     let emissive_base = GetTexture(mat.emissive_texture_id).SampleLevel(v.texcoord, 0.0f);
 

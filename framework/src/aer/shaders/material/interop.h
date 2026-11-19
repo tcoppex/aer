@@ -1,5 +1,10 @@
-#ifndef SHADERS_SCENE_INTEROP_H_
-#define SHADERS_SCENE_INTEROP_H_
+#ifndef SHADERS_MATERIAL_INTEROP_H_
+#define SHADERS_MATERIAL_INTEROP_H_
+
+// (don't include here to avoid conflict in host namespace)
+// #include "material/renderer_flags.h"
+
+// ----------------------------------------------------------------------------
 
 #if defined(_GLSL_)
 
@@ -75,6 +80,18 @@ struct Vertex {
 };
 
 // ----------------------------------------------------------------------------
+// -- Ray Tracing --
+
+SLANG_PUBLIC
+struct RTGeometryData {
+  SLANG_PUBLIC uint64_t vertex_address;    // first vertex of the submesh (Vertex layout)
+  SLANG_PUBLIC uint64_t index_address;     // first index of the submesh
+  SLANG_PUBLIC uint64_t material_address;  // fx material buffer, 0 = no material
+  SLANG_PUBLIC uint     material_index;    // slot in that buffer
+  SLANG_PUBLIC uint     index_is_u16;      // 1: 16 bit indices, 0: 32 bit
+};
+
+// ----------------------------------------------------------------------------
 // -- Descriptor Sets --
 
 // set index as used for MaterialFx and bindings as defined in descriptor_registry.
@@ -102,8 +119,6 @@ struct CameraData {
   mat4 viewProjMatrix;
 };
 
-STATIC_CONST uint kRendererState_IrradianceBit = 0x1 << 0;
-
 // ----------------------------------------------------------------------------
 // -- Uniform Buffer(s) --
 
@@ -113,7 +128,7 @@ struct FrameData {
   vec4 cameraPos_Time;   // xxx
   vec2 resolution;
   uint frame;
-  uint renderer_states; // (wip)
+  uint renderer_states; // (wip) (cf. renderer_flags.h)
 };
 
 // ----------------------------------------------------------------------------
@@ -125,4 +140,4 @@ struct TransformData {
 
 // ----------------------------------------------------------------------------
 
-#endif // SHADERS_SCENE_INTEROP_H_
+#endif // SHADERS_MATERIAL_INTEROP_H_

@@ -1,11 +1,14 @@
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h"
-
+#include "aer/renderer/vertex_layout.h"
 #include "aer/platform/vulkan/accel_struct.h"
-#include "aer/scene/vertex_internal.h" // (for material_shader_interop)
 
 /* -------------------------------------------------------------------------- */
 
 void RayTracingFx::execute(CommandEncoder const& cmd) const {
+  if (!view_.valid()) {
+    return;
+  }
+
   cmd.bindPipeline(pipeline_);
 
   // Bind Descriptor Sets (Internal + Scene data).
@@ -39,7 +42,7 @@ void RayTracingFx::execute(CommandEncoder const& cmd) const {
     auto desc_as_info = VkWriteDescriptorSetAccelerationStructureKHR{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
       .accelerationStructureCount = 1,
-      .pAccelerationStructures = &tlas_.handle
+      .pAccelerationStructures = &view_.tlas
     };
     auto write = VkWriteDescriptorSet{
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

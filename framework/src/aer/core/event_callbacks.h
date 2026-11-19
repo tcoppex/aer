@@ -2,6 +2,7 @@
 #define AER_CORE_EVENT_CALLBACKS_H_
 
 #include "aer/core/common.h"
+#include "aer/core/key_codes.h"
 
 /* -------------------------------------------------------------------------- */
 

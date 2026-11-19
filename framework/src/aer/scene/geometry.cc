@@ -167,7 +167,7 @@ void Geometry::MakePlane(Geometry &geo, float size, uint32_t resx, uint32_t resy
   }
 
   /* Setup triangle list indices. */
-  uint32_t const index_count = resy * resy * 6u;
+  uint32_t const index_count = resx * resy * 6u;
   std::vector<uint32_t> indices(index_count);
   {
     uint32_t index = 0u;
@@ -620,20 +620,21 @@ bool Geometry::recalculateTangents() {
         index = reinterpret_cast<uint32_t const*>(indices)[index_id];
       }
       return index;
-    };
+    }
 
     float* vertex(Geometry::AttributeType attrib, uint32_t vertex_index) const {
       auto const& attr = geo->attributes_.at(attrib);
+      auto* base = geo->vertices_.data() + prim->bufferOffsets.at(attrib);
       return reinterpret_cast<float*>(
-        geo->vertices_.data() + attr.offset + static_cast<uintptr_t>(vertex_index * attr.stride)
+        base + attr.offset + static_cast<uint64_t>(vertex_index) * attr.stride
       );
-    };
+    }
   } helper;
 
 
   SMikkTSpaceInterface interface{
     .m_getNumFaces = [](SMikkTSpaceContext const* pContext) {
-      auto [_, prim] = *static_cast<Helper*>(pContext->m_pUserData);
+      auto prim = static_cast<Helper*>(pContext->m_pUserData)->prim;
       return static_cast<int>(prim->indexCount / 3u);
     },
 

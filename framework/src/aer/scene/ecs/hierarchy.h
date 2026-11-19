@@ -1,59 +1,20 @@
 #ifndef AER_SCENE_ECS_HIERARCHY_H_
 #define AER_SCENE_ECS_HIERARCHY_H_
 
-#include <entt/entt.hpp>
-#include "aer/core/common.h"
+#include <string_view>
+#include <vector>
+
+#include "entt/entt.hpp"
+#include "aer/scene/ecs/components.h"
 
 namespace scene {
 
 /* -------------------------------------------------------------------------- */
 
-namespace component {
-
-/* Hierarchy relationships */
-struct Node {
-  entt::entity parent{entt::null};
-
-  // siblings
-  entt::entity next{entt::null};
-  entt::entity prev{entt::null};
-
-  // Children
-  entt::entity firstChild{entt::null};
-  size_t numChildren{0};
-};
-
-/* Local Transforms */
-struct Transform {
-  vec3 position{};
-  quat rotation{lina::identity};
-  vec3 scale{1.0f, 1.0f, 1.0f};
-};
-
-/* World matrix for the entity */
-struct GlobalTransform {
-  mat4f worldMatrix{lina::identity};
-};
-
-// -----------
-
-struct Mesh {
-  uint32_t meshIndex{kInvalidIndexU32};
-};
-
-} // namespace "component"
-
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
 class Hierarchy {
  public:
-  using EntityMap = std::unordered_map<std::string, entt::entity>;
-
- public:
   entt::registry registry{};
-  entt::entity root{};
-  EntityMap entity_map{};
+  entt::entity root{entt::null};
 
  public:
   using StagingGroup = decltype(registry.group<
@@ -103,11 +64,31 @@ class Hierarchy {
     >(parent);
   }
 
+  template<typename... Components>
+  decltype(auto) get(entt::entity e) {
+    return registry.get<Components...>(e);
+  }
+
+  template<typename... Components>
+  decltype(auto) get(entt::entity e) const {
+    return registry.get<Components...>(e);
+  }
+
   /* Move an entity to a new parent or the root when newParent is null. */
   void moveEntity(entt::entity e, entt::entity newParent);
 
+  /* Entities of the subtree, `root` first (parents before children). */
   [[nodiscard]]
-  entt::entity findByName(std::string_view entity_name) const;
+  std::vector<entt::entity> collectSubtree(entt::entity subtree_root) const;
+
+  /* Detach `subtree_root` from its parent and destroy it and all descendants.
+   * The hierarchy root cannot be destroyed. */
+  void destroySubtree(entt::entity subtree_root);
+
+  /* Resolve "A/B/C" by walking children from `from` (default: hierarchy root),
+   * comparing each Name to one path segment. Returns entt::null if not found. */
+  [[nodiscard]]
+  entt::entity find(std::string_view path, entt::entity from = entt::null) const;
 
  private:
   void updateGlobalTransform(StagingGroup &group, entt::entity e, mat4 const& parent_matrix);
