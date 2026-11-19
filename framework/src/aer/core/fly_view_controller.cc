@@ -122,17 +122,18 @@ void FlyViewController::eventMove(
   }
 
   vec3 move_dir(0.0f, 0.0f, 0.0f);
-  if (bForward)  move_dir.z -= 1.0f;
-  if (bBackward) move_dir.z += 1.0f;
+  if (bForward)   move_dir.z -= 1.0f;
+  if (bBackward)  move_dir.z += 1.0f;
   if (movement_mode_ == MovementMode::FreeFly) {
-    if (bDown)     move_dir.y -= 1.0f;
-    if (bUp)       move_dir.y += 1.0f;
+    if (bDown)    move_dir.y -= 1.0f;
+    if (bUp)      move_dir.y += 1.0f;
   }
-  if (bLeft)     move_dir.x -= 1.0f;
-  if (bRight)    move_dir.x += 1.0f;
+  if (bLeft)      move_dir.x -= 1.0f;
+  if (bRight)     move_dir.x += 1.0f;
 
-
-  move_dir = lina::normalize(move_dir);
+  if (lina::length2(move_dir) > 0.0) {
+    move_dir = lina::normalize(move_dir);
+  }
 
   mat4 rotation;
   if (movement_mode_ == MovementMode::FreeFly) {
