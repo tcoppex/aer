@@ -12,6 +12,7 @@
 #include "aer/platform/vulkan/command_encoder.h"
 
 #include "aer/scene/load_options.h"
+#include "aer/scene/ecs/animation_system.h"
 #include "aer/scene/ecs/hierarchy.h"
 
 #include "aer/renderer/render_context.h"
@@ -168,6 +169,9 @@ class Renderer {
   [[nodiscard]]
   scene::Hierarchy const& scene() const noexcept { return scene_tree_; }
 
+  [[nodiscard]]
+  scene::AnimationSystem& animation() noexcept { return animation_system_; }
+
   /* Data to trace the current frame (invalid if nothing can be traced). */
   [[nodiscard]]
   RayTracingView ray_tracing_view() const;
@@ -232,17 +236,19 @@ class Renderer {
 
   // --- Scene ---
 
-  // pipelines + per-model material buffers (made incremental)
-  // (pipelines setup copied from GPUResources::upload)
+  /* Scene shaders + materials parameters */
   MaterialFxRegistry material_fx_registry_{};
 
-  // vertex/index buffers, images + texture array, DeviceAsset records
+  /* Scene device memory: vertex/index buffers, images + texture array, .. */
   GpuPool gpu_pool_{};
 
-  // the scene: entities, transforms, Renderable / Instance components
+  /* Scene hierarchy */
   scene::Hierarchy scene_tree_{};
 
-  // frame SBO, transforms SBO, draw lists, sorting, TLAS, render()
+  /* Scene skeletal animations */
+  scene::AnimationSystem animation_system_{}; // (integrate to Hierarchy ?)
+
+  /* Rendering subsystems */
   SceneRenderer scene_renderer_{};
 
   // --- miscs ---

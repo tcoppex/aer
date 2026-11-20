@@ -377,6 +377,7 @@ void ExtractAnimations(
         ReadNodeTransform(data->nodes[joint_nodes[j]], rest_poses[s].joints[j]);
       }
     }
+    skeletons[s].rest_pose = rest_poses[s]; // kept to restore the bind pose on stop
   }
 
   float const framerate = std::max(opts.animation_framerate, 1.0f);

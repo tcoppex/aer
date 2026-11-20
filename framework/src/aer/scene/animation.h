@@ -59,8 +59,11 @@ struct Skeleton {
   JointBuffer<mat4>         inverse_bind_matrices{};
   JointBuffer<mat4>         global_bind_matrices{};
 
+  Pose                      rest_pose{};        // local joint transforms of the bind pose (empty without animations)
+
   std::unordered_map<std::string, uint32_t> index_map{};
   std::vector<AnimationClip> clips{}; //
+
 
   Skeleton() = default;
   Skeleton(size_t jointCount) { resize(jointCount); }

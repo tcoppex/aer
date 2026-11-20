@@ -6,6 +6,7 @@
 #include "aer/core/common.h"
 #include "aer/scene/ecs/animation_system.h"
 #include "aer/scene/ecs/components.h"
+#include "aer/scene/ecs/animation_components.h"
 #include "aer/scene/asset.h"
 
 namespace scene {
@@ -44,7 +45,7 @@ entt::entity Instantiate(
 
   auto& reg = scene.registry;
 
-  /* Instance root: the handle you move, reparent or destroy. */
+  /* Instance root: the handle to move, reparent or destroy. */
   auto const instance_root = scene.createStagingEntity<>(parent);
   {
     auto& t = reg.get<component::Transform>(instance_root);
@@ -116,6 +117,7 @@ entt::entity Instantiate(
 
       auto& skin = reg.emplace<component::Skin>(e);
       skin.skeleton_index = node.skin_index;
+      skin.skeleton = &skeleton;
       skin.joints.assign(joint_count, entt::entity{entt::null});
       skin.matrices.assign(joint_count, mat4{lina::identity});
 
@@ -128,8 +130,7 @@ entt::entity Instantiate(
       // One animator per skeleton, even when several mesh nodes share the skin.
       if (!has_animator[node.skin_index]) {
         has_animator[node.skin_index] = 1;
-        auto& animator = reg.emplace<component::Animator>(e);
-        animator.skeleton = &skeleton;
+        reg.emplace<component::Animator>(e); // (uses the Skin of the same node)
       }
     }
   }
