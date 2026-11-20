@@ -1,5 +1,8 @@
 #include "aer/scene/private/extract_mesh_helpers.h"
 
+#include <algorithm>
+#include <iterator>
+
 #if defined(FRAMEWORK_HAS_DRACO) && VKPLAYGROUND_HAS_DRACO
 #include <draco/compression/decode.h>
 #include <draco/mesh/mesh.h>
@@ -125,6 +128,8 @@ bool DecompressDracoPrimitive(
   return true;
 }
 
+// ----------------------------------------------------------------------------
+
 void ExtractPrimitiveVertices(
   cgltf_primitive const& prim,
   std::vector<VertexInternal_t>& vertices
@@ -177,28 +182,78 @@ void ExtractPrimitiveVertices(
         }
       }
     }
-    // Joints.
-    else if (attrib.type == cgltf_attribute_type_joints) {
-      // LOG_CHECK(accessor->type == cgltf_type_vec4);
-      // LOGD( "> loading joint indices." );
-      // for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
-      //   LOG_CHECK(0 != cgltf_accessor_read_uint( accessor, vertex_index, lina::ptr(joints), 4));
-      //   raw.joints.push_back( joints );
-      // }
+    // (Joints and weights are extracted apart, see ExtractPrimitiveSkin.)
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+bool ExtractPrimitiveSkin(
+  cgltf_primitive const& prim,
+  uint32_t vertex_count,
+  std::vector<scene::SkinVertex>& skin_vertices
+) {
+  cgltf_accessor const* joints{};
+  cgltf_accessor const* weights{};
+
+  for (cgltf_size attrib_index = 0; attrib_index < prim.attributes_count; ++attrib_index) {
+    cgltf_attribute const& attrib{ prim.attributes[attrib_index] };
+
+    if (attrib.type != cgltf_attribute_type_joints
+     && attrib.type != cgltf_attribute_type_weights) {
+      continue;
     }
-    // Weights.
-    else if (attrib.type == cgltf_attribute_type_weights) {
-      // LOGD( "> loading joint weights." );
-      // LOG_CHECK(accessor->type == cgltf_type_vec4);
-      // raw.weights.reserve(vertex_count);
-      // vec4 weights;
-      // for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
-      //   LOG_CHECK(0 != cgltf_accessor_read_float( accessor, vertex_index, lina::ptr(weights), 4));
-      //   // weights = vec4(0.0, 0.0, 0.0, 0.0);
-      //   raw.weights.push_back( weights );
-      // }
+    if (attrib.index > 0) {
+      LOGW("[GLTF] Only 4 joint influences per vertex are supported ({} ignored).", attrib.name);
+      continue;
+    }
+    (attrib.type == cgltf_attribute_type_joints ? joints : weights) = attrib.data;
+  }
+
+  if (!joints && !weights) {
+    return false;
+  }
+  if (!joints || !weights) {
+    LOGW("[GLTF] A primitive has joints without weights (or the opposite), skin ignored.");
+    return false;
+  }
+  if (joints->type != cgltf_type_vec4 || weights->type != cgltf_type_vec4
+   || joints->count != vertex_count   || weights->count != vertex_count) {
+    LOGW("[GLTF] A primitive has malformed skin attributes, skin ignored.");
+    return false;
+  }
+
+  skin_vertices.resize(vertex_count);
+
+  for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
+    auto& skin_vertex = skin_vertices[vertex_index];
+
+    cgltf_uint j[scene::SkinVertex::kMaxInfluences]{};
+    cgltf_float w[scene::SkinVertex::kMaxInfluences]{};
+    cgltf_accessor_read_uint(joints, vertex_index, j, scene::SkinVertex::kMaxInfluences);
+    cgltf_accessor_read_float(weights, vertex_index, w, scene::SkinVertex::kMaxInfluences);
+
+    // Weights are expected to sum to one, but exporters are not always accurate.
+    float sum = 0.0f;
+    for (uint32_t k = 0; k < scene::SkinVertex::kMaxInfluences; ++k) {
+      w[k] = std::max(w[k], 0.0f);
+      sum += w[k];
+    }
+    if (sum <= lina::kEpsilon) {
+      // Unweighted vertex, bind it to the first joint.
+      std::fill(std::begin(w), std::end(w), 0.0f);
+      w[0] = 1.0f;
+      sum = 1.0f;
+      j[0] = 0u;
+    }
+
+    for (uint32_t k = 0; k < scene::SkinVertex::kMaxInfluences; ++k) {
+      // (an unused influence still points to a valid joint)
+      skin_vertex.joints[k]  = (w[k] > 0.0f) ? j[k] : 0u;
+      skin_vertex.weights[k] = w[k] / sum;
     }
   }
+  return true;
 }
 
 } // namespace ""
@@ -285,6 +340,7 @@ bool AppendPrimitiveRestructured(
   cgltf_primitive const& prim,
   bool force32,
   std::vector<VertexInternal_t>& vertices,   // scratch
+  std::vector<scene::SkinVertex>& skin_vertices, // scratch
   scene::Mesh& mesh,
   Geometry::Primitive& primitive
 ) {
@@ -310,6 +366,19 @@ bool AppendPrimitiveRestructured(
   uint64_t const offset = mesh.addVerticesData(std::as_bytes(std::span(vertices)));
   primitive.vertexCount   = static_cast<uint32_t>(vertices.size());
   primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(offset); //
+
+  // [Optional] skin block right after the main one (same vertex order).
+  if (!prim.has_draco_mesh_compression
+   && ExtractPrimitiveSkin(prim, primitive.vertexCount, skin_vertices)) {
+    if (!mesh.hasAttribute(Geometry::AttributeType::Joints)) {
+      for (auto const& [type, info] : scene::SkinVertex::GetAttributeInfoMap()) {
+        mesh.addAttribute(type, info);
+      }
+    }
+    uint64_t const skin_offset = mesh.addVerticesData(std::as_bytes(std::span(skin_vertices)));
+    primitive.bufferOffsets[Geometry::AttributeType::Joints]  = skin_offset;
+    primitive.bufferOffsets[Geometry::AttributeType::Weights] = skin_offset;
+  }
 
   return true;
 }

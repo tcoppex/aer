@@ -50,8 +50,6 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
     A.material_refs.reserve(data->materials_count);
     A.meshes.reserve(data->meshes_count);
     // A.samplers.reserve(data->samplers_count);
-    // A.skeletons.reserve(data->skins_count);
-    // A.animations.reserve(data->animations_count);
 
     ExtractImages(data, A.images);
     ExtractTextures(data, A.textures);
@@ -63,7 +61,16 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
       load_options,
       A.meshes
     );
-    A.prefab = ExtractPrefab(data, mesh_remap);
+
+    // Skeletons and the clips driving them live in the prefab, as they are
+    // host data shared by every instance.
+    std::vector<scene::Skeleton> skeletons{};
+    ExtractSkeletons(data, skeletons);
+    if (load_options.load_animations) {
+      ExtractAnimations(data, load_options, skeletons);
+    }
+
+    A.prefab = ExtractPrefab(data, mesh_remap, std::move(skeletons));
   }
 
   /* Recalculate the scene global matrices buffer. */
@@ -76,14 +83,19 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
   cgltf_free(data);
 
 #if !defined(NDEBUG)
+  size_t clip_count = 0u;
+  for (auto const& skeleton : A.prefab->skeletons) {
+    clip_count += skeleton.clips.size();
+  }
+
   LOGI("> \"{}.{}\" has been loaded successfully.", basename, ext);
   std::cout << "┌────────────┬───── " << std::endl;
   std::cout << "│ Images     │ " << A.images.size()     << std::endl;
   std::cout << "│ Textures   │ " << A.textures.size()   << std::endl;
   std::cout << "│ Materials  │ " << (A.materials.size()-1) << " + default" << std::endl;
   std::cout << "│ Meshes     │ " << A.meshes.size()     << std::endl;
-  std::cout << "│ Skeletons  │ " << "TODO"  << std::endl;
-  std::cout << "│ Animations │ " << "TODO" << std::endl;
+  std::cout << "│ Skeletons  │ " << A.prefab->skeletons.size() << std::endl;
+  std::cout << "│ Clips      │ " << clip_count << std::endl;
   std::cout << "│ Nodes      │ " << A.prefab->nodes.size()  << std::endl;
   std::cout << "│ Scenes     │ " << A.prefab->scenes.size() << std::endl;
   std::cerr << "└────────────┴─────" << std::endl;

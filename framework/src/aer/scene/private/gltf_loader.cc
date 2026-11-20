@@ -2,9 +2,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <string>
+#include <utility>
 
 #include "aer/scene/private/gltf_loader.h"
 #include "aer/scene/private/extract_mesh_helpers.h"
+#include "aer/scene/private/extract_animation_helpers.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -61,6 +63,7 @@ uint32_t AppendPrefabNode(
 
   scene::PrefabNode pn{};
   pn.parent_index = parent_index;
+  pn.source_node = static_cast<uint32_t>(cgltf_node_index(data, node));
   if (node->name) {
     pn.name = node->name;
   }
@@ -68,6 +71,10 @@ uint32_t AppendPrefabNode(
 
   if (node->mesh) {
     pn.mesh_index = mesh_remap[cgltf_mesh_index(data, node->mesh)];  // invalid if skipped
+    if (node->skin) {
+      // (skeletons follow the glTF skins order)
+      pn.skin_index = static_cast<uint32_t>(cgltf_skin_index(data, node->skin));
+    }
   }
   if (node->has_mesh_gpu_instancing) {
     LOGW("[GLTF] GPU instancing not supported.");
@@ -223,8 +230,9 @@ std::vector<uint32_t> ExtractMeshes(
   // glTF mesh index -> index in `meshes` (invalid when the mesh was skipped).
   std::vector<uint32_t> mesh_remap(data->meshes_count, kInvalidIndexU32);
 
-  // reused scratch buffer
+  // reused scratch buffers
   std::vector<VertexInternal_t> vertices{};
+  std::vector<scene::SkinVertex> skin_vertices{};
 
   for (cgltf_size mesh_id = 0; mesh_id < data->meshes_count; ++mesh_id) {
     cgltf_mesh const& gl_mesh = data->meshes[mesh_id];
@@ -246,7 +254,7 @@ std::vector<uint32_t> ExtractMeshes(
       primitive.topology = ConvertTopology(prim);
 
       bool const ok = restructure
-        ? AppendPrimitiveRestructured(prim, force32, vertices, mesh, primitive)
+        ? AppendPrimitiveRestructured(prim, force32, vertices, skin_vertices, mesh, primitive)
         : AppendPrimitiveRaw(prim, mesh, primitive);
       if (!ok) {
         continue;
@@ -274,13 +282,215 @@ std::vector<uint32_t> ExtractMeshes(
 
 // ----------------------------------------------------------------------------
 
+void ExtractSkeletons(
+  cgltf_data const* data,
+  std::vector<scene::Skeleton>& skeletons
+) {
+  skeletons.reserve(data->skins_count);
+
+  for (cgltf_size s = 0; s < data->skins_count; ++s) {
+    cgltf_skin const& skin = data->skins[s];
+
+    // (one skeleton per skin, even if empty, to keep the indices in sync)
+    auto& skeleton = skeletons.emplace_back(skin.joints_count);
+    if (skin.name) {
+      skeleton.name = skin.name;
+    }
+
+    std::unordered_map<cgltf_node const*, uint32_t> joint_of{};
+    joint_of.reserve(skin.joints_count);
+    for (cgltf_size j = 0; j < skin.joints_count; ++j) {
+      joint_of.emplace(skin.joints[j], static_cast<uint32_t>(j));
+    }
+
+    // Inverse bind matrices, identity when the skin has none.
+    cgltf_accessor const* ibm = skin.inverse_bind_matrices;
+    bool const has_ibm = ibm
+                      && (ibm->type == cgltf_type_mat4)
+                      && (ibm->count >= skin.joints_count);
+    if (ibm && !has_ibm) {
+      LOGW("[GLTF] skin {} has invalid inverse bind matrices, using identity.", uint32_t(s));
+    }
+
+    for (cgltf_size j = 0; j < skin.joints_count; ++j) {
+      cgltf_node const* node = skin.joints[j];
+
+      skeleton.joint_nodes[j] = static_cast<uint32_t>(cgltf_node_index(data, node));
+      if (node->name) {
+        skeleton.names[j] = node->name;
+      }
+
+      // Nearest ancestor which is also a joint (non joint nodes may sit between them).
+      uint32_t parent = kInvalidIndexU32;
+      for (cgltf_node const* p = node->parent; p != nullptr; p = p->parent) {
+        if (auto const it = joint_of.find(p); it != joint_of.end()) {
+          parent = it->second;
+          break;
+        }
+      }
+      skeleton.parents[j] = parent;
+
+      auto& inverse_bind = skeleton.inverse_bind_matrices[j];
+      if (has_ibm && !cgltf_accessor_read_float(ibm, j, lina::ptr(inverse_bind), 16)) {
+        inverse_bind = mat4{lina::identity};
+      }
+      skeleton.global_bind_matrices[j] = lina::inverse(inverse_bind);
+
+      if (!skeleton.names[j].empty()) {
+        skeleton.index_map.try_emplace(skeleton.names[j], static_cast<uint32_t>(j));
+      }
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+
+void ExtractAnimations(
+  cgltf_data const* data,
+  scene::LoadOptions const& opts,
+  std::vector<scene::Skeleton>& skeletons
+) {
+  if (data->animations_count == 0u || skeletons.empty()) {
+    return;
+  }
+
+  // glTF node -> every (skeleton, joint) it is the node of.
+  std::vector<std::vector<std::pair<uint32_t, uint32_t>>> node_joints(data->nodes_count);
+  for (size_t s = 0; s < skeletons.size(); ++s) {
+    auto const& joint_nodes = skeletons[s].joint_nodes;
+    for (size_t j = 0; j < joint_nodes.size(); ++j) {
+      if (joint_nodes[j] < data->nodes_count) {
+        node_joints[joint_nodes[j]].emplace_back(
+          static_cast<uint32_t>(s), static_cast<uint32_t>(j)
+        );
+      }
+    }
+  }
+
+  // Joints hold their rest pose when no channel drives them.
+  std::vector<scene::Pose> rest_poses(skeletons.size());
+  for (size_t s = 0; s < skeletons.size(); ++s) {
+    auto const& joint_nodes = skeletons[s].joint_nodes;
+    rest_poses[s].joints.resize(joint_nodes.size());
+    for (size_t j = 0; j < joint_nodes.size(); ++j) {
+      if (joint_nodes[j] < data->nodes_count) {
+        ReadNodeTransform(data->nodes[joint_nodes[j]], rest_poses[s].joints[j]);
+      }
+    }
+  }
+
+  float const framerate = std::max(opts.animation_framerate, 1.0f);
+
+  for (cgltf_size a = 0; a < data->animations_count; ++a) {
+    cgltf_animation const& animation = data->animations[a];
+
+    std::string const clip_name = animation.name
+                                ? std::string(animation.name)
+                                : ("animation_" + std::to_string(a));
+
+    // Gather the channels driving joints, per skeleton.
+    std::vector<std::vector<JointChannel>> skeleton_channels(skeletons.size());
+    size_t ignored_count = 0u;
+
+    for (cgltf_size c = 0; c < animation.channels_count; ++c) {
+      cgltf_animation_channel const& channel = animation.channels[c];
+
+      if (!channel.target_node) {
+        ++ignored_count;
+        continue;
+      }
+      auto const& targets = node_joints[cgltf_node_index(data, channel.target_node)];
+      if (targets.empty()) {
+        ++ignored_count;
+        continue;
+      }
+
+      ChannelData channel_data{};
+      if (!LoadChannelData(channel, channel_data)) {
+        ++ignored_count;
+        continue;
+      }
+      for (auto const& [skeleton_index, joint_index] : targets) {
+        skeleton_channels[skeleton_index].push_back({joint_index, channel_data});
+      }
+    }
+
+    if (ignored_count > 0u) {
+      LOGW("[GLTF] animation \"{}\": {} channel(s) ignored (not driving a skin joint, "
+           "morph targets or unsupported).", clip_name, ignored_count);
+    }
+
+    // Bake one clip per skeleton driven by the animation.
+    for (size_t s = 0; s < skeletons.size(); ++s) {
+      auto const& channels = skeleton_channels[s];
+      if (channels.empty()) {
+        continue;
+      }
+
+      float t_begin = std::numeric_limits<float>::max();
+      float t_end   = std::numeric_limits<float>::lowest();
+      for (auto const& channel : channels) {
+        t_begin = std::min(t_begin, channel.data.times.front());
+        t_end   = std::max(t_end,   channel.data.times.back());
+      }
+      float const duration = std::max(t_end - t_begin, 0.0f);
+
+      // (a null duration gives a single static pose)
+      uint32_t const sample_count = (duration > lina::kTrueEpsilon)
+        ? static_cast<uint32_t>(std::ceil(duration * framerate)) + 1u
+        : 1u;
+
+      auto& skeleton = skeletons[s];
+      auto& clip = skeleton.clips.emplace_back();
+      clip.setup(clip_name, sample_count, duration, static_cast<uint32_t>(skeleton.jointCount()));
+
+      for (uint32_t i = 0; i < sample_count; ++i) {
+        float time = t_begin;
+        if (sample_count > 1u) {
+          time = (i + 1u == sample_count)
+               ? t_end
+               : t_begin + duration * (static_cast<float>(i) / static_cast<float>(sample_count - 1u));
+        }
+
+        auto& pose = clip.poses[i];
+        pose = rest_poses[s];
+
+        for (auto const& channel : channels) {
+          vec4 const value = EvaluateChannel(channel.data, time);
+          auto& joint = pose.joints[channel.joint];
+          switch (channel.data.path) {
+            case cgltf_animation_path_type_translation:
+              joint.translation = value.xyz();
+            break;
+
+            case cgltf_animation_path_type_rotation:
+              joint.rotation = value;
+            break;
+
+            case cgltf_animation_path_type_scale:
+              joint.scale = value.xyz();
+            break;
+
+            default:
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+
 [[nodiscard]]
 std::shared_ptr<scene::Prefab> ExtractPrefab(
   cgltf_data const* data,
-  std::vector<uint32_t> const& mesh_remap
+  std::vector<uint32_t> const& mesh_remap,
+  std::vector<scene::Skeleton>&& skeletons
 ) {
   auto prefab = std::make_shared<scene::Prefab>();
   prefab->nodes.reserve(data->nodes_count);
+  prefab->skeletons = std::move(skeletons);
 
   if (data->scenes_count > 0) {
     prefab->scenes.resize(data->scenes_count);
