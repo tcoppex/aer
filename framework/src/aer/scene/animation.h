@@ -28,8 +28,8 @@ struct Pose {
 
 struct AnimationClip {
   std::string name{};
-  float duration{};
-  float framerate{};
+  float duration{};   // seconds
+  float framerate{};  // samples per second
   std::vector<Pose> poses{};
 
   void setup(
@@ -40,7 +40,9 @@ struct AnimationClip {
   ) {
     name = std::string(clip_name);
     duration = clip_duration;
-    framerate = static_cast<float>(sampleCount) / lina::max(duration, lina::kTrueEpsilon);
+    framerate = (sampleCount > 1u)
+              ? static_cast<float>(sampleCount - 1u) / lina::max(duration, lina::kTrueEpsilon)
+              : 0.0f;
 
     poses.resize(sampleCount);
     for (auto& pose : poses) {
@@ -99,6 +101,19 @@ struct Skeleton {
     return kInvalidIndexU32;
   }
 };
+
+/* -------------------------------------------------------------------------- */
+
+[[nodiscard]]
+component::Transform BlendTransforms(
+  component::Transform const& a,
+  component::Transform const& b,
+  float t
+);
+
+void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
+
+void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
 
 }  // namespace "scene"
 
