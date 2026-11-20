@@ -1,4 +1,4 @@
-//  lina.h - v0.12.0
+//  lina.h - v0.13.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -351,6 +351,16 @@ mat<T,4,4> look_dir_matrix(vec<T,3> const& U) {
     to_vec4<T>(Z, 0.0),
     {0,0,0,1}
   );
+}
+
+// ----------------------------------------------------------------------------
+
+template<class T>
+vec<T,4> qlerp(const vec<T,4> & a, const vec<T,4> & b, T t) {
+  const T d = dot(a, b);
+  const vec<T,4> target = d < T(0) ? -b : b;
+  return (std::abs(d) > T(0.9995)) ? nlerp(a, target, t)
+                                   : slerp(a, target, t);
 }
 
 // ----------------------------------------------------------------------------
