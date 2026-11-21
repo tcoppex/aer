@@ -5,11 +5,12 @@
 
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/scene/camera.h"
+#include "aer/scene/skin_vertex.h"              // for material_shader_interop::SkinVertex
 #include "aer/scene/ecs/animation_components.h" // for component::Skin
 #include "aer/renderer/render_context.h"
-#include "aer/renderer/vertex_layout.h" // for material_shader_interop::FrameData
+#include "aer/renderer/vertex_layout.h"         // for material_shader_interop::FrameData
 #include "aer/renderer/renderer_flags.h"
-#include "aer/renderer/blas_builder.h" // for accel::Destroy
+#include "aer/renderer/blas_builder.h"          // for accel::Destroy
 
 /* -------------------------------------------------------------------------- */
 
@@ -70,6 +71,10 @@ bool SceneRenderer::setup(
     return false;
   }
 
+  if (!setupSkinningPipeline()) {
+    return false;
+  }
+
   // Transforms SBO (growable)
   return growTransforms(kInitialRenderableCapacity);
 }
@@ -83,6 +88,10 @@ void SceneRenderer::release() {
 
   releaseRayTracing();
 
+  if (skinning_layout_ != VK_NULL_HANDLE) {
+    context_ptr_->destroyPipeline(skinning_pipeline_);
+    context_ptr_->destroyPipelineLayout(skinning_layout_);
+  }
   context_ptr_->destroyBuffer(palette_.buffer);
   context_ptr_->destroyBuffer(skinned_.buffer);
 
@@ -364,6 +373,7 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
 // ----------------------------------------------------------------------------
 
 void SceneRenderer::uploadSkinning() {
+  skinning_pending_ = false;
   palette_.current_address = 0u;
   skinned_.current_address = 0u;
 
@@ -416,6 +426,73 @@ void SceneRenderer::uploadSkinning() {
   );
   palette_.current_address = palette_.buffer.address + palette_offset;
   skinned_.current_address = skinned_.buffer.address + skinned_offset;
+
+  skinning_pending_ = skinning_layout_ != VK_NULL_HANDLE;
+}
+
+// ----------------------------------------------------------------------------
+
+bool SceneRenderer::setupSkinningPipeline() {
+  skinning_layout_ = context_ptr_->createPipelineLayout({
+    .pushConstantRanges = {
+      {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .size = sizeof(skinning_shader_interop::SkinningPushConstant),
+      }
+    }
+  });
+  if (skinning_layout_ == VK_NULL_HANDLE) {
+    return false;
+  }
+
+  auto const shader = context_ptr_->createShaderModule(
+    FRAMEWORK_COMPILED_SHADERS_DIR "skinning/", "skin_vertices.slang"
+  );
+  skinning_pipeline_ = context_ptr_->createComputePipeline(
+    skinning_layout_,
+    shader
+  );
+  context_ptr_->releaseShaderModule(shader);
+
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::computeSkinning(CommandEncoder const& cmd) {
+  if (!skinning_pending_ || skinning_jobs_.empty()) {
+    return;
+  }
+  skinning_pending_ = false;
+
+  LOG_CHECK(palette_.current_address != 0u && skinned_.current_address != 0u);
+
+  auto const vertex_base = pool_ptr_->vertex_buffer().address;
+  cmd.bindPipeline(skinning_pipeline_);
+
+  for (auto const& job : skinning_jobs_) {
+    auto const palette_offset = static_cast<uint64_t>(job.palette_offset) * sizeof(palette_staging_[0]);
+    auto const pc = skinning_shader_interop::SkinningPushConstant{
+      .src_vertices   = vertex_base + job.vertex_offset,
+      .skin_vertices  = vertex_base + job.skin_offset,
+      .dst_vertices   = skinned_.current_address + job.out_offset,
+      .palette        = palette_.current_address + palette_offset,
+      .vertex_count   = job.vertex_count,
+      .joint_count    = job.joint_count,
+    };
+    cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+    cmd.runKernel<skinning_shader_interop::kSkinningGroupSize>(job.vertex_count);
+  }
+
+  cmd.pipelineBufferBarriers({{
+    .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    .dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+    .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+    .buffer = skinned_.buffer.buffer,
+    .offset = VkDeviceSize(ring_slot_) * skinned_.stride,
+    .size   = skinned_bytes_,
+  }});
 }
 
 // ----------------------------------------------------------------------------

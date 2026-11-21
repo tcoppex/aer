@@ -25,8 +25,10 @@ enum class RendererFlags : uint32_t;
 
 ///
 /// Per-frame drawing
-/// owns what depends on scene content (draw lists, transforms, TLAS)
-/// allocated as ring buffers
+/// owns what depends on scene content (draw lists, transforms, Skinning, TLAS)
+/// allocated as ring buffers.
+///
+/// (TODO? move specifics to custom classes, like Skinning & RayTracing)
 ///
 class SceneRenderer {
  private:
@@ -87,6 +89,8 @@ class SceneRenderer {
 
   void upload(uint32_t frame_index);
 
+  void computeSkinning(CommandEncoder const&);
+
   void render(RenderPassEncoder const&);
 
   // void onFramesInFlightChanged(uint32_t frames_in_fligh);
@@ -98,17 +102,23 @@ class SceneRenderer {
 
   void collectRetired();
 
+  // ---
+
   bool ensureSliceBuffer(
     SliceBuffer&,
     VkDeviceSize min_slice_bytes,
     VkBufferUsageFlags2KHR usage,
     VmaMemoryUsage memory_usage,
     VmaAllocationCreateFlags flags
-  ); // ~
+  );
+
+  bool setupSkinningPipeline();
 
   void buildSkinning(scene::Hierarchy&);
 
   void uploadSkinning();
+
+  // ---
 
   void buildDrawLists(scene::Hierarchy&, Camera const&);
 
@@ -129,8 +139,9 @@ class SceneRenderer {
   backend::Buffer frame_sbo_{};
   VkDeviceSize    frame_data_stride_{};
   VkDeviceAddress frame_data_current_address_{};
-
   material_shader_interop::FrameData frame_data_{}; //
+
+  std::vector<RetiredBuffer> retired_buffers_{};
 
   // -- Transforms --
   backend::Buffer   transforms_sbo_{};
@@ -139,22 +150,20 @@ class SceneRenderer {
   VkDeviceAddress   transforms_current_address_{};
   std::vector<mat4> transforms_staging_{};
 
+  // -- Draw Lists --
+  EnumArray<FxDrawablesLookup, AlphaMode> lookups_{};
+
   // -- GPU Skinning (CPU side) --
   std::vector<SkinningJob> skinning_jobs_{};
   std::vector<mat4>        palette_staging_{};
   uint64_t                 skinned_bytes_{};
   SliceBuffer              palette_{};
   SliceBuffer              skinned_{};
+  VkPipelineLayout         skinning_layout_{};
+  Pipeline                 skinning_pipeline_{};
+  bool                     skinning_pending_{};
 
-  std::vector<RetiredBuffer> retired_buffers_{};
-
-  EnumArray<FxDrawablesLookup, AlphaMode> lookups_{};
-
-  bool raster_enabled_{true}; //
-
-  // -------------------------------
   // -- Ray tracing (CPU side) --
-
  public:
   /* When false skip building the raster draw lists (eg. for ray traced only frame). */
   void set_rasterization_enabled(bool enabled) noexcept {
@@ -206,6 +215,8 @@ class SceneRenderer {
     std::vector<material_shader_interop::RTGeometryData> prev_geometries{};
     std::vector<RayTracingFrame> frames{};
   } rt_;
+
+  bool raster_enabled_{true}; //
 };
 
 /* -------------------------------------------------------------------------- */

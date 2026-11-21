@@ -176,6 +176,10 @@ CommandEncoder& Renderer::beginFrame(FrameHandler *frame_handler) {
   // -----------------------
 
   frame.cmd.begin();
+
+  /* Compute the skinned mesh before anything reads their vertices. */
+  scene_renderer_.computeSkinning(frame.cmd); //
+
   return frame.cmd;
 }
 

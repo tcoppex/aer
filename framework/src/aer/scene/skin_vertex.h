@@ -6,6 +6,10 @@
 
 #include "aer/scene/geometry.h"
 
+namespace skinning_shader_interop {
+#include "aer/shaders/skinning/interop.h"
+}
+
 /* -------------------------------------------------------------------------- */
 
 namespace scene {
@@ -13,11 +17,11 @@ namespace scene {
 //
 // Skinning data of a vertex (4 influences max, from JOINTS_0 / WEIGHTS_0).
 //
-struct SkinVertex {
+struct SkinVertex : skinning_shader_interop::SkinVertex {
   static constexpr uint32_t kMaxInfluences{4u};
 
-  uint32_t joints[kMaxInfluences]{};   // indices in Skeleton joints
-  float    weights[kMaxInfluences]{};  // normalized (sum to one)
+  // uint32_t joints[kMaxInfluences]{};   // indices in Skeleton joints
+  // float    weights[kMaxInfluences]{};  // normalized (sum to one)
 
   [[nodiscard]]
   static
