@@ -29,6 +29,47 @@ enum class RendererFlags : uint32_t;
 /// allocated as ring buffers
 ///
 class SceneRenderer {
+ private:
+  static constexpr uint32_t kInitialRenderableCapacity = 1024u;
+  static constexpr VkDeviceSize kSliceAlignment = 256u;
+
+  static constexpr uint32_t kJointsWarnThreshold = 256u;
+  static constexpr VkDeviceSize kSkinnedAlignment = 16u;
+
+ private:
+  struct RetiredBuffer {
+    backend::Buffer buffer{};
+    uint64_t frame{};
+  };
+
+  struct SliceBuffer {
+    backend::Buffer buffer{};
+    VkDeviceSize    stride{};
+    VkDeviceAddress current_address{};
+  };
+
+  struct SkinningJob {
+    uint64_t vertex_offset{};
+    uint64_t skin_offset{};
+    uint64_t out_offset{};
+    uint32_t palette_offset{};
+    uint32_t joint_count{};
+    uint32_t vertex_count{};
+  };
+
+  struct DrawItem {
+    DeviceSubmesh const*  submesh{};
+    DeviceMaterial const* material{};
+    DeviceMesh const*     mesh{};
+    uint32_t              transform_slot{};
+    float                 sort_key{};
+  };
+
+  using FxHashPair        = std::pair<MaterialFx*, scene::MaterialStates>;
+  using DrawItems         = std::vector<DrawItem>;
+  using FxDrawablesLookup = std::map<FxHashPair, DrawItems>;
+  using AlphaMode         = scene::MaterialStates::AlphaMode;
+
  public:
   SceneRenderer();
   ~SceneRenderer();
@@ -57,34 +98,23 @@ class SceneRenderer {
 
   void collectRetired();
 
+  bool ensureSliceBuffer(
+    SliceBuffer&,
+    VkDeviceSize min_slice_bytes,
+    VkBufferUsageFlags2KHR usage,
+    VmaMemoryUsage memory_usage,
+    VmaAllocationCreateFlags flags
+  ); // ~
+
+  void buildSkinning(scene::Hierarchy&);
+
+  void uploadSkinning();
+
   void buildDrawLists(scene::Hierarchy&, Camera const&);
 
   void buildFrameData(Camera const& camera, float elapsed_time, RendererFlags renderer_flags);
 
   void writeFrameData();
-
- private:
-  static constexpr uint32_t kInitialRenderableCapacity = 1024u;
-  static constexpr VkDeviceSize kSliceAlignment = 256u;
-
- private:
-  struct RetiredBuffer {
-    backend::Buffer buffer{};
-    uint64_t frame{};
-  };
-
-  struct DrawItem {
-    DeviceSubmesh const*  submesh{};
-    DeviceMaterial const* material{};
-    DeviceMesh const*     mesh{};
-    uint32_t              transform_slot{};
-    float                 sort_key{};
-  };
-
-  using FxHashPair        = std::pair<MaterialFx*, scene::MaterialStates>;
-  using DrawItems         = std::vector<DrawItem>;
-  using FxDrawablesLookup = std::map<FxHashPair, DrawItems>;
-  using AlphaMode         = scene::MaterialStates::AlphaMode;
 
  private:
   RenderContext const* context_ptr_{};
@@ -102,11 +132,19 @@ class SceneRenderer {
 
   material_shader_interop::FrameData frame_data_{}; //
 
+  // -- Transforms --
   backend::Buffer   transforms_sbo_{};
   uint32_t          transforms_capacity_{};
   VkDeviceSize      transforms_slice_stride_{};
   VkDeviceAddress   transforms_current_address_{};
   std::vector<mat4> transforms_staging_{};
+
+  // -- GPU Skinning (CPU side) --
+  std::vector<SkinningJob> skinning_jobs_{};
+  std::vector<mat4>        palette_staging_{};
+  uint64_t                 skinned_bytes_{};
+  SliceBuffer              palette_{};
+  SliceBuffer              skinned_{};
 
   std::vector<RetiredBuffer> retired_buffers_{};
 
@@ -168,7 +206,6 @@ class SceneRenderer {
     std::vector<material_shader_interop::RTGeometryData> prev_geometries{};
     std::vector<RayTracingFrame> frames{};
   } rt_;
-
 };
 
 /* -------------------------------------------------------------------------- */

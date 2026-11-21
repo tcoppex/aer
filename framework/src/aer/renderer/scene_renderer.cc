@@ -5,6 +5,7 @@
 
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/scene/camera.h"
+#include "aer/scene/ecs/animation_components.h" // for component::Skin
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/vertex_layout.h" // for material_shader_interop::FrameData
 #include "aer/renderer/renderer_flags.h"
@@ -82,6 +83,9 @@ void SceneRenderer::release() {
 
   releaseRayTracing();
 
+  context_ptr_->destroyBuffer(palette_.buffer);
+  context_ptr_->destroyBuffer(skinned_.buffer);
+
   context_ptr_->destroyBuffer(frame_sbo_);
   context_ptr_->destroyBuffer(transforms_sbo_);
   for (auto const& r : retired_buffers_) {
@@ -102,6 +106,7 @@ void SceneRenderer::update(
   LOG_CHECK(frame_sbo_.valid());
   LOG_CHECK(transforms_sbo_.valid());
 
+  buildSkinning(scene);
   buildDrawLists(scene, camera);
   buildFrameData(camera, elapsed_time, flags);
   collectRayTracingInstances(scene);
@@ -131,6 +136,7 @@ void SceneRenderer::upload(uint32_t frame_index) {
 
   writeFrameData();
   uploadTransforms();
+  uploadSkinning();
 
   ++frame_counter_;
 }
@@ -258,6 +264,158 @@ void SceneRenderer::collectRetired() {
     context_ptr_->destroyBuffer(r.buffer);
     return true;
   });
+}
+
+// ----------------------------------------------------------------------------
+
+bool SceneRenderer::ensureSliceBuffer(
+  SliceBuffer& slices,
+  VkDeviceSize min_slice_bytes,
+  VkBufferUsageFlags2KHR usage,
+  VmaMemoryUsage memory_usage,
+  VmaAllocationCreateFlags flags
+) {
+  if (min_slice_bytes <= slices.stride) {
+    return true;
+  }
+
+  VkDeviceSize stride = std::max<VkDeviceSize>(slices.stride, kSliceAlignment);
+  while (stride < min_slice_bytes) {
+    stride *= 2u;
+  }
+
+  auto buffer = context_ptr_->createBuffer(
+    stride * frames_in_flight_, usage, memory_usage, flags
+  );
+  if (!buffer.valid()) {
+    LOGE("SceneRenderer: failed to create a skinning buffer.");
+    return false;
+  }
+
+  // Contents are rewritten every frame, the old buffer only needs to outlive
+  // the frames in flight.
+  if (slices.buffer.valid()) {
+    retired_buffers_.push_back({
+      .buffer = slices.buffer,
+      .frame = frame_counter_ + frames_in_flight_
+    });
+  }
+  slices.buffer = buffer;
+  slices.stride = stride;
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
+  skinning_jobs_.clear();
+  palette_staging_.clear();
+  skinned_bytes_ = 0u;
+
+  if (!raster_enabled_ && !rt_.enabled) {
+    return;
+  }
+
+  using namespace scene::component;
+
+  scene.registry.view<Renderable, Skin>().each(
+    [&](Renderable const& renderable, Skin const& skin) {
+      // retrieve the device asset associated with the skin.
+      auto const* da = pool_ptr_->find(renderable.asset);
+      if (!da || renderable.mesh_index > da->meshes.size() || skin.matrices.empty()) {
+        return;
+      }
+      if (skin.matrices.size() > kJointsWarnThreshold) {
+        HLOGW("SceneRenderer: a skin has {} joints (> {}).", skin.matrices.size(), kJointsWarnThreshold);
+      }
+      auto const& mesh = da->meshes[renderable.mesh_index];
+
+      uint32_t palette_offset = kInvalidIndexU32;
+      for (auto const& submesh : mesh.submeshes) {
+        auto const& desc = submesh.draw_descriptor;
+        if (!submesh.has_skin() || desc.vertexCount == 0u) {
+          continue;
+        }
+
+        // calculate the mesh offset to its palette buffer.
+        if (palette_offset == kInvalidIndexU32) {
+          palette_offset = static_cast<uint32_t>(palette_staging_.size());
+          palette_staging_.insert(
+            palette_staging_.end(), skin.matrices.begin(), skin.matrices.end()
+          );
+        }
+
+        skinned_bytes_ = utils::AlignTo(skinned_bytes_, kSkinnedAlignment);
+        skinning_jobs_.push_back({
+          .vertex_offset  = desc.vertexOffset,
+          .skin_offset    = submesh.skin_vertex_offset,
+          .out_offset     = skinned_bytes_,
+          .palette_offset = palette_offset,
+          .joint_count    = static_cast<uint32_t>(skin.matrices.size()),
+          .vertex_count   = desc.vertexCount,
+        });
+        skinned_bytes_ += static_cast<uint64_t>(desc.vertexCount)
+                        * sizeof(material_shader_interop::Vertex);
+      }
+    }
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::uploadSkinning() {
+  palette_.current_address = 0u;
+  skinned_.current_address = 0u;
+
+  if (skinning_jobs_.empty()) {
+    return;
+  }
+
+  VkBufferUsageFlags2KHR skinned_usage =
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+    ;
+
+  if (pool_ptr_->settings().ray_tracing) {
+    skinned_usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+  }
+
+  auto const palette_bytesize = palette_staging_.size() * sizeof(palette_staging_[0]);
+
+  bool const ok = ensureSliceBuffer(
+    palette_,
+    palette_bytesize,
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+    VMA_MEMORY_USAGE_AUTO,
+      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+    | VMA_ALLOCATION_CREATE_MAPPED_BIT
+  ) && ensureSliceBuffer(
+    skinned_,
+    skinned_bytes_,
+    skinned_usage,
+    VMA_MEMORY_USAGE_GPU_ONLY,
+    {}
+  );
+
+  if (!ok) {
+    skinning_jobs_.clear();
+    return;
+  }
+
+  VkDeviceSize const palette_offset = VkDeviceSize(ring_slot_) * palette_.stride;
+  VkDeviceSize const skinned_offset = VkDeviceSize(ring_slot_) * skinned_.stride;
+
+  context_ptr_->writeBuffer(
+    palette_.buffer,
+    palette_offset,
+    palette_staging_.data(),
+    0u,
+    palette_bytesize
+  );
+  palette_.current_address = palette_.buffer.address + palette_offset;
+  skinned_.current_address = skinned_.buffer.address + skinned_offset;
 }
 
 // ----------------------------------------------------------------------------

@@ -26,6 +26,12 @@ struct MeshBufferRange {
 struct DeviceSubmesh {
   DrawDescriptor draw_descriptor{};
   uint32_t asset_material_index{};
+
+  /* byte offset in the pool vertex buffer of this primitives's SkinVertex array. */
+  uint64_t skin_vertex_offset{kInvalidIndexU64};
+
+  [[nodiscard]]
+  bool has_skin() const noexcept { return skin_vertex_offset != kInvalidIndexU64; }
 };
 
 struct DeviceMesh {
