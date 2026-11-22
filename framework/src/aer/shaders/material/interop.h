@@ -129,6 +129,8 @@ struct FrameData {
   vec2 resolution;
   uint frame;
   uint renderer_states; // (wip) (cf. renderer_flags.h)
+  float exposure;       // linear exposure scale (2^EV), applied before tonemapping.
+  uint tonemapping;     // TONEMAPPING_* (cf. shared/tonemapping.glsl).
 };
 
 // ----------------------------------------------------------------------------

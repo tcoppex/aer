@@ -371,6 +371,8 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
     renderer_flags |= RendererFlags::EnableIrradiance;
   }
 
+  scene_renderer_.set_display(exposure, tonemapping);
+
   animation_system_.preUpdate(elapsed_time);
   scene_tree_.update();
   animation_system_.postUpdate();

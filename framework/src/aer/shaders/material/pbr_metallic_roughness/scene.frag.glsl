@@ -6,6 +6,7 @@
 
 #include <shared/maths.glsl>
 #include <shared/lighting/pbr.glsl>
+#include <shared/tonemapping.glsl>
 
 #include <material/pbr_metallic_roughness/interop.h>
 #include <material/renderer_flags.h>
@@ -214,6 +215,10 @@ void main() {
     // [TODO : explore mipmapping issue on specular !]
     // color = pbr_data.prefiltered;
   }
+
+  /* Display transform (exposure + tonemapping), shared with the skybox. */
+  color = tonemapDisplayLinear(color, frameData.exposure, int(frameData.tonemapping));
+
   float alpha = mainColor.a;
 
   // -------

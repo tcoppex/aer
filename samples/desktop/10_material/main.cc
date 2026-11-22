@@ -41,6 +41,45 @@ class SampleApp final : public Application {
     {
       ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
       ImGui::Separator();
+
+      /* Display transform. */
+      float ev = renderer_.exposure();
+      if (ImGui::SliderFloat("Exposure (EV)", &ev, -6.0f, 6.0f)) {
+        renderer_.set_exposure(ev);
+      }
+
+      struct Operator { char const* name; Tonemapping value; };
+      static constexpr Operator kOperators[] = {
+        { "None",           Tonemapping::None },
+        { "Linear",         Tonemapping::Linear },
+        { "Reinhard",       Tonemapping::SimpleReinhard },
+        { "Luma Reinhard",  Tonemapping::LumaReinhard },
+        { "ACES",           Tonemapping::FilmicACES },
+        { "Uncharted 2",    Tonemapping::Uncharted2 },
+        { "PBR Neutral",    Tonemapping::PBRNeutral },
+      };
+
+      auto const current = renderer_.tonemapping();
+      char const* label = "-";
+      for (auto const& op : kOperators) {
+        if (op.value == current) {
+          label = op.name;
+        }
+      }
+      if (ImGui::BeginCombo("Tonemapping", label)) {
+        for (auto const& op : kOperators) {
+          if (ImGui::Selectable(op.name, op.value == current)) {
+            renderer_.set_tonemapping(op.value);
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      /* Background only brightness (the lighting is not affected). */
+      float sky_intensity = renderer_.skybox().hdr_intensity();
+      if (ImGui::SliderFloat("Sky intensity", &sky_intensity, 0.0f, 4.0f)) {
+        renderer_.skybox().set_hdr_intensity(sky_intensity);
+      }
     }
     ImGui::End();
   }
