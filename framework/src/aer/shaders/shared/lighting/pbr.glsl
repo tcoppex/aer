@@ -169,9 +169,15 @@ vec3 colorize_pbr(in FragInfo_t frag_info, in PBRMetallicRoughness_Material_t ma
   vec3 ambient = vec3(0.0);
   {
     const vec2 brdf = mat.BRDF;
-    const vec3 F = f_SchlickRoughness( frag_info.n_dot_v, brdf_mat.F0, mat.roughness);
-    vec3 diffuseIBL  = mat.irradiance * (1.0 - F) * brdf_mat.albedo;
-    vec3 specularIBL = mat.prefiltered * (F * brdf.x + brdf.y);
+
+    // Specular albedo from the pre-integrated BRDF (split sum), used for both
+    // terms to balance the energy. Using the roughness aware Fresnel as the
+    // diffuse weight removes the diffuse at grazing angles (F -> roughness),
+    // while the BRDF LUT also fades to 0 there: this leaves black rims.
+    const vec3 specular_albedo = brdf_mat.F0 * brdf.x + brdf.y;
+
+    vec3 diffuseIBL  = mat.irradiance * (1.0 - specular_albedo) * brdf_mat.albedo;
+    vec3 specularIBL = mat.prefiltered * specular_albedo;
     ambient = (diffuseIBL + specularIBL) * mat.ao;
   }
 
