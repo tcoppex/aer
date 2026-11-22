@@ -4,17 +4,11 @@
 // ----------------------------------------------------------------------------
 
 #if !defined(STATIC_CONST)
-
-#if defined(_GLSL_)
-#define STATIC_CONST const
-#else
 #define STATIC_CONST static const
 #endif
 
-#endif
-
 #if defined(__SLANG__)
-  typealias mat4 = float4x4;
+typealias mat4 = float4x4;
 typealias mat4x3 = float4x3;
 typealias vec4 = float4;
 typealias vec3 = float3;
