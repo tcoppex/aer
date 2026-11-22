@@ -76,20 +76,16 @@ void main() {
       fast_importance_sample_GGX( basis_ws, pt, roughness_sqr)
 #endif
     ;
-    float v_dot_h = dot(V, H);
+    const float v_dot_h = dot(V, H);
     const vec3 L = normalize(2.0 * v_dot_h * H - V);
     const float n_dot_l = max(dot(N, L), 0.0);
 
     if (n_dot_l > 0.0) {
-      float n_dot_h = max(dot(N, H), 0.0);
-      v_dot_h = max(v_dot_h, 0.0);
-
-      float D   = ndf_GGX(n_dot_h, roughness_sqr);
-      float pdf = max(D * n_dot_h / (4.0 * v_dot_h), 1e-6);
-
-      float weight = n_dot_l / pdf;
-      prefilteredColor += texture(inDiffuseEnvmap, L).rgb * weight;
-      totalWeight += weight;
+      // Split sum approximation (Karis 2013) : the samples are already
+      // distributed according to the GGX lobe, they only need to be weighted
+      // by N.L (weighting by 1/pdf would cancel the importance sampling).
+      prefilteredColor += texture(inDiffuseEnvmap, L).rgb * n_dot_l;
+      totalWeight += n_dot_l;
     }
   }
   prefilteredColor /= max(totalWeight, 0.0001);
