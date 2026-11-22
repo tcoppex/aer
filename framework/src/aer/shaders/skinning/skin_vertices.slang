@@ -6,6 +6,27 @@
 [[vk::push_constant]]
 SkinningPushConstant pc;
 
+// ----------------------------------------------------------------------------
+
+float3 transformNormal(float3x3 a, float3 n) {
+  let c0  = cross(a[1], a[2]);
+  let c1  = cross(a[2], a[0]);
+  let c2  = cross(a[0], a[1]);
+  let det = dot(a[0], c0);
+
+  // mirrored transform to keep the normal on the outer side
+  var r = float3(dot(c0, n), dot(c1, n), dot(c2, n));
+  if (det < 0.0f) {
+    r = -r;
+  }
+
+  // keep the bind normal when matrix is degenerate
+  let len2 = dot(r, r);
+  return (len2 > 1e-12f) ? r * rsqrt(len2) : n;
+}
+
+// ----------------------------------------------------------------------------
+
 [shader("compute")]
 [numthreads(kSkinningGroupSize, 1, 1)]
 void main(uint3 tid : SV_DispatchThreadID) {
@@ -42,7 +63,7 @@ void main(uint3 tid : SV_DispatchThreadID) {
   Vertex o = v;
 
   o.position = mul(m, float4(v.position, 1.0f)).xyz;
-  o.normal   = normalize(mul(m, float4(v.normal, 0.0f)).xyz);
+  o.normal   = transformNormal((float3x3)m, v.normal);
   o.tangent  = float4(normalize(mul(m, float4(v.tangent.xyz, 0.0f)).xyz), v.tangent.w);
 
   dst[i] = o;
