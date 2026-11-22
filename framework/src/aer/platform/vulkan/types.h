@@ -233,10 +233,12 @@ struct RayTracingAddressRegion {
 
 struct AccelerationStructure {
   VkAccelerationStructureKHR handle{VK_NULL_HANDLE};
+
   Buffer buffer{};
   VkDeviceAddress address{};
   VkAccelerationStructureBuildGeometryInfoKHR build_geometry_info{};
   VkAccelerationStructureBuildSizesInfoKHR build_sizes_info{};
+  VkDeviceSize scratch_size{};
 
   [[nodiscard]]
   bool valid() const noexcept {
