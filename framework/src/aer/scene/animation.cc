@@ -28,7 +28,6 @@ void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out) {
   }
   out.joints.resize(a.joints.size());
 
-  #pragma omp parallel for schedule(static) num_threads(4)
   for (size_t i = 0; i < a.joints.size(); ++i) {
     out.joints[i] = BlendTransforms(a.joints[i], b.joints[i], t);
   }
