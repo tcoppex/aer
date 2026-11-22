@@ -56,7 +56,8 @@ bool BuildDynamicBLAS(
   Geometry::AttributeLocationMap const& attribute_locations,
   std::span<VkDeviceAddress const> vertex_addresses,
   VkDeviceAddress scratch_address,
-  backend::AccelerationStructure const& dynamic_blas
+  backend::AccelerationStructure const& blas,
+  bool update
 );
 
 } // namespace accel

@@ -11,6 +11,7 @@
 #include "aer/platform/vulkan/types.h"
 #include "aer/scene/ecs/hierarchy.h"
 #include "aer/renderer/gpu_pool.h"
+#include "aer/renderer/blas_builder.h"
 #include "aer/renderer/vertex_layout.h" //
 #include "aer/renderer/ray_tracing_view.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
@@ -191,21 +192,51 @@ class SceneRenderer {
  private:
   static constexpr uint64_t kNoVersion = kInvalidIndexU64;
 
-  struct RayTracingFrame {
-    backend::AccelerationStructure tlas{};
-    backend::Buffer tlas_scratch{};
-    backend::Buffer instances{};
-    backend::Buffer geometry_table{};
+  // Rebuild skinned meshes BLAS every N frames to avoid drift.
+  static constexpr uint32_t kSkinnedBLASRebuildPeriod = 60u;
 
-    uint32_t instance_capacity{};
-    uint32_t geometry_capacity{};
-    uint32_t instance_count{};
-    uint64_t built_version{kNoVersion};
+  /* BLAS of one dynamic entity, for one frame slot (refit every frame). */
+  struct RTDynamicBLAS {
+    backend::AccelerationStructure  blas{};
+    DeviceMesh const*               mesh{};
+    uint32_t                        since_rebuild{};
+    bool                            built{};
+    bool                            used{};
+  };
+
+  /* A dynamic instance of the TLAS (collected at update, patched at record). */
+  struct RTDynamicInstance {
+    entt::entity                    entity{};
+    DeviceAsset const*              asset{};
+    DeviceMesh const*               mesh{};
+    uint32_t                        instance_index{};
+    uint32_t                        first_geometry{};
+    uint32_t                        first_job{};
+  };
+
+  struct RayTracingFrame {
+    struct Dynamic {
+      std::unordered_map<entt::entity, RTDynamicBLAS> blas{};
+      backend::Buffer scratch{};
+      VkDeviceSize scratch_size{};
+    };
+
+    backend::AccelerationStructure  tlas{};
+    backend::Buffer                 tlas_scratch{};
+    backend::Buffer                 instances{};
+    backend::Buffer                 geometry_table{};
+    Dynamic                         dynamic{};
+    uint32_t                        instance_capacity{};
+    uint32_t                        geometry_capacity{};
+    uint32_t                        instance_count{};
+    uint64_t                        built_version{kNoVersion};
   };
 
   void collectRayTracingInstances(scene::Hierarchy& scene);
 
   bool ensureRayTracingFrame(RayTracingFrame&);
+
+  void recordDynamicBLAS(CommandEncoder const&, RayTracingFrame&);
 
   void releaseRayTracing();
 
@@ -218,6 +249,7 @@ class SceneRenderer {
     std::vector<material_shader_interop::RTGeometryData> geometries{};
     std::vector<material_shader_interop::RTGeometryData> prev_geometries{};
     std::vector<RayTracingFrame> frames{};
+    std::vector<RTDynamicInstance> dynamic_instances{}; // (mainly skinned mesh currently)
   } rt_;
 
   bool raster_enabled_{true}; //

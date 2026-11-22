@@ -11,7 +11,8 @@ namespace {
 
 /* Build flags of the BLAS rebuilt every frame. */
 constexpr VkBuildAccelerationStructureFlagsKHR kDynamicBuildFlags{
-  VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR
+    VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR
+  | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR
 };
 
 struct PendingBuild {
@@ -369,7 +370,7 @@ bool CreateDynamicBLAS(
     .accelerationStructure = out.handle,
   };
   out.address = vkGetAccelerationStructureDeviceAddressKHR(context.device(), &address_info);
-  out.scratch_size = sizes.buildScratchSize;
+  out.scratch_size = std::max(sizes.buildScratchSize, sizes.updateScratchSize);
   return true;
 }
 
@@ -404,7 +405,8 @@ bool BuildDynamicBLAS(
   Geometry::AttributeLocationMap const& attribute_locations,
   std::span<VkDeviceAddress const> vertex_addresses,
   VkDeviceAddress scratch_address,
-  backend::AccelerationStructure const& blas
+  backend::AccelerationStructure const& blas,
+  bool update
 ) {
   auto const position_it = attribute_locations.find(Geometry::AttributeType::Position);
   if (!blas.valid() || position_it == attribute_locations.end() || scratch_address == 0u) {
@@ -425,7 +427,9 @@ bool BuildDynamicBLAS(
     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
     .type  = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
     .flags = kDynamicBuildFlags,
-    .mode  = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+    .mode  = update ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR
+                    : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+    .srcAccelerationStructure = update ? blas.handle : VK_NULL_HANDLE,
     .dstAccelerationStructure = blas.handle,
     .geometryCount = static_cast<uint32_t>(geometries.size()),
     .pGeometries   = geometries.data(),

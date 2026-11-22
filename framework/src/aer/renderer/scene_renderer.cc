@@ -497,11 +497,21 @@ void SceneRenderer::computeSkinning(CommandEncoder const& cmd) {
     cmd.runKernel<skinning_shader_interop::kSkinningGroupSize>(job.vertex_count);
   }
 
+  VkPipelineStageFlags2 dst_stages  = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+  VkAccessFlags2        dst_access  = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+  if (rt_.enabled) {
+    dst_stages |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+               |  VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR
+               |  VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+               |  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    dst_access |= VK_ACCESS_2_SHADER_READ_BIT;
+  }
+
   cmd.pipelineBufferBarriers({{
     .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
     .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-    .dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
-    .dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+    .dstStageMask  = dst_stages,
+    .dstAccessMask = dst_access,
     .buffer = skinned_.buffer.buffer,
     .offset = VkDeviceSize(ring_slot_) * skinned_.stride,
     .size   = skinned_bytes_,
@@ -597,6 +607,7 @@ void SceneRenderer::set_ray_tracing_enabled(bool enabled) {
     rt_.geometries.clear();
     rt_.prev_instances.clear();
     rt_.prev_geometries.clear();
+    rt_.dynamic_instances.clear();
     releaseRayTracing();
   }
   ++rt_.version;
@@ -615,12 +626,13 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
   std::swap(rt_.geometries, rt_.prev_geometries);
   rt_.instances.clear();
   rt_.geometries.clear();
+  rt_.dynamic_instances.clear();
 
   auto const vertex_base = pool_ptr_->vertex_buffer().address;
   auto const index_base  = pool_ptr_->index_buffer().address;
 
   scene.registry.view<GlobalTransform, Renderable>().each(
-    [&](GlobalTransform const& global, Renderable const& renderable) {
+    [&](entt::entity entity, GlobalTransform const& global, Renderable const& renderable) {
       auto const* da = pool_ptr_->find(renderable.asset);
       if (!da || (renderable.mesh_index >= da->meshes.size())) {
         return;
@@ -647,7 +659,7 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
                                // && material->fx->ray_tracing_compatible()
                                ;
 
-        material_shader_interop::RTGeometryData record{
+        auto record = material_shader_interop::RTGeometryData{
           .vertex_address   = vertex_base + desc.vertexOffset,
           .index_address    = index_base + desc.indexOffset,
           .material_address = has_material ? material->fx->material_buffer_address() : 0u,
@@ -664,17 +676,33 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
         .accelerationStructureReference = mesh.blas.address,
       };
       ToVkTransformMatrix(global.worldMatrix, instance.transform);
+
+      auto const instance_index = static_cast<uint32_t>(rt_.instances.size());
       rt_.instances.push_back(instance);
+
+      // Add skinned entities to the dynamic instances.
+      if (auto const it = skinned_first_job_.find(entity); it != skinned_first_job_.end()) {
+        rt_.dynamic_instances.push_back({
+          .entity = entity,
+          .asset = da,
+          .mesh = &mesh,
+          .instance_index = instance_index,
+          .first_geometry = first,
+          .first_job = it->second,
+        });
+      }
     }
   );
 
   // ---------------------
   // Bump the version when anything changed.
   auto same = [](auto const& a, auto const& b) {
-    return a.size() == b.size()
+    return (a.size() == b.size())
         && (a.empty() || std::memcmp(a.data(), b.data(), a.size() * sizeof(a[0])) == 0);
   };
-  if (!same(rt_.instances, rt_.prev_instances) || !same(rt_.geometries, rt_.prev_geometries)) {
+  if (!same(rt_.instances, rt_.prev_instances)
+   || !same(rt_.geometries, rt_.prev_geometries)
+   || !rt_.dynamic_instances.empty()) {
     ++rt_.version;
   }
   // ---------------------
@@ -722,7 +750,16 @@ void SceneRenderer::writeFrameData() {
 void SceneRenderer::releaseRayTracing() {
   for (auto& f : rt_.frames) {
     accel::Destroy(*context_ptr_, f.tlas);
-    for (auto* b : { &f.tlas_scratch, &f.instances, &f.geometry_table }) {
+    for (auto& [_, s] : f.dynamic.blas) {
+      accel::Destroy(*context_ptr_, s.blas);
+    }
+    f.dynamic.blas.clear();
+    for (auto* b : {
+      &f.tlas_scratch,
+      &f.instances,
+      &f.geometry_table,
+      &f.dynamic.scratch
+    }) {
       if (b->valid()) {
         context_ptr_->destroyBuffer(*b);
       }
@@ -882,6 +919,9 @@ void SceneRenderer::recordAccelerationStructures(CommandEncoder const& cmd) {
     return;
   }
 
+  // Patches RT instances & geometries before they are written.
+  recordDynamicBLAS(cmd, f);
+
   context_ptr_->writeBuffer(
     f.instances, 0u,
     rt_.instances.data(), 0u,
@@ -940,6 +980,134 @@ void SceneRenderer::recordAccelerationStructures(CommandEncoder const& cmd) {
   vkCmdPipelineBarrier2(cmd.handle(), &dependency);
 
   f.built_version = rt_.version;
+}
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::recordDynamicBLAS(CommandEncoder const& cmd, RayTracingFrame& f) {
+  auto const& vertex_buffer = pool_ptr_->vertex_buffer();
+  auto const& index_buffer  = pool_ptr_->index_buffer();
+  auto const& locations     = pool_ptr_->settings().attribute_locations;
+
+  // (same condition as the raster path)
+  bool const ready = (skinned_.current_address != 0u);
+
+  auto& dynamic = f.dynamic;
+
+  // Reset state to know which one to destroy afterwards.
+  for (auto& [_, s] : dynamic.blas) {
+    s.used = false;
+  }
+
+  // -- 1. Restore the static data, find or create the BLAS of each dynamic instance --
+
+  std::vector<std::pair<RTDynamicInstance const*, RTDynamicBLAS*>> work{};
+  VkDeviceSize scratch_needed = 0u;
+
+  for (auto const& si : rt_.dynamic_instances) {
+    auto const& mesh = *si.mesh;
+
+    // Fallback state: shared bind pose BLAS and pool vertices.
+    rt_.instances[si.instance_index].accelerationStructureReference = mesh.blas.address;
+    for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+      rt_.geometries[si.first_geometry + i].vertex_address =
+        vertex_buffer.address + mesh.submeshes[i].draw_descriptor.vertexOffset
+      ;
+    }
+    if (!ready) {
+      continue;
+    }
+
+    // When the mesh has changed (eg. new entity)
+    auto& s = dynamic.blas[si.entity];
+    if (s.mesh != si.mesh) {
+      accel::Destroy(*context_ptr_, s.blas);
+      s = {};
+      if (!accel::CreateDynamicBLAS(
+            *context_ptr_, *si.asset, mesh,
+            vertex_buffer, index_buffer, locations, s.blas
+      )) {
+        dynamic.blas.erase(si.entity);
+        continue;
+      }
+      s.mesh = si.mesh;
+    }
+    s.used = true;
+    scratch_needed = std::max(scratch_needed, s.blas.scratch_size);
+    work.emplace_back(&si, &s);
+  }
+
+  // Free the BLAS of gone entities since this slot's last use.
+  std::erase_if(dynamic.blas, [&](auto& kv) {
+    if (kv.second.used) {
+      return false;
+    }
+    accel::Destroy(*context_ptr_, kv.second.blas);
+    return true;
+  });
+
+  if (work.empty()) {
+    return;
+  }
+
+  // -- 2. Scratch, shared by all the builds --
+
+  if (scratch_needed > dynamic.scratch_size) {
+    if (dynamic.scratch.valid()) {
+      context_ptr_->destroyBuffer(dynamic.scratch);
+    }
+    dynamic.scratch = context_ptr_->createBuffer(
+      "SceneRenderer::RT::DynamicBLAS::Scratch",
+      scratch_needed,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+      VMA_MEMORY_USAGE_AUTO,
+      VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT
+    );
+    dynamic.scratch_size = dynamic.scratch.valid() ? scratch_needed : 0u;
+    if (!dynamic.scratch.valid()) {
+      LOGE("SceneRenderer: failed to allocate the dynamic BLAS scratch buffer.");
+      return; // (instances stay on the bind pose BLAS)
+    }
+  }
+
+  // -- 3. Build or refit each BLAS from this frame's skinned vertices, then patch --
+
+  std::vector<VkDeviceAddress> addresses{};
+
+  for (auto const& [si, s] : work) {
+    auto const& mesh = *si->mesh;
+
+    // Same traversal order as buildSkinning / buildDrawLists.
+    addresses.resize(mesh.submeshes.size());
+    uint32_t job = si->first_job;
+    for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+      auto const& submesh = mesh.submeshes[i];
+      if (submesh.has_skin() && submesh.draw_descriptor.vertexCount > 0u) {
+        LOG_CHECK(job < skinning_jobs_.size());
+        addresses[i] = skinned_.current_address + skinning_jobs_[job++].out_offset;
+      } else {
+        addresses[i] = vertex_buffer.address + submesh.draw_descriptor.vertexOffset;
+      }
+    }
+
+    bool const refit = s->built && (s->since_rebuild < kSkinnedBLASRebuildPeriod);
+
+    if (!accel::BuildDynamicBLAS(
+          cmd.handle(), *si->asset, mesh, vertex_buffer, index_buffer, locations,
+          addresses, dynamic.scratch.address, s->blas, refit
+    )) {
+      s->built = false;
+      continue; // (fallback to bind pose)
+    }
+    s->built = true;
+    s->since_rebuild = refit ? (s->since_rebuild + 1u) : 0u;
+
+    // The TLAS instance uses this BLAS, hit shaders read the skinned vertices.
+    rt_.instances[si->instance_index].accelerationStructureReference = s->blas.address;
+    for (size_t i = 0; i < addresses.size(); ++i) {
+      rt_.geometries[si->first_geometry + i].vertex_address = addresses[i];
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------
