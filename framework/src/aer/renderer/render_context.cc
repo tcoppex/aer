@@ -958,10 +958,10 @@ VkDescriptorSet RenderContext::createDescriptorSet(
 bool RenderContext::loadImage2D(
   CommandEncoder const& cmd,
   std::string_view filename,
-  backend::Image &image
+  backend::Image &image,
+  bool is_srgb
 ) const {
   bool const is_hdr{ stbi_is_hdr(filename.data()) != 0 };
-  bool const is_srgb{ false }; //
 
   scene::ImageData image_data{};
 
@@ -1042,10 +1042,11 @@ bool RenderContext::loadImage2D(
 
 bool RenderContext::loadImage2D(
   std::string_view filename,
-  backend::Image& image
+  backend::Image& image,
+  bool srgb
 ) const {
   auto cmd = createTransientCommandEncoder();
-  bool result = loadImage2D(cmd, filename, image);
+  bool result = loadImage2D(cmd, filename, image, srgb);
   finishTransientCommandEncoder(cmd);
   return result;
 }
