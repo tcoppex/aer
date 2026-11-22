@@ -75,7 +75,13 @@ void main() {
   const float u = (float(coords.x) + 0.5f) * texelSize;
   const float v = (float(coords.y) + 0.5f) * texelSize;
 
-  const float solidAngle = calculate_solid_angle(u, v, texelSize);
+  // The solid angle is defined on the cube face in [-1, 1]^2, where a texel
+  // is centered on (2u-1, 2v-1) and has an half extent of 1/resolution.
+  const float solidAngle = calculate_solid_angle(
+    2.0f * u - 1.0f,
+    2.0f * v - 1.0f,
+    texelSize
+  );
 
   SHCoeff shc;
   for (int i = 0; i < 9; ++i) {

@@ -151,8 +151,9 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
     data.irradiance = irradiance;
 
     // Roughness based prefiltered specular.
-    const float levels = log2(float(textureSize(uEnvMapPrefilterd, 0).x)) + 1.0;
-    const float roughness_level = data.roughness * levels;
+    // (level i was baked for roughness = i / (levelCount - 1), cf. Envmap::computeSpecular)
+    const float max_level = float(textureQueryLevels(uEnvMapPrefilterd) - 1);
+    const float roughness_level = data.roughness * max_level;
     data.prefiltered = textureLod( uEnvMapPrefilterd, frag.R, roughness_level).rgb;
     // data.prefiltered *= 0.5; //
 
