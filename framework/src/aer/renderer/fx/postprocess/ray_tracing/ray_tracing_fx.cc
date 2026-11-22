@@ -1,6 +1,5 @@
 #include "aer/renderer/fx/postprocess/ray_tracing/ray_tracing_fx.h"
 #include "aer/renderer/vertex_layout.h"
-#include "aer/platform/vulkan/accel_struct.h"
 
 /* -------------------------------------------------------------------------- */
 

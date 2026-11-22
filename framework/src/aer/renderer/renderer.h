@@ -12,6 +12,7 @@
 #include "aer/platform/vulkan/command_encoder.h"
 
 #include "aer/scene/load_options.h"
+#include "aer/scene/ecs/animation_system.h"
 #include "aer/scene/ecs/hierarchy.h"
 
 #include "aer/renderer/render_context.h"
@@ -131,16 +132,19 @@ class Renderer {
   RenderContext const& context() const noexcept { return *context_ptr_; }
 
   [[nodiscard]]
-  uint32_t frames_in_flight() const noexcept { return default_frame_handler_.frames_in_flight(); }
+  SwapchainInterface& swapchain() const { return default_frame_handler_.swapchain(); }
 
   [[nodiscard]]
-  SwapchainInterface& swapchain() const { return default_frame_handler_.swapchain(); }
+  backend::Image swapchain_image() const { return swapchain().current_image(); } //
 
   [[nodiscard]]
   uint32_t swapchain_image_count() const { return swapchain().image_count(); } //
 
   [[nodiscard]]
-  backend::Image swapchain_image() const { return swapchain().current_image(); } //
+  uint32_t frames_in_flight() const noexcept { return default_frame_handler_.frames_in_flight(); }
+
+  [[nodiscard]]
+  uint32_t frame_slot() const noexcept { return default_frame_handler_.index; }
 
   [[nodiscard]]
   backend::RTInterface const& main_render_target() const noexcept {
@@ -167,6 +171,9 @@ class Renderer {
 
   [[nodiscard]]
   scene::Hierarchy const& scene() const noexcept { return scene_tree_; }
+
+  [[nodiscard]]
+  scene::AnimationSystem& animation() noexcept { return animation_system_; }
 
   /* Data to trace the current frame (invalid if nothing can be traced). */
   [[nodiscard]]
@@ -232,17 +239,19 @@ class Renderer {
 
   // --- Scene ---
 
-  // pipelines + per-model material buffers (made incremental)
-  // (pipelines setup copied from GPUResources::upload)
+  /* Scene shaders + materials parameters */
   MaterialFxRegistry material_fx_registry_{};
 
-  // vertex/index buffers, images + texture array, DeviceAsset records
+  /* Scene device memory: vertex/index buffers, images + texture array, .. */
   GpuPool gpu_pool_{};
 
-  // the scene: entities, transforms, Renderable / Instance components
+  /* Scene hierarchy */
   scene::Hierarchy scene_tree_{};
 
-  // frame SBO, transforms SBO, draw lists, sorting, TLAS, render()
+  /* Scene skeletal animations */
+  scene::AnimationSystem animation_system_{}; // (integrate to Hierarchy ?)
+
+  /* Rendering subsystems */
   SceneRenderer scene_renderer_{};
 
   // --- miscs ---

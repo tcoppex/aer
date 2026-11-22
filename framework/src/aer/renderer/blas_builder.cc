@@ -9,6 +9,12 @@
 
 namespace {
 
+/* Build flags of the BLAS rebuilt every frame. */
+constexpr VkBuildAccelerationStructureFlagsKHR kDynamicBuildFlags{
+    VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR
+  | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR
+};
+
 struct PendingBuild {
   DeviceMesh* mesh{};
   std::vector<VkAccelerationStructureGeometryKHR> geometries{};
@@ -41,6 +47,76 @@ bool FindPositionLayout(
   }
   out_format = attr->format;
   out_stride = binding->stride;
+  return true;
+}
+
+/**
+ *  Build the triangle geometries of a mesh (one per submesh).
+ * `vertex_addresses` (optional) overrides the first vertex address of each submesh.
+ * Returns false when a submesh cannot be used for a BLAS.
+ */
+bool MakeGeometries(
+  DeviceAsset const& asset,
+  DeviceMesh const& mesh,
+  uint32_t position_location,
+  VkDeviceAddress vertex_base,
+  VkDeviceAddress index_base,
+  std::span<VkDeviceAddress const> vertex_addresses,
+  std::vector<VkAccelerationStructureGeometryKHR>& geometries,
+  std::vector<VkAccelerationStructureBuildRangeInfoKHR>& ranges,
+  std::vector<uint32_t>& primitive_counts
+) {
+  geometries.clear();
+  ranges.clear();
+  primitive_counts.clear();
+
+  if (!vertex_addresses.empty() && vertex_addresses.size() != mesh.submeshes.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+    auto const& submesh = mesh.submeshes[i];
+    auto const& desc = submesh.draw_descriptor;
+
+    VkFormat format{};
+    uint32_t stride{};
+    if ((desc.indexType != VK_INDEX_TYPE_UINT16 && desc.indexType != VK_INDEX_TYPE_UINT32)
+     || desc.indexCount < 3u
+     || !FindPositionLayout(desc, position_location, format, stride)) {
+      return false;
+    }
+
+    // Opaque geometry skips the any-hit shader.
+    bool is_opaque = true;
+    if (submesh.asset_material_index < asset.materials.size()) {
+      auto const& states = asset.materials[submesh.asset_material_index].states;
+      is_opaque = (states.alpha_mode == scene::MaterialStates::AlphaMode::Opaque);
+    }
+
+    VkDeviceAddress const vertex_address = vertex_addresses.empty()
+      ? vertex_base + desc.vertexOffset
+      : vertex_addresses[i];
+
+    geometries.push_back({
+      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+      .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+      .geometry = {
+        .triangles = {
+          .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
+          .vertexFormat  = format,
+          .vertexData    = { .deviceAddress = vertex_address },
+          .vertexStride  = stride,
+          .maxVertex     = desc.vertexCount - 1u,
+          .indexType     = desc.indexType,
+          .indexData     = { .deviceAddress = index_base + desc.indexOffset },
+        }
+      },
+      .flags = is_opaque ? VkGeometryFlagsKHR(VK_GEOMETRY_OPAQUE_BIT_KHR)
+                         : VkGeometryFlagsKHR(0),
+    });
+    ranges.push_back({ .primitiveCount = desc.indexCount / 3u });
+    primitive_counts.push_back(desc.indexCount / 3u);
+  }
   return true;
 }
 
@@ -79,49 +155,12 @@ bool BuildBLAS(
 
     PendingBuild pb{ .mesh = &mesh };
     std::vector<uint32_t> primitive_counts{};
-    bool valid = true;
 
-    for (auto const& submesh : mesh.submeshes) {
-      auto const& desc = submesh.draw_descriptor;
-
-      VkFormat format{};
-      uint32_t stride{};
-      if ((desc.indexType != VK_INDEX_TYPE_UINT16 && desc.indexType != VK_INDEX_TYPE_UINT32)
-       || desc.indexCount < 3u
-       || !FindPositionLayout(desc, position_it->second, format, stride)) {
-        valid = false;
-        break;
-      }
-
-      // Opaque geometry skips the any-hit shader.
-      bool is_opaque = true;
-      if (submesh.asset_material_index < asset.materials.size()) {
-        auto const& states = asset.materials[submesh.asset_material_index].states;
-        is_opaque = (states.alpha_mode == scene::MaterialStates::AlphaMode::Opaque);
-      }
-
-      pb.geometries.push_back({
-        .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-        .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
-        .geometry = {
-          .triangles = {
-            .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
-            .vertexFormat  = format,
-            .vertexData    = { .deviceAddress = vertex_buffer.address + desc.vertexOffset },
-            .vertexStride  = stride,
-            .maxVertex     = desc.vertexCount - 1u,
-            .indexType     = desc.indexType,
-            .indexData     = { .deviceAddress = index_buffer.address + desc.indexOffset },
-          }
-        },
-        .flags = is_opaque ? VkGeometryFlagsKHR(VK_GEOMETRY_OPAQUE_BIT_KHR)
-                           : VkGeometryFlagsKHR(0),
-      });
-      pb.ranges.push_back({ .primitiveCount = desc.indexCount / 3u });
-      primitive_counts.push_back(desc.indexCount / 3u);
-    }
-
-    if (!valid) {
+    if (!MakeGeometries(
+          asset, mesh, position_it->second,
+          vertex_buffer.address, index_buffer.address, {},
+          pb.geometries, pb.ranges, primitive_counts))
+    {
       all_built = false;
       continue;
     }
@@ -253,6 +292,90 @@ bool BuildBLAS(
 
 // ----------------------------------------------------------------------------
 
+bool CreateDynamicBLAS(
+  Context const& context,
+  DeviceAsset const& asset,
+  DeviceMesh const& mesh,
+  backend::Buffer const& vertex_buffer,
+  backend::Buffer const& index_buffer,
+  Geometry::AttributeLocationMap const& attribute_locations,
+  backend::AccelerationStructure &out
+) {
+  out = {};
+
+  auto const position_it = attribute_locations.find(Geometry::AttributeType::Position);
+  if (position_it == attribute_locations.end()
+   || vertex_buffer.address == 0u
+   || index_buffer.address  == 0u
+   || mesh.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+   || mesh.submeshes.empty()) {
+    return false;
+  }
+
+  std::vector<VkAccelerationStructureGeometryKHR> geometries{};
+  std::vector<VkAccelerationStructureBuildRangeInfoKHR> ranges{};
+  std::vector<uint32_t> primitive_counts{};
+  if (!MakeGeometries(
+        asset, mesh, position_it->second,
+        vertex_buffer.address, index_buffer.address, {},
+        geometries, ranges, primitive_counts)) {
+    return false;
+  }
+
+  // (addresses do not matter for the size query)
+  VkAccelerationStructureBuildGeometryInfoKHR const build_info{
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+    .type  = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+    .flags = kDynamicBuildFlags,
+    .mode  = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+    .geometryCount = static_cast<uint32_t>(geometries.size()),
+    .pGeometries   = geometries.data(),
+  };
+  VkAccelerationStructureBuildSizesInfoKHR sizes{
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR
+  };
+  vkGetAccelerationStructureBuildSizesKHR(
+    context.device(),
+    VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+    &build_info,
+    primitive_counts.data(),
+    &sizes
+  );
+
+  out.build_sizes_info = sizes;
+  out.buffer = context.createBuffer(
+    "DynamicBLAS",
+    sizes.accelerationStructureSize,
+      VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+  );
+  if (!out.buffer.valid()) {
+    LOGE("accel::CreateDynamicBLAS: failed to allocate a BLAS buffer.");
+    out = {};
+    return false;
+  }
+
+  VkAccelerationStructureCreateInfoKHR const create_info{
+    .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+    .buffer = out.buffer.buffer,
+    .size   = sizes.accelerationStructureSize,
+    .type   = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+  };
+  CHECK_VK(vkCreateAccelerationStructureKHR(
+    context.device(), &create_info, nullptr, &out.handle
+  ));
+
+  VkAccelerationStructureDeviceAddressInfoKHR const address_info{
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+    .accelerationStructure = out.handle,
+  };
+  out.address = vkGetAccelerationStructureDeviceAddressKHR(context.device(), &address_info);
+  out.scratch_size = std::max(sizes.buildScratchSize, sizes.updateScratchSize);
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
 void DestroyBLAS(Context const& context, DeviceAsset& asset) {
   for (auto& mesh : asset.meshes) {
     Destroy(context, mesh.blas);
@@ -269,6 +392,68 @@ void Destroy(Context const& context, backend::AccelerationStructure& as) {
     context.destroyBuffer(as.buffer);
   }
   as = {};
+}
+
+// ----------------------------------------------------------------------------
+
+bool BuildDynamicBLAS(
+  VkCommandBuffer cmd,
+  DeviceAsset const& asset,
+  DeviceMesh const& mesh,
+  backend::Buffer const& vertex_buffer,
+  backend::Buffer const& index_buffer,
+  Geometry::AttributeLocationMap const& attribute_locations,
+  std::span<VkDeviceAddress const> vertex_addresses,
+  VkDeviceAddress scratch_address,
+  backend::AccelerationStructure const& blas,
+  bool update
+) {
+  auto const position_it = attribute_locations.find(Geometry::AttributeType::Position);
+  if (!blas.valid() || position_it == attribute_locations.end() || scratch_address == 0u) {
+    return false;
+  }
+
+  std::vector<VkAccelerationStructureGeometryKHR> geometries{};
+  std::vector<VkAccelerationStructureBuildRangeInfoKHR> ranges{};
+  std::vector<uint32_t> primitive_counts{};
+  if (!MakeGeometries(
+        asset, mesh, position_it->second,
+        vertex_buffer.address, index_buffer.address, vertex_addresses,
+        geometries, ranges, primitive_counts)) {
+    return false;
+  }
+
+  VkAccelerationStructureBuildGeometryInfoKHR const build_info{
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+    .type  = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+    .flags = kDynamicBuildFlags,
+    .mode  = update ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR
+                    : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+    .srcAccelerationStructure = update ? blas.handle : VK_NULL_HANDLE,
+    .dstAccelerationStructure = blas.handle,
+    .geometryCount = static_cast<uint32_t>(geometries.size()),
+    .pGeometries   = geometries.data(),
+    .scratchData   = { .deviceAddress = scratch_address },
+  };
+  auto const* range_ptr = ranges.data();
+  vkCmdBuildAccelerationStructuresKHR(cmd, 1u, &build_info, &range_ptr);
+
+  // Scratch reuse between builds + BLAS visible to the TLAS build.
+  VkMemoryBarrier2 const barrier{
+    .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+    .srcStageMask  = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+    .srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+    .dstStageMask  = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+    .dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR
+                   | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+  };
+  VkDependencyInfo const dependency{
+    .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+    .memoryBarrierCount = 1u,
+    .pMemoryBarriers = &barrier,
+  };
+  vkCmdPipelineBarrier2(cmd, &dependency);
+  return true;
 }
 
 } // namespace accel

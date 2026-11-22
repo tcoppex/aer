@@ -25,6 +25,7 @@ bool Renderer::init(
 
   LOGD(" > Scene Hierarchy");
   scene_tree_.setup();
+  animation_system_.setup(scene_tree_);
 
   // --------------------------------------
   LOGD(" > GPU Pool");
@@ -175,6 +176,10 @@ CommandEncoder& Renderer::beginFrame(FrameHandler *frame_handler) {
   // -----------------------
 
   frame.cmd.begin();
+
+  /* Compute the skinned mesh before anything reads their vertices. */
+  scene_renderer_.computeSkinning(frame.cmd); //
+
   return frame.cmd;
 }
 
@@ -359,7 +364,10 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
     renderer_flags |= RendererFlags::EnableIrradiance;
   }
 
+  animation_system_.preUpdate(elapsed_time);
   scene_tree_.update();
+  animation_system_.postUpdate();
+
   scene_renderer_.update(
     scene_tree_,
     camera,

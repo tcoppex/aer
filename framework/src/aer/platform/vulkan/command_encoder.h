@@ -598,6 +598,13 @@ class RenderPassEncoder : public GenericCommandEncoder {
     backend::Buffer const& index_buffer
   ) const;
 
+  void bindAndDraw(
+    DrawDescriptor const& desc,
+    backend::Buffer const& vertex_buffer,
+    backend::Buffer const& index_buffer,
+    uint64_t vertex_base
+  ) const;
+
  private:
   RenderPassEncoder(
     VkCommandBuffer const command_buffer,

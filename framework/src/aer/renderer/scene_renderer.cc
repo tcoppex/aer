@@ -5,10 +5,12 @@
 
 #include "aer/platform/vulkan/command_encoder.h"
 #include "aer/scene/camera.h"
+#include "aer/scene/skin_vertex.h"              // for material_shader_interop::SkinVertex
+#include "aer/scene/ecs/animation_components.h" // for component::Skin
 #include "aer/renderer/render_context.h"
-#include "aer/renderer/vertex_layout.h" // for material_shader_interop::FrameData
+#include "aer/renderer/vertex_layout.h"         // for material_shader_interop::FrameData
 #include "aer/renderer/renderer_flags.h"
-#include "aer/renderer/blas_builder.h" // for accel::Destroy
+#include "aer/renderer/blas_builder.h"          // for accel::Destroy
 
 /* -------------------------------------------------------------------------- */
 
@@ -69,6 +71,10 @@ bool SceneRenderer::setup(
     return false;
   }
 
+  if (!setupSkinningPipeline()) {
+    return false;
+  }
+
   // Transforms SBO (growable)
   return growTransforms(kInitialRenderableCapacity);
 }
@@ -81,6 +87,13 @@ void SceneRenderer::release() {
   }
 
   releaseRayTracing();
+
+  if (skinning_layout_ != VK_NULL_HANDLE) {
+    context_ptr_->destroyPipeline(skinning_pipeline_);
+    context_ptr_->destroyPipelineLayout(skinning_layout_);
+  }
+  context_ptr_->destroyBuffer(palette_.buffer);
+  context_ptr_->destroyBuffer(skinned_.buffer);
 
   context_ptr_->destroyBuffer(frame_sbo_);
   context_ptr_->destroyBuffer(transforms_sbo_);
@@ -102,6 +115,7 @@ void SceneRenderer::update(
   LOG_CHECK(frame_sbo_.valid());
   LOG_CHECK(transforms_sbo_.valid());
 
+  buildSkinning(scene);
   buildDrawLists(scene, camera);
   buildFrameData(camera, elapsed_time, flags);
   collectRayTracingInstances(scene);
@@ -131,6 +145,7 @@ void SceneRenderer::upload(uint32_t frame_index) {
 
   writeFrameData();
   uploadTransforms();
+  uploadSkinning();
 
   ++frame_counter_;
 }
@@ -143,6 +158,10 @@ void SceneRenderer::render(RenderPassEncoder const& pass) {
   }
   auto const& vertex_buffer = pool_ptr_->vertex_buffer();
   auto const& index_buffer  = pool_ptr_->index_buffer();
+
+  // Skinned submeshes read the current slice of the skinned buffer.
+  bool const skinned_ready = (skinned_.current_address != 0u);
+  VkDeviceSize const skinned_slice = static_cast<VkDeviceSize>(ring_slot_) * skinned_.stride;
 
   uint32_t instance_index = 0u;
 
@@ -157,21 +176,27 @@ void SceneRenderer::render(RenderPassEncoder const& pass) {
       auto const material_buffer_address = fx->material_buffer_address();
 
       for (auto const& item : items) {
+        auto const& mat = item.material;
         fx->set_push_constant_generic({
           .frame_buffer_address     = frame_data_current_address_,
           .transform_buffer_address = transforms_current_address_,
           .material_buffer_address  = material_buffer_address,
           .transform_index          = item.transform_slot,
-          .material_index           = item.material->material_index,
+          .material_index           = mat->material_index,
           .instance_index           = instance_index++,
         });
         fx->pushConstant(pass);
 
         pass.setPrimitiveTopology(item.mesh->topology);
-        pass.setCullMode(item.material->double_sided ? VK_CULL_MODE_NONE
-                                                     : VK_CULL_MODE_BACK_BIT);
+        pass.setCullMode(mat->double_sided ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT);
 
-        pass.bindAndDraw(item.submesh->draw_descriptor, vertex_buffer, index_buffer);
+        auto const& desc = item.submesh->draw_descriptor;
+        if (skinned_ready && item.skinned_offset != kInvalidIndexU64) {
+          auto vertex_base = skinned_slice + item.skinned_offset;
+          pass.bindAndDraw(desc, skinned_.buffer, index_buffer, vertex_base);
+        } else {
+          pass.bindAndDraw(desc, vertex_buffer, index_buffer);
+        }
       }
     }
   }
@@ -262,6 +287,239 @@ void SceneRenderer::collectRetired() {
 
 // ----------------------------------------------------------------------------
 
+bool SceneRenderer::ensureSliceBuffer(
+  SliceBuffer& slices,
+  VkDeviceSize min_slice_bytes,
+  VkBufferUsageFlags2KHR usage,
+  VmaMemoryUsage memory_usage,
+  VmaAllocationCreateFlags flags
+) {
+  if (min_slice_bytes <= slices.stride) {
+    return true;
+  }
+
+  VkDeviceSize stride = std::max<VkDeviceSize>(slices.stride, kSliceAlignment);
+  while (stride < min_slice_bytes) {
+    stride *= 2u;
+  }
+
+  auto buffer = context_ptr_->createBuffer(
+    stride * frames_in_flight_, usage, memory_usage, flags
+  );
+  if (!buffer.valid()) {
+    LOGE("SceneRenderer: failed to create a skinning buffer.");
+    return false;
+  }
+
+  // Contents are rewritten every frame, the old buffer only needs to outlive
+  // the frames in flight.
+  if (slices.buffer.valid()) {
+    retired_buffers_.push_back({
+      .buffer = slices.buffer,
+      .frame = frame_counter_ + frames_in_flight_
+    });
+  }
+  slices.buffer = buffer;
+  slices.stride = stride;
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
+  skinning_jobs_.clear();
+  skinned_first_job_.clear();
+  palette_staging_.clear();
+  skinned_bytes_ = 0u;
+
+  if (!raster_enabled_ && !rt_.enabled) {
+    return;
+  }
+
+  using namespace scene::component;
+
+  scene.registry.view<Renderable, Skin>().each(
+    [&](entt::entity entity, Renderable const& renderable, Skin const& skin) {
+      // retrieve the device asset associated with the skin.
+      auto const* da = pool_ptr_->find(renderable.asset);
+      if (!da || renderable.mesh_index > da->meshes.size() || skin.matrices.empty()) {
+        return;
+      }
+      if (skin.matrices.size() > kJointsWarnThreshold) {
+        HLOGW("SceneRenderer: a skin has {} joints (> {}).", skin.matrices.size(), kJointsWarnThreshold);
+      }
+      auto const& mesh = da->meshes[renderable.mesh_index];
+
+      uint32_t palette_offset = kInvalidIndexU32;
+      for (auto const& submesh : mesh.submeshes) {
+        auto const& desc = submesh.draw_descriptor;
+        if (!submesh.has_skin() || desc.vertexCount == 0u) {
+          continue;
+        }
+
+        // calculate the mesh offset to its palette buffer.
+        if (palette_offset == kInvalidIndexU32) {
+          palette_offset = static_cast<uint32_t>(palette_staging_.size());
+          palette_staging_.insert(
+            palette_staging_.end(), skin.matrices.begin(), skin.matrices.end()
+          );
+        }
+
+        skinned_first_job_.try_emplace(entity, static_cast<uint32_t>(skinning_jobs_.size()));
+
+        skinned_bytes_ = utils::AlignTo(skinned_bytes_, kSkinnedAlignment);
+        skinning_jobs_.push_back({
+          .vertex_offset  = desc.vertexOffset,
+          .skin_offset    = submesh.skin_vertex_offset,
+          .out_offset     = skinned_bytes_,
+          .palette_offset = palette_offset,
+          .joint_count    = static_cast<uint32_t>(skin.matrices.size()),
+          .vertex_count   = desc.vertexCount,
+        });
+        skinned_bytes_ += static_cast<uint64_t>(desc.vertexCount)
+                        * sizeof(material_shader_interop::Vertex);
+      }
+    }
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::uploadSkinning() {
+  skinning_pending_ = false;
+  palette_.current_address = 0u;
+  skinned_.current_address = 0u;
+
+  if (skinning_jobs_.empty()) {
+    return;
+  }
+
+  VkBufferUsageFlags2KHR skinned_usage =
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+    ;
+
+  if (pool_ptr_->settings().ray_tracing) {
+    skinned_usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+  }
+
+  auto const palette_bytesize = palette_staging_.size() * sizeof(palette_staging_[0]);
+
+  bool const ok = ensureSliceBuffer(
+    palette_,
+    palette_bytesize,
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+    VMA_MEMORY_USAGE_AUTO,
+      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+    | VMA_ALLOCATION_CREATE_MAPPED_BIT
+  ) && ensureSliceBuffer(
+    skinned_,
+    skinned_bytes_,
+    skinned_usage,
+    VMA_MEMORY_USAGE_GPU_ONLY,
+    {}
+  );
+
+  if (!ok) {
+    skinning_jobs_.clear();
+    return;
+  }
+
+  VkDeviceSize const palette_offset = VkDeviceSize(ring_slot_) * palette_.stride;
+  VkDeviceSize const skinned_offset = VkDeviceSize(ring_slot_) * skinned_.stride;
+
+  context_ptr_->writeBuffer(
+    palette_.buffer,
+    palette_offset,
+    palette_staging_.data(),
+    0u,
+    palette_bytesize
+  );
+  palette_.current_address = palette_.buffer.address + palette_offset;
+  skinned_.current_address = skinned_.buffer.address + skinned_offset;
+
+  skinning_pending_ = skinning_layout_ != VK_NULL_HANDLE;
+}
+
+// ----------------------------------------------------------------------------
+
+bool SceneRenderer::setupSkinningPipeline() {
+  skinning_layout_ = context_ptr_->createPipelineLayout({
+    .pushConstantRanges = {
+      {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .size = sizeof(skinning_shader_interop::SkinningPushConstant),
+      }
+    }
+  });
+  if (skinning_layout_ == VK_NULL_HANDLE) {
+    return false;
+  }
+
+  auto const shader = context_ptr_->createShaderModule(
+    FRAMEWORK_COMPILED_SHADERS_DIR "skinning/", "skin_vertices.slang"
+  );
+  skinning_pipeline_ = context_ptr_->createComputePipeline(
+    skinning_layout_,
+    shader
+  );
+  context_ptr_->releaseShaderModule(shader);
+
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::computeSkinning(CommandEncoder const& cmd) {
+  if (!skinning_pending_ || skinning_jobs_.empty()) {
+    return;
+  }
+  skinning_pending_ = false;
+
+  LOG_CHECK(palette_.current_address != 0u && skinned_.current_address != 0u);
+
+  auto const vertex_base = pool_ptr_->vertex_buffer().address;
+  cmd.bindPipeline(skinning_pipeline_);
+
+  for (auto const& job : skinning_jobs_) {
+    auto const palette_offset = static_cast<uint64_t>(job.palette_offset) * sizeof(palette_staging_[0]);
+    auto const pc = skinning_shader_interop::SkinningPushConstant{
+      .src_vertices   = vertex_base + job.vertex_offset,
+      .skin_vertices  = vertex_base + job.skin_offset,
+      .dst_vertices   = skinned_.current_address + job.out_offset,
+      .palette        = palette_.current_address + palette_offset,
+      .vertex_count   = job.vertex_count,
+      .joint_count    = job.joint_count,
+    };
+    cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
+    cmd.runKernel<skinning_shader_interop::kSkinningGroupSize>(job.vertex_count);
+  }
+
+  VkPipelineStageFlags2 dst_stages  = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+  VkAccessFlags2        dst_access  = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+  if (rt_.enabled) {
+    dst_stages |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+               |  VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR
+               |  VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+               |  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    dst_access |= VK_ACCESS_2_SHADER_READ_BIT;
+  }
+
+  cmd.pipelineBufferBarriers({{
+    .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+    .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+    .dstStageMask  = dst_stages,
+    .dstAccessMask = dst_access,
+    .buffer = skinned_.buffer.buffer,
+    .offset = VkDeviceSize(ring_slot_) * skinned_.stride,
+    .size   = skinned_bytes_,
+  }});
+}
+
+// ----------------------------------------------------------------------------
+
 void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera) {
   for (auto& lookup : lookups_) {
     lookup.clear();
@@ -279,7 +537,7 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
   using namespace scene::component;
 
   scene.registry.view<GlobalTransform, Renderable>().each(
-    [&](GlobalTransform const& global, Renderable const& renderable) {
+    [&](entt::entity entity, GlobalTransform const& global, Renderable const& renderable) {
       // Resolve the asset, skip stale handles.
       auto const* da = pool_ptr_->find(renderable.asset);
       if (!da || renderable.mesh_index >= da->meshes.size()) {
@@ -293,7 +551,19 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
       vec3 const pos = lina::to_vec3(global.worldMatrix.w);
       float const sort_key = lina::dot(camera_dir, camera_pos - pos);
 
+      // Skinned submeshes of this entity map to consecutive jobs.
+      uint32_t next_job = kInvalidIndexU32;
+      if (auto const it = skinned_first_job_.find(entity); it != skinned_first_job_.end()) {
+        next_job = it->second;
+      }
+
       for (auto const& submesh : mesh.submeshes) {
+        uint64_t skinned_offset = kInvalidIndexU64;
+        if ((next_job != kInvalidIndexU32)
+          && submesh.has_skin()
+          && submesh.draw_descriptor.vertexCount > 0u) {
+          skinned_offset = skinning_jobs_[next_job++].out_offset;
+        }
         if (submesh.asset_material_index >= da->materials.size()) {
           continue;
         }
@@ -307,6 +577,7 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
             .material = &material,
             .mesh = &mesh,
             .transform_slot = slot,
+            .skinned_offset = skinned_offset,
             .sort_key = sort_key,
           });
       }
@@ -336,6 +607,7 @@ void SceneRenderer::set_ray_tracing_enabled(bool enabled) {
     rt_.geometries.clear();
     rt_.prev_instances.clear();
     rt_.prev_geometries.clear();
+    rt_.dynamic_instances.clear();
     releaseRayTracing();
   }
   ++rt_.version;
@@ -354,12 +626,13 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
   std::swap(rt_.geometries, rt_.prev_geometries);
   rt_.instances.clear();
   rt_.geometries.clear();
+  rt_.dynamic_instances.clear();
 
   auto const vertex_base = pool_ptr_->vertex_buffer().address;
   auto const index_base  = pool_ptr_->index_buffer().address;
 
   scene.registry.view<GlobalTransform, Renderable>().each(
-    [&](GlobalTransform const& global, Renderable const& renderable) {
+    [&](entt::entity entity, GlobalTransform const& global, Renderable const& renderable) {
       auto const* da = pool_ptr_->find(renderable.asset);
       if (!da || (renderable.mesh_index >= da->meshes.size())) {
         return;
@@ -386,7 +659,7 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
                                // && material->fx->ray_tracing_compatible()
                                ;
 
-        material_shader_interop::RTGeometryData record{
+        auto record = material_shader_interop::RTGeometryData{
           .vertex_address   = vertex_base + desc.vertexOffset,
           .index_address    = index_base + desc.indexOffset,
           .material_address = has_material ? material->fx->material_buffer_address() : 0u,
@@ -403,17 +676,33 @@ void SceneRenderer::collectRayTracingInstances(scene::Hierarchy& scene) {
         .accelerationStructureReference = mesh.blas.address,
       };
       ToVkTransformMatrix(global.worldMatrix, instance.transform);
+
+      auto const instance_index = static_cast<uint32_t>(rt_.instances.size());
       rt_.instances.push_back(instance);
+
+      // Add skinned entities to the dynamic instances.
+      if (auto const it = skinned_first_job_.find(entity); it != skinned_first_job_.end()) {
+        rt_.dynamic_instances.push_back({
+          .entity = entity,
+          .asset = da,
+          .mesh = &mesh,
+          .instance_index = instance_index,
+          .first_geometry = first,
+          .first_job = it->second,
+        });
+      }
     }
   );
 
   // ---------------------
   // Bump the version when anything changed.
   auto same = [](auto const& a, auto const& b) {
-    return a.size() == b.size()
+    return (a.size() == b.size())
         && (a.empty() || std::memcmp(a.data(), b.data(), a.size() * sizeof(a[0])) == 0);
   };
-  if (!same(rt_.instances, rt_.prev_instances) || !same(rt_.geometries, rt_.prev_geometries)) {
+  if (!same(rt_.instances, rt_.prev_instances)
+   || !same(rt_.geometries, rt_.prev_geometries)
+   || !rt_.dynamic_instances.empty()) {
     ++rt_.version;
   }
   // ---------------------
@@ -461,7 +750,16 @@ void SceneRenderer::writeFrameData() {
 void SceneRenderer::releaseRayTracing() {
   for (auto& f : rt_.frames) {
     accel::Destroy(*context_ptr_, f.tlas);
-    for (auto* b : { &f.tlas_scratch, &f.instances, &f.geometry_table }) {
+    for (auto& [_, s] : f.dynamic.blas) {
+      accel::Destroy(*context_ptr_, s.blas);
+    }
+    f.dynamic.blas.clear();
+    for (auto* b : {
+      &f.tlas_scratch,
+      &f.instances,
+      &f.geometry_table,
+      &f.dynamic.scratch
+    }) {
       if (b->valid()) {
         context_ptr_->destroyBuffer(*b);
       }
@@ -621,6 +919,9 @@ void SceneRenderer::recordAccelerationStructures(CommandEncoder const& cmd) {
     return;
   }
 
+  // Patches RT instances & geometries before they are written.
+  recordDynamicBLAS(cmd, f);
+
   context_ptr_->writeBuffer(
     f.instances, 0u,
     rt_.instances.data(), 0u,
@@ -679,6 +980,134 @@ void SceneRenderer::recordAccelerationStructures(CommandEncoder const& cmd) {
   vkCmdPipelineBarrier2(cmd.handle(), &dependency);
 
   f.built_version = rt_.version;
+}
+// ----------------------------------------------------------------------------
+
+void SceneRenderer::recordDynamicBLAS(CommandEncoder const& cmd, RayTracingFrame& f) {
+  auto const& vertex_buffer = pool_ptr_->vertex_buffer();
+  auto const& index_buffer  = pool_ptr_->index_buffer();
+  auto const& locations     = pool_ptr_->settings().attribute_locations;
+
+  // (same condition as the raster path)
+  bool const ready = (skinned_.current_address != 0u);
+
+  auto& dynamic = f.dynamic;
+
+  // Reset state to know which one to destroy afterwards.
+  for (auto& [_, s] : dynamic.blas) {
+    s.used = false;
+  }
+
+  // -- 1. Restore the static data, find or create the BLAS of each dynamic instance --
+
+  std::vector<std::pair<RTDynamicInstance const*, RTDynamicBLAS*>> work{};
+  VkDeviceSize scratch_needed = 0u;
+
+  for (auto const& si : rt_.dynamic_instances) {
+    auto const& mesh = *si.mesh;
+
+    // Fallback state: shared bind pose BLAS and pool vertices.
+    rt_.instances[si.instance_index].accelerationStructureReference = mesh.blas.address;
+    for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+      rt_.geometries[si.first_geometry + i].vertex_address =
+        vertex_buffer.address + mesh.submeshes[i].draw_descriptor.vertexOffset
+      ;
+    }
+    if (!ready) {
+      continue;
+    }
+
+    // When the mesh has changed (eg. new entity)
+    auto& s = dynamic.blas[si.entity];
+    if (s.mesh != si.mesh) {
+      accel::Destroy(*context_ptr_, s.blas);
+      s = {};
+      if (!accel::CreateDynamicBLAS(
+            *context_ptr_, *si.asset, mesh,
+            vertex_buffer, index_buffer, locations, s.blas
+      )) {
+        dynamic.blas.erase(si.entity);
+        continue;
+      }
+      s.mesh = si.mesh;
+    }
+    s.used = true;
+    scratch_needed = std::max(scratch_needed, s.blas.scratch_size);
+    work.emplace_back(&si, &s);
+  }
+
+  // Free the BLAS of gone entities since this slot's last use.
+  std::erase_if(dynamic.blas, [&](auto& kv) {
+    if (kv.second.used) {
+      return false;
+    }
+    accel::Destroy(*context_ptr_, kv.second.blas);
+    return true;
+  });
+
+  if (work.empty()) {
+    return;
+  }
+
+  // -- 2. Scratch, shared by all the builds --
+
+  if (scratch_needed > dynamic.scratch_size) {
+    if (dynamic.scratch.valid()) {
+      context_ptr_->destroyBuffer(dynamic.scratch);
+    }
+    dynamic.scratch = context_ptr_->createBuffer(
+      "SceneRenderer::RT::DynamicBLAS::Scratch",
+      scratch_needed,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+      VMA_MEMORY_USAGE_AUTO,
+      VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT
+    );
+    dynamic.scratch_size = dynamic.scratch.valid() ? scratch_needed : 0u;
+    if (!dynamic.scratch.valid()) {
+      LOGE("SceneRenderer: failed to allocate the dynamic BLAS scratch buffer.");
+      return; // (instances stay on the bind pose BLAS)
+    }
+  }
+
+  // -- 3. Build or refit each BLAS from this frame's skinned vertices, then patch --
+
+  std::vector<VkDeviceAddress> addresses{};
+
+  for (auto const& [si, s] : work) {
+    auto const& mesh = *si->mesh;
+
+    // Same traversal order as buildSkinning / buildDrawLists.
+    addresses.resize(mesh.submeshes.size());
+    uint32_t job = si->first_job;
+    for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+      auto const& submesh = mesh.submeshes[i];
+      if (submesh.has_skin() && submesh.draw_descriptor.vertexCount > 0u) {
+        LOG_CHECK(job < skinning_jobs_.size());
+        addresses[i] = skinned_.current_address + skinning_jobs_[job++].out_offset;
+      } else {
+        addresses[i] = vertex_buffer.address + submesh.draw_descriptor.vertexOffset;
+      }
+    }
+
+    bool const refit = s->built && (s->since_rebuild < kSkinnedBLASRebuildPeriod);
+
+    if (!accel::BuildDynamicBLAS(
+          cmd.handle(), *si->asset, mesh, vertex_buffer, index_buffer, locations,
+          addresses, dynamic.scratch.address, s->blas, refit
+    )) {
+      s->built = false;
+      continue; // (fallback to bind pose)
+    }
+    s->built = true;
+    s->since_rebuild = refit ? (s->since_rebuild + 1u) : 0u;
+
+    // The TLAS instance uses this BLAS, hit shaders read the skinned vertices.
+    rt_.instances[si->instance_index].accelerationStructureReference = s->blas.address;
+    for (size_t i = 0; i < addresses.size(); ++i) {
+      rt_.geometries[si->first_geometry + i].vertex_address = addresses[i];
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------

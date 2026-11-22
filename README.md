@@ -74,6 +74,7 @@ cmake --build build --config Release
 | **[12_font](samples/desktop/12_font/)** | Dynamic 2D/3D text generation from a font file, via MSDF and glyphes triangulation. |
 | **[13_gaussian_splatting](samples/desktop/13_gaussian_splatting/)** | Implements *3D Gaussian Splatting for Real-Time Radiance Field Rendering*. |
 | **[14_marching_cubes](samples/desktop/14_marching_cubes/)** | Infinite procedural mesh generation using Signed Distance Fields (SDFs) and dynamic Marching Cubes. |
+| **[15_skinning](samples/desktop/15_skinning/)** | Animate skinned glTF character instances. |
 |  <div align="center">**Android XR**</div> |   |
 |  **[aloha_xr](samples/android/aloha_xr/src)** | Display a triangle in XR with passthrough, foveation, and controller inputs. |
 |  **[composition_layer](samples/android/composition_layer/src)** | Display a quad composition layer on top of the right controller. |

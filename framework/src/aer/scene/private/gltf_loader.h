@@ -41,10 +41,26 @@ std::vector<uint32_t> ExtractMeshes(
   std::vector<scene::Mesh>&
 );
 
+// One Skeleton per glTF skin (same indices) : joints, hierarchy and bind matrices.
+void ExtractSkeletons(
+  cgltf_data const*,
+  std::vector<scene::Skeleton>&
+);
+
+// For each skeleton, bakes the animations driving its joints into uniformly sampled clips.
+// Channels which don't target a joint (node animations, morph targets) are ignored.
+void ExtractAnimations(
+  cgltf_data const*,
+  scene::LoadOptions const&,
+  std::vector<scene::Skeleton>&
+);
+
+// Takes ownership of the skeletons (from ExtractSkeletons / ExtractAnimations).
 [[nodiscard]]
 std::shared_ptr<scene::Prefab> ExtractPrefab(
   cgltf_data const*,
-  std::vector<uint32_t> const& mesh_remap
+  std::vector<uint32_t> const& mesh_remap,
+  std::vector<scene::Skeleton>&& skeletons
 );
 
 } // namespace "internal::gltf_loader"

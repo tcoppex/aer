@@ -12,8 +12,8 @@
 #include "aer/scene/texture.h"
 #include "aer/scene/material.h"
 #include "aer/scene/mesh.h"
+#include "aer/scene/animation.h"
 // #include "aer/scene/sampler.h"
-// #include "aer/scene/animation.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -23,6 +23,8 @@ struct PrefabNode {
   uint32_t parent_index{kInvalidIndexU32};
   component::Transform transform{};
   uint32_t mesh_index{kInvalidIndexU32};
+  uint32_t skin_index{kInvalidIndexU32};            // in Prefab::skeletons
+  uint32_t source_node{kInvalidIndexU32};           // glTF node index (appears once per scene using it)
   std::string name{};
 };
 
@@ -32,6 +34,10 @@ struct Prefab {
   std::vector<PrefabNode> nodes{};
   std::vector<std::vector<uint32_t>> scenes{};      // root node ids per glTF scene
   uint32_t default_scene{0u};
+
+  // One per glTF skin with the clips driving them.
+  // (host only, immutable and shared by every instance of the asset)
+  std::vector<Skeleton> skeletons{};
 };
 
 // ----------------------------------------------------------------------------
@@ -43,10 +49,8 @@ struct Asset {
   std::vector<MaterialRef>    material_refs{};
   std::vector<Mesh>           meshes{};
   // std::vector<Sampler>        samplers{};
-  // std::vector<Skeleton>       skeletons{};
-  // std::vector<AnimationClip>  animations{};
 
-  std::shared_ptr<const Prefab> prefab{};           // outlives geometry bytes
+  std::shared_ptr<const Prefab> prefab{};           // outlives geometry bytes (+ skeletons, clips)
 };
 
 // ----------------------------------------------------------------------------

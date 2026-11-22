@@ -4,8 +4,7 @@
 #include <vector>
 
 #include "aer/core/common.h"
-#include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor
-#include "aer/platform/vulkan/accel_struct.h"
+#include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor, AccelerationStructure
 #include "aer/scene/material.h"
 #include "aer/scene/asset.h" // (needed for DeviceAsset::root_transform())
 
@@ -26,6 +25,12 @@ struct MeshBufferRange {
 struct DeviceSubmesh {
   DrawDescriptor draw_descriptor{};
   uint32_t asset_material_index{};
+
+  /* byte offset in the pool vertex buffer of this primitives's SkinVertex array. */
+  uint64_t skin_vertex_offset{kInvalidIndexU64};
+
+  [[nodiscard]]
+  bool has_skin() const noexcept { return skin_vertex_offset != kInvalidIndexU64; }
 };
 
 struct DeviceMesh {

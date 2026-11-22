@@ -1,11 +1,13 @@
 #ifndef AER_SCENE_ANIMATION_H_
 #define AER_SCENE_ANIMATION_H_
 
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "aer/core/common.h"
-#include "aer/scene/ecs/components.h" // for scene::components::transform
+#include "aer/scene/ecs/components.h" // for scene::component::Transform
 
 /* -------------------------------------------------------------------------- */
 
@@ -26,8 +28,8 @@ struct Pose {
 
 struct AnimationClip {
   std::string name{};
-  float duration{};
-  float framerate{};
+  float duration{};   // seconds
+  float framerate{};  // samples per second
   std::vector<Pose> poses{};
 
   void setup(
@@ -38,7 +40,9 @@ struct AnimationClip {
   ) {
     name = std::string(clip_name);
     duration = clip_duration;
-    framerate = static_cast<float>(sampleCount) / lina::max(duration, lina::kTrueEpsilon);
+    framerate = (sampleCount > 1u)
+              ? static_cast<float>(sampleCount - 1u) / lina::max(duration, lina::kTrueEpsilon)
+              : 0.0f;
 
     poses.resize(sampleCount);
     for (auto& pose : poses) {
@@ -48,13 +52,18 @@ struct AnimationClip {
 };
 
 struct Skeleton {
+  std::string               name{};
   JointBuffer<std::string>  names{};
-  JointBuffer<uint32_t>     parents{kInvalidIndexU32};
+  JointBuffer<uint32_t>     parents{};
+  JointBuffer<uint32_t>     joint_nodes{};      // glTF node index (see PrefabNode::source_node)
   JointBuffer<mat4>         inverse_bind_matrices{};
   JointBuffer<mat4>         global_bind_matrices{};
 
+  Pose                      rest_pose{};        // local joint transforms of the bind pose (empty without animations)
+
   std::unordered_map<std::string, uint32_t> index_map{};
-  std::vector<AnimationClip*> clips{};
+  std::vector<AnimationClip> clips{}; //
+
 
   Skeleton() = default;
   Skeleton(size_t jointCount) { resize(jointCount); }
@@ -65,10 +74,11 @@ struct Skeleton {
   }
 
   void resize(size_t jointCount) {
-    names.resize(jointCount);
-    parents.resize(jointCount);
-    inverse_bind_matrices.resize(jointCount);
-    global_bind_matrices.resize(jointCount);
+    names.assign(jointCount, std::string{});
+    parents.assign(jointCount, kInvalidIndexU32);
+    joint_nodes.assign(jointCount, kInvalidIndexU32);
+    inverse_bind_matrices.assign(jointCount, mat4{lina::identity});
+    global_bind_matrices.assign(jointCount, mat4{lina::identity});
     index_map.clear();
   }
 
@@ -77,7 +87,36 @@ struct Skeleton {
       inverse_bind_matrix = lina::mul(inverse_bind_matrix, inv_world);
     }
   }
+
+  [[nodiscard]]
+  uint32_t findJoint(std::string const& joint_name) const {
+    auto const it = index_map.find(joint_name);
+    return (it != index_map.end()) ? it->second : kInvalidIndexU32;
+  }
+
+  [[nodiscard]]
+  uint32_t findClip(std::string_view clip_name) const {
+    for (size_t i = 0; i < clips.size(); ++i) {
+      if (clips[i].name == clip_name) {
+        return static_cast<uint32_t>(i);
+      }
+    }
+    return kInvalidIndexU32;
+  }
 };
+
+/* -------------------------------------------------------------------------- */
+
+[[nodiscard]]
+component::Transform BlendTransforms(
+  component::Transform const& a,
+  component::Transform const& b,
+  float t
+);
+
+void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
+
+void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
 
 }  // namespace "scene"
 

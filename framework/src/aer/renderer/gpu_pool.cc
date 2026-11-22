@@ -28,14 +28,13 @@ bool GpuPool::setup(
   registry_ptr_ = &fx_registry;
   settings_ = settings;
 
-  VkBufferUsageFlags extra_flags{};
+  VkBufferUsageFlags extra_flags = 0
+    | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+    | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+    ;
 
   if (settings.ray_tracing) {
-    extra_flags = 0
-      | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-      | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-      ;
+    extra_flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
   }
 
   auto const& allocator = context.allocator();
@@ -276,6 +275,13 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
         return fail("primitive references an unknown material.");
       }
 
+      // Skinnning block, placed after the main one by the loader (with restrctured attribs).
+      auto const skin = prim.bufferOffsets.find(Geometry::AttributeType::Joints);
+      uint64_t const skin_vertex_offset = (skin != prim.bufferOffsets.end())
+        ? dm.buffer_range.vertex.offset + skin->second
+        : kInvalidIndexU64
+        ;
+
       dm.submeshes.push_back({
         .draw_descriptor = {
           .vertexInput = CreateVertexInputDescriptor(
@@ -292,6 +298,7 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
           .instanceCount = 1u,
         },
         .asset_material_index = material,
+        .skin_vertex_offset = skin_vertex_offset,
       });
     }
   }

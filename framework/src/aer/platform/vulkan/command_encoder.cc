@@ -681,6 +681,17 @@ void RenderPassEncoder::bindAndDraw(
   backend::Buffer const& vertex_buffer,
   backend::Buffer const& index_buffer
 ) const {
+  bindAndDraw(desc, vertex_buffer, index_buffer, desc.vertexOffset);
+}
+
+// ----------------------------------------------------------------------------
+
+void RenderPassEncoder::bindAndDraw(
+  DrawDescriptor const& desc,
+  backend::Buffer const& vertex_buffer,
+  backend::Buffer const& index_buffer,
+  uint64_t vertex_base
+) const {
   // Vertex Input.
   {
     auto const& vi{desc.vertexInput};
@@ -689,7 +700,11 @@ void RenderPassEncoder::bindAndDraw(
     setVertexInput(vi);
 
     for (size_t i = 0; i < vi.bindings.size(); ++i) {
-      bindVertexBuffer(vertex_buffer, vi.bindings[i].binding, vi.vertexBufferOffsets[i]);
+      bindVertexBuffer(
+        vertex_buffer,
+        vi.bindings[i].binding,
+        vertex_base + (vi.vertexBufferOffsets[i] - desc.vertexOffset)
+      );
     }
   }
 
