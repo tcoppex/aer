@@ -1,4 +1,4 @@
-//  lina.h - v0.13.0
+//  lina.h - v0.14.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -553,6 +553,48 @@ bool solve_basic_ik(
     return S.x > 0.0;
 }
 #endif
+
+// ----------------------------------------------------------------------------
+
+template<class T>
+T to_srgb_channel(T const& c) {
+  static_assert(std::is_floating_point<T>::value);
+  T const s = saturate(c);
+  if (s <= T(0.0031308)) {
+    return T(12.92) * s;
+  }
+  return T(1.055) * std::pow(s, T(1.0) / T(2.4)) - T(0.055);
+}
+
+template<class T>
+T to_linear_channel(T const& c) {
+  static_assert(std::is_floating_point<T>::value);
+  T const s = saturate(c);
+  if (s <= T(0.04045)) {
+    return s / T(12.92);
+  }
+  return std::pow((s + T(0.055)) / T(1.055), T(2.4));
+}
+
+template<class T>
+vec<T, 3> to_srgb(vec<T, 3> const& v) {
+  return {to_srgb_channel(v.x), to_srgb_channel(v.y), to_srgb_channel(v.z)};
+}
+
+template<class T>
+vec<T, 3> to_linear(vec<T, 3> const& v) {
+  return {to_linear_channel(v.x), to_linear_channel(v.y), to_linear_channel(v.z)};
+}
+
+template<class T>
+vec<T, 4> to_srgb(vec<T, 4> const& v) {
+  return {to_srgb_channel(v.x), to_srgb_channel(v.y), to_srgb_channel(v.z), v.w};
+}
+
+template<class T>
+vec<T, 4> to_linear(vec<T, 4> const& v) {
+  return {to_linear_channel(v.x), to_linear_channel(v.y), to_linear_channel(v.z), v.w};
+}
 
 // ----------------------------------------------------------------------------
 
