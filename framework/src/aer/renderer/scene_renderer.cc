@@ -342,7 +342,7 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
     [&](entt::entity entity, Renderable const& renderable, Skin const& skin) {
       // retrieve the device asset associated with the skin.
       auto const* da = pool_ptr_->find(renderable.asset);
-      if (!da || renderable.mesh_index > da->meshes.size() || skin.matrices.empty()) {
+      if (!da || renderable.mesh_index >= da->meshes.size() || skin.matrices.empty()) {
         return;
       }
       if (skin.matrices.size() > kJointsWarnThreshold) {
