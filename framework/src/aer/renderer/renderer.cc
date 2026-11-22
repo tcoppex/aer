@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "aer/renderer/renderer.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/descriptor_registry.h"
@@ -359,7 +361,12 @@ entt::entity Renderer::load(
 void Renderer::update(Camera const& camera, float elapsed_time) {
   RendererFlags renderer_flags{};
 
+  /* Display transform : exposure (EV stops -> linear scale) + tonemapping. */
+  float const exposure = std::exp2(exposure_ev_);
+  auto const tonemapping = underlying_cast(tonemapping_);
+
   if (skybox_.is_valid()) {
+    skybox_.set_display(exposure, tonemapping);
     skybox_.update(camera);
     renderer_flags |= RendererFlags::EnableIrradiance;
   }

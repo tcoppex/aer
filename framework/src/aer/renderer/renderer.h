@@ -17,6 +17,7 @@
 
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/gpu_pool.h"
+#include "aer/renderer/renderer_flags.h"
 #include "aer/renderer/scene_renderer.h"
 #include "aer/renderer/ray_tracing_view.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
@@ -164,6 +165,12 @@ class Renderer {
   Skybox& skybox() noexcept { return skybox_; }
 
   [[nodiscard]]
+  float exposure() const noexcept { return exposure_ev_; }
+
+  [[nodiscard]]
+  Tonemapping tonemapping() const noexcept { return tonemapping_; }
+
+  [[nodiscard]]
   GpuPool const& gpu_pool() const noexcept { return gpu_pool_; }
 
   [[nodiscard]]
@@ -194,6 +201,11 @@ class Renderer {
   void set_foveated_rendering_enabled(bool enabled) noexcept { foveated_rendering_ = enabled; }
 
   void set_rasterization_enabled(bool enabled); //
+
+  /* Display transform applied to the lighting (exposure in EV stops, 0 = neutral). */
+  void set_exposure(float ev) noexcept { exposure_ev_ = ev; }
+
+  void set_tonemapping(Tonemapping tonemapping) noexcept { tonemapping_ = tonemapping; }
 
   bool setRayTracingEnabled(bool enabled); //
 
@@ -236,6 +248,10 @@ class Renderer {
 
   /* [XR] Control whether to use fragment density map when available. */
   bool foveated_rendering_{true};
+
+  /* Display transform (the swapchain blit does the sRGB encoding). */
+  float exposure_ev_{0.0f};
+  Tonemapping tonemapping_{Tonemapping::PBRNeutral};
 
   // --- Scene ---
 

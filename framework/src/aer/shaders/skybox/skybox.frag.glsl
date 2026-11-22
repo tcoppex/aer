@@ -5,6 +5,7 @@
 // ----------------------------------------------------------------------------
 
 #include <skybox/interop.h>
+#include <shared/tonemapping.glsl>
 
 // ----------------------------------------------------------------------------
 
@@ -23,8 +24,17 @@ uniform PushConstant_ {
 // ----------------------------------------------------------------------------
 
 void main() {
-  const float factor = pushConstant.hdrIntensity;
-  fragColor = factor * textureLod(uCubemap, inView, 0.0);
+  const vec3 radiance = pushConstant.hdrIntensity
+                      * textureLod(uCubemap, inView, 0.0).rgb
+                      ;
+
+  const vec3 color = tonemapDisplayLinear(
+    radiance,
+    pushConstant.exposure,
+    int(pushConstant.tonemapping)
+  );
+
+  fragColor = vec4(color, 1.0);
 }
 
 // ----------------------------------------------------------------------------

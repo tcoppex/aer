@@ -66,7 +66,7 @@ vec3 simpleReinhardToneMapping(vec3 color, float exposure, float gamma) {
 vec3 lumaBasedReinhardToneMapping(vec3 color, float gamma) {
   float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float toneMappedLuma = luma / (1.0 + luma);
-  color *= toneMappedLuma / luma;
+  color *= toneMappedLuma / max(luma, 1e-6); // (avoid 0/0 on black pixels)
   color = gammaCorrection(color, gamma);
   return color;
 }
@@ -75,7 +75,7 @@ vec3 whitePreservingLumaBasedReinhardToneMapping(vec3 color, float gamma) {
   const float white = 2.0;
   const float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
   const float toneMappedLuma = luma * (1.0 + luma / (white*white)) / (1.0 + luma);
-  color *= toneMappedLuma / luma;
+  color *= toneMappedLuma / max(luma, 1e-6); // (avoid 0/0 on black pixels)
   color = gammaCorrection(color, gamma);
   return color;
 }
@@ -180,6 +180,22 @@ vec3 toneMapping(int mode, in vec3 color, float exposure, float gamma) {
   }
 
   return color;
+}
+
+// ----------------------------------------------------------------------------
+
+/*
+ * Apply an exposure and a tonemapping operator to a linear HDR color.
+ *
+ * The result is *linear* and display-referred, in [0, 1] : the sRGB encoding
+ * is left to the swapchain (the final blit targets an *_SRGB image), so no
+ * gamma is applied here.
+ *
+ * Note: TONEMAPPING_FILMIC has its gamma baked in its curve, it should not be
+ *       used with this path.
+ */
+vec3 tonemapDisplayLinear(in vec3 hdr, float exposure, int mode) {
+  return toneMapping(mode, hdr * exposure, 1.0, 1.0);
 }
 
 // ----------------------------------------------------------------------------
