@@ -30,10 +30,17 @@ struct Skin {
 struct Animator {
   uint32_t clip{kInvalidIndexU32};            // index Skeleton::clips
   float time{};
-  float speed{1.0f};
+  float speed{1.0f};                          // negative = reverse
   bool loop{true};
   bool playing{false};
-  Pose pose{};                                // last sampled pose
+  bool resample{false};                       // sample once even if not playing
+  Pose pose{};                                // last applied pose
+
+  struct Fade {
+    Pose from{};
+    float time{};
+    float duration{};
+  } fade;
 };
 
 /* -------------------------------------------------------------------------- */

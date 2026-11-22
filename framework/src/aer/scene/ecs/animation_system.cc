@@ -57,6 +57,46 @@ void ApplyPose(entt::registry& reg, Skin const& skin, Pose const& pose) {
   }
 }
 
+/* Advance a clip time by `delta`.
+ * Returns true when a non looping clip reaches its end in the playback direction. */
+bool StepTime(float& time, float delta, float duration, bool loop, bool reverse) {
+  time += delta;
+
+  if (loop) {
+    if (duration > lina::kTrueEpsilon) {
+      time = std::fmod(time, duration);
+      if (time < 0.0f) {
+        time += duration;
+      }
+    } else {
+      time = 0.0f;
+    }
+    return false;
+  }
+
+  if (reverse ? (time <= 0.0f) : (time >= duration)) {
+    time = std::clamp(time, 0.0f, duration);
+    return true;
+  }
+  return false;
+}
+
+/* Blend the snapshot into the new sampled pose. */
+void ApplyFade(Animator& animator) {
+  auto& fade = animator.fade;
+  if (fade.duration <= 0.0f) {
+    return;
+  }
+  float const alpha = std::clamp(fade.time / fade.duration, 0.0f, 1.0f);
+  if (alpha >= 1.0f) {
+    fade.duration = 0.0f;
+    fade.from.joints.clear();
+    return;
+  }
+  float const smooth = alpha * alpha * (3.0f - 2.0f * alpha); // smoothstep
+  BlendPoses(fade.from, animator.pose, smooth, animator.pose);
+}
+
 } // namespace
 
 /* -------------------------------------------------------------------------- */
@@ -78,42 +118,35 @@ void AnimationSystem::advance(float dt) {
 
   reg.view<Animator, Skin>().each(
     [&](Animator& animator, Skin const& skin) {
-      if (!animator.playing || !skin.skeleton) {
+      if ((!animator.playing && !animator.resample) || !skin.skeleton) {
         return;
       }
 
       auto const& clips = skin.skeleton->clips;
       if (animator.clip >= clips.size()) {
         animator.playing = false;
+        animator.resample = false;
         return;
       }
       auto const& clip = clips[animator.clip];
 
-      animator.time += dt * animator.speed;
-
       bool finished = false;
-      if (animator.loop) {
-        // Keep the time bounded (float precision).
-        if (clip.duration > lina::kTrueEpsilon) {
-          animator.time = std::fmod(animator.time, clip.duration);
-          if (animator.time < 0.0f) {
-            animator.time += clip.duration;
-          }
-        } else {
-          animator.time = 0.0f;
-        }
-      } else if (animator.time >= clip.duration) {
-        animator.time = clip.duration;
-        finished = true;
-      } else if (animator.time <= 0.0f && animator.speed < 0.0f) {
-        animator.time = 0.0f;
-        finished = true;
+      if (animator.playing) {
+        finished = StepTime(
+          animator.time,
+          dt * animator.speed,
+          clip.duration,
+          animator.loop,
+          animator.speed < 0.0f
+        );
+        animator.fade.time += dt;
       }
+      animator.resample = false;
 
       SampleClip(clip, animator.time, animator.loop, animator.pose);
+      ApplyFade(animator);
       ApplyPose(reg, skin, animator.pose);
 
-      // The last pose of a non looping clip is still applied above.
       if (finished) {
         animator.playing = false;
         LOGD("[Animation] clip \"{}\" finished.", clip.name);
@@ -160,7 +193,8 @@ void AnimationSystem::postUpdate() {
 bool AnimationSystem::play(
   entt::entity instance_root,
   std::string_view clip_name,
-  bool loop
+  bool loop,
+  float fade_duration
 ) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
@@ -182,10 +216,22 @@ bool AnimationSystem::play(
     if (clip == kInvalidIndexU32) {
       return;
     }
+
+    // snapshot on current pose.
+    auto &fade = animator.fade;
+    if (fade_duration > 0.0f && !animator.pose.joints.empty()) {
+      fade.from = animator.pose;
+      fade.time = 0.0f;
+      fade.duration = fade_duration;
+    } else {
+      fade.duration = 0.0f;
+    }
+
     animator.clip = clip;
-    animator.time = 0.0f;
+    animator.time = (animator.speed < 0.0f) ? skin.skeleton->clips[clip].duration : 0.0f;
     animator.loop = loop;
     animator.playing = true;
+    animator.resample = false;
     ++played_count;
   });
 
@@ -226,8 +272,12 @@ void AnimationSystem::resume(entt::entity instance_root) {
     if (!skin.skeleton || animator.clip >= skin.skeleton->clips.size()) {
       return;
     }
-    if (!animator.loop && animator.time >= skin.skeleton->clips[animator.clip].duration) {
-      animator.time = 0.0f;
+    if (!animator.loop) {
+      float const duration = skin.skeleton->clips[animator.clip].duration;
+      bool const reverse = animator.speed < 0.0f;
+      if (reverse ? (animator.time <= 0.0f) : (animator.time >= duration)) {
+        animator.time = reverse ? duration : 0.0f;
+      }
     }
     animator.playing = true;
   });
@@ -247,6 +297,8 @@ void AnimationSystem::stop(entt::entity instance_root) {
     animator.playing = false;
     animator.clip = kInvalidIndexU32;
     animator.time = 0.0f;
+    animator.fade.duration = 0.0f;
+    animator.resample = false;
 
     // (rest_pose is empty for skeletons without animations as they never moved.)
     if (skin.skeleton && !skin.skeleton->rest_pose.joints.empty()) {
@@ -311,6 +363,26 @@ AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const 
 
 // ----------------------------------------------------------------------------
 
+void AnimationSystem::setTime(entt::entity instance_root, float time) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setTime: entity is not an instance root.");
+    return;
+  }
+  ForEachAnimator(reg, instance_root, [time](Animator& animator, Skin& skin) {
+    if (!skin.skeleton || animator.clip >= skin.skeleton->clips.size()) {
+      return;
+    }
+    animator.time = std::clamp(time, 0.0f, skin.skeleton->clips[animator.clip].duration);
+    animator.fade.duration = 0.0f;
+    animator.resample = true;
+  });
+}
+
+// ----------------------------------------------------------------------------
+
 void AnimationSystem::setSpeed(entt::entity instance_root, float speed) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
@@ -319,7 +391,6 @@ void AnimationSystem::setSpeed(entt::entity instance_root, float speed) {
     LOGE("[Animation] setSpeed: entity is not an instance root.");
     return;
   }
-  speed = std::max(speed, 0.0f);
   ForEachAnimator(reg, instance_root, [speed](Animator& animator, Skin&) {
     animator.speed = speed;
   });

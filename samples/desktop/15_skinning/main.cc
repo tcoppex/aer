@@ -20,9 +20,10 @@ class SampleApp final : public Application {
  private:
   struct Character {
     entt::entity root{entt::null};
-    int   clip{0};       // index in clip_names_
+    int   clip{0};
     float speed{1.0f};
     bool  loop{true};
+    float fade{0.25f};
   };
 
   struct LineVertex {
@@ -131,12 +132,13 @@ class SampleApp final : public Application {
           animation.stop(c.root);
         }
 
-        if (ImGui::SliderFloat("Speed", &c.speed, 0.0f, 4.0f, "%.2f")) {
+        if (ImGui::SliderFloat("Speed", &c.speed, -4.0f, 4.0f, "%.2f")) {
           animation.setSpeed(c.root, c.speed);
         }
         if (ImGui::Checkbox("Loop", &c.loop)) {
           animation.setLoop(c.root, c.loop);
         }
+        ImGui::SliderFloat("Fade (s)", &c.fade, 0.0f, 2.0f, "%.2f");
 
         ImGui::Separator();
 
@@ -162,6 +164,13 @@ class SampleApp final : public Application {
             bar_min.y + (bar_max.y - bar_min.y - text_size.y) * 0.5f
           );
           ImGui::GetWindowDrawList()->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), label);
+
+          if (!state.playing) {
+            float t = state.time;
+            if (ImGui::SliderFloat("Time", &t, 0.0f, state.duration, "%.2f s")) {
+              animation.setTime(c.root, t);
+            }
+          }
         }
       }
     }
@@ -341,7 +350,7 @@ class SampleApp final : public Application {
   }
 
   void play(Character const& c) {
-    renderer_.animation().play(c.root, clip_names_[c.clip], c.loop);
+    renderer_.animation().play(c.root, clip_names_[c.clip], c.loop, c.fade);
   }
 
  private:

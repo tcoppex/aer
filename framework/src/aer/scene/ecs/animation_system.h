@@ -57,20 +57,26 @@ class AnimationSystem {
 
   /* Play `clip_name` from its start on every skeleton of the instance having it.
    * Returns false if none has it. */
-  bool play(entt::entity instance_root, std::string_view clip_name, bool loop = true);
+  bool play(
+    entt::entity instance_root,
+    std::string_view clip_name,
+    bool loop = true,
+    float fade_duration = 0.0f
+  );
 
   /* Freeze, keeping clip, time and the current pose. */
   void pause(entt::entity instance_root);
 
-  /* Continue a paused clip (or restart a finished non looping clip)
-   * Does nothing after stop(). */
+  /* Continue a paused clip (or restart a finished non looping clip). */
   void resume(entt::entity instance_root);
 
   /* Discard the clip, rewind and put the joints back to their bind pose. */
   void stop(entt::entity instance_root);
 
-  // -----------
-  /* Playback speed multiplier (>= 0) of every animator of the instance. */
+  /* Jump to `time` and resample. */
+  void setTime(entt::entity instance_root, float time);
+
+  /* Playback speed multiplier of every animator of the instance. */
   void setSpeed(entt::entity instance_root, float speed);
 
   /* Loop flag of every animator of the instance (applies to the current clip). */
@@ -82,7 +88,6 @@ class AnimationSystem {
 
   [[nodiscard]]
   State state(entt::entity instance_root) const;
-  // -----------
 
  private:
   Hierarchy* scene_{};
