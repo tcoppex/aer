@@ -143,7 +143,7 @@ void ExtractTextures(
 
 void ExtractMaterials(
   cgltf_data const* data,
-  std::vector<scene::ImageData> const& images,
+  std::vector<scene::ImageData>& images,
   std::vector<scene::Texture> const& textures,
   std::vector<scene::MaterialProxy>& proxies,
   std::vector<scene::MaterialRef>& refs
@@ -157,6 +157,16 @@ void ExtractMaterials(
     uint32_t const image_index = textures[index].host_image_index;
     return (image_index != kInvalidIndexU32 && image_index < images.size())
          ? index : kInvalidIndexU32;
+  };
+
+  // Same, for color textures (base color, emissive) : those are sRGB encoded,
+  // while the others (normal, occlusion, ...) are linear data.
+  auto get_color_texture = [&](cgltf_texture_view const& view) -> uint32_t {
+    uint32_t const index = get_texture(view);
+    if (index != kInvalidIndexU32) {
+      images[textures[index].host_image_index].srgb = true;
+    }
+    return index;
   };
 
   auto push = [&](scene::MaterialProxy proxy,
@@ -181,10 +191,10 @@ void ExtractMaterials(
 
     scene::MaterialProxy proxy{
       .bindings = {
-        .basecolor          = get_texture(pbr.base_color_texture),
+        .basecolor          = get_color_texture(pbr.base_color_texture),
         .normal             = get_texture(mat.normal_texture),
         .occlusion          = get_texture(mat.occlusion_texture),
-        .emissive           = get_texture(mat.emissive_texture),
+        .emissive           = get_color_texture(mat.emissive_texture),
         .roughness_metallic = get_texture(pbr.metallic_roughness_texture),
       },
       .alpha_cutoff = mat.alpha_cutoff,

@@ -443,7 +443,7 @@ bool GpuPool::uploadImages(
     auto device_image = context_ptr_->createImage2D(
       extent.width,
       extent.height,
-      VK_FORMAT_R8G8B8A8_UNORM,
+      img.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM,
       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
     );
 

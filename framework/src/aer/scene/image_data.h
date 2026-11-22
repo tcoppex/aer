@@ -138,6 +138,9 @@ struct ImageData {
   int32_t height{};
   int32_t channels{};
 
+  /* Pixels are sRGB encoded color data (eg. base color), not linear data. */
+  bool srgb{};
+
  private:
   bool retrieveImageInfo(stbi_uc const *buffer_data, int buffer_size) {
     return 0 < stbi_info_from_memory(buffer_data, buffer_size, &width, &height, &channels);
