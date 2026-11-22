@@ -48,7 +48,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("02 - танцующий треугольник");
 
-    renderer_.set_clear_color({0.60f, 0.65f, 0.55f, 1.0f});
+    renderer_.set_clear_color({ 0.32f, 0.38f, 0.26f, 1.0f });
 
     /* Setup the device vertex buffer. */
     {

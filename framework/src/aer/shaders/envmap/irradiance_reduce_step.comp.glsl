@@ -32,11 +32,16 @@ void main() {
   const uint groupSize = gl_WorkGroupSize.x;
   const uint groupId = gl_WorkGroupID.x;
 
-  if (globalId >= pushConstant.numElements) {
-    return;
+  // Out of range invocations must still reach the barriers, and contribute 0
+  // (shared memory is not zero-initialized).
+  SHCoeff local_sh;
+  if (globalId < pushConstant.numElements) {
+    local_sh = sh_coeff_data[pushConstant.readOffset + globalId];
+  } else {
+    for (int cid = 0; cid < 9; ++cid) {
+      local_sh.data[cid] = vec4(0.0);
+    }
   }
-
-  SHCoeff local_sh = sh_coeff_data[pushConstant.readOffset + globalId];
 
   for (int cid = 0; cid < 9; ++cid) {
     sharedData[localId] = local_sh.data[cid];

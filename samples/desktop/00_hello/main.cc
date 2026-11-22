@@ -22,12 +22,14 @@ class SampleApp final : public Application {
   void update(float dt) {
     clear_color_ = lina::lerp(
       vec4{0.26f, 0.20f, 0.24f, 1.0f},
-      vec4{0.9f, 0.75f, 0.5f, 1.0f},
+      vec4{0.90f, 0.75f, 0.50f, 1.0f},
       cosf(0.75f * elapsed_time()) * 0.5f + 0.5f
     );
 
-    /* Change the default Render Target clear color value. */
-    renderer_.set_clear_color(clear_color_);
+    /* Change the default Render Target clear color value.
+     * By default the color format is in sRGB space, so color output like clear values
+     * are expected to be in linear space (the sRGB encoding is handled by the swapchain). */
+    renderer_.set_clear_color(lina::to_linear(clear_color_));
   }
 
 #if 1

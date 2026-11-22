@@ -35,7 +35,7 @@ void main() {
   /* The last writeOffset is the current read offset. */
   SHCoeff shc = sh_coeff[pushConstant.writeOffset];
 
-  const float total_weight = TwoPi() / shc.data[0].w; //
+  const float total_weight = 4.0 / shc.data[0].w;
 
   for (int i = 0; i < 9; ++i) {
     shc.data[i] *= total_weight;

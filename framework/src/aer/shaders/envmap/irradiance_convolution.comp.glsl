@@ -49,11 +49,12 @@ void main() {
 
   const vec4 n = vec4(cubemap_view_direction(coords, resolution), 1.0); //
 
-  const vec3 irradiance = vec3(
+  // (the 2nd order SH approximation can ring below zero near strong lights)
+  const vec3 irradiance = max(vec3(
     dot( n, uIrradianceMatrices.data[0] * n),
     dot( n, uIrradianceMatrices.data[1] * n),
     dot( n, uIrradianceMatrices.data[2] * n)
-  );
+  ), vec3(0.0));
 
   // --------------
 

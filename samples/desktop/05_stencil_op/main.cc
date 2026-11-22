@@ -52,7 +52,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("05 - přemýšlet s portály");
 
-    renderer_.set_clear_color({ 0.108f, 0.108f, 0.108f, 1.0f});
+    renderer_.set_clear_color({ 0.01f, 0.01f, 0.01f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {

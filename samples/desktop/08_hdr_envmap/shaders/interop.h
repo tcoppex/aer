@@ -1,16 +1,7 @@
 #ifndef SHADERS_INTEROP_H_
 #define SHADERS_INTEROP_H_
 
-#if defined(_GLSL_)
-
-#define STATIC_CONST const
-#define float4x4 mat4 //
-
-#else
-
 #define STATIC_CONST static const
-
-#endif
 
 // ---------------------------------------------------------------------------
 

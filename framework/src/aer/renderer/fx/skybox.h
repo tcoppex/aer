@@ -59,8 +59,20 @@ class Skybox {
     return setuped_;
   }
 
+  /* Brightness scale of the visible background only (lighting is unaffected). */
   void set_hdr_intensity(float intensity) {
     push_constant_.hdrIntensity = intensity;
+  }
+
+  float hdr_intensity() const {
+    return push_constant_.hdrIntensity;
+  }
+
+  /* Display transform of the background : linear exposure scale (2^EV) and
+   * tonemapping operator (Tonemapping value, cf. renderer_flags.h). */
+  void set_display(float exposure, uint32_t tonemapping) {
+    push_constant_.exposure = exposure;
+    push_constant_.tonemapping = tonemapping;
   }
 
  private:
@@ -88,6 +100,7 @@ class Skybox {
 
   PushConstant_t push_constant_{
     .hdrIntensity = 1.0f,
+    .exposure = 1.0f,
   };
 
   bool setuped_{};

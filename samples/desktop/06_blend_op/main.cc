@@ -40,7 +40,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("06 - Poussières d'Étoiles");
 
-    renderer_.set_clear_color({ 0.02f, 0.03f, 0.12f, 1.0f });
+    renderer_.set_clear_color({ 0.0f, 0.0f, 0.01f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {

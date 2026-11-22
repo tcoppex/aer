@@ -59,7 +59,7 @@ float4 fragmentMain(VSOutput input) : SV_Target0 {
   float3 irradiance = uIrradianceEnvMap.Sample(input.normal).rgb;
 
   // Compose them together.
-  color.rgb *= 0.5 * irradiance;
+  color.rgb *= irradiance;
 
   return color;
 }

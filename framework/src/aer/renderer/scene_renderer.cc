@@ -724,6 +724,8 @@ void SceneRenderer::buildFrameData(
     .resolution           = vec2(surface_size.width, surface_size.height),
     .frame                = static_cast<uint32_t>(frame_counter_),
     .renderer_states      = underlying_cast(renderer_flags),
+    .exposure             = exposure_,
+    .tonemapping          = tonemapping_,
   };
 
   /* Copy the multiview camera transforms (bounded by the destination size). */

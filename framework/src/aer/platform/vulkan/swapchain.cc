@@ -388,18 +388,20 @@ VkSurfaceFormat2KHR Swapchain::selectSurfaceFormat(
   LOGV("> End vkGetPhysicalDeviceSurfaceFormats2KHR");
 #endif
 
+  // The renderer works in linear HDR and blits its color target to the
+  // swapchain : an *_SRGB format makes the blit apply the sRGB encoding.
   auto const preferred_formats = std::vector<VkSurfaceFormat2KHR>{
     {
       .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
       .surfaceFormat = {
-        .format = VK_FORMAT_B8G8R8A8_UNORM,
+        .format = VK_FORMAT_B8G8R8A8_SRGB,
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
       },
     },
     {
       .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR,
       .surfaceFormat = {
-        .format = VK_FORMAT_B8G8R8A8_SRGB,    //< (should probably be preferred)
+        .format = VK_FORMAT_B8G8R8A8_UNORM,   //< (no encoding on blit)
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
       },
     },
@@ -409,7 +411,7 @@ VkSurfaceFormat2KHR Swapchain::selectSurfaceFormat(
     for (auto const& available : formats) {
       if ((available.surfaceFormat.format == preferred.surfaceFormat.format)
        && (available.surfaceFormat.colorSpace == preferred.surfaceFormat.colorSpace)) {
-        // LOGD("Chosen format : {}", (int)available.surfaceFormat.format);
+        LOGD("Chosen surface format : {}", (int)available.surfaceFormat.format);
         return available;
       }
     }

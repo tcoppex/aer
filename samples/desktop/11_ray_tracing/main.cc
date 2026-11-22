@@ -208,7 +208,7 @@ class SampleApp final : public Application {
 
     wm_->set_title("11 - shining through");
 
-    renderer_.set_clear_color({ 0.16f, 0.14f, 0.12f, 1.0f });
+    renderer_.set_clear_color({ 0.02f, 0.02f, 0.01f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {

@@ -402,7 +402,7 @@ void Envmap::computeIrradianceSHCoeff() {
         .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .buffer = sh_coefficient_buffer.buffer,
-        .offset = push_constant_.writeOffset,
+        .offset = push_constant_.writeOffset * sizeof(shader_interop::envmap::SHCoeff), //
         .size = sizeof(shader_interop::envmap::SHCoeff)
       }
     });

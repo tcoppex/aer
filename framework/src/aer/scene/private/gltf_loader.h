@@ -26,7 +26,7 @@ void ExtractTextures(
 // Appends the default material last
 void ExtractMaterials(
   cgltf_data const*,
-  std::vector<scene::ImageData> const&,
+  std::vector<scene::ImageData>&,
   std::vector<scene::Texture> const&,
   std::vector<scene::MaterialProxy>&,
   std::vector<scene::MaterialRef>&

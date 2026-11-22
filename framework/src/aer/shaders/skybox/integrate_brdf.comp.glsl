@@ -89,7 +89,9 @@ void main()
     return;
   }
 
-  const vec2 uv = vec2(coords.xy) / float(resolution);
+  // Sample at texel centers : (n_dot_v = 0) would divide by zero in the integral,
+  // and the lookup is done with a bilinear sampler.
+  const vec2 uv = (vec2(coords.xy) + 0.5) / float(resolution);
   const vec2 data = integrate_brdf(uv.x, uv.y, numSamples);
 
   imageStore(outImage[0], coords, vec4(data, 0.0, 1.0));

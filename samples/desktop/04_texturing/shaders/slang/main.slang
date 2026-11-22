@@ -45,7 +45,8 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  let color = uAlbedoTexture.Sample(input.texCoord).xyz;
+  var color = uAlbedoTexture.Sample(input.texCoord).xyz;
+  color.rgb = pow(color.rgb, 2.2);
   return float4(color, 1.0);
 }
 

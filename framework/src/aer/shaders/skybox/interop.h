@@ -29,11 +29,13 @@ const uint kCompute_IntegrateBRDF_kernelSize_y = 32u; //
 // };
 // ----------------------------
 
-// 68 bytes < 128 bytes
+// 88 bytes < 128 bytes
 struct PushConstant {
   // (skybox)
   mat4 mvpMatrix[1]; //
-  float hdrIntensity;
+  float hdrIntensity;   // background only brightness scale.
+  float exposure;       // linear exposure scale (2^EV), applied before tonemapping.
+  uint tonemapping;     // TONEMAPPING_* (cf. shared/tonemapping.glsl).
   // -----
   // (integrated BRDF)
   uint mapResolution;

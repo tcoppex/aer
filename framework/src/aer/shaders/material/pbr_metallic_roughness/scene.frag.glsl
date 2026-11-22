@@ -6,6 +6,7 @@
 
 #include <shared/maths.glsl>
 #include <shared/lighting/pbr.glsl>
+#include <shared/tonemapping.glsl>
 
 #include <material/pbr_metallic_roughness/interop.h>
 #include <material/renderer_flags.h>
@@ -145,13 +146,13 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
     if (has_render_state(RendererFlags_IrradianceBit)) //
     {
       irradiance = texture(uEnvMapIrradiance, frag.N).rgb;
-      irradiance *= 0.5; //
     }
     data.irradiance = irradiance;
 
     // Roughness based prefiltered specular.
-    const float levels = log2(float(textureSize(uEnvMapPrefilterd, 0).x)) + 1.0;
-    const float roughness_level = data.roughness * levels;
+    // (level i was baked for roughness = i / (levelCount - 1), cf. Envmap::computeSpecular)
+    const float max_level = float(textureQueryLevels(uEnvMapPrefilterd) - 1);
+    const float roughness_level = data.roughness * max_level;
     data.prefiltered = textureLod( uEnvMapPrefilterd, frag.R, roughness_level).rgb;
     // data.prefiltered *= 0.5; //
 
@@ -214,6 +215,10 @@ void main() {
     // [TODO : explore mipmapping issue on specular !]
     // color = pbr_data.prefiltered;
   }
+
+  /* Display transform (exposure + tonemapping), shared with the skybox. */
+  color = tonemapDisplayLinear(color, frameData.exposure, int(frameData.tonemapping));
+
   float alpha = mainColor.a;
 
   // -------

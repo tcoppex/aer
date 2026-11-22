@@ -51,8 +51,8 @@ class SampleApp final : public Application {
       camera_.set_controller(&arcball_controller_);
     }
 
-    renderer_.set_clear_color({ 0.16f, 0.14f, 0.12f, 1.0f });
-    // renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_puresky_2k.hdr");
+    renderer_.set_clear_color({ 0.02f, 0.02f, 0.01f, 1.0f });
+    renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_puresky_2k.hdr");
 
     /* Load the asset once, instances share it. */
     asset_ = renderer_.loadAsset(ASSETS_DIR "models/genan_m.glb");
@@ -147,13 +147,21 @@ class SampleApp final : public Application {
         }
 
         if (!state.clip.empty()) {
-          char overlay[64];
-          std::snprintf(overlay, sizeof(overlay), "%.2f / %.2f s", state.time, state.duration);
-          ImGui::ProgressBar(
-            (state.duration > 0.0f) ? (state.time / state.duration) : 0.0f,
-            ImVec2(-1.0f, 0.0f),
-            overlay
+          const float progress = (state.duration > 0.0f) ? (state.time / state.duration) : 0.0f;
+          ImVec2 bar_min = ImGui::GetCursorScreenPos();
+
+          ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "");
+
+          ImVec2 bar_max = ImGui::GetItemRectMax();
+          char label[64];
+          std::snprintf(label, sizeof(label), "%.2f / %.2f s", state.time, state.duration);
+          ImVec2 text_size = ImGui::CalcTextSize(label);
+          const float pad_x = ImGui::GetStyle().FramePadding.x;
+          ImVec2 text_pos(
+            bar_min.x + pad_x,
+            bar_min.y + (bar_max.y - bar_min.y - text_size.y) * 0.5f
           );
+          ImGui::GetWindowDrawList()->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), label);
         }
       }
     }

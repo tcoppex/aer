@@ -90,6 +90,13 @@ class SceneRenderer {
     RendererFlags renderer_flags
   );
 
+  /* Display transform applied at the end of the lit materials :
+   * linear exposure scale (2^EV) and tonemapping operator (Tonemapping value). */
+  void set_display(float exposure, uint32_t tonemapping) noexcept {
+    exposure_ = exposure;
+    tonemapping_ = tonemapping;
+  }
+
   void upload(uint32_t frame_index);
 
   void computeSkinning(CommandEncoder const&);
@@ -138,6 +145,9 @@ class SceneRenderer {
 
   uint32_t frames_in_flight_{};
   uint64_t frame_counter_{}; //
+
+  float    exposure_{1.0f};
+  uint32_t tonemapping_{};
 
   backend::Buffer frame_sbo_{};
   VkDeviceSize    frame_data_stride_{};

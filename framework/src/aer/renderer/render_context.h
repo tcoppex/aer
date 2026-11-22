@@ -211,13 +211,15 @@ class RenderContext : public Context {
   bool loadImage2D(
     CommandEncoder const& cmd,
     std::string_view filename,
-    backend::Image& image
+    backend::Image& image,
+    bool is_srgb = false
   ) const;
 
   [[nodiscard]]
   bool loadImage2D(
     std::string_view filename,
-    backend::Image& image
+    backend::Image& image,
+    bool is_srgb = false
   ) const;
 
   // --- Sampler ---

@@ -641,7 +641,7 @@ class SampleApp final : public Application {
     int32_t fontArrayIndex{};
     bool enableKerning{true};
     bool enableAnimation{true};
-    vec3f fillColor{0.76f, 0.26f, 0.36f};
+    vec3f fillColor{0.6f, 0.05f, 0.11f};
     vec3f clearColor{1.0, 0.78f, 0.29f};
 
     // Mesh.
