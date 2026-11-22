@@ -3,6 +3,7 @@
 
 #include <map>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 #include "aer/core/common.h"
@@ -64,6 +65,7 @@ class SceneRenderer {
     DeviceMaterial const* material{};
     DeviceMesh const*     mesh{};
     uint32_t              transform_slot{};
+    uint64_t              skinned_offset{kInvalidIndexU64};
     float                 sort_key{};
   };
 
@@ -162,6 +164,8 @@ class SceneRenderer {
   VkPipelineLayout         skinning_layout_{};
   Pipeline                 skinning_pipeline_{};
   bool                     skinning_pending_{};
+
+  std::unordered_map<entt::entity, uint32_t> skinned_first_job_{};
 
   // -- Ray tracing (CPU side) --
  public:

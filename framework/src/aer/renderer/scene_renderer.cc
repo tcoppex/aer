@@ -159,6 +159,10 @@ void SceneRenderer::render(RenderPassEncoder const& pass) {
   auto const& vertex_buffer = pool_ptr_->vertex_buffer();
   auto const& index_buffer  = pool_ptr_->index_buffer();
 
+  // Skinned submeshes read the current slice of the skinned buffer.
+  bool const skinned_ready = (skinned_.current_address != 0u);
+  VkDeviceSize const skinned_slice = static_cast<VkDeviceSize>(ring_slot_) * skinned_.stride;
+
   uint32_t instance_index = 0u;
 
   for (auto& lookup : lookups_) {
@@ -172,21 +176,27 @@ void SceneRenderer::render(RenderPassEncoder const& pass) {
       auto const material_buffer_address = fx->material_buffer_address();
 
       for (auto const& item : items) {
+        auto const& mat = item.material;
         fx->set_push_constant_generic({
           .frame_buffer_address     = frame_data_current_address_,
           .transform_buffer_address = transforms_current_address_,
           .material_buffer_address  = material_buffer_address,
           .transform_index          = item.transform_slot,
-          .material_index           = item.material->material_index,
+          .material_index           = mat->material_index,
           .instance_index           = instance_index++,
         });
         fx->pushConstant(pass);
 
         pass.setPrimitiveTopology(item.mesh->topology);
-        pass.setCullMode(item.material->double_sided ? VK_CULL_MODE_NONE
-                                                     : VK_CULL_MODE_BACK_BIT);
+        pass.setCullMode(mat->double_sided ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT);
 
-        pass.bindAndDraw(item.submesh->draw_descriptor, vertex_buffer, index_buffer);
+        auto const& desc = item.submesh->draw_descriptor;
+        if (skinned_ready && item.skinned_offset != kInvalidIndexU64) {
+          auto vertex_base = skinned_slice + item.skinned_offset;
+          pass.bindAndDraw(desc, skinned_.buffer, index_buffer, vertex_base);
+        } else {
+          pass.bindAndDraw(desc, vertex_buffer, index_buffer);
+        }
       }
     }
   }
@@ -318,6 +328,7 @@ bool SceneRenderer::ensureSliceBuffer(
 
 void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
   skinning_jobs_.clear();
+  skinned_first_job_.clear();
   palette_staging_.clear();
   skinned_bytes_ = 0u;
 
@@ -328,7 +339,7 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
   using namespace scene::component;
 
   scene.registry.view<Renderable, Skin>().each(
-    [&](Renderable const& renderable, Skin const& skin) {
+    [&](entt::entity entity, Renderable const& renderable, Skin const& skin) {
       // retrieve the device asset associated with the skin.
       auto const* da = pool_ptr_->find(renderable.asset);
       if (!da || renderable.mesh_index > da->meshes.size() || skin.matrices.empty()) {
@@ -353,6 +364,8 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
             palette_staging_.end(), skin.matrices.begin(), skin.matrices.end()
           );
         }
+
+        skinned_first_job_.try_emplace(entity, static_cast<uint32_t>(skinning_jobs_.size()));
 
         skinned_bytes_ = utils::AlignTo(skinned_bytes_, kSkinnedAlignment);
         skinning_jobs_.push_back({
@@ -514,7 +527,7 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
   using namespace scene::component;
 
   scene.registry.view<GlobalTransform, Renderable>().each(
-    [&](GlobalTransform const& global, Renderable const& renderable) {
+    [&](entt::entity entity, GlobalTransform const& global, Renderable const& renderable) {
       // Resolve the asset, skip stale handles.
       auto const* da = pool_ptr_->find(renderable.asset);
       if (!da || renderable.mesh_index >= da->meshes.size()) {
@@ -528,7 +541,19 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
       vec3 const pos = lina::to_vec3(global.worldMatrix.w);
       float const sort_key = lina::dot(camera_dir, camera_pos - pos);
 
+      // Skinned submeshes of this entity map to consecutive jobs.
+      uint32_t next_job = kInvalidIndexU32;
+      if (auto const it = skinned_first_job_.find(entity); it != skinned_first_job_.end()) {
+        next_job = it->second;
+      }
+
       for (auto const& submesh : mesh.submeshes) {
+        uint64_t skinned_offset = kInvalidIndexU64;
+        if ((next_job != kInvalidIndexU32)
+          && submesh.has_skin()
+          && submesh.draw_descriptor.vertexCount > 0u) {
+          skinned_offset = skinning_jobs_[next_job++].out_offset;
+        }
         if (submesh.asset_material_index >= da->materials.size()) {
           continue;
         }
@@ -542,6 +567,7 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
             .material = &material,
             .mesh = &mesh,
             .transform_slot = slot,
+            .skinned_offset = skinned_offset,
             .sort_key = sort_key,
           });
       }
