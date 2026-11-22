@@ -132,16 +132,19 @@ class Renderer {
   RenderContext const& context() const noexcept { return *context_ptr_; }
 
   [[nodiscard]]
-  uint32_t frames_in_flight() const noexcept { return default_frame_handler_.frames_in_flight(); }
+  SwapchainInterface& swapchain() const { return default_frame_handler_.swapchain(); }
 
   [[nodiscard]]
-  SwapchainInterface& swapchain() const { return default_frame_handler_.swapchain(); }
+  backend::Image swapchain_image() const { return swapchain().current_image(); } //
 
   [[nodiscard]]
   uint32_t swapchain_image_count() const { return swapchain().image_count(); } //
 
   [[nodiscard]]
-  backend::Image swapchain_image() const { return swapchain().current_image(); } //
+  uint32_t frames_in_flight() const noexcept { return default_frame_handler_.frames_in_flight(); }
+
+  [[nodiscard]]
+  uint32_t frame_slot() const noexcept { return default_frame_handler_.index; }
 
   [[nodiscard]]
   backend::RTInterface const& main_render_target() const noexcept {
