@@ -257,6 +257,89 @@ void AnimationSystem::stop(entt::entity instance_root) {
   LOGD("[Animation] stopped.");
 }
 
+// ----------------------------------------------------------------------------
+
+std::vector<std::string> AnimationSystem::clipNames(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  std::vector<std::string> names{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return names;
+  }
+  ForEachAnimator(reg, instance_root, [&](Animator&, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    for (auto const& clip : skin.skeleton->clips) {
+      if (std::ranges::find(names, clip.name) == names.end()) {
+        names.push_back(clip.name);
+      }
+    }
+  });
+  return names;
+}
+
+// ----------------------------------------------------------------------------
+
+AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  State result{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return result;
+  }
+  bool found = false;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (found || !skin.skeleton || animator.clip >= skin.skeleton->clips.size()) {
+      return;
+    }
+    found = true;
+    auto const& clip = skin.skeleton->clips[animator.clip];
+    result = {
+      .clip     = clip.name, // (immutable, lives as long as the instance)
+      .time     = animator.time,
+      .duration = clip.duration,
+      .speed    = animator.speed,
+      .loop     = animator.loop,
+      .playing  = animator.playing,
+    };
+  });
+  return result;
+}
+
+// ----------------------------------------------------------------------------
+
+void AnimationSystem::setSpeed(entt::entity instance_root, float speed) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setSpeed: entity is not an instance root.");
+    return;
+  }
+  speed = std::max(speed, 0.0f);
+  ForEachAnimator(reg, instance_root, [speed](Animator& animator, Skin&) {
+    animator.speed = speed;
+  });
+}
+
+// ----------------------------------------------------------------------------
+
+void AnimationSystem::setLoop(entt::entity instance_root, bool loop) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setLoop: entity is not an instance root.");
+    return;
+  }
+  ForEachAnimator(reg, instance_root, [loop](Animator& animator, Skin&) {
+    animator.loop = loop;
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 
 } // namespace "scene"

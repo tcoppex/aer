@@ -3,6 +3,8 @@
 
 #include <optional>
 #include <string_view>
+#include <string>
+#include <vector>
 
 #include "entt/entt.hpp"
 
@@ -27,6 +29,16 @@ class Hierarchy;
 class AnimationSystem {
  public:
   static constexpr float kMaxDeltaTime = 0.1f;
+
+ public:
+  struct State {
+    std::string_view clip{};
+    float time{};
+    float duration{};
+    float speed{1.0f};
+    bool loop{true};
+    bool playing{false};
+  };
 
  public:
   void setup(Hierarchy& scene) {
@@ -56,6 +68,21 @@ class AnimationSystem {
 
   /* Discard the clip, rewind and put the joints back to their bind pose. */
   void stop(entt::entity instance_root);
+
+  // -----------
+  /* Playback speed multiplier (>= 0) of every animator of the instance. */
+  void setSpeed(entt::entity instance_root, float speed);
+
+  /* Loop flag of every animator of the instance (applies to the current clip). */
+  void setLoop(entt::entity instance_root, bool loop);
+
+  /* Names of the clips of an instance. */
+  [[nodiscard]]
+  std::vector<std::string> clipNames(entt::entity instance_root) const;
+
+  [[nodiscard]]
+  State state(entt::entity instance_root) const;
+  // -----------
 
  private:
   Hierarchy* scene_{};
