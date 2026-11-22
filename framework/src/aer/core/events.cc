@@ -80,12 +80,16 @@ void Events::onInputChar(uint16_t c) {
 }
 
 void Events::onPointerDown(int x, int y, KeyCode_t button) {
+  EVENTS_IMGUI_BYPASS_MOUSE();
+
   buttons_[button] = KeyState::Pressed;
 
   EVENTS_DISPATCH_SIGNAL(onPointerDown, x, y, button);
 }
 
 void Events::onPointerUp(int x, int y, KeyCode_t button) {
+  EVENTS_IMGUI_BYPASS_MOUSE();
+
   buttons_[button] = KeyState::Released;
 
   EVENTS_DISPATCH_SIGNAL(onPointerUp, x, y, button);
@@ -100,6 +104,8 @@ void Events::onPointerMove(int x, int y) {
 }
 
 void Events::onMouseWheel(float dx, float dy) {
+  EVENTS_IMGUI_BYPASS_MOUSE();
+
   mouse_wheel_delta_ = dy;
   mouse_wheel_ += dy;
 
