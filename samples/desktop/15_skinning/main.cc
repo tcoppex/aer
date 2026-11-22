@@ -6,12 +6,13 @@
 //
 /* -------------------------------------------------------------------------- */
 
-#include <cstdio>
+#include <algorithm>
 #include <string>
 #include <vector>
 
 #include "aer/application.h"
 #include "aer/core/arcball_controller.h"
+#include "aer/scene/ecs/animation_components.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -23,6 +24,20 @@ class SampleApp final : public Application {
     float speed{1.0f};
     bool  loop{true};
   };
+
+  struct LineVertex {
+    vec3 position;
+    vec3 color;
+  };
+
+  struct PushConstant {
+    mat4 view_projection;
+  };
+
+  static constexpr uint32_t kMaxLineVertices = 1u << 15u;
+
+  static constexpr vec3 kNodeColor{1.0f, 0.70f, 0.15f};
+  static constexpr vec3 kLeafColor{0.20f, 0.90f, 0.40f};
 
  private:
   bool setup() final {
@@ -46,7 +61,18 @@ class SampleApp final : public Application {
     }
 
     addCharacter();
-    return !characters_.empty();
+    if (characters_.empty()) {
+      return false;
+    }
+
+    return createSkeletonPipeline();
+  }
+
+  void release() final {
+    for (auto const& buffer : line_buffers_) {
+      context_.destroyBuffer(buffer);
+    }
+    context_.destroyResources(pipeline_, pipeline_layout_);
   }
 
   void buildUI() final {
@@ -112,6 +138,14 @@ class SampleApp final : public Application {
           animation.setLoop(c.root, c.loop);
         }
 
+        ImGui::Separator();
+
+        ImGui::Checkbox("Skeleton", &show_skeleton_);
+        if (show_skeleton_) {
+          ImGui::Checkbox("Joint markers", &show_markers_);
+          ImGui::SliderFloat("Marker size", &marker_size_, 0.005f, 0.1f, "%.3f");
+        }
+
         if (!state.clip.empty()) {
           char overlay[64];
           std::snprintf(overlay, sizeof(overlay), "%.2f / %.2f s", state.time, state.duration);
@@ -124,6 +158,33 @@ class SampleApp final : public Application {
       }
     }
     ImGui::End();
+  }
+
+  void drawPass(RenderPassEncoder const& pass) final {
+    if (!show_skeleton_) {
+      return;
+    }
+
+    line_vertices_.clear();
+    buildSkeleton();
+    if (line_vertices_.empty()) {
+      return;
+    }
+
+    auto const& buffer = line_buffers_[renderer_.frame_slot()];
+    context_.writeBuffer(
+      buffer, 0u,
+      line_vertices_.data(), 0u,
+      line_vertices_.size() * sizeof(LineVertex)
+    );
+
+    PushConstant const pc{
+      .view_projection = camera_.transforms()[0].view_projection
+    };
+    pass.bindPipeline(pipeline_);
+    pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT);
+    pass.bindVertexBuffer(buffer);
+    pass.draw(static_cast<uint32_t>(line_vertices_.size()), 1u);
   }
 
  private:
@@ -147,6 +208,130 @@ class SampleApp final : public Application {
     }
   }
 
+  bool createSkeletonPipeline() {
+    pipeline_layout_ = context_.createPipelineLayout({
+      .pushConstantRanges = {
+        {
+          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+          .size = sizeof(PushConstant),
+        }
+      },
+    });
+
+    auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "skeleton.slang");
+
+    pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
+      .vertex = {
+        .module = shader.handle,
+        .entryPoint = "vertexMain",
+        .buffers = {
+          {
+            .stride = sizeof(LineVertex),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+            .attributes = {
+              { 0u, 0u, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LineVertex, position) },
+              { 1u, 0u, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LineVertex, color) },
+            },
+          }
+        },
+      },
+      .fragment = {
+        .module = shader.handle,
+        .entryPoint = "fragmentMain",
+        .targets = {
+          { .writeMask = GraphicsPipelineDescriptor_t::kDefaultColorWriteMask }
+        },
+      },
+      // (no depth test: the skeleton shows through the mesh)
+      .primitive = {
+        .topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+      },
+    });
+    context_.releaseShaderModule(shader);
+
+    line_buffers_.resize(renderer_.frames_in_flight());
+    for (auto& buffer : line_buffers_) {
+      buffer = context_.createBuffer(
+        "Skeleton::Lines",
+        kMaxLineVertices * sizeof(LineVertex),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
+        | VMA_ALLOCATION_CREATE_MAPPED_BIT
+      );
+      if (!buffer.valid()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void appendLine(vec3 const& a, vec3 const& color_a, vec3 const& b, vec3 const& color_b) {
+    if (line_vertices_.size() + 2u > kMaxLineVertices) {
+      return;
+    }
+    line_vertices_.push_back({ a, color_a });
+    line_vertices_.push_back({ b, color_b });
+  }
+
+  /* One skeleton per (instance, skeleton): the Animator sits on a single node of each. */
+  void buildSkeleton() {
+    using namespace scene::component;
+    auto& reg = renderer_.scene().registry;
+
+    reg.view<Skin, Animator>().each([&](Skin const& skin, Animator const&) {
+      if (!skin.skeleton) {
+        return;
+      }
+      auto const& parents = skin.skeleton->parents;
+      size_t const count = std::min(skin.joints.size(), parents.size());
+
+      std::vector<bool> has_child(count, false);
+      for (size_t j = 0; j < count; ++j) {
+        if (parents[j] < count) {
+          has_child[parents[j]] = true;
+        }
+      }
+      auto color = [&](size_t j) { return has_child[j] ? kNodeColor : kLeafColor; };
+
+      auto position = [&](size_t j, vec3& out) {
+        auto const joint = skin.joints[j];
+        if (joint == entt::null || !reg.valid(joint)) {
+          return false;
+        }
+        auto const* global = reg.try_get<GlobalTransform>(joint);
+        if (!global) {
+          return false;
+        }
+        out = lina::to_vec3(global->worldMatrix.w);
+        return true;
+      };
+
+      for (size_t j = 0; j < count; ++j) {
+        vec3 p{};
+        if (!position(j, p)) {
+          continue;
+        }
+
+        vec3 q{};
+        if (parents[j] < count && position(parents[j], q)) {
+          appendLine(q, color(parents[j]), p, color(j));
+        }
+
+        if (show_markers_) {
+          auto const c = color(j);
+          float const s = marker_size_;
+          appendLine(p - vec3(s, 0.0f, 0.0f), c, p + vec3(s, 0.0f, 0.0f), c);
+          appendLine(p - vec3(0.0f, s, 0.0f), c, p + vec3(0.0f, s, 0.0f), c);
+          appendLine(p - vec3(0.0f, 0.0f, s), c, p + vec3(0.0f, 0.0f, s), c);
+        }
+      }
+    });
+  }
+
   void play(Character const& c) {
     renderer_.animation().play(c.root, clip_names_[c.clip], c.loop);
   }
@@ -158,6 +343,15 @@ class SampleApp final : public Application {
   std::vector<Character> characters_{};
   std::vector<std::string> clip_names_{};
   int current_{};
+
+  bool show_skeleton_{false};
+  bool show_markers_{true};
+  float marker_size_{0.03f};
+
+  VkPipelineLayout pipeline_layout_{};
+  Pipeline pipeline_{};
+  std::vector<backend::Buffer> line_buffers_{}; // one per frame slot
+  std::vector<LineVertex> line_vertices_{};
 };
 
 // ----------------------------------------------------------------------------
