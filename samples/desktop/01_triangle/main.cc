@@ -56,7 +56,7 @@ class SampleApp final : public Application {
     wm_->set_title("01 - さんかくのセレナーデ");
 
     /* Setters / Getters are written in snake_case, commands in camelCase. */
-    renderer_.set_clear_color({0.25f, 0.25f, 0.25f, 1.0f});
+    renderer_.set_clear_color({ 0.05f, 0.05f, 0.05f, 1.0f });
 
     /* Create a device storage buffer, then upload vertices host data to it.
      *

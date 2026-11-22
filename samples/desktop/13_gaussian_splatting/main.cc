@@ -66,7 +66,7 @@ class GaussianSplatSample final : public Application {
   bool setup() final {
     wm_->set_title("13 - Gaussian Splatting");
 
-    renderer_.set_clear_color({ 0.2f, 0.75f, 0.5f, 1.0f });
+    renderer_.set_clear_color({ 0.03f, 0.52f, 0.21f, 1.0f });
 
     /* Setup the ArcBall camera. */
     {

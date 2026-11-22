@@ -49,7 +49,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("07 - Nouvelles Vagues");
 
-    renderer_.set_clear_color({ 0.95f, 0.85f, 0.83f, 1.0f });
+    renderer_.set_clear_color({ 0.89f, 0.69f, 0.66f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {

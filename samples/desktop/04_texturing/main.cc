@@ -22,7 +22,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("04 - خوراي ، كىشىلەر ماڭا دىققەت قىلىۋاتىدۇ");
 
-    renderer_.set_clear_color({ 0.94f, 0.93f, 0.94f, 1.0f});
+    renderer_.set_clear_color({ 0.87f, 0.85f, 0.87f, 1.0f });
 
     /* Initialize the scene data. */
     host_data_.scene.camera = {

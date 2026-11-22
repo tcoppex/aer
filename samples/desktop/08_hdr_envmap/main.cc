@@ -32,7 +32,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("08 - Es werde Licht");
 
-    renderer_.set_clear_color({ 0.55f, 0.65f, 0.75f, 1.0f });
+    renderer_.set_clear_color({ 0.26f, 0.38f, 0.52f, 1.0f });
 
     /* Setup the camera. */
     {

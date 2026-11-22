@@ -25,7 +25,7 @@ class SampleApp final : public Application {
     }
 
     /* Fallback background color if the skybox is not rendered. */
-    renderer_.set_clear_color({ 0.72f, 0.28f, 0.30f, 1.0f });
+    renderer_.set_clear_color({ 0.48f, 0.06f, 0.07f, 1.0f });
 
     /* Setup the renderer's skybox. */
     renderer_.setSkybox(ASSETS_DIR "textures/rogland_clear_night_2k.hdr");

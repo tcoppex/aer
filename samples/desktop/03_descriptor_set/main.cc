@@ -45,7 +45,7 @@ class SampleApp final : public Application {
   bool setup() final {
     wm_->set_title("03 - Πρίσμα");
 
-    renderer_.set_clear_color({0.125f, 0.125f, 0.125f, 1.0f});
+    renderer_.set_clear_color({ 0.01f, 0.01f, 0.01f, 1.0f });
 
     /* Initialize the scene data on the host, here just the camera matrices. */
     host_data_.scene.camera = {
