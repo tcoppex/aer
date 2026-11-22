@@ -111,6 +111,8 @@ float4 fragmentMain(VSOutput input) : SV_Target0 {
   );
   color *= l;
 
+  color.rgb = pow(color.rgb, 2.2);
+
   return color;
 }
 

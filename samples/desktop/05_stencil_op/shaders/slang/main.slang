@@ -72,7 +72,8 @@ VSOutput vertexMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target0 {
-  return float4(input.color, 1.0);
+  let color = pow(input.color.rgb, 2.2);
+  return float4(color, 1.0);
 }
 
 // ----------------------------------------------------------------------------

@@ -24,7 +24,9 @@ VSOutput vertexMain(
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput input) : SV_Target {
-  return float4(input.color, 1.0f);
+  // As the swapchain uses a linear format we have to linearize the input color.
+  let color = pow(input.color.rgb, 2.2);
+  return float4(color, 1.0f);
 }
 
 /* -------------------------------------------------------------------------- */

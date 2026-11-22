@@ -140,7 +140,8 @@ float4 fragmentMain(VSOutput input) : SV_Target0 {
 
   float4 color = float4(1.0, 0.75, 0.25, 0.075 * alpha);
   color *= d;
-  color.xy *= 1.5 * input.texCoord;
+  color.rg *= 1.5 * input.texCoord;
+  color.rgb = pow(color.rgb, 2.2);
 
   return color;
 }

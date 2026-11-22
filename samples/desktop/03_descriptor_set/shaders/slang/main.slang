@@ -54,6 +54,8 @@ float4 fragmentMain(VSOutput input) : SV_Target0 {
          color *= 3.4 + smoothstep(0, 1, dot(nor, float3(0, 0, 1)));
          color *= lerp(color, normalColor, 0.35);
 
+  color = pow(color, 2.2);
+
   return float4(color, 1.0);
 }
 
