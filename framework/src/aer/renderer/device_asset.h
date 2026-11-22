@@ -4,8 +4,7 @@
 #include <vector>
 
 #include "aer/core/common.h"
-#include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor
-#include "aer/platform/vulkan/accel_struct.h"
+#include "aer/platform/vulkan/types.h"  //~ for DrawDescriptor, AccelerationStructure
 #include "aer/scene/material.h"
 #include "aer/scene/asset.h" // (needed for DeviceAsset::root_transform())
 

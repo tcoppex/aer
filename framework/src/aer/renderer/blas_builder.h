@@ -1,9 +1,11 @@
 #ifndef AER_RENDERER_BLAS_BUILDER_H_
 #define AER_RENDERER_BLAS_BUILDER_H_
 
+#include <span>
+
 #include "aer/core/common.h"
 #include "aer/platform/vulkan/context.h"
-#include "aer/platform/vulkan/accel_struct.h"
+#include "aer/platform/vulkan/types.h"
 #include "aer/renderer/device_asset.h"
 #include "aer/scene/geometry.h"
 

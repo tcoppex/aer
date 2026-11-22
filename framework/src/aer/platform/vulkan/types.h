@@ -231,6 +231,19 @@ struct RayTracingAddressRegion {
   VkStridedDeviceAddressRegionKHR callable{};
 };
 
+struct AccelerationStructure {
+  VkAccelerationStructureKHR handle{VK_NULL_HANDLE};
+  Buffer buffer{};
+  VkDeviceAddress address{};
+  VkAccelerationStructureBuildGeometryInfoKHR build_geometry_info{};
+  VkAccelerationStructureBuildSizesInfoKHR build_sizes_info{};
+
+  [[nodiscard]]
+  bool valid() const noexcept {
+    return handle != VK_NULL_HANDLE;
+  }
+};
+
 // ----------------------------------------------------------------------------
 
 /* Interface for dynamic rendering. */
