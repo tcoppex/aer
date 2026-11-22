@@ -146,7 +146,6 @@ PBRMetallicRoughness_Material_t calculate_pbr_material_data(
     if (has_render_state(RendererFlags_IrradianceBit)) //
     {
       irradiance = texture(uEnvMapIrradiance, frag.N).rgb;
-      irradiance *= 0.5; //
     }
     data.irradiance = irradiance;
 
