@@ -592,11 +592,15 @@ AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const 
       .time     = animator.time,
       .duration = MotionDuration(animator, *skin.skeleton),
       .speed    = animator.speed,
+      .fade     = 1.0f,
       .loop     = HasBlendTree(animator) || animator.loop,
       .playing  = animator.playing,
     };
     if (animator.machine.current != kInvalidIndexU32) {
       result.machine_state = animator.machine.def.states[animator.machine.current].name;
+    }
+    if (auto const& fade = animator.fade; fade.duration > 0.0f) {
+      result.fade = std::clamp(fade.time / fade.duration, 0.0f, 1.0f);
     }
   });
   return result;

@@ -38,6 +38,7 @@ class AnimationSystem {
     float time{};
     float duration{};
     float speed{1.0f};
+    float fade{1.0f};
     bool loop{true};
     bool playing{false};
   };
