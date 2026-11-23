@@ -1,8 +1,7 @@
 #ifndef AER_SCENE_ECS_ANIMATION_COMPONENTS_H_
 #define AER_SCENE_ECS_ANIMATION_COMPONENTS_H_
 
-#include <string>
-#include <unordered_map>
+#include <memory>
 #include <vector>
 
 #include "entt/entt.hpp"
@@ -28,7 +27,6 @@ struct Skin {
 
 // ----------------------------------------------------------------------------
 
-/* One per (instance, skeleton), on the first node using that skeleton. */
 struct Animator {
   struct Fade {
     Pose from{};
@@ -37,7 +35,7 @@ struct Animator {
   };
 
   struct Blend {
-    uint32_t tree_index{kInvalidIndexU32};
+    uint32_t tree_index{kInvalidIndexU32};      // index in graph->trees
     float phase{};
     float duration{};
     Pose scratch{};
@@ -53,12 +51,11 @@ struct Animator {
 
   Pose pose{};
   Fade fade{};
-
   Blend blend{};
-  std::vector<BlendTree1D> trees{};
-  std::unordered_map<std::string, float> parameters{}; // (switch to vector?)
 
-  AnimationStateMachineRuntime machine{};
+  std::shared_ptr<AnimationGraph const> graph{};  // shared by the instances using it
+  std::vector<float> parameters{};                // values, indexed by ParamId
+  StateId state{};                                // current graph state (invalid = manual control)
 };
 
 /* -------------------------------------------------------------------------- */

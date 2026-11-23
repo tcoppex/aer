@@ -70,7 +70,7 @@ class SampleApp final : public Application {
     renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_puresky_2k.hdr");
 
     /* Load the asset once, instances share it. */
-    asset_ = renderer_.loadAsset(ASSETS_DIR "models/genan_m.glb");
+    asset_ = renderer_.loadAsset(ASSETS_DIR "models/genan_h_root.glb");
     if (!asset_.valid()) {
       return false;
     }
@@ -170,39 +170,6 @@ class SampleApp final : public Application {
         */
         buildGraphUI(c, state);
 
-#if 0
-        // ---------------------
-        ImGui::SeparatorText("Blend tree (test)");
-        if (ImGui::Button("Play tree")) {
-          animation.playBlendTree(c.root, "test", c.fade);
-        }
-        float blend = animation.parameter(c.root, "blend");
-        if (ImGui::SliderFloat("Blend", &blend, 0.0f, 1.0f, "%.2f")) {
-          animation.setParameter(c.root, "blend", blend);
-        }
-        // ---------------------
-
-        // ---------------------
-        ImGui::SeparatorText("State machine (test)");
-        bool go = animation.parameter(c.root, "go") > 0.5f;
-        if (ImGui::Checkbox("Go", &go)) {
-          animation.setParameter(c.root, "go", go ? 1.0f : 0.0f);
-        }
-        if (!state.machine_state.empty()) {
-          ImGui::TextUnformatted(
-            state.machine_state.data(), state.machine_state.data() + state.machine_state.size()
-          );
-        }
-        for (auto const& name : animation.stateNames(c.root)) {
-          if (ImGui::Button(name.c_str())) {
-            animation.setState(c.root, name, c.fade); // not quite working
-          }
-          ImGui::SameLine();
-        }
-        ImGui::NewLine();
-        // ---------------------
-#endif
-
         ImGui::Separator();
 
         ImGui::Checkbox("Skeleton", &show_skeleton_);
@@ -272,31 +239,37 @@ class SampleApp final : public Application {
     if (clip_names_.size() < 2u) {
       return false;
     }
-    using Op = scene::AnimationStateMachine::Condition::Op;
-    auto& animation = renderer_.animation();
 
-    if (!animation.addBlendTree(root, {
-      .name = "blend",
-      .parameter = "blend",
-      .entries = { {clip_names_[0], 0.0f}, {clip_names_[1], 1.0f} },
-    })) {
-      return false;
+    /* Built once, then shared (the system compiles it once per skeleton). */
+    if (!graph_) {
+      using Op = scene::AnimationStateMachine::Condition::Op;
+
+      auto desc = scene::AnimationGraphDesc{
+        .name = "demo",
+        .parameters = { {"go"}, {"mix"}, {"blend"} },
+        .trees = {{
+          .name = "blend",
+          .parameter = "blend",
+          .entries = { {clip_names_[0], 0.0f}, {clip_names_[1], 1.0f} },
+        }},
+        .machine = {
+          .name = "demo",
+          .states = {
+            { .name = "A",     .motion = clip_names_[0] },
+            { .name = "B",     .motion = clip_names_[1] },
+            { .name = "Blend", .motion = "blend" },
+          },
+          .transitions = {
+            { .from = "",      .to = "Blend", .conditions = {{"mix", Op::Greater, 0.5f}}, .fade = 0.3f },
+            { .from = "Blend", .to = "A",     .conditions = {{"mix", Op::Less,    0.5f}}, .fade = 0.3f },
+            { .from = "A",     .to = "B",     .conditions = {{"go",  Op::Greater, 0.5f}}, .fade = 0.3f },
+            { .from = "B",     .to = "A",     .conditions = {{"go",  Op::Less,    0.5f}}, .fade = 0.3f },
+          },
+        },
+      };
+      graph_ = std::make_shared<scene::AnimationGraphDesc>(desc);
     }
-
-    return animation.setStateMachine(root, {
-      .name = "demo",
-      .states = {
-        { .name = "A",     .motion = clip_names_[0] },
-        { .name = "B",     .motion = clip_names_[1] },
-        { .name = "Blend", .motion = "blend" },
-      },
-      .transitions = {
-        { .from = "",      .to = "Blend", .conditions = {{"mix", Op::Greater, 0.5f}}, .fade = 0.3f },
-        { .from = "Blend", .to = "A",     .conditions = {{"mix", Op::Less,    0.5f}}, .fade = 0.3f },
-        { .from = "A",     .to = "B",     .conditions = {{"go",  Op::Greater, 0.5f}}, .fade = 0.3f },
-        { .from = "B",     .to = "A",     .conditions = {{"go",  Op::Less,    0.5f}}, .fade = 0.3f },
-      },
-    });
+    return renderer_.animation().setGraph(root, graph_);
   }
 
   void buildGraphUI(Character const& c, scene::AnimationSystem::State const& state) {
@@ -357,61 +330,6 @@ class SampleApp final : public Application {
     }
 
     characters_.push_back({ .root = root });
-
-#if 0
-    // ---------------------
-    // Blend Tree test
-    if (clip_names_.size() > 2u) {
-      renderer_.animation().addBlendTree(root, {
-        .name = "test",
-        .parameter = "blend",
-        .entries = {
-          {clip_names_[0], 0.0f},
-          {clip_names_[1], 1.0f}
-        }
-      });
-    }
-    // ---------------------
-
-    // ---------------------
-    // Animation State Machine test
-    if (clip_names_.size() >= 2u) {
-      using Op = scene::AnimationStateMachine::Condition::Op;
-      renderer_.animation().setStateMachine(root, {
-        .name = "test",
-        .states = {
-          { .name = "first",  .motion = clip_names_[0] },
-          { .name = "second", .motion = clip_names_[1] },
-        },
-        .transitions = {
-          { .from = "first",
-            .to = "second",
-            .conditions = {{"go", Op::Greater, 0.5f}},
-            .fade = 0.3f
-          },
-          { .from = "second",
-            .to = "first",
-            .conditions = {{"go", Op::Less,    0.5f}},
-            .fade = 0.3f
-          },
-        },
-      });
-      /*
-      animation.setStateMachine(root, {
-        .name = "combat",
-        .states = {
-          { .name = "idle",   .motion = "locomotion" }, // a blend tree
-          { .name = "attack", .motion = "Attack", .loop = false },
-        },
-        .transitions = {
-          { .from = "idle",   .to = "attack", .conditions = {{"attack", Op::Greater, 0.5f}}, .fade = 0.1f },
-          { .from = "attack", .to = "idle",   .on_finish = true, .fade = 0.2f },
-        },
-      });
-      */
-    }
-    // ---------------------
-#endif
 
     if (!setupAnimationGraph(root) && !clip_names_.empty()) {
       play(characters_.back());
@@ -549,6 +467,7 @@ class SampleApp final : public Application {
   ArcBallController arcball_controller_{};
 
   AssetHandle asset_{};
+  std::shared_ptr<scene::AnimationGraphDesc const> graph_{};
   std::vector<Character> characters_{};
   std::vector<std::string> clip_names_{};
   int current_{};

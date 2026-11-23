@@ -1,6 +1,7 @@
 #ifndef AER_SCENE_ANIMATION_H_
 #define AER_SCENE_ANIMATION_H_
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -12,6 +13,12 @@
 /* -------------------------------------------------------------------------- */
 
 namespace scene {
+
+struct ParamTag;
+using ParamId = Handle<ParamTag>;
+
+struct StateTag;
+using StateId = Handle<StateTag>;
 
 // struct PackedTransform {
 //   vec3 translation{};
@@ -121,6 +128,7 @@ struct BlendTree1D {
   std::string name{};
   std::string parameter{};
   std::vector<Entry> entries{};
+  ParamId parameter_id{};                 // resolved by CompileAnimationGraph
 };
 
 struct AnimationStateMachine {
@@ -131,7 +139,10 @@ struct AnimationStateMachine {
   };
 
   struct Condition {
-    enum class Op : uint8_t { Greater, Less };
+    enum class Op : uint8_t {
+      Greater,
+      Less
+    };
     std::string parameter{};
     Op op{Op::Greater};
     float value{};
@@ -143,7 +154,7 @@ struct AnimationStateMachine {
     std::vector<Condition> conditions{};
     bool on_finish{false};                // when true, source must be a non looping clip ending
     float exit_time{-1.0f};               // when >= 0.0f, reach time before transition
-    float fade{0.2f};                     // cross-fade duration (s)
+    float fade{0.25f};                    // cross-fade duration (s)
   };
 
   std::string name{};
@@ -162,22 +173,84 @@ struct AnimationStateMachine {
   }
 };
 
-struct AnimationStateMachineRuntime {
-  struct ResolvedState {
-    uint32_t clip{kInvalidIndexU32};
-    uint32_t tree{kInvalidIndexU32};      // only set when the motion is a blend tree
+struct AnimationGraphDesc {
+  struct Parameter {
+    std::string name{};
+    float default_value{};
   };
 
-  struct ResolvedTransition {
-    uint32_t from{kInvalidIndexU32};      // kInvalidIndexU32 = any state
-    uint32_t to{kInvalidIndexU32};
-  };
-
-  AnimationStateMachine def{};
-  std::vector<ResolvedState> states{};
-  std::vector<ResolvedTransition> transitions{};
-  uint32_t current{kInvalidIndexU32};
+  std::string name{};
+  std::vector<Parameter> parameters{};      // optionnal
+  std::vector<BlendTree1D> trees{};
+  AnimationStateMachine machine{};          // optionnal
 };
+
+/* Compiled graph resolved against one skeleton.
+ * Immutable and shared by every animator using it.*/
+struct AnimationGraph {
+  struct State {
+    std::string name{};
+    uint32_t clip{kInvalidIndexU32};
+    uint32_t tree{kInvalidIndexU32};        // only set when the motion is a blend tree
+    bool loop{true};
+  };
+
+  struct Condition {
+    ParamId parameter{};
+    AnimationStateMachine::Condition::Op op{};
+    float value{};
+  };
+
+  struct Transition {
+    StateId from{};
+    StateId to{};
+    std::vector<Condition> conditions{};
+    bool on_finish{false};
+    float exit_time{-1.0f};
+    float fade{0.25f};
+  };
+
+  std::string name{};
+  std::shared_ptr<AnimationGraphDesc const> source{};
+
+  std::vector<std::string>  parameter_names{};
+  std::vector<float>        parameter_defaults{};
+  std::vector<BlendTree1D>  trees{};
+  std::vector<State>        states{};
+  std::vector<Transition>   transitions{};
+  StateId                   initial{};      // invalid when there is no machine
+
+  [[nodiscard]]
+  ParamId findParameter(std::string_view n) const noexcept {
+    for (size_t i = 0; i < parameter_names.size(); ++i) {
+      if (parameter_names[i] == n) {
+        return ParamId{static_cast<uint32_t>(i)};
+      }
+    }
+    return {};
+  }
+
+  [[nodiscard]]
+  StateId findState(std::string_view n) const noexcept {
+    for (size_t i = 0; i < states.size(); ++i) {
+      if (states[i].name == n) {
+        return StateId{static_cast<uint32_t>(i)};
+      }
+    }
+    return {};
+  }
+
+  [[nodiscard]]
+  uint32_t findTree(std::string_view n) const noexcept {
+    for (size_t i = 0; i < trees.size(); ++i) {
+      if (trees[i].name == n) {
+        return static_cast<uint32_t>(i);
+      }
+    }
+    return kInvalidIndexU32;
+  }
+};
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -193,6 +266,14 @@ void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
 void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
 
 BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value);
+
+/* Resolve a graph description against a skeleton (clip indices, parameter and state ids).
+ * Returns null when a name can't be resolved. */
+[[nodiscard]]
+std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
+  std::shared_ptr<AnimationGraphDesc const> desc,
+  Skeleton const& skeleton
+);
 
 }  // namespace "scene"
 

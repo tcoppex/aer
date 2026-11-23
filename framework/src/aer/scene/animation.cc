@@ -1,7 +1,8 @@
 #include "aer/scene/animation.h"
 
-#include <algorithm>
 #include <cmath>
+#include <algorithm>
+#include <memory>
 
 /* -------------------------------------------------------------------------- */
 
@@ -83,6 +84,124 @@ BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float valu
     ? (value - e[i - 1u].threshold) / span
     : 0.0f;
   return {i - 1u, i, t};
+}
+
+// ----------------------------------------------------------------------------
+
+std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
+  std::shared_ptr<AnimationGraphDesc const> desc,
+  Skeleton const& skeleton
+) {
+  if (!desc) {
+    return nullptr;
+  }
+  auto const& d = *desc;
+
+  auto graph = std::make_shared<AnimationGraph>();
+  graph->name = d.name;
+  graph->source = desc;
+
+  /* Declare a parameter once, an empty name means "no parameter". */
+  auto const declare = [&](std::string const& name, float value = 0.0f) -> ParamId {
+    if (name.empty()) {
+      return {};
+    }
+    if (auto const id = graph->findParameter(name); id.valid()) {
+      return id;
+    }
+    graph->parameter_names.push_back(name);
+    graph->parameter_defaults.push_back(value);
+    return ParamId{static_cast<uint32_t>(graph->parameter_names.size() - 1u)};
+  };
+
+  // Explicit parameters first, they set the ids and defaults.
+  for (auto const& p : d.parameters) {
+    declare(p.name, p.default_value);
+  }
+
+  // Blend trees.
+  for (auto const& src : d.trees) {
+    if (src.entries.empty()) {
+      LOGE("[Animation] graph \"{}\": blend tree \"{}\" has no entry.", d.name, src.name);
+      return nullptr;
+    }
+    if (graph->findTree(src.name) != kInvalidIndexU32) {
+      LOGE("[Animation] graph \"{}\": duplicate blend tree \"{}\".", d.name, src.name);
+      return nullptr;
+    }
+
+    BlendTree1D tree = src;
+    std::ranges::stable_sort(tree.entries, {}, &BlendTree1D::Entry::threshold);
+    for (auto& entry : tree.entries) {
+      entry.clip_index = skeleton.findClip(entry.clip);
+      if (entry.clip_index == kInvalidIndexU32) {
+        LOGW("[Animation] graph \"{}\": blend tree \"{}\": no clip \"{}\" in skeleton \"{}\".",
+             d.name, tree.name, entry.clip, skeleton.name);
+        return nullptr;
+      }
+    }
+    tree.parameter_id = declare(tree.parameter);
+    graph->trees.push_back(std::move(tree));
+  }
+
+  // State machine.
+  auto const& machine = d.machine;
+
+  for (auto const& src : machine.states) {
+    if (graph->findState(src.name).valid()) {
+      LOGE("[Animation] graph \"{}\": duplicate state \"{}\".", d.name, src.name);
+      return nullptr;
+    }
+
+    AnimationGraph::State state{ .name = src.name, .loop = src.loop };
+    state.clip = skeleton.findClip(src.motion);
+    if (state.clip == kInvalidIndexU32) {
+      state.tree = graph->findTree(src.motion);
+      if (state.tree == kInvalidIndexU32) {
+        LOGW("[Animation] graph \"{}\": no clip or blend tree \"{}\".", d.name, src.motion);
+        return nullptr;
+      }
+    }
+    graph->states.push_back(std::move(state));
+  }
+
+  for (auto const& src : machine.transitions) {
+    bool const has_origin = !src.from.empty();
+
+    AnimationGraph::Transition transition{
+      .on_finish = src.on_finish,
+      .exit_time = src.exit_time,
+      .fade      = src.fade,
+    };
+    transition.to = graph->findState(src.to);
+    if (has_origin) {
+      transition.from = graph->findState(src.from);
+    }
+    if (!transition.to.valid() || (has_origin && !transition.from.valid())) {
+      LOGW("[Animation] graph \"{}\": unknown state in transition \"{}\" -> \"{}\".",
+           d.name, src.from, src.to);
+      return nullptr;
+    }
+
+    for (auto const& c : src.conditions) {
+      transition.conditions.push_back(
+        AnimationGraph::Condition{ .parameter = declare(c.parameter), .op = c.op, .value = c.value }
+      );
+    }
+    graph->transitions.push_back(std::move(transition));
+  }
+
+  if (!graph->states.empty()) {
+    graph->initial = machine.initial.empty() ? StateId{0u} : graph->findState(machine.initial);
+    if (!graph->initial.valid()) {
+      LOGW("[Animation] graph \"{}\": unknown initial state \"{}\".", d.name, machine.initial);
+      return nullptr;
+    }
+  }
+
+  LOGD("[Animation] graph \"{}\" compiled for \"{}\" ({} params, {} trees, {} states).",
+       d.name, skeleton.name, graph->parameter_names.size(), graph->trees.size(), graph->states.size());
+  return graph;
 }
 
 }  // namespace "scene"

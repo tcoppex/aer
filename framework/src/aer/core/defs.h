@@ -61,6 +61,16 @@ static constexpr uint64_t kInvalidIndexU64{ std::numeric_limits<uint64_t>::max()
 
 struct NullType {};
 
+template<typename Tag>
+struct Handle {
+  uint32_t index{kInvalidIndexU32};
+
+  [[nodiscard]]
+  constexpr bool valid() const noexcept { return index != kInvalidIndexU32; }
+
+  constexpr bool operator==(Handle const&) const noexcept = default;
+};
+
 /* -------------------------------------------------------------------------- */
 
 #endif // AER_CORE_DEFS_H_

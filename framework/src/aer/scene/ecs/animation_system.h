@@ -1,9 +1,12 @@
 #ifndef AER_SCENE_ECS_ANIMATION_SYSTEM_H_
 #define AER_SCENE_ECS_ANIMATION_SYSTEM_H_
 
+#include <map>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "entt/entt.hpp"
@@ -97,12 +100,15 @@ class AnimationSystem {
   State state(entt::entity instance_root) const;
 
   // -------------------------------
-  // --- Blend Tree ---
+  // --- Animation Graph ---
 
-  /* Add or replace a blend tree on every skeleton of the instance having all its clips.*/
-  bool addBlendTree(entt::entity instance_root, BlendTree1D tree);
+  /* Assign a graph to every animator of the instance and enter its initial state.
+   * The description is compiled once per skeleton and shared by every instance given the same
+   * pointer. Parameters are reset to their defaults and a blend tree of a previous graph stops.
+   * Returns false if no animator could resolve it. */
+  bool setGraph(entt::entity instance_root, std::shared_ptr<AnimationGraphDesc const> graph);
 
-  /* Play `tree_name` on every skeleton of the instance having it.
+  /* Play `tree_name` of the graph on every animator having it.
    * Bypass any binded animation state machine.
    * Returns false if none has it. */
   bool playBlendTree(
@@ -111,30 +117,50 @@ class AnimationSystem {
     float fade_duration = 0.0f
   );
 
-  void setParameter(entt::entity instance_root, std::string_view name, float value);
+  // -------------------------------
+  // --- Parameters ---
+
+  /* Handles are the same for every instance using the same graph. */
+  [[nodiscard]]
+  ParamId findParameter(entt::entity instance_root, std::string_view name) const;
+
+  bool setParameter(entt::entity instance_root, ParamId id, float value);
+  bool setParameter(entt::entity instance_root, std::string_view name, float value);
+
+  [[nodiscard]]
+  float parameter(entt::entity instance_root, ParamId id) const;
 
   [[nodiscard]]
   float parameter(entt::entity instance_root, std::string_view name) const;
 
   // -------------------------------
-  // --- Animation State Machine ---
+  // --- States ---
 
-  bool setStateMachine(entt::entity instance_root, AnimationStateMachine machine);
+  [[nodiscard]]
+  StateId findState(entt::entity instance_root, std::string_view name) const;
 
-  /* Force a transition to `state_name`. */
-  bool setState(
-    entt::entity instance_root,
-    std::string_view state_name,
-    float fade_duration = 0.0f
-  );
+  /* Force a transition to a state of the machine. */
+  bool setState(entt::entity instance_root, StateId state, float fade_duration = 0.0f);
+  bool setState(entt::entity instance_root, std::string_view state_name, float fade_duration = 0.0f);
 
   /* Names of the AnimationStateMachine states of an instance. */
   [[nodiscard]]
   std::vector<std::string> stateNames(entt::entity instance_root) const;
 
  private:
+  /* Compiled graph for (desc, skeleton), shared through the cache. */
+  [[nodiscard]]
+  std::shared_ptr<AnimationGraph const> acquireGraph(
+    std::shared_ptr<AnimationGraphDesc const> const& desc,
+    Skeleton const& skeleton
+  );
+
+ private:
+  using GraphKey = std::pair<AnimationGraphDesc const*, Skeleton const*>;
+
   Hierarchy* scene_{};
   std::optional<float> last_elapsed_time_{};
+  std::map<GraphKey, std::weak_ptr<AnimationGraph const>> graph_cache_{};
 };
 
 } // namespace "scene"
