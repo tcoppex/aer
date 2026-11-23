@@ -47,15 +47,18 @@ struct Animator {
   float time{};
   float speed{1.0f};
   bool loop{true};
+  bool finished{false};
   bool playing{false};
   bool resample{false};
 
   Pose pose{};
   Fade fade{};
-  Blend blend{};
 
+  Blend blend{};
   std::vector<BlendTree1D> trees{};
   std::unordered_map<std::string, float> parameters{}; // (switch to vector?)
+
+  AnimationStateMachineRuntime machine{};
 };
 
 /* -------------------------------------------------------------------------- */

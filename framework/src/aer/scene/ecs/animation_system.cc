@@ -111,6 +111,34 @@ void StartFade(Animator& animator, float fade_duration) {
   }
 }
 
+void StartClip(
+  Animator& animator,
+  Skeleton const& skeleton,
+  uint32_t clip,
+  bool loop,
+  float fade_duration
+) {
+  StartFade(animator, fade_duration);
+  animator.clip = clip;
+  animator.loop = loop;
+  animator.time = (animator.speed < 0.0f) ? skeleton.clips[clip].duration : 0.0f;
+  animator.playing = true;
+  animator.finished = false;
+  animator.resample = false;
+  animator.blend.tree_index = kInvalidIndexU32;
+}
+
+void StartBlendTree(Animator& animator, uint32_t tree, float fade_duration) {
+  StartFade(animator, fade_duration);
+  animator.clip = kInvalidIndexU32;
+  animator.loop = true;
+  animator.playing = true;
+  animator.finished = false;
+  animator.resample = false;
+  animator.blend.tree_index = tree;
+  animator.blend.phase = 0.0f;
+}
+
 [[nodiscard]]
 inline bool HasBlendTree(Animator const& animator) noexcept {
   return (animator.blend.tree_index != kInvalidIndexU32);
@@ -176,6 +204,133 @@ void StepBlendTree(Animator& animator, Skeleton const& skeleton, float dt) {
   blend.duration = duration;
 }
 
+// --------------------------------
+
+void EnterState(
+  Animator& animator,
+  Skeleton const& skeleton,
+  uint32_t state,
+  float fade_duration
+) {
+  auto& machine = animator.machine;
+  machine.current = state;
+
+  auto const& resolved = machine.states[state];
+  if (resolved.tree != kInvalidIndexU32) {
+    StartBlendTree(animator, resolved.tree, fade_duration);
+  } else {
+    StartClip(animator, skeleton, resolved.clip, machine.def.states[state].loop, fade_duration);
+  }
+}
+
+bool ResolveStateMachine(
+  Animator const& animator,
+  Skeleton const& skeleton,
+  AnimationStateMachine const& def,
+  AnimationStateMachineRuntime& out
+) {
+  out = {};
+  out.def = def;
+
+  for (auto const& state : def.states) {
+    AnimationStateMachineRuntime::ResolvedState resolved{};
+    resolved.clip = skeleton.findClip(state.motion);
+    if (resolved.clip == kInvalidIndexU32) {
+      auto const it = std::ranges::find(animator.trees, state.motion, &BlendTree1D::name);
+      if (it == animator.trees.end()) {
+        LOGW("[Animation] state machine \"{}\": no clip or blend tree \"{}\".",
+              def.name, state.motion);
+        return false;
+      }
+      resolved.tree = static_cast<uint32_t>(
+        std::distance(animator.trees.begin(), it)
+      );
+    }
+    out.states.push_back(resolved);
+  }
+
+  for (auto const& transition : def.transitions) {
+    bool const has_origin = !transition.from.empty();
+    AnimationStateMachineRuntime::ResolvedTransition resolved{
+      .from = has_origin ? def.findState(transition.from) : kInvalidIndexU32,
+      .to   = def.findState(transition.to),
+    };
+    if (resolved.to == kInvalidIndexU32 || (has_origin && resolved.from == kInvalidIndexU32)) {
+      LOGW("[Animation] state machine \"{}\": unknown state in transition \"{}\" -> \"{}\".",
+           def.name, transition.from, transition.to);
+      return false;
+    }
+    out.transitions.push_back(resolved);
+  }
+
+  out.current = def.initial.empty() ? 0u : def.findState(def.initial);
+  if (out.current == kInvalidIndexU32) {
+    LOGW("[Animation] state machine \"{}\": unknown initial state \"{}\".",
+      def.name, def.initial);
+    return false;
+  }
+  return true;
+}
+
+[[nodiscard]]
+float NormalizedTime(Animator const& animator, Skeleton const& skeleton) {
+  if (HasBlendTree(animator)) {
+    return animator.blend.phase;
+  }
+  float const duration = skeleton.clips[animator.clip].duration;
+  return (duration > lina::kTrueEpsilon) ? std::clamp(animator.time / duration, 0.0f, 1.0f) : 1.0f;
+}
+
+[[nodiscard]]
+uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
+  auto const& machine = animator.machine;
+
+  for (size_t i = 0; i < machine.transitions.size(); ++i) {
+    auto const& resolved = machine.transitions[i];
+    auto const& transition = machine.def.transitions[i];
+
+    bool const any_state = (resolved.from == kInvalidIndexU32);
+    if (any_state ? (resolved.to == machine.current) : (resolved.from != machine.current)) {
+      continue;
+    }
+    if (transition.on_finish && !animator.finished) {
+      continue;
+    }
+    if ((transition.exit_time >= 0.0f)
+     && (NormalizedTime(animator, skeleton) < transition.exit_time)) {
+      continue;
+    }
+
+    bool holds = true;
+    for (auto const& condition : transition.conditions) {
+      float const value = GetParameter(animator, condition.parameter);
+      holds = holds && ((condition.op == AnimationStateMachine::Condition::Op::Greater)
+                      ? (value > condition.value)
+                      : (value < condition.value));
+    }
+    if (holds) {
+      return static_cast<uint32_t>(i);
+    }
+  }
+  return kInvalidIndexU32;
+}
+
+void UpdateStateMachine(Animator& animator, Skeleton const& skeleton) {
+  auto& machine = animator.machine;
+  if ((machine.current == kInvalidIndexU32)
+   || !(animator.playing || animator.finished)) {
+    return;
+  }
+  auto const i = FindTransition(animator, skeleton);
+  if (i == kInvalidIndexU32) {
+    return;
+  }
+  auto const& transition = machine.def.transitions[i];
+  LOGD("[Animation] \"{}\": {} -> {}.", machine.def.name,
+       machine.def.states[machine.current].name, transition.to);
+  EnterState(animator, skeleton, machine.transitions[i].to, transition.fade);
+}
+
 } // namespace
 
 /* -------------------------------------------------------------------------- */
@@ -197,10 +352,16 @@ void AnimationSystem::advance(float dt) {
 
   reg.view<Animator, Skin>().each(
     [&](Animator& animator, Skin const& skin) {
-      if ((!animator.playing && !animator.resample) || !skin.skeleton) {
+      if (!skin.skeleton) {
         return;
       }
       auto const& skeleton = *skin.skeleton;
+
+      UpdateStateMachine(animator, skeleton);
+
+      if (!animator.playing && !animator.resample) {
+        return;
+      }
       if (!HasMotion(animator, skeleton)) {
         animator.playing = false;
         animator.resample = false;
@@ -234,6 +395,7 @@ void AnimationSystem::advance(float dt) {
 
       if (finished) {
         animator.playing = false;
+        animator.finished = true;
         LOGD("[Animation] clip \"{}\" finished.", MotionName(animator, skeleton));
       }
     }
@@ -302,14 +464,8 @@ bool AnimationSystem::play(
       return;
     }
 
-    StartFade(animator, fade_duration);
-
-    animator.clip = clip;
-    animator.time = (animator.speed < 0.0f) ? skin.skeleton->clips[clip].duration : 0.0f;
-    animator.loop = loop;
-    animator.playing = true;
-    animator.resample = false;
-    animator.blend.tree_index = kInvalidIndexU32;
+    StartClip(animator, *skin.skeleton, clip, loop, fade_duration);
+    animator.machine.current = kInvalidIndexU32;  // reset to manual control
     ++played_count;
   });
 
@@ -357,6 +513,7 @@ void AnimationSystem::resume(entt::entity instance_root) {
         animator.time = reverse ? duration : 0.0f;
       }
     }
+    animator.finished = false;
     animator.playing = true;
   });
 }
@@ -374,11 +531,13 @@ void AnimationSystem::stop(entt::entity instance_root) {
   ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
     animator.clip = kInvalidIndexU32;
     animator.time = 0.0f;
+    animator.finished = false;
     animator.playing = false;
     animator.resample = false;
     animator.fade.duration = 0.0f;
     animator.blend.tree_index = kInvalidIndexU32;
     animator.blend.phase = 0.0f;
+    animator.machine.current = kInvalidIndexU32;
 
     // (rest_pose is empty for skeletons without animations as they never moved.)
     if (skin.skeleton && !skin.skeleton->rest_pose.joints.empty()) {
@@ -436,6 +595,9 @@ AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const 
       .loop     = HasBlendTree(animator) || animator.loop,
       .playing  = animator.playing,
     };
+    if (animator.machine.current != kInvalidIndexU32) {
+      result.machine_state = animator.machine.def.states[animator.machine.current].name;
+    }
   });
   return result;
 }
@@ -498,6 +660,7 @@ void AnimationSystem::setLoop(entt::entity instance_root, bool loop) {
 }
 
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 bool AnimationSystem::addBlendTree(entt::entity instance_root, BlendTree1D tree) {
   LOG_CHECK(scene_ != nullptr);
@@ -541,7 +704,7 @@ bool AnimationSystem::addBlendTree(entt::entity instance_root, BlendTree1D tree)
 
 // ----------------------------------------------------------------------------
 
-bool AnimationSystem::playTree(
+bool AnimationSystem::playBlendTree(
   entt::entity instance_root,
   std::string_view tree_name,
   float fade_duration
@@ -550,7 +713,7 @@ bool AnimationSystem::playTree(
   auto& reg = scene_->registry;
 
   if (!IsInstanceRoot(reg, instance_root)) {
-    LOGE("[Animation] playTree: entity is not an instance root.");
+    LOGE("[Animation] playBlendTree: entity is not an instance root.");
     return false;
   }
 
@@ -561,14 +724,12 @@ bool AnimationSystem::playTree(
       return;
     }
 
-    StartFade(animator, fade_duration);
-
-    animator.clip = kInvalidIndexU32;
-    animator.loop = true;
-    animator.playing = true;
-    animator.resample = false;
-    animator.blend.tree_index = static_cast<uint32_t>(std::distance(animator.trees.begin(), it));
-    animator.blend.phase = 0.0f;
+    StartBlendTree(
+      animator,
+      static_cast<uint32_t>(std::distance(animator.trees.begin(), it)),
+      fade_duration
+    );
+    animator.machine.current = kInvalidIndexU32;
     ++played_count;
   });
 
@@ -614,6 +775,95 @@ float AnimationSystem::parameter(entt::entity instance_root, std::string_view na
     }
   });
   return value;
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setStateMachine(entt::entity instance_root, AnimationStateMachine machine) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setStateMachine: entity is not an instance root.");
+    return false;
+  }
+  if (machine.states.empty()) {
+    LOGE("[Animation] state machine \"{}\" has no state.", machine.name);
+    return false;
+  }
+
+  uint32_t set_count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    AnimationStateMachineRuntime runtime{};
+    if (!ResolveStateMachine(animator, *skin.skeleton, machine, runtime)) {
+      return;
+    }
+    animator.machine = std::move(runtime);
+    EnterState(animator, *skin.skeleton, animator.machine.current, 0.0f);
+    ++set_count;
+  });
+  return set_count > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setState(
+  entt::entity instance_root,
+  std::string_view state_name,
+  float fade_duration
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setState: entity is not an instance root.");
+    return false;
+  }
+
+  std::string const name(state_name);
+  uint32_t entered_count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton || animator.machine.def.states.empty()) {
+      return;
+    }
+    auto const state = animator.machine.def.findState(name);
+    if (state == kInvalidIndexU32) {
+      return;
+    }
+    EnterState(animator, *skin.skeleton, state, fade_duration);
+    ++entered_count;
+  });
+
+  if (entered_count == 0u) {
+    LOGW("[Animation] no state \"{}\" in this instance.", state_name);
+    return false;
+  }
+  return true;
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<std::string> AnimationSystem::stateNames(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  std::vector<std::string> names{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return names;
+  }
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    if (!names.empty()) {
+      return;
+    }
+    for (auto const& state : animator.machine.def.states) {
+      names.push_back(state.name);
+    }
+  });
+  return names;
 }
 
 /* -------------------------------------------------------------------------- */

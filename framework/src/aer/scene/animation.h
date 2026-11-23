@@ -123,6 +123,62 @@ struct BlendTree1D {
   std::vector<Entry> entries{};
 };
 
+struct AnimationStateMachine {
+  struct State {
+    std::string name{};
+    std::string motion{};                 // clip or blend tree name
+    bool loop{true};                      // clip only (tree always loop)
+  };
+
+  struct Condition {
+    enum class Op : uint8_t { Greater, Less };
+    std::string parameter{};
+    Op op{Op::Greater};
+    float value{};
+  };
+
+  struct Transition {
+    std::string from{};
+    std::string to{};
+    std::vector<Condition> conditions{};
+    bool on_finish{false};                // when true, source must be a non looping clip ending
+    float exit_time{-1.0f};               // when >= 0.0f, reach time before transition
+    float fade{0.2f};                     // cross-fade duration (s)
+  };
+
+  std::string name{};
+  std::string initial{};
+  std::vector<State> states{};
+  std::vector<Transition> transitions{};
+
+  [[nodiscard]]
+  uint32_t findState(std::string const& state_name) const noexcept {
+    for (size_t i = 0; i < states.size(); ++i) {
+      if (states[i].name == state_name) {
+        return static_cast<uint32_t>(i);
+      }
+    }
+    return kInvalidIndexU32;
+  }
+};
+
+struct AnimationStateMachineRuntime {
+  struct ResolvedState {
+    uint32_t clip{kInvalidIndexU32};
+    uint32_t tree{kInvalidIndexU32};      // only set when the motion is a blend tree
+  };
+
+  struct ResolvedTransition {
+    uint32_t from{kInvalidIndexU32};      // kInvalidIndexU32 = any state
+    uint32_t to{kInvalidIndexU32};
+  };
+
+  AnimationStateMachine def{};
+  std::vector<ResolvedState> states{};
+  std::vector<ResolvedTransition> transitions{};
+  uint32_t current{kInvalidIndexU32};
+};
+
 /* -------------------------------------------------------------------------- */
 
 [[nodiscard]]

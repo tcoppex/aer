@@ -34,6 +34,7 @@ class AnimationSystem {
  public:
   struct State {
     std::string_view clip{};  // animation or tree name
+    std::string_view machine_state{};
     float time{};
     float duration{};
     float speed{1.0f};
@@ -46,6 +47,7 @@ class AnimationSystem {
     scene_ = &scene;
   }
 
+  // -------------------------------
   // --- Frame ---
 
   void preUpdate(float elapsed_time);
@@ -54,9 +56,11 @@ class AnimationSystem {
 
   void advance(float dt);
 
+  // -------------------------------
   // --- Controls ---
 
   /* Play `clip_name` from its start on every skeleton of the instance having it.
+   * Bypass any binded animation state machine.
    * Returns false if none has it. */
   bool play(
     entt::entity instance_root,
@@ -83,10 +87,24 @@ class AnimationSystem {
   /* Loop flag of every animator of the instance (applies to the current clip). */
   void setLoop(entt::entity instance_root, bool loop);
 
-  /* Add or replace a blend tree on every skeleton of the instance having all its clips. */
+  /* Names of the clips of an instance. */
+  [[nodiscard]]
+  std::vector<std::string> clipNames(entt::entity instance_root) const;
+
+  /* Information of the current animation being played. */
+  [[nodiscard]]
+  State state(entt::entity instance_root) const;
+
+  // -------------------------------
+  // --- Blend Tree ---
+
+  /* Add or replace a blend tree on every skeleton of the instance having all its clips.*/
   bool addBlendTree(entt::entity instance_root, BlendTree1D tree);
 
-  bool playTree(
+  /* Play `tree_name` on every skeleton of the instance having it.
+   * Bypass any binded animation state machine.
+   * Returns false if none has it. */
+  bool playBlendTree(
     entt::entity instance_root,
     std::string_view tree_name,
     float fade_duration = 0.0f
@@ -97,12 +115,21 @@ class AnimationSystem {
   [[nodiscard]]
   float parameter(entt::entity instance_root, std::string_view name) const;
 
-  /* Names of the clips of an instance. */
-  [[nodiscard]]
-  std::vector<std::string> clipNames(entt::entity instance_root) const;
+  // -------------------------------
+  // --- Animation State Machine ---
 
+  bool setStateMachine(entt::entity instance_root, AnimationStateMachine machine);
+
+  /* Force a transition to `state_name`. */
+  bool setState(
+    entt::entity instance_root,
+    std::string_view state_name,
+    float fade_duration = 0.0f
+  );
+
+  /* Names of the AnimationStateMachine states of an instance. */
   [[nodiscard]]
-  State state(entt::entity instance_root) const;
+  std::vector<std::string> stateNames(entt::entity instance_root) const;
 
  private:
   Hierarchy* scene_{};
