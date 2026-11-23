@@ -105,6 +105,24 @@ struct Skeleton {
   }
 };
 
+struct BlendTree1D {
+  struct Entry {
+    std::string clip{};
+    float threshold{};
+    uint32_t clip_index{kInvalidIndexU32};
+  };
+
+  struct Weights {
+    uint32_t a{};
+    uint32_t b{};
+    float t{};
+  };
+
+  std::string name{};
+  std::string parameter{};
+  std::vector<Entry> entries{};
+};
+
 /* -------------------------------------------------------------------------- */
 
 [[nodiscard]]
@@ -117,6 +135,8 @@ component::Transform BlendTransforms(
 void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
 
 void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
+
+BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value);
 
 }  // namespace "scene"
 

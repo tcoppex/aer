@@ -63,6 +63,28 @@ void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out) {
   BlendPoses(clip.poses[i0], clip.poses[i0 + 1u], alpha, out);
 }
 
+// ----------------------------------------------------------------------------
+
+BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value) {
+  auto const& e = tree.entries;
+  if (value <= e.front().threshold) {
+    return {0u, 0u, 0.0f};
+  }
+  if (value >= e.back().threshold) {
+    auto s = static_cast<uint32_t>(e.size());
+    return {s - 1u, s -1u, 0.0f};
+  }
+  uint32_t i = 1u;
+  while (e[i].threshold < value) {
+    ++i;
+  }
+  float const span = e[i].threshold - e[i - 1u].threshold;
+  float const t = (span > lina::kTrueEpsilon)
+    ? (value - e[i - 1u].threshold) / span
+    : 0.0f;
+  return {i - 1u, i, t};
+}
+
 }  // namespace "scene"
 
 /* -------------------------------------------------------------------------- */

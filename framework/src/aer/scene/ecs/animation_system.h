@@ -9,6 +9,7 @@
 #include "entt/entt.hpp"
 
 #include "aer/core/common.h"
+#include "aer/scene/animation.h" // for BlendTree1D
 
 /* -------------------------------------------------------------------------- */
 
@@ -32,7 +33,7 @@ class AnimationSystem {
 
  public:
   struct State {
-    std::string_view clip{};
+    std::string_view clip{};  // animation or tree name
     float time{};
     float duration{};
     float speed{1.0f};
@@ -81,6 +82,20 @@ class AnimationSystem {
 
   /* Loop flag of every animator of the instance (applies to the current clip). */
   void setLoop(entt::entity instance_root, bool loop);
+
+  /* Add or replace a blend tree on every skeleton of the instance having all its clips. */
+  bool addBlendTree(entt::entity instance_root, BlendTree1D tree);
+
+  bool playTree(
+    entt::entity instance_root,
+    std::string_view tree_name,
+    float fade_duration = 0.0f
+  );
+
+  void setParameter(entt::entity instance_root, std::string_view name, float value);
+
+  [[nodiscard]]
+  float parameter(entt::entity instance_root, std::string_view name) const;
 
   /* Names of the clips of an instance. */
   [[nodiscard]]

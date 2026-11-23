@@ -1,6 +1,8 @@
 #ifndef AER_SCENE_ECS_ANIMATION_COMPONENTS_H_
 #define AER_SCENE_ECS_ANIMATION_COMPONENTS_H_
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "entt/entt.hpp"
@@ -28,19 +30,32 @@ struct Skin {
 
 /* One per (instance, skeleton), on the first node using that skeleton. */
 struct Animator {
-  uint32_t clip{kInvalidIndexU32};            // index Skeleton::clips
-  float time{};
-  float speed{1.0f};                          // negative = reverse
-  bool loop{true};
-  bool playing{false};
-  bool resample{false};                       // sample once even if not playing
-  Pose pose{};                                // last applied pose
-
   struct Fade {
     Pose from{};
     float time{};
     float duration{};
-  } fade;
+  };
+
+  struct Blend {
+    uint32_t tree_index{kInvalidIndexU32};
+    float phase{};
+    float duration{};
+    Pose scratch{};
+  };
+
+  uint32_t clip{kInvalidIndexU32};
+  float time{};
+  float speed{1.0f};
+  bool loop{true};
+  bool playing{false};
+  bool resample{false};
+
+  Pose pose{};
+  Fade fade{};
+  Blend blend{};
+
+  std::vector<BlendTree1D> trees{};
+  std::unordered_map<std::string, float> parameters{}; // (switch to vector?)
 };
 
 /* -------------------------------------------------------------------------- */
