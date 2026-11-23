@@ -12,7 +12,9 @@
 
 #include "aer/application.h"
 #include "aer/core/arcball_controller.h"
+
 #include "aer/scene/ecs/animation_components.h"
+#include "aer/scene/ecs/animation_system.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -35,10 +37,22 @@ class SampleApp final : public Application {
     mat4 view_projection;
   };
 
+  struct ParamUI {
+    char const* name;
+    float min;
+    float max;
+  };
+
   static constexpr uint32_t kMaxLineVertices = 1u << 15u;
 
   static constexpr vec3 kNodeColor{1.0f, 0.70f, 0.15f};
   static constexpr vec3 kLeafColor{0.20f, 0.90f, 0.40f};
+
+  static constexpr ParamUI kParams[] = {
+    { "go",    0.0f, 1.0f },   // A <-> B
+    { "mix",   0.0f, 1.0f },   // any -> Blend
+    { "blend", 0.0f, 1.0f },   // blend tree parameter (clip 0 .. clip 1)
+  };
 
  private:
   bool setup() final {
@@ -100,7 +114,6 @@ class SampleApp final : public Application {
       if (clip_names_.empty()) {
         ImGui::TextUnformatted("No animation clip in this asset.");
       } else {
-        /* Clip selection (select, then trigger). */
         if (ImGui::BeginCombo("Clip", clip_names_[c.clip].c_str())) {
           for (int i = 0; i < static_cast<int>(clip_names_.size()); ++i) {
             bool const selected = (i == c.clip);
@@ -115,6 +128,8 @@ class SampleApp final : public Application {
         }
 
         auto const state = animation.state(c.root);
+
+        ImGui::SliderFloat("Fade (s)", &c.fade, 0.0f, 2.0f, "%.2f");
 
         if (ImGui::Button("Play")) {
           play(c);
@@ -138,7 +153,55 @@ class SampleApp final : public Application {
         if (ImGui::Checkbox("Loop", &c.loop)) {
           animation.setLoop(c.root, c.loop);
         }
-        ImGui::SliderFloat("Fade (s)", &c.fade, 0.0f, 2.0f, "%.2f");
+
+        /*
+          - With the demo graph on start, the character plays clip A.
+            Drag go past 0.5 and it should cross-fade to B in 0.3 s and back.
+
+          - Drag mix past 0.5. You should go to Blend regardless of go,
+            then drag blend to morph between the two clips.
+            Dropping mix below 0.5 returns to A.
+
+          - Click a state button. The current one is highlighted, and the
+            fade bar shows while a transition runs.
+
+          - Press Play or Stop. The panel should show "Machine inactive".
+            Clicking a state re-enters the machine.
+        */
+        buildGraphUI(c, state);
+
+#if 0
+        // ---------------------
+        ImGui::SeparatorText("Blend tree (test)");
+        if (ImGui::Button("Play tree")) {
+          animation.playBlendTree(c.root, "test", c.fade);
+        }
+        float blend = animation.parameter(c.root, "blend");
+        if (ImGui::SliderFloat("Blend", &blend, 0.0f, 1.0f, "%.2f")) {
+          animation.setParameter(c.root, "blend", blend);
+        }
+        // ---------------------
+
+        // ---------------------
+        ImGui::SeparatorText("State machine (test)");
+        bool go = animation.parameter(c.root, "go") > 0.5f;
+        if (ImGui::Checkbox("Go", &go)) {
+          animation.setParameter(c.root, "go", go ? 1.0f : 0.0f);
+        }
+        if (!state.machine_state.empty()) {
+          ImGui::TextUnformatted(
+            state.machine_state.data(), state.machine_state.data() + state.machine_state.size()
+          );
+        }
+        for (auto const& name : animation.stateNames(c.root)) {
+          if (ImGui::Button(name.c_str())) {
+            animation.setState(c.root, name, c.fade); // not quite working
+          }
+          ImGui::SameLine();
+        }
+        ImGui::NewLine();
+        // ---------------------
+#endif
 
         ImGui::Separator();
 
@@ -205,6 +268,80 @@ class SampleApp final : public Application {
   }
 
  private:
+  bool setupAnimationGraph(entt::entity root) {
+    if (clip_names_.size() < 2u) {
+      return false;
+    }
+    using Op = scene::AnimationStateMachine::Condition::Op;
+    auto& animation = renderer_.animation();
+
+    if (!animation.addBlendTree(root, {
+      .name = "blend",
+      .parameter = "blend",
+      .entries = { {clip_names_[0], 0.0f}, {clip_names_[1], 1.0f} },
+    })) {
+      return false;
+    }
+
+    return animation.setStateMachine(root, {
+      .name = "demo",
+      .states = {
+        { .name = "A",     .motion = clip_names_[0] },
+        { .name = "B",     .motion = clip_names_[1] },
+        { .name = "Blend", .motion = "blend" },
+      },
+      .transitions = {
+        { .from = "",      .to = "Blend", .conditions = {{"mix", Op::Greater, 0.5f}}, .fade = 0.3f },
+        { .from = "Blend", .to = "A",     .conditions = {{"mix", Op::Less,    0.5f}}, .fade = 0.3f },
+        { .from = "A",     .to = "B",     .conditions = {{"go",  Op::Greater, 0.5f}}, .fade = 0.3f },
+        { .from = "B",     .to = "A",     .conditions = {{"go",  Op::Less,    0.5f}}, .fade = 0.3f },
+      },
+    });
+  }
+
+  void buildGraphUI(Character const& c, scene::AnimationSystem::State const& state) {
+    auto& animation = renderer_.animation();
+
+    auto const states = animation.stateNames(c.root);
+    if (states.empty()) {
+      return;
+    }
+
+    ImGui::SeparatorText("Animation graph");
+
+    for (auto const& p : kParams) {
+      float value = animation.parameter(c.root, p.name);
+      if (ImGui::SliderFloat(p.name, &value, p.min, p.max, "%.2f")) {
+        animation.setParameter(c.root, p.name, value);
+      }
+    }
+
+    /* The current state is highlighted, a click forces a transition. */
+    for (auto const& name : states) {
+      bool const current = (state.machine_state == name);
+
+      ImGui::PushID(name.c_str());
+      if (current) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+      }
+      if (ImGui::Button(name.c_str())) {
+        animation.setState(c.root, name, c.fade);
+      }
+      if (current) {
+        ImGui::PopStyleColor();
+      }
+      ImGui::PopID();
+      ImGui::SameLine();
+    }
+    ImGui::NewLine();
+
+    if (state.machine_state.empty()) {
+      ImGui::TextDisabled("Machine inactive (manual control). Click a state to re-enter.");
+    } else if (state.fade < 1.0f) {
+      ImGui::ProgressBar(state.fade, ImVec2(-1.0f, 0.0f), "fade");
+    }
+  }
+
   void addCharacter() {
     /* Side by side. */
     auto const placement = lina::translation_matrix(
@@ -220,8 +357,64 @@ class SampleApp final : public Application {
     }
 
     characters_.push_back({ .root = root });
-    if (!clip_names_.empty()) {
-      play(characters_.back()); // (the first clip)
+
+#if 0
+    // ---------------------
+    // Blend Tree test
+    if (clip_names_.size() > 2u) {
+      renderer_.animation().addBlendTree(root, {
+        .name = "test",
+        .parameter = "blend",
+        .entries = {
+          {clip_names_[0], 0.0f},
+          {clip_names_[1], 1.0f}
+        }
+      });
+    }
+    // ---------------------
+
+    // ---------------------
+    // Animation State Machine test
+    if (clip_names_.size() >= 2u) {
+      using Op = scene::AnimationStateMachine::Condition::Op;
+      renderer_.animation().setStateMachine(root, {
+        .name = "test",
+        .states = {
+          { .name = "first",  .motion = clip_names_[0] },
+          { .name = "second", .motion = clip_names_[1] },
+        },
+        .transitions = {
+          { .from = "first",
+            .to = "second",
+            .conditions = {{"go", Op::Greater, 0.5f}},
+            .fade = 0.3f
+          },
+          { .from = "second",
+            .to = "first",
+            .conditions = {{"go", Op::Less,    0.5f}},
+            .fade = 0.3f
+          },
+        },
+      });
+      /*
+      animation.setStateMachine(root, {
+        .name = "combat",
+        .states = {
+          { .name = "idle",   .motion = "locomotion" }, // a blend tree
+          { .name = "attack", .motion = "Attack", .loop = false },
+        },
+        .transitions = {
+          { .from = "idle",   .to = "attack", .conditions = {{"attack", Op::Greater, 0.5f}}, .fade = 0.1f },
+          { .from = "attack", .to = "idle",   .on_finish = true, .fade = 0.2f },
+        },
+      });
+      */
+    }
+    // ---------------------
+#endif
+
+    if (!setupAnimationGraph(root) && !clip_names_.empty()) {
+      play(characters_.back());
     }
   }
 
@@ -294,7 +487,6 @@ class SampleApp final : public Application {
     line_vertices_.push_back({ b, color_b });
   }
 
-  /* One skeleton per (instance, skeleton): the Animator sits on a single node of each. */
   void buildSkeleton() {
     using namespace scene::component;
     auto& reg = renderer_.scene().registry;
