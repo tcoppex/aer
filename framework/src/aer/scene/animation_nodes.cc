@@ -38,6 +38,7 @@ bool StepTime(float& time, float delta, float duration, bool loop, bool reverse)
 /* -------------------------------------------------------------------------- */
 
 void ClipNode::evaluate(PoseContext const& ctx, Pose& out) {
+  reverse_ = ctx.reverse;
   if (ctx.playing) {
     finished_ = StepTime(time_, ctx.delta, clip_->duration, loop_, ctx.reverse)
              || finished_;
@@ -45,15 +46,23 @@ void ClipNode::evaluate(PoseContext const& ctx, Pose& out) {
   SampleClip(*clip_, time_, loop_, out);
 }
 
+// ----------------------------------------------------------------------------
+
 float ClipNode::normalizedTime() const {
-  return (clip_->duration > lina::kTrueEpsilon)
-       ? std::clamp(time_ / clip_->duration, 0.0f, 1.0f)
-       : 1.0f;
+  if (clip_->duration <= lina::kTrueEpsilon) {
+    return 1.0f;
+  }
+  float const t = std::clamp(time_ / clip_->duration, 0.0f, 1.0f);
+  return reverse_ ? (1.0f - t) : t;
 }
+
+// ----------------------------------------------------------------------------
 
 void ClipNode::seek(float time) {
   time_ = std::clamp(time, 0.0f, clip_->duration);
 }
+
+// ----------------------------------------------------------------------------
 
 void ClipNode::onResume(bool reverse) {
   if (!loop_) {
@@ -65,6 +74,7 @@ void ClipNode::onResume(bool reverse) {
   finished_ = false;
 }
 
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
 void BlendNode1D::evaluate(PoseContext const& ctx, Pose& out) {
@@ -100,10 +110,62 @@ void BlendNode1D::evaluate(PoseContext const& ctx, Pose& out) {
   duration_ = duration;
 }
 
+// ----------------------------------------------------------------------------
+
+float BlendNode1D::normalizedTime() const {
+  return reverse_ ? (1.0f - phase_) : phase_;
+}
+
+// ----------------------------------------------------------------------------
+
 void BlendNode1D::seek(float time) {
   if (duration_ > lina::kTrueEpsilon) {
     phase_ = std::clamp(time / duration_, 0.0f, 1.0f);
   }
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+void FadeNode::evaluate(PoseContext const& ctx, Pose& out) {
+  child_->evaluate(ctx, out);
+
+  if (ctx.playing) {
+    time_ += ctx.dt;
+  }
+  if (done()) {
+    from_ = {};
+    return;
+  }
+
+  float const alpha = std::clamp(time_ / duration_, 0.0f, 1.0f);
+  float const smooth = alpha * alpha * (3.0f - 2.0f * alpha); // smoothstep
+  BlendPoses(from_, out, smooth, out);
+}
+
+// ----------------------------------------------------------------------------
+
+float FadeNode::fadeProgress() const {
+  return (duration_ > lina::kTrueEpsilon)
+        ? std::clamp(time_ / duration_, 0.0f, 1.0f)
+        : 1.0f;
+}
+
+// ----------------------------------------------------------------------------
+
+void FadeNode::seek(float time) {
+  child_->seek(time);
+  time_ = duration_;
+  from_ = {};
+}
+
+// ----------------------------------------------------------------------------
+
+std::unique_ptr<PoseNode> FadeNode::takeChildIfDone() {
+  if (!done()) {
+    return nullptr;
+  }
+  return std::move(child_);
 }
 
 }  // namespace "scene"

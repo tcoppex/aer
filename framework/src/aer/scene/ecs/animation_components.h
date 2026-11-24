@@ -14,7 +14,6 @@
 
 //
 // Animation Components
-// (separated from components.h due to Animator::Pose ..)
 //
 
 namespace scene::component {
@@ -40,11 +39,8 @@ struct Animator {
   bool playing{false};
   bool resample{false};
 
+  Pose pose{};                                    // current pose
   std::unique_ptr<PoseNode> root{};               // current motion (null = none)
-
-  Pose pose{};
-  Fade fade{};
-
   std::shared_ptr<AnimationGraph const> graph{};  // shared by the instances using it
   std::vector<float> parameters{};                // values, indexed by ParamId
   StateId state{};                                // current graph state (invalid = manual control)

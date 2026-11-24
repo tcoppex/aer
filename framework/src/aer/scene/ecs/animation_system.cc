@@ -58,32 +58,21 @@ void ApplyPose(entt::registry& reg, Skin const& skin, Pose const& pose) {
   }
 }
 
-/* Blend the snapshot into the new sampled pose. */
-void ApplyFade(Animator& animator) {
-  auto& fade = animator.fade;
-  if (fade.duration <= 0.0f) {
-    return;
+/* Make `motion` the root of the animator, cross-fading from the pose on screen. */
+void StartMotion(
+  Animator& animator,
+  std::unique_ptr<PoseNode> motion,
+  float fade_duration
+) {
+  if ((fade_duration > 0.0f) && !animator.pose.joints.empty()) {
+    motion = std::make_unique<FadeNode>(
+      std::move(motion), animator.pose, fade_duration
+    );
   }
-  float const alpha = std::clamp(fade.time / fade.duration, 0.0f, 1.0f);
-  if (alpha >= 1.0f) {
-    fade.duration = 0.0f;
-    fade.from.joints.clear();
-    return;
-  }
-  float const smooth = alpha * alpha * (3.0f - 2.0f * alpha); // smoothstep
-  BlendPoses(fade.from, animator.pose, smooth, animator.pose);
-}
-
-/* Snapshot the pose on screen to blend from. */
-void StartFade(Animator& animator, float fade_duration) {
-  auto& fade = animator.fade;
-  if (fade_duration > 0.0f && !animator.pose.joints.empty()) {
-    fade.from = animator.pose;
-    fade.time = 0.0f;
-    fade.duration = fade_duration;
-  } else {
-    fade.duration = 0.0f;
-  }
+  animator.root = std::move(motion);
+  animator.playing = true;
+  animator.finished = false;
+  animator.resample = false;
 }
 
 void StartClip(
@@ -93,22 +82,22 @@ void StartClip(
   bool loop,
   float fade_duration
 ) {
-  StartFade(animator, fade_duration);
-  animator.root = std::make_unique<ClipNode>(skeleton.clips[clip], loop, animator.speed < 0.0f);
-  animator.playing = true;
-  animator.finished = false;
-  animator.resample = false;
+  LOG_CHECK(clip < skeleton.clips.size());
+  StartMotion(
+    animator,
+    std::make_unique<ClipNode>(skeleton.clips[clip], loop, animator.speed < 0.0f),
+    fade_duration
+  );
 }
 
 void StartBlendTree(Animator& animator, uint32_t tree, float fade_duration) {
-  StartFade(animator, fade_duration);
-  animator.root = std::make_unique<BlendNode1D>(animator.graph->trees[tree]);
-  animator.playing = true;
-  animator.finished = false;
-  animator.resample = false;
+  LOG_CHECK(animator.graph && tree < animator.graph->trees.size());
+  StartMotion(
+    animator,
+    std::make_unique<BlendNode1D>(animator.graph->trees[tree], animator.speed < 0.0f),
+    fade_duration
+  );
 }
-
-// --------------------------------
 
 void EnterState(
   Animator& animator,
@@ -227,18 +216,19 @@ void AnimationSystem::advance(float dt) {
       animator.root->evaluate({
         .skeleton   = skeleton,
         .parameters = animator.parameters,
+        .dt         = dt,
         .delta      = dt * animator.speed,
         .reverse    = animator.speed < 0.0f,
         .playing    = animator.playing,
       }, animator.pose);
 
-      if (animator.playing) {
-        animator.fade.time += dt;
-      }
       animator.resample = false;
-
-      ApplyFade(animator);
       ApplyPose(reg, skin, animator.pose);
+
+      // Once a cross-fade is over, keep only the motion.
+      if (auto child = animator.root->takeChildIfDone()) {
+        animator.root = std::move(child);
+      }
 
       if (animator.playing && animator.root->finished()) {
         animator.playing = false;
@@ -375,7 +365,6 @@ void AnimationSystem::stop(entt::entity instance_root) {
     animator.finished = false;
     animator.playing = false;
     animator.resample = false;
-    animator.fade.duration = 0.0f;
     animator.state = StateId{};  // reset to manual control
 
     // (rest_pose is empty for skeletons without animations as they never moved.)
@@ -431,15 +420,12 @@ AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const 
       .time     = animator.root->time(),
       .duration = animator.root->duration(),
       .speed    = animator.speed,
-      .fade     = 1.0f, //
+      .fade     = animator.root->fadeProgress(),
       .loop     = animator.root->looping(),
       .playing  = animator.playing,
     };
     if (animator.graph && animator.state.valid()) {
       result.machine_state = animator.graph->states[animator.state.index].name;
-    }
-    if (auto const& fade = animator.fade; fade.duration > 0.0f) {
-      result.fade = std::clamp(fade.time / fade.duration, 0.0f, 1.0f);
     }
   });
   return result;
@@ -460,7 +446,6 @@ void AnimationSystem::setTime(entt::entity instance_root, float time) {
       return;
     }
     animator.root->seek(time);
-    animator.fade.duration = 0.0f;
     animator.resample = true;
   });
 }
@@ -530,7 +515,6 @@ bool AnimationSystem::setGraph(
     animator.finished       = false;
     animator.playing        = false;
     animator.resample       = false;
-    animator.fade.duration  = 0.0f;
     animator.graph          = std::move(compiled);
     animator.parameters     = animator.graph->parameter_defaults;
     animator.state          = StateId{};
