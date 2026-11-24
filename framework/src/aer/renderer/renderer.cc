@@ -52,6 +52,12 @@ bool Renderer::init(
   }
   // --------------------------------------
 
+  LOGD(" > Debug Draw");
+  if (!debug_draw_.init(context, frames_in_flight())) {
+    LOGE("DebugDraw failed to initialize.");
+    return false;
+  }
+
   return true;
 }
 
@@ -116,6 +122,7 @@ void Renderer::release() {
   }
   context_ptr_->deviceWaitIdle();
   if (skybox_initialized_) { skybox_.release(); }
+  debug_draw_.release();
   scene_renderer_.release();
   gpu_pool_.release();
   material_fx_registry_.release();
@@ -372,6 +379,7 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
   }
 
   scene_renderer_.set_display(exposure, tonemapping);
+  debug_draw_.update(camera);
 
   animation_system_.preUpdate(elapsed_time);
   scene_tree_.update();
@@ -390,6 +398,13 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
 void Renderer::render(RenderPassEncoder const& pass) {
   skybox_.render(pass);
   scene_renderer_.render(pass);
+
+  auto const size = surface_size();
+  debug_draw_.render(
+    pass,
+    frame_slot(),
+    vec2(static_cast<float>(size.width), static_cast<float>(size.height))
+  );
 }
 
 /* -------------------------------------------------------------------------- */

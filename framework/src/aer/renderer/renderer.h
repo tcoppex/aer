@@ -20,6 +20,7 @@
 #include "aer/renderer/renderer_flags.h"
 #include "aer/renderer/scene_renderer.h"
 #include "aer/renderer/ray_tracing_view.h"
+#include "aer/renderer/debug_draw.h"
 #include "aer/renderer/fx/material/material_fx_registry.h"
 #include "aer/renderer/fx/skybox.h" //
 
@@ -182,6 +183,9 @@ class Renderer {
   [[nodiscard]]
   scene::AnimationSystem& animation() noexcept { return animation_system_; }
 
+  [[nodiscard]]
+  DebugDraw& debug_draw() noexcept { return debug_draw_; }
+
   /* Data to trace the current frame (invalid if nothing can be traced). */
   [[nodiscard]]
   RayTracingView ray_tracing_view() const;
@@ -269,6 +273,9 @@ class Renderer {
 
   /* Rendering subsystems */
   SceneRenderer scene_renderer_{};
+
+  /* Immediate mode debug draw helper */
+  DebugDraw debug_draw_{};
 
   // --- miscs ---
 
