@@ -61,12 +61,15 @@ void ApplyPose(entt::registry& reg, Skin const& skin, Pose const& pose) {
 /* Make `motion` the root of the animator, cross-fading from the pose on screen. */
 void StartMotion(
   Animator& animator,
+  PoseCache& cache,
   std::unique_ptr<PoseNode> motion,
   float fade_duration
 ) {
   if ((fade_duration > 0.0f) && !animator.pose.joints.empty()) {
+    auto snapshot = cache.acquire(animator.pose.joints.size());
+    *snapshot = animator.pose;
     motion = std::make_unique<FadeNode>(
-      std::move(motion), animator.pose, fade_duration
+      std::move(motion), std::move(snapshot), fade_duration
     );
   }
   animator.root = std::move(motion);
@@ -77,6 +80,7 @@ void StartMotion(
 
 void StartClip(
   Animator& animator,
+  PoseCache& cache,
   Skeleton const& skeleton,
   uint32_t clip,
   bool loop,
@@ -85,15 +89,22 @@ void StartClip(
   LOG_CHECK(clip < skeleton.clips.size());
   StartMotion(
     animator,
+    cache,
     std::make_unique<ClipNode>(skeleton.clips[clip], loop, animator.speed < 0.0f),
     fade_duration
   );
 }
 
-void StartBlendTree(Animator& animator, uint32_t tree, float fade_duration) {
+void StartBlendTree(
+  Animator& animator,
+  PoseCache& cache,
+  uint32_t tree,
+  float fade_duration
+) {
   LOG_CHECK(animator.graph && tree < animator.graph->trees.size());
   StartMotion(
     animator,
+    cache,
     std::make_unique<BlendNode1D>(animator.graph->trees[tree], animator.speed < 0.0f),
     fade_duration
   );
@@ -101,6 +112,7 @@ void StartBlendTree(Animator& animator, uint32_t tree, float fade_duration) {
 
 void EnterState(
   Animator& animator,
+  PoseCache& cache,
   Skeleton const& skeleton,
   StateId state,
   float fade_duration
@@ -109,9 +121,9 @@ void EnterState(
 
   auto const& resolved = animator.graph->states[state.index];
   if (resolved.tree != kInvalidIndexU32) {
-    StartBlendTree(animator, resolved.tree, fade_duration);
+    StartBlendTree(animator, cache, resolved.tree, fade_duration);
   } else {
-    StartClip(animator, skeleton, resolved.clip, resolved.loop, fade_duration);
+    StartClip(animator, cache, skeleton, resolved.clip, resolved.loop, fade_duration);
   }
 }
 
@@ -158,7 +170,11 @@ uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
   return kInvalidIndexU32;
 }
 
-void UpdateStateMachine(Animator& animator, Skeleton const& skeleton) {
+void UpdateStateMachine(
+  Animator& animator,
+  PoseCache& cache,
+  Skeleton const& skeleton
+) {
   if (!animator.graph
    || !animator.state.valid()
    || !(animator.playing || animator.finished)) {
@@ -171,9 +187,12 @@ void UpdateStateMachine(Animator& animator, Skeleton const& skeleton) {
 
   auto const& graph = *animator.graph;
   auto const& transition = graph.transitions[i];
-  LOGD("[Animation] \"{}\": {} -> {}.", graph.name,
-       graph.states[animator.state.index].name, graph.states[transition.to.index].name);
-  EnterState(animator, skeleton, transition.to, transition.fade);
+  LOGD("[Animation] \"{}\": {} -> {}.",
+    graph.name,
+    graph.states[animator.state.index].name,
+    graph.states[transition.to.index].name
+  );
+  EnterState(animator, cache, skeleton, transition.to, transition.fade);
 }
 
 } // namespace
@@ -202,7 +221,7 @@ void AnimationSystem::advance(float dt) {
       }
       auto const& skeleton = *skin.skeleton;
 
-      UpdateStateMachine(animator, skeleton);
+      UpdateStateMachine(animator, poses_, skeleton);
 
       if (!animator.playing && !animator.resample) {
         return;
@@ -215,6 +234,7 @@ void AnimationSystem::advance(float dt) {
 
       animator.root->evaluate({
         .skeleton   = skeleton,
+        .cache      = poses_,
         .parameters = animator.parameters,
         .dt         = dt,
         .delta      = dt * animator.speed,
@@ -301,7 +321,7 @@ bool AnimationSystem::play(
       return;
     }
 
-    StartClip(animator, *skin.skeleton, clip, loop, fade_duration);
+    StartClip(animator, poses_, *skin.skeleton, clip, loop, fade_duration);
 
     animator.state = StateId{};  // reset to manual control
     ++played_count;
@@ -512,15 +532,15 @@ bool AnimationSystem::setGraph(
     }
 
     animator.root.reset();
-    animator.finished       = false;
-    animator.playing        = false;
-    animator.resample       = false;
-    animator.graph          = std::move(compiled);
-    animator.parameters     = animator.graph->parameter_defaults;
-    animator.state          = StateId{};
+    animator.finished   = false;
+    animator.playing    = false;
+    animator.resample   = false;
+    animator.graph      = std::move(compiled);
+    animator.parameters = animator.graph->parameter_defaults;
+    animator.state      = StateId{};
 
     if (animator.graph->initial.valid()) {
-      EnterState(animator, *skin.skeleton, animator.graph->initial, 0.0f);
+      EnterState(animator, poses_, *skin.skeleton, animator.graph->initial, 0.0f);
     }
     ++set_count;
   });
@@ -551,7 +571,7 @@ bool AnimationSystem::playBlendTree(
     if (tree == kInvalidIndexU32) {
       return;
     }
-    StartBlendTree(animator, tree, fade_duration);
+    StartBlendTree(animator, poses_, tree, fade_duration);
     animator.state = StateId{};
     ++played_count;
   });
@@ -636,6 +656,8 @@ float AnimationSystem::parameter(entt::entity instance_root, ParamId id) const {
   return value;
 }
 
+// ----------------------------------------------------------------------------
+
 float AnimationSystem::parameter(entt::entity instance_root, std::string_view name) const {
   return parameter(instance_root, findParameter(instance_root, name));
 }
@@ -661,7 +683,11 @@ StateId AnimationSystem::findState(entt::entity instance_root, std::string_view 
 
 // ----------------------------------------------------------------------------
 
-bool AnimationSystem::setState(entt::entity instance_root, StateId state, float fade_duration) {
+bool AnimationSystem::setState(
+  entt::entity instance_root,
+  StateId state,
+  float fade_duration
+) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
 
@@ -676,7 +702,7 @@ bool AnimationSystem::setState(entt::entity instance_root, StateId state, float 
      || state.index >= animator.graph->states.size()) {
       return;
     }
-    EnterState(animator, *skin.skeleton, state, fade_duration);
+    EnterState(animator, poses_, *skin.skeleton, state, fade_duration);
     ++entered_count;
   });
 
@@ -686,6 +712,8 @@ bool AnimationSystem::setState(entt::entity instance_root, StateId state, float 
   }
   return true;
 }
+
+// ----------------------------------------------------------------------------
 
 bool AnimationSystem::setState(
   entt::entity instance_root,
@@ -737,8 +765,11 @@ std::shared_ptr<AnimationGraph const> AnimationSystem::acquireGraph(
 
   auto graph = CompileAnimationGraph(desc, skeleton);
   if (graph) {
-    // Drop the graphs nobody uses anymore, then cache the new one.
-    std::erase_if(graph_cache_, [](auto const& entry) { return entry.second.expired(); });
+    // drop the previous graph when unused
+    std::erase_if(graph_cache_, [](auto const& entry) {
+      return entry.second.expired();
+    });
+    // cache the new one.
     graph_cache_[key] = graph;
   }
   return graph;

@@ -103,8 +103,9 @@ void BlendNode1D::evaluate(PoseContext const& ctx, Pose& out) {
 
   SampleClip(clip_a, phase_ * clip_a.duration, true, out);
   if ((w.b != w.a) && (w.t > 0.0f)) {
-    SampleClip(clip_b, phase_ * clip_b.duration, true, scratch_);
-    BlendPoses(out, scratch_, w.t, out);
+    auto scratch = ctx.cache.acquire(out.joints.size());
+    SampleClip(clip_b, phase_ * clip_b.duration, true, *scratch);
+    BlendPoses(out, *scratch, w.t, out);
   }
 
   duration_ = duration;
@@ -134,13 +135,13 @@ void FadeNode::evaluate(PoseContext const& ctx, Pose& out) {
     time_ += ctx.dt;
   }
   if (done()) {
-    from_ = {};
+    from_.reset();
     return;
   }
 
   float const alpha = std::clamp(time_ / duration_, 0.0f, 1.0f);
   float const smooth = alpha * alpha * (3.0f - 2.0f * alpha); // smoothstep
-  BlendPoses(from_, out, smooth, out);
+  BlendPoses(*from_, out, smooth, out);
 }
 
 // ----------------------------------------------------------------------------
@@ -156,7 +157,7 @@ float FadeNode::fadeProgress() const {
 void FadeNode::seek(float time) {
   child_->seek(time);
   time_ = duration_;
-  from_ = {};
+  from_.reset();
 }
 
 // ----------------------------------------------------------------------------

@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "aer/scene/animation.h"
+#include "aer/scene/animation_pose_cache.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -13,6 +14,7 @@ namespace scene {
 
 struct PoseContext {
   Skeleton const& skeleton;
+  PoseCache& cache;
   std::span<float const> parameters{};  // animator values, indexed by ParamId
   float dt{};                           // seconds elapsed (not scaled by speed)
   float delta{};                        // signed seconds to advance (dt * speed)
@@ -105,7 +107,6 @@ class BlendNode1D final : public PoseNode {
   float phase_{};
   bool reverse_{false};
   float duration_{};
-  Pose scratch_{};
 };
 
 // ----------------------------------------------------------------------------
@@ -113,7 +114,7 @@ class BlendNode1D final : public PoseNode {
 /* Blends a pose snapshot into its child. Forwards everything else to it. */
 class FadeNode final : public PoseNode {
  public:
-  FadeNode(std::unique_ptr<PoseNode> child, Pose from, float duration)
+  FadeNode(std::unique_ptr<PoseNode> child, PoseCache::Lease from, float duration)
     : child_(std::move(child))
     , from_(std::move(from))
     , duration_(duration)
@@ -141,7 +142,7 @@ class FadeNode final : public PoseNode {
 
  private:
   std::unique_ptr<PoseNode> child_{};
-  Pose from_{};
+  PoseCache::Lease from_{};
   float time_{};
   float duration_{};
 };

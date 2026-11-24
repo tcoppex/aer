@@ -13,6 +13,7 @@
 
 #include "aer/core/common.h"
 #include "aer/scene/animation.h" // for BlendTree1D
+#include "aer/scene/animation_pose_cache.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -160,6 +161,7 @@ class AnimationSystem {
 
   Hierarchy* scene_{};
   std::optional<float> last_elapsed_time_{};
+  PoseCache poses_{};
   std::map<GraphKey, std::weak_ptr<AnimationGraph const>> graph_cache_{};
 };
 
