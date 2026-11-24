@@ -188,8 +188,19 @@ class AnimationSystem {
   /* [0, 1] blend between the animated pose and the IK solution. */
   bool setIKWeight(entt::entity instance_root, IKId id, float weight);
 
+  /* Make the bend plane face a world space position. */
+  bool setIKPole(entt::entity instance_root, IKId id, vec3 const& world_position);
+
+  bool clearIKPole(entt::entity instance_root, IKId id);
+
+  [[nodiscard]]
+  vec3 ikPole(entt::entity instance_root, IKId id) const;
+
   [[nodiscard]]
   vec3 ikTarget(entt::entity instance_root, IKId id) const;
+
+  [[nodiscard]]
+  std::vector<std::string> twoBoneIKEndJoints(entt::entity instance_root) const;
 
   // -------------------------------
  private:

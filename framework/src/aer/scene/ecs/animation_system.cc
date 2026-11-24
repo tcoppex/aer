@@ -232,13 +232,16 @@ bool ReadWorld(entt::registry const& reg, entt::entity e, WorldJoint& out) {
 }
 
 [[nodiscard]]
+uint32_t ParentOf(Skeleton const& skeleton, uint32_t joint) {
+  return (joint < skeleton.parents.size()) ? skeleton.parents[joint] : kInvalidIndexU32;
+}
+
+[[nodiscard]]
 std::optional<TwoBoneIK> ResolveTwoBoneIK(
   Skeleton const& skeleton,
   AnimationSystem::TwoBoneIKDesc const& desc
 ) {
-  auto parent_of = [&](uint32_t j) {
-    return (j < skeleton.parents.size()) ? skeleton.parents[j] : kInvalidIndexU32;
-  };
+  auto parent_of = [&](uint32_t j) { return ParentOf(skeleton, j); };
 
   uint32_t const end = skeleton.findJoint(std::string{desc.end});
   if (end == kInvalidIndexU32) {
@@ -295,7 +298,11 @@ void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
       }
     }
 
-    auto const ik = SolveTwoBoneIK(root.position, mid.position, end.position, chain.target);
+    std::optional<vec3> const pole = chain.use_pole ? std::optional<vec3>{chain.pole}
+                                                    : std::nullopt;
+    auto const ik = SolveTwoBoneIK(
+      root.position, mid.position, end.position, chain.target, pole
+    );
 
     // World deltas back to local rotations.
     quat const root_ik = lina::normalize(
@@ -1067,6 +1074,12 @@ IKId AnimationSystem::addTwoBoneIK(entt::entity instance_root, TwoBoneIKDesc con
       chain->target = end.position;
     }
 
+    // the pole starts on the mid joint, which keeps the animated bend plane.
+    WorldJoint mid{};
+    if (ReadWorld(reg, JointEntity(reg, skin, chain->mid), mid)) {
+      chain->pole = mid.position;
+    }
+
     animator.ik.push_back(*chain);
     ++added_count;
   });
@@ -1135,6 +1148,57 @@ bool AnimationSystem::setIKWeight(entt::entity instance_root, IKId id, float wei
 
 // ----------------------------------------------------------------------------
 
+bool AnimationSystem::setIKPole(entt::entity instance_root, IKId id, vec3 const& world_position) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setIKPole: entity is not an instance root.");
+    return false;
+  }
+  return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    chain.pole = world_position;
+    chain.use_pole = true;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::clearIKPole(entt::entity instance_root, IKId id) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] clearIKPole: entity is not an instance root.");
+    return false;
+  }
+  return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    chain.use_pole = false;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+vec3 AnimationSystem::ikPole(entt::entity instance_root, IKId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  vec3 pole{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return pole;
+  }
+  bool found = false;
+  ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    if (!found) {
+      found = true;
+      pole = chain.pole;
+    }
+  });
+  return pole;
+}
+
+// ----------------------------------------------------------------------------
+
 vec3 AnimationSystem::ikTarget(entt::entity instance_root, IKId id) const {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
@@ -1151,6 +1215,30 @@ vec3 AnimationSystem::ikTarget(entt::entity instance_root, IKId id) const {
     }
   });
   return target;
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<std::string> AnimationSystem::twoBoneIKEndJoints(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  std::vector<std::string> names{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return names;
+  }
+  ForEachAnimator(reg, instance_root, [&](Animator&, Skin& skin) {
+    if (!names.empty() || !skin.skeleton) {
+      return;
+    }
+    auto const& skeleton = *skin.skeleton;
+    for (uint32_t j = 0u; j < skeleton.names.size(); ++j) {
+      if (ParentOf(skeleton, ParentOf(skeleton, j)) != kInvalidIndexU32) {
+        names.push_back(skeleton.names[j]);
+      }
+    }
+  });
+  return names;
 }
 
 /* -------------------------------------------------------------------------- */

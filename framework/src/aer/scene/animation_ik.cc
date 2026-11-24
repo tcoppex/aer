@@ -11,7 +11,8 @@ TwoBoneIKResult SolveTwoBoneIK(
   vec3 const& root,
   vec3 const& mid,
   vec3 const& end,
-  vec3 const& target
+  vec3 const& target,
+  std::optional<vec3> const& pole
 ) {
   TwoBoneIKResult result{};
 
@@ -54,8 +55,28 @@ TwoBoneIKResult SolveTwoBoneIK(
   result.mid = lina::rotation_quat(axis, bend);
 
   // Then swing the bent chain so its end points at the target.
+  vec3 const axis_to_target = to_target / lt;
   vec3 const bent_end = a + lina::qrot(result.mid, b);
-  result.root = lina::shortest_arc(lina::normalize(bent_end), to_target / lt);
+  result.root = lina::shortest_arc(lina::normalize(bent_end), axis_to_target);
+
+  // Finally twist the chain about that axis so the mid joint faces the pole.
+  if (pole) {
+    vec3 const u = axis_to_target;
+    vec3 const mid_dir = lina::qrot(result.root, a);
+    vec3 const pole_dir = *pole - root;
+
+    vec3 const from = mid_dir - u * lina::dot(mid_dir, u);
+    vec3 const to = pole_dir - u * lina::dot(pole_dir, u);
+
+    if ((lina::length(from) > lina::kEpsilon * la)
+     && (lina::length(to) > lina::kEpsilon * (la + lb))) {
+      float const angle = std::atan2(
+        lina::dot(lina::cross(from, to), u),
+        lina::dot(from, to)
+      );
+      result.root = lina::qmul(lina::rotation_quat(u, angle), result.root);
+    }
+  }
 
   return result;
 }
