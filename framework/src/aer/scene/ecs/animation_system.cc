@@ -2,9 +2,11 @@
 
 #include <cmath>
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "aer/scene/animation_ik.h"
 #include "aer/scene/ecs/hierarchy.h"
 #include "aer/scene/ecs/animation_components.h"
 
@@ -134,6 +136,8 @@ float ReadParameter(Animator const& animator, ParamId id) {
        : 0.0f;
 }
 
+// ----------------------------
+
 void TickTriggers(Animator& animator, float dt) {
   if (!animator.graph) {
     return;
@@ -182,6 +186,134 @@ uint32_t WriteTrigger(
   }
   return count;
 }
+
+// ----------------------------
+
+template<typename Fn>
+uint32_t ForEachIK(entt::registry& reg, entt::entity instance_root, IKId id, Fn&& fn) {
+  uint32_t count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    for (auto& chain : animator.ik) {
+      if (chain.id == id.index) {
+        fn(chain);
+        ++count;
+      }
+    }
+  });
+  return count;
+}
+
+[[nodiscard]]
+entt::entity JointEntity(entt::registry const& reg, Skin const& skin, uint32_t joint) {
+  if (joint >= skin.joints.size()) {
+    return entt::entity{entt::null};
+  }
+  auto const e = skin.joints[joint];
+  return reg.valid(e) ? e : entt::entity{entt::null};
+}
+
+struct WorldJoint {
+  vec3 position{};
+  quat rotation{lina::identity};
+};
+
+[[nodiscard]]
+bool ReadWorld(entt::registry const& reg, entt::entity e, WorldJoint& out) {
+  if (e == entt::null) {
+    return false;
+  }
+  auto const* global = reg.try_get<component::GlobalTransform>(e);
+  if (!global) {
+    return false;
+  }
+  vec3 scale{};
+  lina::decompose_transform_from_matrix(global->worldMatrix, out.position, out.rotation, scale);
+  return true;
+}
+
+[[nodiscard]]
+std::optional<TwoBoneIK> ResolveTwoBoneIK(
+  Skeleton const& skeleton,
+  AnimationSystem::TwoBoneIKDesc const& desc
+) {
+  auto parent_of = [&](uint32_t j) {
+    return (j < skeleton.parents.size()) ? skeleton.parents[j] : kInvalidIndexU32;
+  };
+
+  uint32_t const end = skeleton.findJoint(std::string{desc.end});
+  if (end == kInvalidIndexU32) {
+    return std::nullopt;
+  }
+  uint32_t const mid = desc.mid.empty() ? parent_of(end)
+                                        : skeleton.findJoint(std::string{desc.mid});
+  if (mid == kInvalidIndexU32) {
+    return std::nullopt;
+  }
+  uint32_t const root = desc.root.empty() ? parent_of(mid)
+                                          : skeleton.findJoint(std::string{desc.root});
+  if (root == kInvalidIndexU32) {
+    return std::nullopt;
+  }
+
+  if ((parent_of(end) != mid) || (parent_of(mid) != root)) {
+    LOGW("[Animation] IK: \"{}\" is not a direct two-bone chain.", desc.end);
+    return std::nullopt;
+  }
+  return TwoBoneIK{ .root = root, .mid = mid, .end = end };
+}
+
+void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
+  auto& reg = scene.registry;
+
+  for (auto const& chain : animator.ik) {
+    if (chain.weight <= 0.0f) {
+      continue;
+    }
+
+    auto const e_root = JointEntity(reg, skin, chain.root);
+    auto const e_mid  = JointEntity(reg, skin, chain.mid);
+    auto const e_end  = JointEntity(reg, skin, chain.end);
+
+    WorldJoint root{}, mid{}, end{};
+    if (!ReadWorld(reg, e_root, root)
+     || !ReadWorld(reg, e_mid, mid)
+     || !ReadWorld(reg, e_end, end)) {
+      continue;
+    }
+
+    auto* t_root = reg.try_get<component::Transform>(e_root);
+    auto* t_mid  = reg.try_get<component::Transform>(e_mid);
+    if (!t_root || !t_mid) {
+      continue;
+    }
+
+    quat parent_rotation{lina::identity};
+    if (auto const parent = reg.get<component::Node>(e_root).parent; parent != entt::null) {
+      WorldJoint p{};
+      if (ReadWorld(reg, parent, p)) {
+        parent_rotation = p.rotation;
+      }
+    }
+
+    auto const ik = SolveTwoBoneIK(root.position, mid.position, end.position, chain.target);
+
+    // World deltas back to local rotations.
+    quat const root_ik = lina::normalize(
+      lina::qmul(lina::qinv(parent_rotation), ik.root, root.rotation)
+    );
+    quat const mid_ik = lina::normalize(
+      lina::qmul(lina::qinv(root.rotation), ik.mid, mid.rotation)
+    );
+
+    float const w = std::min(chain.weight, 1.0f);
+    t_root->rotation = (w >= 1.0f) ? root_ik : lina::qlerp(t_root->rotation, root_ik, w);
+    t_mid->rotation  = (w >= 1.0f) ? mid_ik  : lina::qlerp(t_mid->rotation,  mid_ik,  w);
+
+    scene.updateSubtree(e_root);
+  }
+}
+
+// ----------------------------
 
 /* Returns the index of the first valid transition, or kInvalidIndexU32. */
 [[nodiscard]]
@@ -288,7 +420,9 @@ void AnimationSystem::advance(float dt) {
       TickTriggers(animator, dt);
       UpdateStateMachine(animator, poses_, skeleton);
 
-      if (!animator.playing && !animator.resample) {
+      // An animator with IK is resampled every frame, even paused, so the solver
+      // always starts from the clean animated pose.
+      if (!animator.playing && !animator.resample && animator.ik.empty()) {
         return;
       }
       if (!animator.root) {
@@ -329,6 +463,15 @@ void AnimationSystem::advance(float dt) {
 void AnimationSystem::postUpdate() {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
+
+  // Solve IK.
+  reg.view<Animator, Skin>().each(
+    [&](Animator const& animator, Skin const& skin) {
+      if (animator.root && !animator.ik.empty()) {
+        SolveIK(*scene_, animator, skin);
+      }
+    }
+  );
 
   reg.view<Skin, component::GlobalTransform>().each(
     [&](Skin& skin, component::GlobalTransform const& mesh_global) {
@@ -459,6 +602,25 @@ void AnimationSystem::stop(entt::entity instance_root) {
     }
   });
   LOGD("[Animation] stopped.");
+}
+
+// ----------------------------------------------------------------------------
+
+std::vector<std::string> AnimationSystem::jointNames(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  std::vector<std::string> names{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return names;
+  }
+  ForEachAnimator(reg, instance_root, [&](Animator&, Skin& skin) {
+    if (!names.empty() || !skin.skeleton) {
+      return;
+    }
+    names = skin.skeleton->names;
+  });
+  return names;
 }
 
 // ----------------------------------------------------------------------------
@@ -870,6 +1032,125 @@ std::shared_ptr<AnimationGraph const> AnimationSystem::acquireGraph(
     graph_cache_[key] = graph;
   }
   return graph;
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+IKId AnimationSystem::addTwoBoneIK(entt::entity instance_root, TwoBoneIKDesc const& desc) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] addTwoBoneIK: entity is not an instance root.");
+    return {};
+  }
+
+  IKId const id{next_ik_id_};
+  uint32_t added_count = 0u;
+
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    auto chain = ResolveTwoBoneIK(*skin.skeleton, desc);
+    if (!chain || (std::max({chain->root, chain->mid, chain->end}) >= skin.joints.size())) {
+      return;
+    }
+
+    chain->id = id.index;
+    chain->weight = desc.weight;
+
+    // start on the current end position.
+    WorldJoint end{};
+    if (ReadWorld(reg, JointEntity(reg, skin, chain->end), end)) {
+      chain->target = end.position;
+    }
+
+    animator.ik.push_back(*chain);
+    ++added_count;
+  });
+
+  if (added_count == 0u) {
+    LOGW("[Animation] no IK chain ending at \"{}\" in this instance.", desc.end);
+    return {};
+  }
+  ++next_ik_id_;
+  return id;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::removeIK(entt::entity instance_root, IKId id) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] removeIK: entity is not an instance root.");
+    return false;
+  }
+
+  uint32_t removed_count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    auto const count = std::erase_if(animator.ik, [&](auto const& chain) {
+      return chain.id == id.index;
+    });
+    if (count > 0u) {
+      animator.resample = true;   // drop the last IK pose
+      removed_count += static_cast<uint32_t>(count);
+    }
+  });
+  return removed_count > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setIKTarget(entt::entity instance_root, IKId id, vec3 const& world_position) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setIKTarget: entity is not an instance root.");
+    return false;
+  }
+  return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    chain.target = world_position;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setIKWeight(entt::entity instance_root, IKId id, float weight) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setIKWeight: entity is not an instance root.");
+    return false;
+  }
+  return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    chain.weight = std::clamp(weight, 0.0f, 1.0f);
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+vec3 AnimationSystem::ikTarget(entt::entity instance_root, IKId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  vec3 target{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return target;
+  }
+  bool found = false;
+  ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    if (!found) {
+      found = true;
+      target = chain.target;
+    }
+  });
+  return target;
 }
 
 /* -------------------------------------------------------------------------- */

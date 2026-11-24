@@ -39,6 +39,8 @@ class Hierarchy {
 
   void update();
 
+  void updateSubtree(entt::entity e);
+
   template<typename... Components> [[nodiscard]]
   entt::entity createEntity(entt::entity parent) {
     auto entity = registry.create();

@@ -20,6 +20,9 @@ using ParamId = Handle<ParamTag>;
 struct StateTag;
 using StateId = Handle<StateTag>;
 
+struct IKTag;
+using IKId = Handle<IKTag>;
+
 // struct PackedTransform {
 //   vec3 translation{};
 //   float scale{1.0f};
@@ -253,7 +256,6 @@ struct AnimationGraph {
     return kInvalidIndexU32;
   }
 };
-
 
 /* -------------------------------------------------------------------------- */
 

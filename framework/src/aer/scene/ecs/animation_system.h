@@ -47,6 +47,13 @@ class AnimationSystem {
     bool playing{false};
   };
 
+  struct TwoBoneIKDesc {
+    std::string_view root{};
+    std::string_view mid{};
+    std::string_view end{};
+    float weight{1.0f};
+  };
+
  public:
   void setup(Hierarchy& scene) {
     scene_ = &scene;
@@ -91,6 +98,10 @@ class AnimationSystem {
 
   /* Loop flag of every animator of the instance (applies to the current clip). */
   void setLoop(entt::entity instance_root, bool loop);
+
+  /* Joint names of an instance (skeleton order). */
+  [[nodiscard]]
+  std::vector<std::string> jointNames(entt::entity instance_root) const;
 
   /* Names of the clips of an instance. */
   [[nodiscard]]
@@ -159,6 +170,28 @@ class AnimationSystem {
   [[nodiscard]]
   std::vector<std::string> stateNames(entt::entity instance_root) const;
 
+  // -------------------------------
+  // --- Inverse Kinematics ---
+
+  /* Add a two-bone chain to every animator of the instance having its joints.
+   * Chains are solved after the hierarchy update on top of the active motion,
+   * a stopped animator has no IK.
+   * Returns an invalid id if no animator has the chain. */
+  [[nodiscard]]
+  IKId addTwoBoneIK(entt::entity instance_root, TwoBoneIKDesc const& desc);
+
+  bool removeIK(entt::entity instance_root, IKId id);
+
+  /* World space target of the end joint. */
+  bool setIKTarget(entt::entity instance_root, IKId id, vec3 const& world_position);
+
+  /* [0, 1] blend between the animated pose and the IK solution. */
+  bool setIKWeight(entt::entity instance_root, IKId id, float weight);
+
+  [[nodiscard]]
+  vec3 ikTarget(entt::entity instance_root, IKId id) const;
+
+  // -------------------------------
  private:
   /* Compiled graph for (desc, skeleton), shared through the cache. */
   [[nodiscard]]
@@ -173,6 +206,7 @@ class AnimationSystem {
   Hierarchy* scene_{};
   std::optional<float> last_elapsed_time_{};
   PoseCache poses_{};
+  uint32_t next_ik_id_{0u};
   std::map<GraphKey, std::weak_ptr<AnimationGraph const>> graph_cache_{};
 };
 

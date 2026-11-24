@@ -8,6 +8,7 @@
 
 #include "aer/core/common.h"
 #include "aer/scene/animation.h"
+#include "aer/scene/animation_ik.h"
 #include "aer/scene/animation_nodes.h"
 
 /* -------------------------------------------------------------------------- */
@@ -28,12 +29,6 @@ struct Skin {
 // ----------------------------------------------------------------------------
 
 struct Animator {
-  struct Fade {
-    Pose from{};
-    float time{};
-    float duration{};
-  };
-
   float speed{1.0f};
   bool finished{false};
   bool playing{false};
@@ -44,6 +39,7 @@ struct Animator {
   std::shared_ptr<AnimationGraph const> graph{};  // shared by the instances using it
   std::vector<float> parameters{};                // values, indexed by ParamId
   StateId state{};                                // current graph state (invalid = manual control)
+  std::vector<TwoBoneIK> ik{};                    // (solved after the hierarchy update)
 };
 
 /* -------------------------------------------------------------------------- */
