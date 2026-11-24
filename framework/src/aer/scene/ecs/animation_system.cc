@@ -58,30 +58,6 @@ void ApplyPose(entt::registry& reg, Skin const& skin, Pose const& pose) {
   }
 }
 
-/* Advance a clip time by `delta`.
- * Returns true when a non looping clip reaches its end in the playback direction. */
-bool StepTime(float& time, float delta, float duration, bool loop, bool reverse) {
-  time += delta;
-
-  if (loop) {
-    if (duration > lina::kTrueEpsilon) {
-      time = std::fmod(time, duration);
-      if (time < 0.0f) {
-        time += duration;
-      }
-    } else {
-      time = 0.0f;
-    }
-    return false;
-  }
-
-  if (reverse ? (time <= 0.0f) : (time >= duration)) {
-    time = std::clamp(time, 0.0f, duration);
-    return true;
-  }
-  return false;
-}
-
 /* Blend the snapshot into the new sampled pose. */
 void ApplyFade(Animator& animator) {
   auto& fade = animator.fade;
@@ -118,90 +94,18 @@ void StartClip(
   float fade_duration
 ) {
   StartFade(animator, fade_duration);
-  animator.clip = clip;
-  animator.loop = loop;
-  animator.time = (animator.speed < 0.0f) ? skeleton.clips[clip].duration : 0.0f;
+  animator.root = std::make_unique<ClipNode>(skeleton.clips[clip], loop, animator.speed < 0.0f);
   animator.playing = true;
   animator.finished = false;
   animator.resample = false;
-  animator.blend.tree_index = kInvalidIndexU32;
 }
 
 void StartBlendTree(Animator& animator, uint32_t tree, float fade_duration) {
   StartFade(animator, fade_duration);
-  animator.clip = kInvalidIndexU32;
-  animator.loop = true;
+  animator.root = std::make_unique<BlendNode1D>(animator.graph->trees[tree]);
   animator.playing = true;
   animator.finished = false;
   animator.resample = false;
-  animator.blend.tree_index = tree;
-  animator.blend.phase = 0.0f;
-}
-
-[[nodiscard]]
-inline bool HasBlendTree(Animator const& animator) noexcept {
-  return (animator.blend.tree_index != kInvalidIndexU32);
-}
-
-[[nodiscard]]
-bool HasMotion(Animator const& animator, Skeleton const& skeleton) {
-  return HasBlendTree(animator)
-    ? (animator.graph && animator.blend.tree_index < animator.graph->trees.size())
-    : animator.clip < skeleton.clips.size();
-}
-
-[[nodiscard]]
-std::string_view MotionName(Animator const& animator, Skeleton const& skeleton) {
-  return HasBlendTree(animator)
-    ? std::string_view(animator.graph->trees[animator.blend.tree_index].name)
-    : std::string_view(skeleton.clips[animator.clip].name);
-}
-
-[[nodiscard]]
-float MotionDuration(Animator const& animator, Skeleton const& skeleton) {
-  return HasBlendTree(animator)
-    ? animator.blend.duration
-    : skeleton.clips[animator.clip].duration;
-}
-
-[[nodiscard]]
-float ReadParameter(Animator const& animator, ParamId id) {
-  return (id.valid() && id.index < animator.parameters.size())
-       ? animator.parameters[id.index]
-       : 0.0f;
-}
-
-/* Advance the phase of a tree and sample its blended pose into animator.pose. */
-void StepBlendTree(Animator& animator, Skeleton const& skeleton, float dt) {
-  auto &blend = animator.blend;
-
-  auto const& tree = animator.graph->trees[blend.tree_index];
-  auto const w = ComputeBlendTreeWeights(tree, ReadParameter(animator, tree.parameter_id));
-
-  auto const& clip_a = skeleton.clips[tree.entries[w.a].clip_index];
-  auto const& clip_b = skeleton.clips[tree.entries[w.b].clip_index];
-
-  float const duration = std::max(
-    clip_a.duration + (clip_b.duration - clip_a.duration) * w.t,
-    lina::kTrueEpsilon
-  );
-
-  if (animator.playing) {
-    blend.phase += dt * animator.speed / duration;
-    blend.phase -= std::floor(blend.phase);   // wrap into [0, 1)
-    if (blend.phase >= 1.0f) {
-      blend.phase = 0.0f;
-    }
-  }
-
-  SampleClip(clip_a, blend.phase * clip_a.duration, true, animator.pose);
-  if ((w.b != w.a) && (w.t > 0.0f)) {
-    SampleClip(clip_b, blend.phase * clip_b.duration, true, blend.scratch);
-    BlendPoses(animator.pose, blend.scratch, w.t, animator.pose);
-  }
-
-  animator.time = blend.phase * duration;
-  blend.duration = duration;
 }
 
 // --------------------------------
@@ -223,12 +127,10 @@ void EnterState(
 }
 
 [[nodiscard]]
-float NormalizedTime(Animator const& animator, Skeleton const& skeleton) {
-  if (HasBlendTree(animator)) {
-    return animator.blend.phase;
-  }
-  float const duration = skeleton.clips[animator.clip].duration;
-  return (duration > lina::kTrueEpsilon) ? std::clamp(animator.time / duration, 0.0f, 1.0f) : 1.0f;
+float ReadParameter(Animator const& animator, ParamId id) {
+  return (id.valid() && id.index < animator.parameters.size())
+       ? animator.parameters[id.index]
+       : 0.0f;
 }
 
 /* Returns the index of the first valid transition, or kInvalidIndexU32. */
@@ -246,9 +148,11 @@ uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
     if (transition.on_finish && !animator.finished) {
       continue;
     }
-    if ((transition.exit_time >= 0.0f)
-     && (NormalizedTime(animator, skeleton) < transition.exit_time)) {
-      continue;
+    if (transition.exit_time >= 0.0f) {
+      auto const nt = animator.root ? animator.root->normalizedTime() : 1.0f;
+      if (nt < transition.exit_time) {
+        continue;
+      }
     }
 
     bool holds = true;
@@ -314,28 +218,19 @@ void AnimationSystem::advance(float dt) {
       if (!animator.playing && !animator.resample) {
         return;
       }
-      if (!HasMotion(animator, skeleton)) {
+      if (!animator.root) {
         animator.playing = false;
         animator.resample = false;
         return;
       }
 
-      bool finished = false;
-      if (HasBlendTree(animator)) {
-        StepBlendTree(animator, skeleton, dt);
-      } else {
-        auto const& clip = skeleton.clips[animator.clip];
-        if (animator.playing) {
-          finished = StepTime(
-            animator.time,
-            dt * animator.speed,
-            clip.duration,
-            animator.loop,
-            animator.speed < 0.0f
-          );
-        }
-        SampleClip(clip, animator.time, animator.loop, animator.pose);
-      }
+      animator.root->evaluate({
+        .skeleton   = skeleton,
+        .parameters = animator.parameters,
+        .delta      = dt * animator.speed,
+        .reverse    = animator.speed < 0.0f,
+        .playing    = animator.playing,
+      }, animator.pose);
 
       if (animator.playing) {
         animator.fade.time += dt;
@@ -345,10 +240,10 @@ void AnimationSystem::advance(float dt) {
       ApplyFade(animator);
       ApplyPose(reg, skin, animator.pose);
 
-      if (finished) {
+      if (animator.playing && animator.root->finished()) {
         animator.playing = false;
         animator.finished = true;
-        LOGD("[Animation] clip \"{}\" finished.", MotionName(animator, skeleton));
+        LOGD("[Animation] clip \"{}\" finished.", animator.root->name());
       }
     }
   );
@@ -455,17 +350,11 @@ void AnimationSystem::resume(entt::entity instance_root) {
     LOGE("[Animation] resume: entity is not an instance root.");
     return;
   }
-  ForEachAnimator(reg, instance_root, [](Animator& animator, Skin& skin) {
-    if (!skin.skeleton || !HasMotion(animator, *skin.skeleton)) {
+  ForEachAnimator(reg, instance_root, [](Animator& animator, Skin&) {
+    if (!animator.root) {
       return;
     }
-    if (!HasBlendTree(animator) && !animator.loop) {
-      float const duration = skin.skeleton->clips[animator.clip].duration;
-      bool const reverse = animator.speed < 0.0f;
-      if (reverse ? (animator.time <= 0.0f) : (animator.time >= duration)) {
-        animator.time = reverse ? duration : 0.0f;
-      }
-    }
+    animator.root->onResume(animator.speed < 0.0f);
     animator.finished = false;
     animator.playing = true;
   });
@@ -482,14 +371,11 @@ void AnimationSystem::stop(entt::entity instance_root) {
     return;
   }
   ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
-    animator.clip = kInvalidIndexU32;
-    animator.time = 0.0f;
+    animator.root.reset();
     animator.finished = false;
     animator.playing = false;
     animator.resample = false;
     animator.fade.duration = 0.0f;
-    animator.blend.tree_index = kInvalidIndexU32;
-    animator.blend.phase = 0.0f;
     animator.state = StateId{};  // reset to manual control
 
     // (rest_pose is empty for skeletons without animations as they never moved.)
@@ -535,18 +421,18 @@ AnimationSystem::State AnimationSystem::state(entt::entity instance_root) const 
     return result;
   }
   bool found = false;
-  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
-    if (found || !skin.skeleton || !HasMotion(animator, *skin.skeleton)) {
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    if (found || !animator.root) {
       return;
     }
     found = true;
     result = {
-      .clip     = MotionName(animator, *skin.skeleton),
-      .time     = animator.time,
-      .duration = MotionDuration(animator, *skin.skeleton),
+      .clip     = animator.root->name(),
+      .time     = animator.root->time(),
+      .duration = animator.root->duration(),
       .speed    = animator.speed,
-      .fade     = 1.0f,
-      .loop     = HasBlendTree(animator) || animator.loop,
+      .fade     = 1.0f, //
+      .loop     = animator.root->looping(),
       .playing  = animator.playing,
     };
     if (animator.graph && animator.state.valid()) {
@@ -569,18 +455,11 @@ void AnimationSystem::setTime(entt::entity instance_root, float time) {
     LOGE("[Animation] setTime: entity is not an instance root.");
     return;
   }
-  ForEachAnimator(reg, instance_root, [time](Animator& animator, Skin& skin) {
-    if (!skin.skeleton || !HasMotion(animator, *skin.skeleton)) {
+  ForEachAnimator(reg, instance_root, [time](Animator& animator, Skin&) {
+    if (!animator.root) {
       return;
     }
-    if (HasBlendTree(animator)) {
-      auto& blend = animator.blend;
-      if (blend.duration > lina::kTrueEpsilon) {
-        blend.phase = std::clamp(time / blend.duration, 0.0f, 1.0f);
-      }
-    } else {
-      animator.time = std::clamp(time, 0.0f, skin.skeleton->clips[animator.clip].duration);
-    }
+    animator.root->seek(time);
     animator.fade.duration = 0.0f;
     animator.resample = true;
   });
@@ -612,12 +491,15 @@ void AnimationSystem::setLoop(entt::entity instance_root, bool loop) {
     return;
   }
   ForEachAnimator(reg, instance_root, [loop](Animator& animator, Skin&) {
-    animator.loop = loop;
+    if (animator.root) {
+      animator.root->setLoop(loop);
+    }
   });
 }
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
+
 bool AnimationSystem::setGraph(
   entt::entity instance_root,
   std::shared_ptr<AnimationGraphDesc const> graph
@@ -644,10 +526,14 @@ bool AnimationSystem::setGraph(
       return;
     }
 
-    animator.graph = std::move(compiled);
-    animator.parameters = animator.graph->parameter_defaults;
-    animator.state = StateId{};
-    animator.blend.tree_index = kInvalidIndexU32;   // a tree of the previous graph is gone
+    animator.root.reset();
+    animator.finished       = false;
+    animator.playing        = false;
+    animator.resample       = false;
+    animator.fade.duration  = 0.0f;
+    animator.graph          = std::move(compiled);
+    animator.parameters     = animator.graph->parameter_defaults;
+    animator.state          = StateId{};
 
     if (animator.graph->initial.valid()) {
       EnterState(animator, *skin.skeleton, animator.graph->initial, 0.0f);

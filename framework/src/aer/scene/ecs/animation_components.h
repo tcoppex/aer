@@ -8,6 +8,7 @@
 
 #include "aer/core/common.h"
 #include "aer/scene/animation.h"
+#include "aer/scene/animation_nodes.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -34,24 +35,15 @@ struct Animator {
     float duration{};
   };
 
-  struct Blend {
-    uint32_t tree_index{kInvalidIndexU32};      // index in graph->trees
-    float phase{};
-    float duration{};
-    Pose scratch{};
-  };
-
-  uint32_t clip{kInvalidIndexU32};
-  float time{};
   float speed{1.0f};
-  bool loop{true};
   bool finished{false};
   bool playing{false};
   bool resample{false};
 
+  std::unique_ptr<PoseNode> root{};               // current motion (null = none)
+
   Pose pose{};
   Fade fade{};
-  Blend blend{};
 
   std::shared_ptr<AnimationGraph const> graph{};  // shared by the instances using it
   std::vector<float> parameters{};                // values, indexed by ParamId

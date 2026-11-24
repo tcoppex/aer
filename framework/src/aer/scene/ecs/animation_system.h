@@ -27,8 +27,8 @@ class Hierarchy;
 //
 //  A frame is:
 //      preUpdate(elapsed_time)     animators write their pose into the joints' Transform
-//      Hierarchy::update()         global transforms
-//      postUpdate()                skin palettes from the new global transforms
+//      Hierarchy::update()         compute global transforms
+//      postUpdate()                compute skin palettes from the new global transforms
 //
 class AnimationSystem {
  public:
@@ -104,7 +104,7 @@ class AnimationSystem {
 
   /* Assign a graph to every animator of the instance and enter its initial state.
    * The description is compiled once per skeleton and shared by every instance given the same
-   * pointer. Parameters are reset to their defaults and a blend tree of a previous graph stops.
+   * pointer. Parameters are reset to their defaults and a the current motion stops.
    * Returns false if no animator could resolve it. */
   bool setGraph(entt::entity instance_root, std::shared_ptr<AnimationGraphDesc const> graph);
 
