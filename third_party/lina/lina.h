@@ -1,4 +1,4 @@
-//  lina.h - v0.14.0
+//  lina.h - v0.15.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -356,11 +356,30 @@ mat<T,4,4> look_dir_matrix(vec<T,3> const& U) {
 // ----------------------------------------------------------------------------
 
 template<class T>
-vec<T,4> qlerp(const vec<T,4> & a, const vec<T,4> & b, T t) {
-  const T d = dot(a, b);
-  const vec<T,4> target = d < T(0) ? -b : b;
+vec<T,4> qlerp(vec<T,4> const& a, vec<T,4> const& b, T t) {
+  T const d = dot(a, b);
+  vec<T,4> const target = d < T(0) ? -b : b;
   return (std::abs(d) > T(0.9995)) ? nlerp(a, target, t)
                                    : slerp(a, target, t);
+}
+
+template<class T>
+vec<T,3> any_perpendicular(vec<T,3> const& v) {
+  auto const n = normalize(v);
+  auto const axis = (std::abs(n.x) <= std::abs(n.y) && std::abs(n.x) <= std::abs(n.z))
+                  ? vec<T,3>(1.0f, 0.0f, 0.0f)
+                  : ((std::abs(n.y) <= std::abs(n.z)) ? vec<T,3>(0.0f, 1.0f, 0.0f)
+                                                      : vec<T,3>(0.0f, 0.0f, 1.0f));
+  return normalize(cross(n, axis));
+}
+
+template<class T>
+vec<T,4> shortest_arc(vec<T, 3> const& from, vec<T, 3> const& to) {
+  T const d = dot(from, to);
+  if (d < T(-1.0 + kEpsilon)) {
+    return rotation_quat(any_perpendicular(from), kPi);
+  }
+  return normalize(to_vec4(cross(from, to), 1.0f + d));
 }
 
 // ----------------------------------------------------------------------------
@@ -503,56 +522,6 @@ constexpr mat<T, 4, 4> rigidbody_inverse(const mat<T, 4, 4>& a) {
     {0.0, 0.0, 0.0, 1.0}
   };
 }
-
-// ----------------------------------------------------------------------------
-
-#if 0
-template<class T>
-bool solve_basic_ik(
-  T const lenA,
-  T const lenB,
-  const vec<T, 3>& target,
-  const vec<T, 3>& targetUp,
-  vec<T, 3>& _outIK
-) {
-    T const lenA2 = lenA * lenA;
-    T const lenB2 = lenB * lenB;
-
-    vec<T, 3> normalizedTarget = normalize(target);
-    T const lenTarget = length(normalizedTarget);
-
-    if (lenTarget < kEpsilon) {
-      return false;
-    }
-
-    mat<T, 3, 3> Minv;
-    Minv[0] = normalizedTarget;
-    vec<T, 3> y_axis = normalize(targetUp - dot(targetUp, Minv[0]) * Minv[0]);
-    Minv[1] = y_axis;
-    Minv[2] = cross(Minv[0], y_axis);
-
-    vec<T, 3> R = mul(Minv, target);
-    T const lenR = length(R);
-
-    if (lenR < kEpsilon) {
-      return false;
-    }
-
-    vec<T, 3> S;
-    S.x = clamp(0.5 * (lenR + (lenA2 - lenB2) / lenR), 0.0, (1.0 - kEpsilon) * lenA);
-
-    T const ySquared = lenA2 - S.x * S.x;
-    if (ySquared < 0.0) {
-      return false;
-    }
-    S.y = sqrt(ySquared);
-    S.z = 0;
-
-    _outIK = mul(Minv, S);
-
-    return S.x > 0.0;
-}
-#endif
 
 // ----------------------------------------------------------------------------
 
