@@ -152,6 +152,24 @@ void TickTriggers(Animator& animator, float dt) {
   }
 }
 
+// [TODO: make it non linear]
+void TickIK(Animator& animator, float dt) {
+  for (auto& chain : animator.ik) {
+    if (chain.applied_weight == chain.weight) {
+      continue;
+    }
+    if (chain.fade_rate <= 0.0f) {
+      chain.applied_weight = chain.weight;
+      continue;
+    }
+    float const delta = chain.weight - chain.applied_weight;
+    float const step = chain.fade_rate * dt;
+    chain.applied_weight = (std::abs(delta) <= step)
+                         ? chain.weight
+                         : chain.applied_weight + std::copysign(step, delta);
+  }
+}
+
 /* Returns the number of animators of the instance having `id` as a trigger. */
 uint32_t WriteTrigger(
   entt::registry& reg,
@@ -269,7 +287,7 @@ void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
   auto& reg = scene.registry;
 
   for (auto const& chain : animator.ik) {
-    if (chain.weight <= 0.0f) {
+    if (chain.applied_weight <= 0.0f) {
       continue;
     }
 
@@ -312,7 +330,7 @@ void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
       lina::qmul(lina::qinv(root.rotation), ik.mid, mid.rotation)
     );
 
-    float const w = std::min(chain.weight, 1.0f);
+    float const w = std::min(chain.applied_weight, 1.0f);
     t_root->rotation = (w >= 1.0f) ? root_ik : lina::qlerp(t_root->rotation, root_ik, w);
     t_mid->rotation  = (w >= 1.0f) ? mid_ik  : lina::qlerp(t_mid->rotation,  mid_ik,  w);
 
@@ -425,6 +443,7 @@ void AnimationSystem::advance(float dt) {
       auto const& skeleton = *skin.skeleton;
 
       TickTriggers(animator, dt);
+      TickIK(animator, dt);
       UpdateStateMachine(animator, poses_, skeleton);
 
       // An animator with IK is resampled every frame, even paused, so the solver
@@ -1066,7 +1085,8 @@ IKId AnimationSystem::addTwoBoneIK(entt::entity instance_root, TwoBoneIKDesc con
     }
 
     chain->id = id.index;
-    chain->weight = desc.weight;
+    chain->weight = std::clamp(desc.weight, 0.0f, 1.0f);
+    chain->applied_weight = chain->weight;
 
     // start on the current end position.
     WorldJoint end{};
@@ -1133,7 +1153,12 @@ bool AnimationSystem::setIKTarget(entt::entity instance_root, IKId id, vec3 cons
 
 // ----------------------------------------------------------------------------
 
-bool AnimationSystem::setIKWeight(entt::entity instance_root, IKId id, float weight) {
+bool AnimationSystem::setIKWeight(
+  entt::entity instance_root,
+  IKId id,
+  float weight,
+  float blend_seconds
+) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
 
@@ -1141,8 +1166,21 @@ bool AnimationSystem::setIKWeight(entt::entity instance_root, IKId id, float wei
     LOGE("[Animation] setIKWeight: entity is not an instance root.");
     return false;
   }
+
+  float const target = std::clamp(weight, 0.0f, 1.0f);
+
   return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
-    chain.weight = std::clamp(weight, 0.0f, 1.0f);
+    if (blend_seconds > 0.0f) {
+      if (chain.weight == target) {
+        return;
+      }
+      chain.weight = target;
+      chain.fade_rate = std::abs(target - chain.applied_weight) / blend_seconds;
+    } else {
+      chain.weight = target;
+      chain.applied_weight = target;
+      chain.fade_rate = 0.0f;
+    }
   }) > 0u;
 }
 
@@ -1175,6 +1213,26 @@ bool AnimationSystem::clearIKPole(entt::entity instance_root, IKId id) {
   return ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
     chain.use_pole = false;
   }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+float AnimationSystem::ikWeight(entt::entity instance_root, IKId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  float weight = 0.0f;
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return weight;
+  }
+  bool found = false;
+  ForEachIK(reg, instance_root, id, [&](TwoBoneIK& chain) {
+    if (!found) {
+      found = true;
+      weight = chain.applied_weight;
+    }
+  });
+  return weight;
 }
 
 // ----------------------------------------------------------------------------

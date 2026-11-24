@@ -185,13 +185,17 @@ class AnimationSystem {
   /* World space target of the end joint. */
   bool setIKTarget(entt::entity instance_root, IKId id, vec3 const& world_position);
 
-  /* [0, 1] blend between the animated pose and the IK solution. */
-  bool setIKWeight(entt::entity instance_root, IKId id, float weight);
+  /* [0, 1] blend between the animated pose and the IK solution.
+   * [TODO] add a start_time for non linear blending.  */
+  bool setIKWeight(entt::entity instance_root, IKId id, float weight, float blend_seconds = 0.0f);
 
   /* Make the bend plane face a world space position. */
   bool setIKPole(entt::entity instance_root, IKId id, vec3 const& world_position);
 
   bool clearIKPole(entt::entity instance_root, IKId id);
+
+  [[nodiscard]]
+  float ikWeight(entt::entity instance_root, IKId id) const;
 
   [[nodiscard]]
   vec3 ikPole(entt::entity instance_root, IKId id) const;

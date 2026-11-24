@@ -18,6 +18,8 @@ struct TwoBoneIK {
   float weight{1.0f};
   vec3 pole{};
   bool use_pole{false};
+  float applied_weight{1.0f};               // weight used by the solver, moves toward `weight`
+  float fade_rate{0.0f};                    // weight units per second (0 = immediate)
 };
 
 struct TwoBoneIKResult {
