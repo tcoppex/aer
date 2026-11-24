@@ -303,6 +303,15 @@ bool AppendPrimitiveIndices(
   }
 
   cgltf_buffer_view const* view = accessor->buffer_view;
+  if (!view || !view->buffer) {
+    LOGW("[GLTF] Invalid buffer view for indices.");
+    return false;
+  }
+  if (view->has_meshopt_compression) {
+    HLOGW("[GLTF] EXT_meshopt_compression is not supported.");
+    return false;
+  }
+
   size_t const index_size = cgltf_component_size(accessor->component_type);
   size_t const stride     = accessor->stride ? accessor->stride : index_size;
 
