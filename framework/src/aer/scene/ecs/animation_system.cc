@@ -134,6 +134,55 @@ float ReadParameter(Animator const& animator, ParamId id) {
        : 0.0f;
 }
 
+void TickTriggers(Animator& animator, float dt) {
+  if (!animator.graph) {
+    return;
+  }
+  auto const& params = animator.graph->parameters;
+  for (size_t i = 0; i < params.size() && i < animator.parameters.size(); ++i) {
+    if (params[i].trigger
+     && (params[i].expiry > 0.0f)
+     && (animator.parameters[i] > 0.0f)) {
+      animator.parameters[i] = std::max(animator.parameters[i] - dt, 0.0f);
+    }
+  }
+}
+
+/* Returns the number of animators of the instance having `id` as a trigger. */
+uint32_t WriteTrigger(
+  entt::registry& reg,
+  entt::entity instance_root,
+  ParamId id,
+  bool pending
+) {
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] trigger: entity is not an instance root.");
+    return 0u;
+  }
+
+  uint32_t count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    if (!animator.graph
+     || !id.valid()
+     || (id.index >= animator.parameters.size())) {
+      return;
+    }
+    auto const& param = animator.graph->parameters[id.index];
+    if (!param.trigger) {
+      return;
+    }
+    animator.parameters[id.index] = pending
+      ? ((param.expiry > 0.0f) ? param.expiry : 1.0f)
+      : 0.0f;
+    ++count;
+  });
+
+  if (count == 0u) {
+    LOGW("[Animation] trigger not found in this instance.");
+  }
+  return count;
+}
+
 /* Returns the index of the first valid transition, or kInvalidIndexU32. */
 [[nodiscard]]
 uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
@@ -158,10 +207,16 @@ uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
 
     bool holds = true;
     for (auto const& condition : transition.conditions) {
+      using Op = AnimationStateMachine::Condition::Op;
+
       float const value = ReadParameter(animator, condition.parameter);
-      holds = holds && ((condition.op == AnimationStateMachine::Condition::Op::Greater)
-                      ? (value > condition.value)
-                      : (value < condition.value));
+      bool satisfied = false;
+      switch (condition.op) {
+        case Op::Greater: satisfied = (value > condition.value); break;
+        case Op::Less:    satisfied = (value < condition.value); break;
+        case Op::Trigger: satisfied = (value > 0.0f);            break;
+      }
+      holds = holds && satisfied;
     }
     if (holds) {
       return i;
@@ -187,6 +242,15 @@ void UpdateStateMachine(
 
   auto const& graph = *animator.graph;
   auto const& transition = graph.transitions[i];
+
+  // when the transition fires it consumes the triggers it was waiting for.
+  for (auto const& condition : transition.conditions) {
+    if ((condition.op == AnimationStateMachine::Condition::Op::Trigger)
+     && (condition.parameter.index < animator.parameters.size())) {
+      animator.parameters[condition.parameter.index] = 0.0f;
+    }
+  }
+
   LOGD("[Animation] \"{}\": {} -> {}.",
     graph.name,
     graph.states[animator.state.index].name,
@@ -221,6 +285,7 @@ void AnimationSystem::advance(float dt) {
       }
       auto const& skeleton = *skin.skeleton;
 
+      TickTriggers(animator, dt);
       UpdateStateMachine(animator, poses_, skeleton);
 
       if (!animator.playing && !animator.resample) {
@@ -536,8 +601,12 @@ bool AnimationSystem::setGraph(
     animator.playing    = false;
     animator.resample   = false;
     animator.graph      = std::move(compiled);
-    animator.parameters = animator.graph->parameter_defaults;
     animator.state      = StateId{};
+
+    animator.parameters.clear();
+    for (auto const& param : animator.graph->parameters) {
+      animator.parameters.push_back(param.default_value);
+    }
 
     if (animator.graph->initial.valid()) {
       EnterState(animator, poses_, *skin.skeleton, animator.graph->initial, 0.0f);
@@ -623,6 +692,8 @@ bool AnimationSystem::setParameter(entt::entity instance_root, ParamId id, float
   return set_count > 0u;
 }
 
+// ----------------------------------------------------------------------------
+
 bool AnimationSystem::setParameter(
   entt::entity instance_root,
   std::string_view name,
@@ -660,6 +731,32 @@ float AnimationSystem::parameter(entt::entity instance_root, ParamId id) const {
 
 float AnimationSystem::parameter(entt::entity instance_root, std::string_view name) const {
   return parameter(instance_root, findParameter(instance_root, name));
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setTrigger(entt::entity instance_root, ParamId id) {
+  LOG_CHECK(scene_ != nullptr);
+  return WriteTrigger(scene_->registry, instance_root, id, true) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setTrigger(entt::entity instance_root, std::string_view name) {
+  return setTrigger(instance_root, findParameter(instance_root, name));
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::resetTrigger(entt::entity instance_root, ParamId id) {
+  LOG_CHECK(scene_ != nullptr);
+  return WriteTrigger(scene_->registry, instance_root, id, false) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::resetTrigger(entt::entity instance_root, std::string_view name) {
+  return resetTrigger(instance_root, findParameter(instance_root, name));
 }
 
 // ----------------------------------------------------------------------------

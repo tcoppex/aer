@@ -134,6 +134,17 @@ class AnimationSystem {
   [[nodiscard]]
   float parameter(entt::entity instance_root, std::string_view name) const;
 
+  /* Triggers are one-shot parameters.
+   * A pending trigger stays so until a transition having it as a condition fires, which consumes it, or until its expiry lapses.
+   * `pause` keeps it, `setGraph` clears it.
+   * Return false if the instance has no such trigger. */
+  bool setTrigger(entt::entity instance_root, ParamId id);
+  bool setTrigger(entt::entity instance_root, std::string_view name);
+
+  /* Drop a pending trigger without consuming it. */
+  bool resetTrigger(entt::entity instance_root, ParamId id);
+  bool resetTrigger(entt::entity instance_root, std::string_view name);
+
   // -------------------------------
   // --- States ---
 

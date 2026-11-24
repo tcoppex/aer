@@ -101,22 +101,38 @@ std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
   graph->name = d.name;
   graph->source = desc;
 
-  /* Declare a parameter once, an empty name means "no parameter". */
-  auto const declare = [&](std::string const& name, float value = 0.0f) -> ParamId {
+ // false when a parameter is used both as a trigger and as a value
+  bool valid = true;
+
+  /* Declare a parameter once, an empty name means "no parameter" (always 0). */
+  auto const declare = [&](
+    std::string const& name,
+    bool trigger,
+    float default_value = 0.0f,
+    float expiry = 0.0f
+  ) -> ParamId {
     if (name.empty()) {
       return {};
     }
     if (auto const id = graph->findParameter(name); id.valid()) {
+      if (graph->parameters[id.index].trigger != trigger) {
+        LOGE("[Animation] graph \"{}\": parameter \"{}\" is used both as a trigger and as a value.",
+             d.name, name);
+        valid = false;
+      }
       return id;
     }
-    graph->parameter_names.push_back(name);
-    graph->parameter_defaults.push_back(value);
-    return ParamId{static_cast<uint32_t>(graph->parameter_names.size() - 1u)};
+    graph->parameters.push_back(AnimationGraphDesc::Parameter{
+      .name          = name,
+      .default_value = trigger ? 0.0f : default_value,
+      .trigger       = trigger,
+      .expiry        = expiry,
+    });
+    return ParamId{static_cast<uint32_t>(graph->parameters.size() - 1u)};
   };
 
-  // Explicit parameters first, they set the ids and defaults.
   for (auto const& p : d.parameters) {
-    declare(p.name, p.default_value);
+    declare(p.name, p.trigger, p.default_value, p.expiry);
   }
 
   // Blend trees.
@@ -140,13 +156,12 @@ std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
         return nullptr;
       }
     }
-    tree.parameter_id = declare(tree.parameter);
+    tree.parameter_id = declare(tree.parameter, false);
     graph->trees.push_back(std::move(tree));
   }
 
   // State machine.
   auto const& machine = d.machine;
-
   for (auto const& src : machine.states) {
     if (graph->findState(src.name).valid()) {
       LOGE("[Animation] graph \"{}\": duplicate state \"{}\".", d.name, src.name);
@@ -184,23 +199,39 @@ std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
     }
 
     for (auto const& c : src.conditions) {
+      bool const trigger = (c.op == AnimationStateMachine::Condition::Op::Trigger);
       transition.conditions.push_back(
-        AnimationGraph::Condition{ .parameter = declare(c.parameter), .op = c.op, .value = c.value }
+        AnimationGraph::Condition{
+          .parameter = declare(c.parameter, trigger),
+          .op = c.op,
+          .value = c.value
+        }
       );
     }
     graph->transitions.push_back(std::move(transition));
   }
+  if (!valid) {
+    return nullptr;
+  }
 
   if (!graph->states.empty()) {
-    graph->initial = machine.initial.empty() ? StateId{0u} : graph->findState(machine.initial);
+    graph->initial = machine.initial.empty()
+                    ? StateId{0u}
+                    : graph->findState(machine.initial);
     if (!graph->initial.valid()) {
-      LOGW("[Animation] graph \"{}\": unknown initial state \"{}\".", d.name, machine.initial);
+      LOGW("[Animation] graph \"{}\": unknown initial state \"{}\".",
+        d.name, machine.initial);
       return nullptr;
     }
   }
 
   LOGD("[Animation] graph \"{}\" compiled for \"{}\" ({} params, {} trees, {} states).",
-       d.name, skeleton.name, graph->parameter_names.size(), graph->trees.size(), graph->states.size());
+    d.name,
+    skeleton.name,
+    graph->parameters.size(),
+    graph->trees.size(),
+    graph->states.size()
+  );
   return graph;
 }
 

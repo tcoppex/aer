@@ -141,7 +141,8 @@ struct AnimationStateMachine {
   struct Condition {
     enum class Op : uint8_t {
       Greater,
-      Less
+      Less,
+      Trigger
     };
     std::string parameter{};
     Op op{Op::Greater};
@@ -177,6 +178,8 @@ struct AnimationGraphDesc {
   struct Parameter {
     std::string name{};
     float default_value{};
+    bool trigger{false};
+    float expiry{0.0f};    // seconds before a pending trigger lapses (0 = never)
   };
 
   std::string name{};
@@ -211,10 +214,10 @@ struct AnimationGraph {
   };
 
   std::string name{};
-  std::shared_ptr<AnimationGraphDesc const> source{};
 
-  std::vector<std::string>  parameter_names{};
-  std::vector<float>        parameter_defaults{};
+  std::shared_ptr<AnimationGraphDesc const> source{};
+  std::vector<AnimationGraphDesc::Parameter> parameters{};
+
   std::vector<BlendTree1D>  trees{};
   std::vector<State>        states{};
   std::vector<Transition>   transitions{};
@@ -222,8 +225,8 @@ struct AnimationGraph {
 
   [[nodiscard]]
   ParamId findParameter(std::string_view n) const noexcept {
-    for (size_t i = 0; i < parameter_names.size(); ++i) {
-      if (parameter_names[i] == n) {
+    for (size_t i = 0; i < parameters.size(); ++i) {
+      if (parameters[i].name == n) {
         return ParamId{static_cast<uint32_t>(i)};
       }
     }

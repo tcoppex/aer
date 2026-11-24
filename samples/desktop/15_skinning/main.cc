@@ -246,24 +246,35 @@ class SampleApp final : public Application {
 
       auto desc = scene::AnimationGraphDesc{
         .name = "demo",
-        .parameters = { {"go"}, {"mix"}, {"blend"} },
-        .trees = {{
-          .name = "blend",
-          .parameter = "blend",
-          .entries = { {clip_names_[0], 0.0f}, {clip_names_[1], 1.0f} },
-        }},
+        .parameters = {
+          {"go"}, {"mix"}, {"blend"},
+          { .name = "hit", .trigger = true, .expiry = 1.0f }
+        },
+        .trees = {
+          {
+            .name = "blend",
+            .parameter = "blend",
+            .entries = { {clip_names_[0], 0.0f}, {clip_names_[1], 1.0f} },
+          },
+        },
         .machine = {
           .name = "demo",
           .states = {
             { .name = "A",     .motion = clip_names_[0] },
             { .name = "B",     .motion = clip_names_[1] },
             { .name = "Blend", .motion = "blend" },
+            { .name = "Kick1", .motion = clip_names_[59], .loop = false },
+            { .name = "Kick2", .motion = clip_names_[60], .loop = false },
           },
           .transitions = {
             { .from = "",      .to = "Blend", .conditions = {{"mix", Op::Greater, 0.5f}}, .fade = 0.3f },
             { .from = "Blend", .to = "A",     .conditions = {{"mix", Op::Less,    0.5f}}, .fade = 0.3f },
             { .from = "A",     .to = "B",     .conditions = {{"go",  Op::Greater, 0.5f}}, .fade = 0.3f },
             { .from = "B",     .to = "A",     .conditions = {{"go",  Op::Less,    0.5f}}, .fade = 0.3f },
+            { .from = "A",     .to = "Kick1", .conditions = {{"hit", Op::Trigger}}, .fade = 0.1f },
+            { .from = "Kick1", .to = "Kick2", .conditions = {{"hit", Op::Trigger}}, .exit_time = 0.6f, .fade = 0.15f },
+            { .from = "Kick1", .to = "A", .on_finish = true, .fade = 0.2f },
+            { .from = "Kick2", .to = "A", .on_finish = true, .fade = 0.2f },
           },
         },
       };
@@ -307,6 +318,13 @@ class SampleApp final : public Application {
       ImGui::SameLine();
     }
     ImGui::NewLine();
+
+    if (ImGui::Button("Hit (trigger)")) {
+      animation.setTrigger(c.root, "hit");
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", (animation.parameter(c.root, "hit") > 0.0f) ? "pending" : "-");
+
 
     if (state.machine_state.empty()) {
       ImGui::TextDisabled("Machine inactive (manual control). Click a state to re-enter.");
