@@ -508,6 +508,169 @@ void AlignFeet(Hierarchy& scene, Animator& animator, Skin const& skin) {
 
 // ----------------------------
 
+void StepWeight(float& applied, float target, float rate, float dt) {
+  if (applied == target) {
+    return;
+  }
+  if (rate <= 0.0f) {
+    applied = target;
+    return;
+  }
+  float const delta = target - applied;
+  float const step = rate * dt;
+  applied = (std::abs(delta) <= step) ? target : applied + std::copysign(step, delta);
+}
+
+void TickLook(Animator& animator, float dt) {
+  for (auto& look : animator.look) {
+    StepWeight(look.applied_weight, look.params.weight, look.fade_rate, dt);
+  }
+}
+
+template<typename Fn>
+uint32_t ForEachLook(entt::registry& reg, entt::entity instance_root, LookId id, Fn&& fn) {
+  uint32_t count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    for (auto& look : animator.look) {
+      if (look.id == id.index) {
+        fn(look);
+        ++count;
+      }
+    }
+  });
+  return count;
+}
+
+/* Rotate a joint about its own origin by a world space delta, and refresh its subtree. */
+bool RotateJointWorld(Hierarchy& scene, entt::entity e, quat const& delta) {
+  auto& reg = scene.registry;
+
+  WorldJoint joint{};
+  if (!ReadWorld(reg, e, joint)) {
+    return false;
+  }
+  auto* transform = reg.try_get<component::Transform>(e);
+  if (!transform) {
+    return false;
+  }
+
+  quat parent_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+  if (auto const parent = reg.get<component::Node>(e).parent; parent != entt::null) {
+    WorldJoint p{};
+    if (ReadWorld(reg, parent, p)) {
+      parent_rotation = p.rotation;
+    }
+  }
+
+  transform->rotation = lina::normalize(
+    lina::qmul(lina::qinv(parent_rotation), delta, joint.rotation)
+  );
+  scene.updateSubtree(e);
+  return true;
+}
+
+[[nodiscard]]
+std::optional<LookAt> ResolveLookAt(
+  Skeleton const& skeleton,
+  AnimationSystem::LookAtDesc const& desc
+) {
+  uint32_t const head = skeleton.findJoint(std::string{desc.head});
+  if (head == kInvalidIndexU32) {
+    return std::nullopt;
+  }
+
+  uint32_t const length = std::max(desc.length, 1u);
+  std::vector<uint32_t> joints{head};
+  for (uint32_t i = 1u; i < length; ++i) {
+    auto const parent = ParentOf(skeleton, joints.back());
+    if (parent == kInvalidIndexU32) {
+      LOGW("[Animation] look-at: \"{}\" has fewer than {} joint(s) in its chain.", desc.head, length);
+      return std::nullopt;
+    }
+    joints.push_back(parent);
+  }
+  std::ranges::reverse(joints);   // root-most first
+
+  LookAt look{};
+
+  // Linear ramp toward the head (1, 2, 3 ... normalized).
+  float const total = 0.5f * static_cast<float>(length) * static_cast<float>(length + 1u);
+  for (uint32_t i = 0u; i < length; ++i) {
+    look.links.push_back({ .joint = joints[i], .weight = static_cast<float>(i + 1u) / total });
+  }
+
+  auto const &dp = desc.params;
+  auto & lp = look.params;
+
+  float const aim_length = lina::length(dp.aim);
+  lp.aim              = (aim_length > lina::kEpsilon) ? (dp.aim / aim_length)
+                                                      : vec3(0.0f, 0.0f, 1.0f);
+  lp.weight           = std::clamp(dp.weight, 0.0f, 1.0f);
+  lp.max_angle        = std::clamp(dp.max_angle, 0.0f, 120.0f) * (lina::kPi / 180.0f);
+  lp.fade_angle       = std::max(dp.fade_angle, 1.0f) * (lina::kPi / 180.0f);
+  lp.smooth           = std::max(dp.smooth, 0.0f);
+  look.applied_weight = lp.weight;
+  return look;
+}
+
+/* Aim the look-ats of an animator: runs before SolveIK so arm targets stay put. */
+void SolveLook(Hierarchy& scene, Animator& animator, Skin const& skin, float dt) {
+  auto& reg = scene.registry;
+  quat const identity{lina::identity};
+
+  for (auto& look : animator.look) {
+    if ((look.applied_weight <= 0.0f) || look.links.empty()) {
+      // restart from the animation when it comes back
+      look.has_direction = false;
+      continue;
+    }
+
+    WorldJoint head{};
+    if (!ReadWorld(reg, JointEntity(reg, skin, look.links.back().joint), head)) {
+      continue;
+    }
+
+    vec3 const to_target = look.target - head.position;
+    float const distance = lina::length(to_target);
+    if (distance < lina::kEpsilon) {
+      continue;
+    }
+
+    // Where the head looks in the animation, and where it should look.
+    vec3 const aim = lina::normalize(lina::qrot(head.rotation, look.params.aim));
+    vec3 const new_aim = LimitLookDirection(
+      aim, to_target / distance, look.params.max_angle, look.params.fade_angle
+    );
+
+    // Smooth the world direction (the head keeps tracking while the body animates).
+    float const k = (look.params.smooth > 0.0f)
+      ? (1.0f - std::exp(-look.params.smooth * dt)) : 1.0f;
+    if (!look.has_direction) {
+      look.direction = aim;
+      look.has_direction = true;
+    }
+    vec3 const blended = look.direction + (new_aim - look.direction) * k;
+    look.direction = (lina::length(blended) > 1.0e-4f) ? lina::normalize(blended) : new_aim;
+
+    quat const total = lina::qlerp(
+      identity,
+      lina::shortest_arc(aim, look.direction),
+      std::min(look.applied_weight, 1.0f)
+    );
+
+    // Root to tip. The parts share an axis, so their angles add up to the full swing.
+    for (auto const& link : look.links) {
+      RotateJointWorld(
+        scene,
+        JointEntity(reg, skin, link.joint),
+        lina::qlerp(identity, total, link.weight)
+      );
+    }
+  }
+}
+
+// ----------------------------
+
 /* Returns the index of the first valid transition, or kInvalidIndexU32. */
 [[nodiscard]]
 uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
@@ -613,11 +776,16 @@ void AnimationSystem::advance(float dt) {
 
       TickTriggers(animator, dt);
       TickIK(animator, dt);
+      TickLook(animator, dt);
+
       UpdateStateMachine(animator, poses_, skeleton);
 
-      // An animator with IK is resampled every frame, even paused, so the solver
-      // always starts from the clean animated pose.
-      if (!animator.playing && !animator.resample && animator.ik.empty()) {
+      // An animator with IK or look-at is resampled every frame, even paused,
+      // so the solvers always start from the clean animated pose.
+      if (!animator.playing
+       && !animator.resample
+       && animator.ik.empty()
+       && animator.look.empty()) {
         return;
       }
       if (!animator.root) {
@@ -660,23 +828,21 @@ void AnimationSystem::postUpdate() {
   auto& reg = scene_->registry;
 
   // Solve IK.
-  // for (int i = 0; i < 4; ++i)
-  {
-    reg.view<Animator, Skin>().each(
-      [&](entt::entity e, Animator& animator, Skin const& skin) {
-        if (!animator.root || animator.ik.empty()) {
-          return;
-        }
-        if (animator.foot) {
-          SolveFootIK(*scene_, animator, skin, e, ground_query_, last_dt_);
-        }
-        SolveIK(*scene_, animator, skin);
-        if (animator.foot) {
-          AlignFeet(*scene_, animator, skin);
-        }
+  reg.view<Animator, Skin>().each(
+    [&](entt::entity e, Animator& animator, Skin const& skin) {
+      if (!animator.root || (animator.ik.empty() && animator.look.empty())) {
+        return;
       }
-    );
-  }
+      if (animator.foot) {
+        SolveFootIK(*scene_, animator, skin, e, ground_query_, last_dt_);
+      }
+      SolveLook(*scene_, animator, skin, last_dt_);
+      SolveIK(*scene_, animator, skin);
+      if (animator.foot) {
+        AlignFeet(*scene_, animator, skin);
+      }
+    }
+  );
 
   reg.view<Skin, component::GlobalTransform>().each(
     [&](Skin& skin, component::GlobalTransform const& mesh_global) {
@@ -1608,6 +1774,179 @@ float AnimationSystem::footIKAnkleHeight(entt::entity instance_root) const {
     }
   });
   return height;
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+LookId AnimationSystem::addLookAt(entt::entity instance_root, LookAtDesc const& desc) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] addLookAt: entity is not an instance root.");
+    return {};
+  }
+
+  LookId const id{next_look_id_};
+  uint32_t added_count = 0u;
+
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    auto look = ResolveLookAt(*skin.skeleton, desc);
+    if (!look) {
+      return;
+    }
+    for (auto const& link : look->links) {
+      if (link.joint >= skin.joints.size()) {
+        return;
+      }
+    }
+    look->id = id.index;
+
+    // start straight ahead of the head.
+    WorldJoint head{};
+    if (ReadWorld(reg, JointEntity(reg, skin, look->links.back().joint), head)) {
+      look->target = head.position
+                   + lina::normalize(lina::qrot(head.rotation, look->params.aim));
+    }
+
+    animator.look.push_back(std::move(*look));
+    ++added_count;
+  });
+
+  if (added_count == 0u) {
+    LOGW("[Animation] no look-at chain for \"{}\" in this instance.", desc.head);
+    return {};
+  }
+  ++next_look_id_;
+  return id;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::removeLookAt(entt::entity instance_root, LookId id) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] removeLookAt: entity is not an instance root.");
+    return false;
+  }
+
+  uint32_t removed_count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    auto const count = std::erase_if(animator.look, [&](auto const& look) {
+      return look.id == id.index;
+    });
+    if (count > 0u) {
+      animator.resample = true;
+      removed_count += static_cast<uint32_t>(count);
+    }
+  });
+  return removed_count > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setLookTarget(entt::entity instance_root, LookId id, vec3 const& world_position) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setLookTarget: entity is not an instance root.");
+    return false;
+  }
+  return ForEachLook(reg, instance_root, id, [&](LookAt& look) {
+    look.target = world_position;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setLookWeight(
+  entt::entity instance_root,
+  LookId id,
+  float weight,
+  float blend_seconds
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setLookWeight: entity is not an instance root.");
+    return false;
+  }
+
+  float const target = std::clamp(weight, 0.0f, 1.0f);
+
+  return ForEachLook(reg, instance_root, id, [&](LookAt& look) {
+    if (blend_seconds > 0.0f) {
+      if (look.params.weight != target) {
+        look.fade_rate = std::abs(target - look.applied_weight) / blend_seconds;
+      }
+    } else {
+      look.fade_rate = 0.0f;
+      look.applied_weight = target;
+    }
+    look.params.weight = target;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+vec3 AnimationSystem::lookTarget(entt::entity instance_root, LookId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  vec3 target{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return target;
+  }
+  bool found = false;
+  ForEachLook(reg, instance_root, id, [&](LookAt& look) {
+    if (!found) {
+      found = true;
+      target = look.target;
+    }
+  });
+  return target;
+}
+
+// ----------------------------------------------------------------------------
+
+std::optional<AnimationSystem::LookAtAim> AnimationSystem::lookAim(
+  entt::entity instance_root,
+  LookId id
+) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  std::optional<LookAtAim> result{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return result;
+  }
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (result) {
+      return;
+    }
+    for (auto const& look : animator.look) {
+      if ((look.id != id.index) || look.links.empty()) {
+        continue;
+      }
+      WorldJoint head{};
+      if (ReadWorld(reg, JointEntity(reg, skin, look.links.back().joint), head)) {
+        result = LookAtAim{
+          .origin = head.position,
+          .direction = lina::normalize(lina::qrot(head.rotation, look.params.aim)),
+        };
+        return;
+      }
+    }
+  });
+  return result;
 }
 
 /* -------------------------------------------------------------------------- */

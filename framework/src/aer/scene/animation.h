@@ -23,6 +23,9 @@ using StateId = Handle<StateTag>;
 struct IKTag;
 using IKId = Handle<IKTag>;
 
+struct LookTag;
+using LookId = Handle<LookTag>;
+
 // struct PackedTransform {
 //   vec3 translation{};
 //   float scale{1.0f};

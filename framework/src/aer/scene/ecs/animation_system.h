@@ -48,6 +48,7 @@ class AnimationSystem {
     bool playing{false};
   };
 
+  // --------------------------------
   struct TwoBoneIKDesc {
     std::string_view root{};
     std::string_view mid{};
@@ -63,6 +64,20 @@ class AnimationSystem {
       // max_angle: in degrees
     };
   };
+
+  struct LookAtDesc {
+    std::string_view head{};
+    uint32_t length{3};       // ancestors sharing the rotation
+    LookAt::Params params{
+      // max_angle, fade_angle in degrees
+    };
+  };
+
+  struct LookAtAim {
+    vec3 origin{};
+    vec3 direction{};
+  };
+  // --------------------------------
 
  public:
   void setup(Hierarchy& scene) {
@@ -231,6 +246,28 @@ class AnimationSystem {
   float footIKAnkleHeight(entt::entity instance_root) const;
 
   // -------------------------------
+  // --- Look-at ---
+
+  /* Added to every animator of the instance having the joints. The target starts straight ahead
+   * of the head, so nothing moves. Needs an active motion, like IK. */
+  [[nodiscard]]
+  LookId addLookAt(entt::entity instance_root, LookAtDesc const& desc);
+
+  bool removeLookAt(entt::entity instance_root, LookId id);
+
+  bool setLookTarget(entt::entity instance_root, LookId id, vec3 const& world_position);
+
+  /* Same fade rules as setIKWeight. */
+  bool setLookWeight(entt::entity instance_root, LookId id, float weight, float blend_seconds = 0.0f);
+
+  [[nodiscard]]
+  vec3 lookTarget(entt::entity instance_root, LookId id) const;
+
+  /* Head position and where its aim axis points (for debug drawing). */
+  [[nodiscard]]
+  std::optional<LookAtAim> lookAim(entt::entity instance_root, LookId id) const;
+
+  // -------------------------------
  private:
   /* Compiled graph for (desc, skeleton), shared through the cache. */
   [[nodiscard]]
@@ -249,8 +286,10 @@ class AnimationSystem {
   std::optional<float> last_elapsed_time_{};
   float last_dt_{0.0f};
 
-  uint32_t next_ik_id_{0u};
   GroundQuery ground_query_{};
+
+  uint32_t next_ik_id_{0u};
+  uint32_t next_look_id_{0u};
 };
 
 } // namespace "scene"

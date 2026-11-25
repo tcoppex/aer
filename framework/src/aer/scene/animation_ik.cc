@@ -81,6 +81,27 @@ TwoBoneIKResult SolveTwoBoneIK(
   return result;
 }
 
+// ----------------------------------------------------------------------------
+
+vec3 LimitLookDirection(
+  vec3 const& current,
+  vec3 const& target,
+  float max_angle,
+  float fade_angle
+) {
+  quat const swing = lina::shortest_arc(current, target);
+  float const angle = lina::qangle(swing);   // [0, pi]
+  if (angle < lina::kEpsilon) {
+    return target;
+  }
+
+  float const fade = std::max(fade_angle, lina::kEpsilon);
+  float const factor = 1.0f - std::clamp((angle - max_angle) / fade, 0.0f, 1.0f);
+  float const limited = std::min(angle, max_angle) * factor;
+
+  return lina::qrot(lina::rotation_quat(lina::qaxis(swing), limited), current);
+}
+
 }  // namespace "scene"
 
 /* -------------------------------------------------------------------------- */

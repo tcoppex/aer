@@ -76,6 +76,45 @@ using GroundQuery = std::function<
   bool(vec3 const& origin, float max_distance, GroundHit& hit)
 >;
 
+// ----------------------------------------------------------------------------
+
+struct LookAt {
+  struct Link {
+    uint32_t joint{kInvalidIndexU32};
+    float weight{0.0f};
+  };
+
+  struct Params {
+    vec3 aim{0.0f, 0.0f, 1.0f};           // local axis of the last joint that looks at the target
+    float weight{1.0f};                   // target weight [0, 1]
+    float max_angle{1.22f};               // in radians
+    float fade_angle{0.7f};               // in radians
+    float smooth{10.0f};
+  };
+
+  uint32_t id{kInvalidIndexU32};          // LookId::index, unique per AnimationSystem
+  std::vector<Link> links{};              // root-most first, the last one aims
+  vec3 target{};                          // world space
+
+  Params params;
+
+  float fade_rate{0.0f};
+  float applied_weight{1.0f};
+  vec3 direction{};                       // smoothed world aim direction
+  bool has_direction{false};
+};
+
+/* Direction a look-at ends up with, from the current aim toward the desired direction (both unit).
+ * The swing is limited to `max_angle` then fades back to zero over `fade_angle`.
+ * Angles in radians. */
+[[nodiscard]]
+vec3 LimitLookDirection(
+  vec3 const& current,
+  vec3 const& target,
+  float max_angle,
+  float fade_angle
+);
+
 }  // namespace "scene"
 
 /* -------------------------------------------------------------------------- */
