@@ -40,6 +40,7 @@ struct Animator {
   std::vector<float> parameters{};                // values, indexed by ParamId
   StateId state{};                                // current graph state (invalid = manual control)
   std::vector<TwoBoneIK> ik{};                    // (solved after the hierarchy update)
+  std::optional<FootRig> foot{};
 };
 
 /* -------------------------------------------------------------------------- */

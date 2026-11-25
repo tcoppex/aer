@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -340,6 +341,173 @@ void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
 
 // ----------------------------
 
+[[nodiscard]]
+TwoBoneIK* FindChain(Animator& animator, uint32_t id) {
+  auto const it = std::ranges::find(animator.ik, id, &TwoBoneIK::id);
+  return (it != animator.ik.end()) ? &*it : nullptr;
+}
+
+[[nodiscard]]
+bool IsAncestor(Skeleton const& skeleton, uint32_t ancestor, uint32_t joint) {
+  for (size_t i = 0u; i < skeleton.parents.size(); ++i) {
+    joint = ParentOf(skeleton, joint);
+    if (joint == kInvalidIndexU32) {
+      return false;
+    }
+    if (joint == ancestor) {
+      return true;
+    }
+  }
+  return false;
+}
+
+[[nodiscard]]
+entt::entity FindInstanceRoot(entt::registry const& reg, entt::entity e) {
+  while (e != entt::null) {
+    if (reg.all_of<component::Instance>(e)) {
+      return e;
+    }
+    e = reg.get<component::Node>(e).parent;
+  }
+  return entt::entity{entt::null};
+}
+
+/* Place the feet on the ground.
+ * Runs on the animated pose after the hierarchy update and before SolveIK. */
+void SolveFootIK(
+  Hierarchy& scene,
+  Animator& animator,
+  Skin const& skin,
+  entt::entity animator_entity,
+  GroundQuery const& ground,
+  float dt
+) {
+  auto& reg = scene.registry;
+  auto& rig = *animator.foot;
+
+  WorldJoint instance{};
+  if (!ground || !ReadWorld(reg, FindInstanceRoot(reg, animator_entity), instance)) {
+    return;
+  }
+
+  float const k = (rig.params.smooth > 0.0f) ? (1.0f - std::exp(-rig.params.smooth * dt)) : 1.0f;
+  float const animated_floor = instance.position.y + rig.params.ankle_height;
+
+  float drop = 0.0f;
+
+  for (auto& foot : rig.feet) {
+    auto* chain = FindChain(animator, foot.chain);
+    if (!chain) {
+      continue;
+    }
+
+    WorldJoint end{};
+    if (!ReadWorld(reg, JointEntity(reg, skin, chain->end), end)) {
+      continue;
+    }
+    vec3 const p = end.position;
+    vec3 const pp = vec3(p.x, p.y + rig.params.probe_height, p.z);
+
+    // Calculate how far is the floor from what the animation expects.
+    float floor_y = -std::numeric_limits<float>::infinity();
+    float delta = 0.0f;
+    vec3 normal{0.0f, 1.0f, 0.0f};
+    GroundHit hit{};
+    if (ground(pp, rig.params.probe_height + rig.params.probe_depth, hit)) {
+      floor_y = hit.position.y + rig.params.ankle_height;
+      delta = floor_y - animated_floor;
+      normal = hit.normal;
+    }
+    foot.offset += (delta - foot.offset) * k;
+    foot.normal = lina::normalize(foot.normal + (normal - foot.normal) * k);
+
+    // A foot follows the ground while it is planted, and is free once lifted.
+    float const lift = (p.y - animated_floor) / rig.params.blend_height;
+    float const planted = 1.0f - std::clamp(lift, 0.0f, 1.0f);
+    foot.planted = planted;
+
+    float const y = std::max(p.y + foot.offset * planted, floor_y);
+    chain->target = vec3(p.x, y, p.z);
+
+    // Only feet pushed below the animation pull the pelvis down.
+    drop = std::min(drop, (y - p.y) * std::min(chain->applied_weight, 1.0f));
+  }
+
+  rig.pelvis_offset += (drop - rig.pelvis_offset) * k;
+  if (std::abs(rig.pelvis_offset) < 1.0e-5f) {
+    return;
+  }
+
+  auto const e_pelvis = JointEntity(reg, skin, rig.pelvis);
+  auto* transform = (e_pelvis != entt::null) ? reg.try_get<component::Transform>(e_pelvis) : nullptr;
+  if (!transform) {
+    return;
+  }
+
+  // World space offset to the local space of the pelvis' parent.
+  vec3 offset{0.0f, rig.pelvis_offset, 0.0f};
+  if (auto const parent = reg.get<component::Node>(e_pelvis).parent; parent != entt::null) {
+    if (auto const* global = reg.try_get<component::GlobalTransform>(parent)) {
+      offset = lina::mul(lina::inverse(lina::to_mat3(global->worldMatrix)), offset);
+    }
+  }
+  transform->translation += offset;
+  scene.updateSubtree(e_pelvis);
+}
+
+/* Rotate each foot about its ankle so its sole follows the ground normal.
+ * Runs after SolveIK, the foot's world rotation depends on the solved leg. */
+void AlignFeet(Hierarchy& scene, Animator& animator, Skin const& skin) {
+  auto& reg = scene.registry;
+  auto const& rig = *animator.foot;
+  if (!rig.params.align) {
+    return;
+  }
+
+  for (auto const& foot : rig.feet) {
+    auto const* chain = FindChain(animator, foot.chain);
+    if (!chain) {
+      continue;
+    }
+    float const s = foot.planted * std::min(chain->applied_weight, 1.0f);
+    if (s <= 1.0e-4f) {
+      continue;
+    }
+
+    auto const e_end = JointEntity(reg, skin, chain->end);
+    WorldJoint end{};
+    if (!ReadWorld(reg, e_end, end)) {
+      continue;
+    }
+    auto* transform = reg.try_get<component::Transform>(e_end);
+    if (!transform) {
+      continue;
+    }
+
+    // World space tilt from the up axis to the ground normal, limited and weighted.
+    quat delta = lina::shortest_arc(vec3(0.0f, 1.0f, 0.0f), foot.normal);
+    if (lina::qangle(delta) > rig.params.max_angle) {
+      delta = lina::rotation_quat(lina::qaxis(delta), rig.params.max_angle);
+    }
+    delta = lina::qlerp(quat(0.0f, 0.0f, 0.0f, 1.0f), delta, s);
+
+    quat parent_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+    if (auto const parent = reg.get<component::Node>(e_end).parent; parent != entt::null) {
+      WorldJoint p{};
+      if (ReadWorld(reg, parent, p)) {
+        parent_rotation = p.rotation;
+      }
+    }
+
+    transform->rotation = lina::normalize(
+      lina::qmul(lina::qinv(parent_rotation), delta, end.rotation)
+    );
+    scene.updateSubtree(e_end);
+  }
+}
+
+// ----------------------------
+
 /* Returns the index of the first valid transition, or kInvalidIndexU32. */
 [[nodiscard]]
 uint32_t FindTransition(Animator const& animator, Skeleton const& skeleton) {
@@ -434,6 +602,7 @@ void AnimationSystem::preUpdate(float elapsed_time) {
 void AnimationSystem::advance(float dt) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
+  last_dt_ = dt;
 
   reg.view<Animator, Skin>().each(
     [&](Animator& animator, Skin const& skin) {
@@ -491,13 +660,23 @@ void AnimationSystem::postUpdate() {
   auto& reg = scene_->registry;
 
   // Solve IK.
-  reg.view<Animator, Skin>().each(
-    [&](Animator const& animator, Skin const& skin) {
-      if (animator.root && !animator.ik.empty()) {
+  // for (int i = 0; i < 4; ++i)
+  {
+    reg.view<Animator, Skin>().each(
+      [&](entt::entity e, Animator& animator, Skin const& skin) {
+        if (!animator.root || animator.ik.empty()) {
+          return;
+        }
+        if (animator.foot) {
+          SolveFootIK(*scene_, animator, skin, e, ground_query_, last_dt_);
+        }
         SolveIK(*scene_, animator, skin);
+        if (animator.foot) {
+          AlignFeet(*scene_, animator, skin);
+        }
       }
-    }
-  );
+    );
+  }
 
   reg.view<Skin, component::GlobalTransform>().each(
     [&](Skin& skin, component::GlobalTransform const& mesh_global) {
@@ -1129,8 +1308,8 @@ bool AnimationSystem::removeIK(entt::entity instance_root, IKId id) {
       return chain.id == id.index;
     });
     if (count > 0u) {
-      animator.resample = true;   // drop the last IK pose
       removed_count += static_cast<uint32_t>(count);
+      animator.resample = true;
     }
   });
   return removed_count > 0u;
@@ -1297,6 +1476,138 @@ std::vector<std::string> AnimationSystem::twoBoneIKEndJoints(entt::entity instan
     }
   });
   return names;
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+void AnimationSystem::setGroundQuery(GroundQuery query) {
+  ground_query_ = std::move(query);
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setFootIK(entt::entity instance_root, FootIKDesc const& desc) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setFootIK: entity is not an instance root.");
+    return false;
+  }
+  if (desc.feet.empty()) {
+    LOGE("[Animation] setFootIK: no foot chain.");
+    return false;
+  }
+
+  uint32_t set_count = 0u;
+
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    auto const& skeleton = *skin.skeleton;
+
+    FootRig rig{};
+    for (auto const id : desc.feet) {
+      if (!FindChain(animator, id.index)) {
+        return;
+      }
+      rig.feet.push_back({ .chain = id.index });
+    }
+    auto const& first = *FindChain(animator, rig.feet.front().chain);
+
+    rig.pelvis = desc.pelvis.empty() ? ParentOf(skeleton, first.root)
+                                     : skeleton.findJoint(std::string{desc.pelvis});
+    if ((rig.pelvis == kInvalidIndexU32) || (rig.pelvis >= skin.joints.size())) {
+      LOGW("[Animation] foot IK: invalid pelvis joint.");
+      return;
+    }
+    for (auto const& foot : rig.feet) {
+      if (!IsAncestor(skeleton, rig.pelvis, FindChain(animator, foot.chain)->root)) {
+        LOGW("[Animation] foot IK: the pelvis is not an ancestor of every chain.");
+        return;
+      }
+    }
+
+    auto const& dp = desc.params;
+    auto &rp       = rig.params;
+
+    rp.probe_height  = std::max(dp.probe_height, 0.0f);
+    rp.probe_depth   = std::max(dp.probe_depth, 0.0f);
+    rp.blend_height  = std::max(dp.blend_height, 1.0e-3f);
+    rp.smooth        = std::max(dp.smooth, 0.0f);
+    rp.align         = dp.align;
+    rp.max_angle     = lina::radians(std::clamp(dp.max_angle, 0.0f, 90.0f));
+
+    if (dp.ankle_height >= 0.0f) {
+      rp.ankle_height = dp.ankle_height;
+    } else {
+      WorldJoint end{}, base{};
+      if (ReadWorld(reg, JointEntity(reg, skin, first.end), end)
+       && ReadWorld(reg, instance_root, base)) {
+        rp.ankle_height = std::max(end.position.y - base.position.y, 0.0f);
+      }
+    }
+
+    if (animator.foot) {
+      rig.pelvis_offset = animator.foot->pelvis_offset;
+      for (auto& foot : rig.feet) {
+        for (auto const& old : animator.foot->feet) {
+          if (old.chain == foot.chain) {
+            foot.offset = old.offset;
+            foot.normal = old.normal;
+          }
+        }
+      }
+    }
+
+    animator.foot = std::move(rig);
+    ++set_count;
+  });
+
+  if (set_count == 0u) {
+    LOGW("[Animation] foot IK: no animator could use this rig.");
+  }
+  return set_count > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+void AnimationSystem::clearFootIK(entt::entity instance_root) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] clearFootIK: entity is not an instance root.");
+    return;
+  }
+  ForEachAnimator(reg, instance_root, [](Animator& animator, Skin&) {
+    if (animator.foot) {
+      animator.foot.reset();
+      animator.resample = true;
+    }
+  });
+}
+
+// ----------------------------------------------------------------------------
+
+float AnimationSystem::footIKAnkleHeight(entt::entity instance_root) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  float height = 0.0f;
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return height;
+  }
+  bool found = false;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    if (!found && animator.foot) {
+      found = true;
+      height = animator.foot->params.ankle_height;
+    }
+  });
+  return height;
 }
 
 /* -------------------------------------------------------------------------- */

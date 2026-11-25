@@ -12,7 +12,8 @@
 #include "entt/entt.hpp"
 
 #include "aer/core/common.h"
-#include "aer/scene/animation.h" // for BlendTree1D
+#include "aer/scene/animation.h"
+#include "aer/scene/animation_ik.h"
 #include "aer/scene/animation_pose_cache.h"
 
 /* -------------------------------------------------------------------------- */
@@ -52,6 +53,15 @@ class AnimationSystem {
     std::string_view mid{};
     std::string_view end{};
     float weight{1.0f};
+  };
+
+  struct FootIKDesc {
+    std::vector<IKId> feet{};
+    std::string_view pelvis{};
+    FootRig::Params params{
+      // ankle_height: when negative will measure it from the current pose
+      // max_angle: in degrees
+    };
   };
 
  public:
@@ -207,6 +217,20 @@ class AnimationSystem {
   std::vector<std::string> twoBoneIKEndJoints(entt::entity instance_root) const;
 
   // -------------------------------
+  // --- Foot IK ---
+
+  /* Ground height provider shared by every foot rig. */
+  void setGroundQuery(GroundQuery query);
+
+  /* Place the feet of the instance on the ground. */
+  bool setFootIK(entt::entity instance_root, FootIKDesc const& desc);
+
+  void clearFootIK(entt::entity instance_root);
+
+  [[nodiscard]]
+  float footIKAnkleHeight(entt::entity instance_root) const;
+
+  // -------------------------------
  private:
   /* Compiled graph for (desc, skeleton), shared through the cache. */
   [[nodiscard]]
@@ -219,10 +243,14 @@ class AnimationSystem {
   using GraphKey = std::pair<AnimationGraphDesc const*, Skeleton const*>;
 
   Hierarchy* scene_{};
-  std::optional<float> last_elapsed_time_{};
   PoseCache poses_{};
-  uint32_t next_ik_id_{0u};
   std::map<GraphKey, std::weak_ptr<AnimationGraph const>> graph_cache_{};
+
+  std::optional<float> last_elapsed_time_{};
+  float last_dt_{0.0f};
+
+  uint32_t next_ik_id_{0u};
+  GroundQuery ground_query_{};
 };
 
 } // namespace "scene"

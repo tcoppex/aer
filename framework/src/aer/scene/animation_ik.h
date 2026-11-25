@@ -2,6 +2,7 @@
 #define AER_SCENE_ANIMATION_IK_H_
 
 #include <optional>
+#include <functional>
 
 #include "aer/core/common.h"
 
@@ -39,6 +40,41 @@ TwoBoneIKResult SolveTwoBoneIK(
   vec3 const& target,
   std::optional<vec3> const& pole = std::nullopt
 );
+
+// ----------------------------------------------------------------------------
+
+struct FootRig {
+  struct Foot {
+    uint32_t chain{kInvalidIndexU32};       // TwoBoneIK::id
+    float offset{0.0f};                     // smoothed height change of the ground (m)
+    vec3 normal{0.0f, 1.0f, 0.0f};          // smoothed ground normal
+    float planted{0.0f};
+  };
+
+  struct Params {
+    float ankle_height{0.0f};
+    float probe_height{0.5f};
+    float probe_depth{0.5f};
+    float blend_height{0.15f};
+    float smooth{12.0f};
+    bool align{true};
+    float max_angle{lina::kPi / 5.0f};      // in radians
+  };
+
+  std::vector<Foot> feet{};
+  uint32_t pelvis{kInvalidIndexU32};        // joint index, ancestor of the chains' roots
+  float pelvis_offset{0.0f};                // smoothed vertical offset (<= 0)
+  Params params{};
+};
+
+struct GroundHit {
+  vec3 position{};
+  vec3 normal{0.0f, 1.0f, 0.0f};
+};
+
+using GroundQuery = std::function<
+  bool(vec3 const& origin, float max_distance, GroundHit& hit)
+>;
 
 }  // namespace "scene"
 
