@@ -23,6 +23,9 @@ using StateId = Handle<StateTag>;
 struct IKTag;
 using IKId = Handle<IKTag>;
 
+struct ChainTag;
+using ChainIKId = Handle<ChainTag>;
+
 struct LookTag;
 using LookId = Handle<LookTag>;
 

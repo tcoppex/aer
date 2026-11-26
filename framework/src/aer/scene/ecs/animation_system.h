@@ -56,6 +56,13 @@ class AnimationSystem {
     float weight{1.0f};
   };
 
+  struct ChainIKDesc {
+    std::string_view end{};
+    uint32_t length{3};       // bones from `end` toward the root (>= 2)
+    float weight{1.0f};
+    FABRIKParams params{};
+  };
+
   struct FootIKDesc {
     std::vector<IKId> feet{};
     std::string_view pelvis{};
@@ -232,6 +239,33 @@ class AnimationSystem {
   std::vector<std::string> twoBoneIKEndJoints(entt::entity instance_root) const;
 
   // -------------------------------
+  // --- Chain IK (FABRIK) ---
+
+  /* N-bone chain ending at `desc.end` and going up `desc.length` bones. The root joint stays
+   * in place, the others rotate so the end reaches the target (a target out of reach
+   * straightens the chain, bones are never stretched). The target starts on the current end. */
+  [[nodiscard]]
+  ChainIKId addChainIK(entt::entity instance_root, ChainIKDesc const& desc);
+
+  bool removeChainIK(entt::entity instance_root, ChainIKId id);
+
+  bool setChainIKTarget(entt::entity instance_root, ChainIKId id, vec3 const& world_position);
+
+  /* Same fade rules as setIKWeight. */
+  bool setChainIKWeight(entt::entity instance_root, ChainIKId id, float weight, float blend_seconds = 0.0f);
+
+  /* Twist the inner joints about the root -> end axis so they face a world space position. */
+  bool setChainIKPole(entt::entity instance_root, ChainIKId id, vec3 const& world_position);
+
+  bool clearChainIKPole(entt::entity instance_root, ChainIKId id);
+
+  [[nodiscard]]
+  vec3 chainIKTarget(entt::entity instance_root, ChainIKId id) const;
+
+  [[nodiscard]]
+  float chainIKWeight(entt::entity instance_root, ChainIKId id) const;
+
+  // -------------------------------
   // --- Foot IK ---
 
   /* Ground height provider shared by every foot rig. */
@@ -289,6 +323,7 @@ class AnimationSystem {
   GroundQuery ground_query_{};
 
   uint32_t next_ik_id_{0u};
+  uint32_t next_chain_id_{0u};
   uint32_t next_look_id_{0u};
 };
 

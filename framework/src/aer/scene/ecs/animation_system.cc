@@ -346,6 +346,160 @@ void SolveIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
 
 // ----------------------------
 
+void StepWeight(float& applied, float target, float rate, float dt) {
+  if (applied == target) {
+    return;
+  }
+  if (rate <= 0.0f) {
+    applied = target;
+    return;
+  }
+  float const delta = target - applied;
+  float const step = rate * dt;
+  applied = (std::abs(delta) <= step) ? target : applied + std::copysign(step, delta);
+}
+
+void TickChain(Animator& animator, float dt) {
+  for (auto& chain : animator.chain) {
+    StepWeight(chain.applied_weight, chain.weight, chain.fade_rate, dt);
+  }
+}
+
+/* Same behavior as setIKWeight: immediate, or a linear fade over `blend_seconds`. */
+void SetFade(
+  float& weight, float& applied, float& rate,
+  float target, float blend_seconds
+) {
+  if (blend_seconds > 0.0f) {
+    if (weight == target) {
+      return;
+    }
+    weight = target;
+    rate = std::abs(target - applied) / blend_seconds;
+  } else {
+    weight = target;
+    applied = target;
+    rate = 0.0f;
+  }
+}
+
+template<typename Fn>
+uint32_t ForEachChain(entt::registry& reg, entt::entity instance_root, ChainIKId id, Fn&& fn) {
+  uint32_t count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    for (auto& chain : animator.chain) {
+      if (chain.id == id.index) {
+        fn(chain);
+        ++count;
+      }
+    }
+  });
+  return count;
+}
+
+[[nodiscard]]
+std::optional<ChainIK> ResolveChainIK(
+  Skeleton const& skeleton,
+  AnimationSystem::ChainIKDesc const& desc
+) {
+  uint32_t const end = skeleton.findJoint(std::string{desc.end});
+  if (end == kInvalidIndexU32) {
+    return std::nullopt;
+  }
+
+  uint32_t const bones = std::max(desc.length, 2u);
+  std::vector<uint32_t> joints{end};
+  for (uint32_t i = 0u; i < bones; ++i) {
+    auto const parent = ParentOf(skeleton, joints.back());
+    if (parent == kInvalidIndexU32) {
+      LOGW("[Animation] chain IK: \"{}\" has fewer than {} bone(s) above it.", desc.end, bones);
+      return std::nullopt;
+    }
+    joints.push_back(parent);
+  }
+  std::ranges::reverse(joints);   // root-most first
+
+  ChainIK chain{};
+  chain.joints = std::move(joints);
+  chain.weight = std::clamp(desc.weight, 0.0f, 1.0f);
+  chain.applied_weight = chain.weight;
+  chain.params.max_iterations = std::clamp(desc.params.max_iterations, 1u, 64u);
+  chain.params.tolerance = std::max(desc.params.tolerance, 1.0e-5f);
+  return chain;
+}
+
+/* Solve the chains of an animator with FABRIK, runs after SolveIK.
+ * Joints are rotated root to tip: each one gets its own solved world rotation
+ * (delta * original world rotation) expressed in the space of its current parent. */
+void SolveChainIK(Hierarchy& scene, Animator const& animator, Skin const& skin) {
+  auto& reg = scene.registry;
+
+  std::vector<entt::entity> entities{};
+  std::vector<vec3> from{};
+  std::vector<vec3> to{};
+  std::vector<quat> rotations{};
+  std::vector<quat> deltas{};
+
+  for (auto const& chain : animator.chain) {
+    size_t const n = chain.joints.size();
+    if ((chain.applied_weight <= 0.0f) || (n < 2u)) {
+      continue;
+    }
+
+    entities.clear();
+    from.clear();
+    rotations.clear();
+
+    bool valid = true;
+    for (auto const joint : chain.joints) {
+      auto const e = JointEntity(reg, skin, joint);
+      WorldJoint world{};
+      if (!ReadWorld(reg, e, world) || !reg.all_of<component::Transform>(e)) {
+        valid = false;
+        break;
+      }
+      entities.push_back(e);
+      from.push_back(world.position);
+      rotations.push_back(world.rotation);
+    }
+    if (!valid) {
+      continue;
+    }
+
+    to = from;
+    std::optional<vec3> const pole = chain.use_pole ? std::optional<vec3>{chain.pole}
+                                                    : std::nullopt;
+    (void)SolveFABRIK(to, chain.target, chain.params, pole);
+
+    deltas.assign(n, quat{lina::identity});
+    ComputeChainDeltas(from, to, deltas);
+
+    float const w = std::min(chain.applied_weight, 1.0f);
+
+    // The end joint has no bone: it keeps its local rotation.
+    for (size_t i = 0u; i + 1u < n; ++i) {
+      auto& transform = reg.get<component::Transform>(entities[i]);
+
+      quat parent_rotation{lina::identity};
+      if (auto const parent = reg.get<component::Node>(entities[i]).parent; parent != entt::null) {
+        WorldJoint p{};
+        if (ReadWorld(reg, parent, p)) {
+          parent_rotation = p.rotation;
+        }
+      }
+
+      quat const solved = lina::normalize(
+        lina::qmul(lina::qinv(parent_rotation), deltas[i], rotations[i])
+      );
+      transform.rotation = (w >= 1.0f) ? solved : lina::qlerp(transform.rotation, solved, w);
+
+      scene.updateSubtree(entities[i]);
+    }
+  }
+}
+
+// ----------------------------
+
 [[nodiscard]]
 TwoBoneIK* FindChain(Animator& animator, uint32_t id) {
   auto const it = std::ranges::find(animator.ik, id, &TwoBoneIK::id);
@@ -512,19 +666,6 @@ void AlignFeet(Hierarchy& scene, Animator& animator, Skin const& skin) {
 }
 
 // ----------------------------
-
-void StepWeight(float& applied, float target, float rate, float dt) {
-  if (applied == target) {
-    return;
-  }
-  if (rate <= 0.0f) {
-    applied = target;
-    return;
-  }
-  float const delta = target - applied;
-  float const step = rate * dt;
-  applied = (std::abs(delta) <= step) ? target : applied + std::copysign(step, delta);
-}
 
 void TickLook(Animator& animator, float dt) {
   for (auto& look : animator.look) {
@@ -781,15 +922,17 @@ void AnimationSystem::advance(float dt) {
 
       TickTriggers(animator, dt);
       TickIK(animator, dt);
+      TickChain(animator, dt);
       TickLook(animator, dt);
 
       UpdateStateMachine(animator, poses_, skeleton);
 
-      // An animator with IK or look-at is resampled every frame, even paused,
+      // An animator with IK, look-at or chains is resampled every frame, even paused,
       // so the solvers always start from the clean animated pose.
       if (!animator.playing
        && !animator.resample
        && animator.ik.empty()
+       && animator.chain.empty()
        && animator.look.empty()) {
         return;
       }
@@ -835,7 +978,8 @@ void AnimationSystem::postUpdate() {
   // Solve IK.
   reg.view<Animator, Skin>().each(
     [&](entt::entity e, Animator& animator, Skin const& skin) {
-      if (!animator.root || (animator.ik.empty() && animator.look.empty())) {
+      if (!animator.root
+       || (animator.ik.empty() && animator.look.empty() && animator.chain.empty())) {
         return;
       }
       if (animator.foot) {
@@ -843,6 +987,7 @@ void AnimationSystem::postUpdate() {
       }
       SolveLook(*scene_, animator, skin, last_dt_);
       SolveIK(*scene_, animator, skin);
+      SolveChainIK(*scene_, animator, skin);
       if (animator.foot) {
         AlignFeet(*scene_, animator, skin);
       }
@@ -1652,6 +1797,197 @@ std::vector<std::string> AnimationSystem::twoBoneIKEndJoints(entt::entity instan
     }
   });
   return names;
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+ChainIKId AnimationSystem::addChainIK(entt::entity instance_root, ChainIKDesc const& desc) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] addChainIK: entity is not an instance root.");
+    return {};
+  }
+
+  ChainIKId const id{next_chain_id_};
+  uint32_t added_count = 0u;
+
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin& skin) {
+    if (!skin.skeleton) {
+      return;
+    }
+    auto chain = ResolveChainIK(*skin.skeleton, desc);
+    if (!chain || std::ranges::any_of(chain->joints, [&](uint32_t j) {
+          return j >= skin.joints.size();
+        })) {
+      return;
+    }
+    chain->id = id.index;
+
+    // start on the current end position.
+    WorldJoint end{};
+    if (ReadWorld(reg, JointEntity(reg, skin, chain->joints.back()), end)) {
+      chain->target = end.position;
+    }
+
+    // the pole starts on a middle joint, which keeps the animated bend.
+    WorldJoint mid{};
+    if (ReadWorld(reg, JointEntity(reg, skin, chain->joints[chain->joints.size() / 2u]), mid)) {
+      chain->pole = mid.position;
+    }
+
+    animator.chain.push_back(std::move(*chain));
+    ++added_count;
+  });
+
+  if (added_count == 0u) {
+    LOGW("[Animation] no chain IK ending at \"{}\" in this instance.", desc.end);
+    return {};
+  }
+  ++next_chain_id_;
+  return id;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::removeChainIK(entt::entity instance_root, ChainIKId id) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] removeChainIK: entity is not an instance root.");
+    return false;
+  }
+
+  uint32_t removed_count = 0u;
+  ForEachAnimator(reg, instance_root, [&](Animator& animator, Skin&) {
+    auto const count = std::erase_if(animator.chain, [&](auto const& chain) {
+      return chain.id == id.index;
+    });
+    if (count > 0u) {
+      removed_count += static_cast<uint32_t>(count);
+      animator.resample = true;
+    }
+  });
+  return removed_count > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setChainIKTarget(
+  entt::entity instance_root,
+  ChainIKId id,
+  vec3 const& world_position
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setChainIKTarget: entity is not an instance root.");
+    return false;
+  }
+  return ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    chain.target = world_position;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setChainIKWeight(
+  entt::entity instance_root,
+  ChainIKId id,
+  float weight,
+  float blend_seconds
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setChainIKWeight: entity is not an instance root.");
+    return false;
+  }
+
+  float const target = std::clamp(weight, 0.0f, 1.0f);
+  return ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    SetFade(chain.weight, chain.applied_weight, chain.fade_rate, target, blend_seconds);
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::setChainIKPole(
+  entt::entity instance_root,
+  ChainIKId id,
+  vec3 const& world_position
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setChainIKPole: entity is not an instance root.");
+    return false;
+  }
+  return ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    chain.pole = world_position;
+    chain.use_pole = true;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+bool AnimationSystem::clearChainIKPole(entt::entity instance_root, ChainIKId id) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] clearChainIKPole: entity is not an instance root.");
+    return false;
+  }
+  return ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    chain.use_pole = false;
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
+vec3 AnimationSystem::chainIKTarget(entt::entity instance_root, ChainIKId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  vec3 target{};
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return target;
+  }
+  bool found = false;
+  ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    if (!found) {
+      found = true;
+      target = chain.target;
+    }
+  });
+  return target;
+}
+
+// ----------------------------------------------------------------------------
+
+float AnimationSystem::chainIKWeight(entt::entity instance_root, ChainIKId id) const {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  float weight = 0.0f;
+  if (!IsInstanceRoot(reg, instance_root)) {
+    return weight;
+  }
+  bool found = false;
+  ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    if (!found) {
+      found = true;
+      weight = chain.applied_weight;
+    }
+  });
+  return weight;
 }
 
 // ----------------------------------------------------------------------------

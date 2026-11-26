@@ -51,6 +51,7 @@ struct Animator {
   StateId state{};                                // current graph state (invalid = manual control)
 
   std::vector<TwoBoneIK> ik{};                    // (solved after the hierarchy update)
+  std::vector<ChainIK> chain{};
   std::optional<FootRig> foot{};
   std::vector<LookAt> look{};
 };

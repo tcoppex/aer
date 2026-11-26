@@ -3,6 +3,8 @@
 
 #include <optional>
 #include <functional>
+#include <span>
+#include <vector>
 
 #include "aer/core/common.h"
 
@@ -39,6 +41,48 @@ TwoBoneIKResult SolveTwoBoneIK(
   vec3 const& end,
   vec3 const& target,
   std::optional<vec3> const& pole = std::nullopt
+);
+
+// ----------------------------------------------------------------------------
+
+struct FABRIKParams {
+  uint32_t max_iterations{16u};
+  float tolerance{1.0e-3f};                 // end to target distance considered solved (m)
+};
+
+struct FABRIKResult {
+  bool reached{false};                      // the end is within tolerance of the target
+  uint32_t iterations{0u};
+};
+
+struct ChainIK {
+  uint32_t id{kInvalidIndexU32};            // ChainIKId::index
+  std::vector<uint32_t> joints{};           // root-most first, the last one is the end
+  vec3 target{};                            // world space
+  float weight{1.0f};
+  float applied_weight{1.0f};               // weight used by the solver, moves toward `weight`
+  float fade_rate{0.0f};                    // weight units per second (0 = immediate)
+  vec3 pole{};
+  bool use_pole{false};
+  FABRIKParams params{};
+};
+
+/* Solve an N-joint chain (root-most first) in place, from its world space positions.
+ * Bone lengths are kept and the root does not move. A target out of reach straightens
+ * the chain toward it. With a `pole` (3+ joints), the interior joints are then twisted
+ * about the root -> end axis so the joint farthest from it faces the pole. */
+[[nodiscard]]
+FABRIKResult SolveFABRIK(
+  std::span<vec3> positions,
+  vec3 const& target,
+  FABRIKParams const& params = {},
+  std::optional<vec3> const& pole = std::nullopt
+);
+
+void ComputeChainDeltas(
+  std::span<vec3 const> from,
+  std::span<vec3 const> to,
+  std::span<quat> deltas
 );
 
 // ----------------------------------------------------------------------------

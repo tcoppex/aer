@@ -5,6 +5,17 @@
 
 /* -------------------------------------------------------------------------- */
 
+namespace {
+
+vec3 SafeDirection(vec3 const& v, vec3 const& fallback) {
+  float const l = lina::length(v);
+  return (l > lina::kEpsilon) ? (v / l) : fallback;
+}
+
+}  // namespace
+
+/* -------------------------------------------------------------------------- */
+
 namespace scene {
 
 TwoBoneIKResult SolveTwoBoneIK(
@@ -79,6 +90,129 @@ TwoBoneIKResult SolveTwoBoneIK(
   }
 
   return result;
+}
+
+// ----------------------------------------------------------------------------
+
+FABRIKResult SolveFABRIK(
+  std::span<vec3> positions,
+  vec3 const& target,
+  FABRIKParams const& params,
+  std::optional<vec3> const& pole
+) {
+  FABRIKResult result{};
+
+  size_t const n = positions.size();
+  if (n < 2u) {
+    return result;
+  }
+
+  std::vector<float> lengths(n - 1u);
+  float total = 0.0f;
+  for (size_t i = 0u; i + 1u < n; ++i) {
+    lengths[i] = lina::length(positions[i + 1u] - positions[i]);
+    if (lengths[i] < lina::kEpsilon) {
+      return result;
+    }
+    total += lengths[i];
+  }
+
+  vec3 const root = positions[0];
+  vec3 const to_target = target - root;
+  float const distance = lina::length(to_target);
+
+  // Out of reach: stretch straight toward the target.
+  if (distance >= total) {
+    vec3 const dir = to_target / distance;
+    for (size_t i = 0u; i + 1u < n; ++i) {
+      positions[i + 1u] = positions[i] + dir * lengths[i];
+    }
+    return result;
+  }
+
+  float const tolerance = std::max(params.tolerance, 1.0e-6f);
+  vec3 const fallback{0.0f, 1.0f, 0.0f};
+
+  for (; result.iterations < params.max_iterations; ++result.iterations) {
+    if (lina::length(positions[n - 1u] - target) <= tolerance) {
+      break;
+    }
+
+    // Backward: pin the end on the target.
+    positions[n - 1u] = target;
+    for (size_t i = n - 1u; i-- > 0u;) {
+      vec3 const dir = SafeDirection(positions[i] - positions[i + 1u], fallback);
+      positions[i] = positions[i + 1u] + dir * lengths[i];
+    }
+
+    // Forward: pin the root back.
+    positions[0] = root;
+    for (size_t i = 0u; i + 1u < n; ++i) {
+      vec3 const dir = SafeDirection(positions[i + 1u] - positions[i], fallback);
+      positions[i + 1u] = positions[i] + dir * lengths[i];
+    }
+  }
+  result.reached = (lina::length(positions[n - 1u] - target) <= tolerance);
+
+  // Rigid twist of the interior joints about the root -> end axis.
+  if (pole && (n >= 3u)) {
+    vec3 const axis = positions[n - 1u] - root;
+    float const axis_length = lina::length(axis);
+    if (axis_length > lina::kEpsilon) {
+      vec3 const u = axis / axis_length;
+      auto perp = [&](vec3 const& p) {
+        vec3 const v = p - root;
+        return v - u * lina::dot(v, u);
+      };
+
+      size_t farthest = 1u;
+      float farthest_length = 0.0f;
+      for (size_t i = 1u; i + 1u < n; ++i) {
+        float const l = lina::length(perp(positions[i]));
+        if (l > farthest_length) {
+          farthest_length = l;
+          farthest = i;
+        }
+      }
+
+      vec3 const from = perp(positions[farthest]);
+      vec3 const to = perp(*pole);
+      float const min_length = 1.0e-4f * total;
+      if ((farthest_length > min_length) && (lina::length(to) > min_length)) {
+        float const angle = std::atan2(
+          lina::dot(lina::cross(from, to), u),
+          lina::dot(from, to)
+        );
+        quat const twist = lina::rotation_quat(u, angle);
+        for (size_t i = 1u; i + 1u < n; ++i) {
+          positions[i] = root + lina::qrot(twist, positions[i] - root);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+void ComputeChainDeltas(
+  std::span<vec3 const> from,
+  std::span<vec3 const> to,
+  std::span<quat> deltas
+) {
+  size_t const n = std::min({from.size(), to.size(), deltas.size()});
+
+  for (size_t i = 0u; i < n; ++i) {
+    deltas[i] = quat{lina::identity};
+  }
+  for (size_t i = 0u; i + 1u < n; ++i) {
+    vec3 const a = from[i + 1u] - from[i];
+    vec3 const b = to[i + 1u] - to[i];
+    float const la = lina::length(a);
+    float const lb = lina::length(b);
+    if ((la > lina::kEpsilon) && (lb > lina::kEpsilon)) {
+      deltas[i] = lina::shortest_arc(a / la, b / lb);
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------
