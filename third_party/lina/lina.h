@@ -1,4 +1,4 @@
-//  lina.h - v0.15.0
+//  lina.h - v0.16.0
 //
 //  Public domain linear algebra header, wrapping sgorsten/linalg.h
 //  <http://unlicense.org/>
@@ -164,7 +164,7 @@ using mat4x4 = mat4f;
 // Constants.
 //
 constexpr LINA_FP kTrueEpsilon  = std::numeric_limits<LINA_FP>::epsilon();
-constexpr LINA_FP kEpsilon      = 10.0f * kTrueEpsilon;
+constexpr LINA_FP kEpsilon      = 10.0 * kTrueEpsilon;
 constexpr LINA_FP kHalfLog      = -0.693147180599;  // log(0.5);
 constexpr LINA_FP kQuarterPi    = 0.785398163397;   // atanf(1.0f);
 constexpr LINA_FP kHalfPi       = 2.0 * kQuarterPi;
@@ -380,6 +380,43 @@ vec<T,4> shortest_arc(vec<T, 3> const& from, vec<T, 3> const& to) {
     return rotation_quat(any_perpendicular(from), kPi);
   }
   return normalize(to_vec4(cross(from, to), 1.0f + d));
+}
+
+// ----------------------------------------------------------------------------
+
+template<class T>
+struct dual_quat {
+  vec<T,4> real{T(0), T(0), T(0), T(1)};
+  vec<T,4> dual{T(0), T(0), T(0), T(0)};
+};
+
+using dualquat = dual_quat<LINA_FP>;
+
+template<class T>
+dual_quat<T> dual_quat_from_rt(vec<T,4> const& rotation, vec<T,3> const& translation) {
+  return {
+    rotation,
+    T(0.5) * qmul(vec<T,4>{translation.x, translation.y, translation.z, T(0)}, rotation)
+  };
+}
+
+template<class T>
+dual_quat<T> dual_quat_from_matrix(mat<T,4,4> const& m) {
+  vec<T,3> position{}, scaling{};
+  vec<T,4> rotation{};
+  decompose_transform_from_matrix(m, position, rotation, scaling);
+  return dual_quat_from_rt(normalize(rotation), position);
+}
+
+template<class T>
+vec<T,3> dual_quat_translation(dual_quat<T> const& dq) {
+  auto const t = qmul(dq.dual, qconj(dq.real));
+  return T(2) * vec<T,3>{t.x, t.y, t.z};
+}
+
+template<class T>
+vec<T,3> dual_quat_transform_point(dual_quat<T> const& dq, vec<T,3> const& p) {
+  return qrot(dq.real, p) + dual_quat_translation(dq);
 }
 
 // ----------------------------------------------------------------------------
