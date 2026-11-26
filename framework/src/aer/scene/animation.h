@@ -32,6 +32,11 @@ using LookId = Handle<LookTag>;
 //   quat rotation{lina::identity};
 // };
 
+enum class SkinningMode : uint32_t {
+  Linear         = 0u,
+  DualQuaternion = 1u,
+};
+
 template<typename T>
 using JointBuffer = std::vector<T>;
 

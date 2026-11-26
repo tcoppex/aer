@@ -24,6 +24,9 @@ struct Skin {
   Skeleton const* skeleton{};                 // same skeleton (valid while the instance lives)
   std::vector<entt::entity> joints{};
   std::vector<mat4> matrices{};               // Skin palette (identity at the bind pose)
+
+  SkinningMode mode{SkinningMode::Linear};    // Blending technique
+  SkinningMode palette_mode{SkinningMode::Linear};
 };
 
 // ----------------------------------------------------------------------------

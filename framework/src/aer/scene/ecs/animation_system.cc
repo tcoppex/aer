@@ -21,6 +21,11 @@ using component::Animator;
 using component::Skin;
 
 [[nodiscard]]
+mat4 PackDualQuat(lina::dualquat const& dq) {
+  return mat4{dq.real, dq.dual, vec4{0.0f}, vec4{0.0f}};
+}
+
+[[nodiscard]]
 bool IsInstanceRoot(entt::registry const& reg, entt::entity e) {
   return reg.valid(e) && reg.all_of<component::Instance>(e);
 }
@@ -857,16 +862,21 @@ void AnimationSystem::postUpdate() {
       // The mesh node is drawn with its own global matrix, so it is cancelled here (glTF).
       mat4 const inverse_mesh = lina::inverse(mesh_global.worldMatrix);
 
+      bool const dqs = (skin.mode == SkinningMode::DualQuaternion);
+
       for (size_t j = 0; j < count; ++j) {
         auto const joint = skin.joints[j];
         auto const* joint_global = (joint != entt::null && reg.valid(joint))
                                  ? reg.try_get<component::GlobalTransform>(joint)
                                  : nullptr;
 
-        skin.matrices[j] = joint_global
+        mat4 const m = joint_global
           ? lina::mul(lina::mul(inverse_mesh, joint_global->worldMatrix), inverse_binds[j])
           : mat4{lina::identity};
+
+        skin.matrices[j] = dqs ? PackDualQuat(lina::dual_quat_from_matrix(m)) : m;
       }
+      skin.palette_mode = skin.mode;
     }
   );
 }

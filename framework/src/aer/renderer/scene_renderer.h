@@ -59,6 +59,7 @@ class SceneRenderer {
     uint32_t palette_offset{};
     uint32_t joint_count{};
     uint32_t vertex_count{};
+    uint32_t mode{};
   };
 
   struct DrawItem {

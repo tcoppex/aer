@@ -338,6 +338,12 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
 
   using namespace scene::component;
 
+  // static_assert(
+  //   static_cast<uint32_t>(scene::SkinningMode::DualQuaternion) == skinning_shader_interop::kscene::SkinningModeDualQuaternion,
+  //   && static_cast<uint32_t>(scene::SkinningMode::Linear) == skinning_shader_interop::kscene::SkinningModeLinear
+  //   "scene::SkinningMode must match the shader interop constants."
+  // );
+
   scene.registry.view<Renderable, Skin>().each(
     [&](entt::entity entity, Renderable const& renderable, Skin const& skin) {
       // retrieve the device asset associated with the skin.
@@ -375,6 +381,7 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
           .palette_offset = palette_offset,
           .joint_count    = static_cast<uint32_t>(skin.matrices.size()),
           .vertex_count   = desc.vertexCount,
+          .mode           = static_cast<uint32_t>(skin.palette_mode),
         });
         skinned_bytes_ += static_cast<uint64_t>(desc.vertexCount)
                         * sizeof(material_shader_interop::Vertex);
@@ -492,6 +499,7 @@ void SceneRenderer::computeSkinning(CommandEncoder const& cmd) {
       .palette        = palette_.current_address + palette_offset,
       .vertex_count   = job.vertex_count,
       .joint_count    = job.joint_count,
+      .mode           = job.mode,
     };
     cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
     cmd.runKernel<skinning_shader_interop::kSkinningGroupSize>(job.vertex_count);
