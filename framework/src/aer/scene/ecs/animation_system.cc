@@ -398,6 +398,23 @@ uint32_t ForEachChain(entt::registry& reg, entt::entity instance_root, ChainIKId
 }
 
 [[nodiscard]]
+std::vector<FABRIKLimit> ResolveChainLimits(
+  std::span<AnimationSystem::ChainLimitDesc const> descs,
+  size_t bones
+) {
+  std::vector<FABRIKLimit> limits{};
+  if (descs.empty()) {
+    return limits;
+  }
+  limits.resize(bones);
+  for (size_t i = 0u; i < std::min(bones, descs.size()); ++i) {
+    limits[i].max_angle = lina::radians(std::clamp(descs[i].max_angle, 0.0f, 180.0f));
+    limits[i].hinge = descs[i].hinge;
+  }
+  return limits;
+}
+
+[[nodiscard]]
 std::optional<ChainIK> ResolveChainIK(
   Skeleton const& skeleton,
   AnimationSystem::ChainIKDesc const& desc
@@ -417,7 +434,7 @@ std::optional<ChainIK> ResolveChainIK(
     }
     joints.push_back(parent);
   }
-  std::ranges::reverse(joints);   // root-most first
+  std::ranges::reverse(joints);
 
   ChainIK chain{};
   chain.joints = std::move(joints);
@@ -425,6 +442,7 @@ std::optional<ChainIK> ResolveChainIK(
   chain.applied_weight = chain.weight;
   chain.params.max_iterations = std::clamp(desc.params.max_iterations, 1u, 64u);
   chain.params.tolerance = std::max(desc.params.tolerance, 1.0e-5f);
+  chain.limits = ResolveChainLimits(desc.limits, bones);
   return chain;
 }
 
@@ -469,7 +487,7 @@ void SolveChainIK(Hierarchy& scene, Animator const& animator, Skin const& skin) 
     to = from;
     std::optional<vec3> const pole = chain.use_pole ? std::optional<vec3>{chain.pole}
                                                     : std::nullopt;
-    (void)SolveFABRIK(to, chain.target, chain.params, pole);
+    (void)SolveFABRIK(to, chain.target, chain.params, pole, chain.limits);
 
     deltas.assign(n, quat{lina::identity});
     ComputeChainDeltas(from, to, deltas);
@@ -1952,6 +1970,25 @@ bool AnimationSystem::clearChainIKPole(entt::entity instance_root, ChainIKId id)
 
 // ----------------------------------------------------------------------------
 
+bool AnimationSystem::setChainIKLimits(
+  entt::entity instance_root,
+  ChainIKId id,
+  std::vector<ChainLimitDesc> const& limits
+) {
+  LOG_CHECK(scene_ != nullptr);
+  auto& reg = scene_->registry;
+
+  if (!IsInstanceRoot(reg, instance_root)) {
+    LOGE("[Animation] setChainIKLimits: entity is not an instance root.");
+    return false;
+  }
+  return ForEachChain(reg, instance_root, id, [&](ChainIK& chain) {
+    chain.limits = ResolveChainLimits(limits, chain.joints.size() - 1u);
+  }) > 0u;
+}
+
+// ----------------------------------------------------------------------------
+
 vec3 AnimationSystem::chainIKTarget(entt::entity instance_root, ChainIKId id) const {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
@@ -2197,7 +2234,11 @@ bool AnimationSystem::removeLookAt(entt::entity instance_root, LookId id) {
 
 // ----------------------------------------------------------------------------
 
-bool AnimationSystem::setLookTarget(entt::entity instance_root, LookId id, vec3 const& world_position) {
+bool AnimationSystem::setLookTarget(
+  entt::entity instance_root,
+  LookId id,
+  vec3 const& world_position
+) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
 

@@ -56,11 +56,17 @@ class AnimationSystem {
     float weight{1.0f};
   };
 
+  struct ChainLimitDesc {
+    float max_angle{180.0f};  // degrees from the reference direction (180 = free)
+    bool hinge{false};        // bend only about the animated bend axis, never backward
+  };
+
   struct ChainIKDesc {
     std::string_view end{};
     uint32_t length{3};       // bones from `end` toward the root (>= 2)
     float weight{1.0f};
     FABRIKParams params{};
+    std::vector<ChainLimitDesc> limits{};   // per bone from the root, missing = free
   };
 
   struct FootIKDesc {
@@ -203,7 +209,7 @@ class AnimationSystem {
   std::vector<std::string> stateNames(entt::entity instance_root) const;
 
   // -------------------------------
-  // --- Inverse Kinematics ---
+  // --- Two Bones IK ---
 
   /* Add a two-bone chain to every animator of the instance having its joints.
    * Chains are solved after the hierarchy update on top of the active motion,
@@ -258,6 +264,13 @@ class AnimationSystem {
   bool setChainIKPole(entt::entity instance_root, ChainIKId id, vec3 const& world_position);
 
   bool clearChainIKPole(entt::entity instance_root, ChainIKId id);
+
+  /* Replace the limits of a chain (same layout as ChainIKDesc::limits). */
+  bool setChainIKLimits(
+    entt::entity instance_root,
+    ChainIKId id,
+    std::vector<ChainLimitDesc> const& limits
+  );
 
   [[nodiscard]]
   vec3 chainIKTarget(entt::entity instance_root, ChainIKId id) const;

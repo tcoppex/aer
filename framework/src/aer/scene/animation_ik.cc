@@ -12,6 +12,31 @@ vec3 SafeDirection(vec3 const& v, vec3 const& fallback) {
   return (l > lina::kEpsilon) ? (v / l) : fallback;
 }
 
+/* Limit the direction of a bone from the direction `ref` of its parent bone (both unit).
+ * `axis` is the hinge axis (zero when the joint has none). */
+vec3 LimitBone(vec3 dir, vec3 const& ref, scene::FABRIKLimit const& limit, vec3 const& axis) {
+  // Hinge: stay in the bend plane, and never fold the other way.
+  if (limit.hinge && (lina::length(axis) > 0.5f)) {
+    vec3 const flat = dir - axis * lina::dot(dir, axis);
+    float const l = lina::length(flat);
+    dir = (l > lina::kEpsilon) ? (flat / l) : ref;
+    if (lina::dot(lina::cross(ref, dir), axis) < 0.0f) {
+      dir = ref;
+    }
+  }
+
+  // Cone around the reference.
+  float const c = std::clamp(lina::dot(ref, dir), -1.0f, 1.0f);
+  if (std::acos(c) <= limit.max_angle) {
+    return dir;
+  }
+  vec3 const side = dir - ref * c;
+  float const sl = lina::length(side);
+  vec3 const s = (sl > lina::kEpsilon) ? (side / sl)
+                                       : lina::normalize(lina::any_perpendicular(ref));
+  return lina::normalize(ref * std::cos(limit.max_angle) + s * std::sin(limit.max_angle));
+}
+
 }  // namespace
 
 /* -------------------------------------------------------------------------- */
@@ -98,7 +123,8 @@ FABRIKResult SolveFABRIK(
   std::span<vec3> positions,
   vec3 const& target,
   FABRIKParams const& params,
-  std::optional<vec3> const& pole
+  std::optional<vec3> const& pole,
+  std::span<FABRIKLimit const> limits
 ) {
   FABRIKResult result{};
 
@@ -107,19 +133,56 @@ FABRIKResult SolveFABRIK(
     return result;
   }
 
+  // Bone lengths, and the animated bone directions.
   std::vector<float> lengths(n - 1u);
+  std::vector<vec3> frame(n - 1u);
   float total = 0.0f;
   for (size_t i = 0u; i + 1u < n; ++i) {
-    lengths[i] = lina::length(positions[i + 1u] - positions[i]);
+    vec3 const bone = positions[i + 1u] - positions[i];
+    lengths[i] = lina::length(bone);
     if (lengths[i] < lina::kEpsilon) {
       return result;
     }
+    frame[i] = bone / lengths[i];
     total += lengths[i];
+  }
+
+  // Hinge axes: the animated bend of each joint (none when it is straight).
+  vec3 const root_ref = frame[0];
+  std::vector<vec3> axes(n - 1u, vec3(0.0f, 0.0f, 0.0f));
+  for (size_t i = 1u; (i < limits.size()) && (i + 1u < n); ++i) {
+    if (limits[i].hinge) {
+      vec3 const a = lina::cross(frame[i - 1u], frame[i]);
+      if (auto l = lina::length(a); l > lina::kEpsilon) {
+        axes[i] = a / l;
+      }
+    }
   }
 
   vec3 const root = positions[0];
   vec3 const to_target = target - root;
   float const distance = lina::length(to_target);
+  vec3 const fallback{0.0f, 1.0f, 0.0f};
+
+  // Root to tip, with the limits. A hinge axis follows its parent bone.
+  auto forward = [&]() {
+    positions[0] = root;
+    vec3 prev{};
+    for (size_t i = 0u; i + 1u < n; ++i) {
+      vec3 dir = SafeDirection(positions[i + 1u] - positions[i], fallback);
+
+      if (i < limits.size()) {
+        vec3 const ref = (i == 0u) ? root_ref : prev;
+        vec3 axis{};
+        if ((i > 0u) && (lina::length(axes[i]) > 0.5f)) {
+          axis = lina::qrot(lina::shortest_arc(frame[i - 1u], prev), axes[i]);
+        }
+        dir = LimitBone(dir, ref, limits[i], axis);
+      }
+      positions[i + 1u] = positions[i] + dir * lengths[i];
+      prev = dir;
+    }
+  };
 
   // Out of reach: stretch straight toward the target.
   if (distance >= total) {
@@ -127,11 +190,13 @@ FABRIKResult SolveFABRIK(
     for (size_t i = 0u; i + 1u < n; ++i) {
       positions[i + 1u] = positions[i] + dir * lengths[i];
     }
+    if (!limits.empty()) {
+      forward();
+    }
     return result;
   }
 
   float const tolerance = std::max(params.tolerance, 1.0e-6f);
-  vec3 const fallback{0.0f, 1.0f, 0.0f};
 
   for (; result.iterations < params.max_iterations; ++result.iterations) {
     if (lina::length(positions[n - 1u] - target) <= tolerance) {
@@ -145,14 +210,9 @@ FABRIKResult SolveFABRIK(
       positions[i] = positions[i + 1u] + dir * lengths[i];
     }
 
-    // Forward: pin the root back.
-    positions[0] = root;
-    for (size_t i = 0u; i + 1u < n; ++i) {
-      vec3 const dir = SafeDirection(positions[i + 1u] - positions[i], fallback);
-      positions[i + 1u] = positions[i] + dir * lengths[i];
-    }
+    // Forward: pin the root back, and apply the limits.
+    forward();
   }
-  result.reached = (lina::length(positions[n - 1u] - target) <= tolerance);
 
   // Rigid twist of the interior joints about the root -> end axis.
   if (pole && (n >= 3u)) {
@@ -187,12 +247,24 @@ FABRIKResult SolveFABRIK(
         for (size_t i = 1u; i + 1u < n; ++i) {
           positions[i] = root + lina::qrot(twist, positions[i] - root);
         }
+
+        // The bend frames turn with the chain, then the limits are enforced again.
+        for (size_t i = 0u; i + 1u < n; ++i) {
+          frame[i] = lina::qrot(twist, frame[i]);
+          axes[i] = lina::qrot(twist, axes[i]);
+        }
+        if (!limits.empty()) {
+          forward();
+        }
       }
     }
   }
 
+  result.reached = (lina::length(positions[n - 1u] - target) <= tolerance);
   return result;
 }
+
+// ----------------------------------------------------------------------------
 
 void ComputeChainDeltas(
   std::span<vec3 const> from,

@@ -55,6 +55,11 @@ struct FABRIKResult {
   uint32_t iterations{0u};
 };
 
+struct FABRIKLimit {
+  float max_angle{lina::kPi};               // radians, swing from the reference direction (pi = free)
+  bool hinge{false};                        // keep the animated bend plane, never fold backward
+};
+
 struct ChainIK {
   uint32_t id{kInvalidIndexU32};            // ChainIKId::index
   std::vector<uint32_t> joints{};           // root-most first, the last one is the end
@@ -65,18 +70,22 @@ struct ChainIK {
   vec3 pole{};
   bool use_pole{false};
   FABRIKParams params{};
+  std::vector<FABRIKLimit> limits{};        // per bone from the root, empty = free
+  //FABRIKResult result{};
 };
 
 /* Solve an N-joint chain (root-most first) in place, from its world space positions.
  * Bone lengths are kept and the root does not move. A target out of reach straightens
- * the chain toward it. With a `pole` (3+ joints), the interior joints are then twisted
- * about the root -> end axis so the joint farthest from it faces the pole. */
+ * the chain toward it. With a `pole` (3+ joints), the interior joints are twisted about the
+ * root -> end axis so the joint farthest from it faces the pole.
+ * `limits` are enforced on the final pose, so the end may stop short of the target. */
 [[nodiscard]]
 FABRIKResult SolveFABRIK(
   std::span<vec3> positions,
   vec3 const& target,
   FABRIKParams const& params = {},
-  std::optional<vec3> const& pole = std::nullopt
+  std::optional<vec3> const& pole = std::nullopt,
+  std::span<FABRIKLimit const> limits = {}
 );
 
 void ComputeChainDeltas(
