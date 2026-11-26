@@ -339,35 +339,61 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
   using namespace scene::component;
 
   // static_assert(
-  //   static_cast<uint32_t>(scene::SkinningMode::DualQuaternion) == skinning_shader_interop::kscene::SkinningModeDualQuaternion,
-  //   && static_cast<uint32_t>(scene::SkinningMode::Linear) == skinning_shader_interop::kscene::SkinningModeLinear
-  //   "scene::SkinningMode must match the shader interop constants."
+  //   static_cast<uint32_t>(SkinningMode::Linear) == skinning_shader_interop::kSkinningModeLinear
+  //   && static_cast<uint32_t>(SkinningMode::DualQuaternion) == skinning_shader_interop::kSkinningModeDualQuaternion,
+  //   "SkinningMode must match the shader interop constants."
   // );
 
-  scene.registry.view<Renderable, Skin>().each(
-    [&](entt::entity entity, Renderable const& renderable, Skin const& skin) {
-      // retrieve the device asset associated with the skin.
-      auto const* da = pool_ptr_->find(renderable.asset);
-      if (!da || renderable.mesh_index >= da->meshes.size() || skin.matrices.empty()) {
+  auto& reg = scene.registry;
+
+  reg.view<Renderable>().each(
+    [&](entt::entity entity, Renderable const& renderable) {
+      auto const* skin  = reg.try_get<Skin>(entity);
+      auto const* morph = reg.try_get<MorphWeights>(entity);
+      bool const use_skin  = skin  && !skin->matrices.empty();
+      bool const use_morph = morph && !morph->weights.empty();
+      if (!use_skin && !use_morph) {
         return;
       }
-      if (skin.matrices.size() > kJointsWarnThreshold) {
-        HLOGW("SceneRenderer: a skin has {} joints (> {}).", skin.matrices.size(), kJointsWarnThreshold);
+
+      // retrieve the device asset associated with the mesh.
+      auto const* da = pool_ptr_->find(renderable.asset);
+      if (!da || renderable.mesh_index >= da->meshes.size()) {
+        return;
+      }
+      if (use_skin && skin->matrices.size() > kJointsWarnThreshold) {
+        HLOGW("SceneRenderer: a skin has {} joints (> {}).", skin->matrices.size(), kJointsWarnThreshold);
       }
       auto const& mesh = da->meshes[renderable.mesh_index];
 
+      // Shared by the submeshes of the entity, in mat4 slots of palette_staging_.
       uint32_t palette_offset = kInvalidIndexU32;
+      uint32_t weights_offset = kInvalidIndexU32;
+
       for (auto const& submesh : mesh.submeshes) {
         auto const& desc = submesh.draw_descriptor;
-        if (!submesh.has_skin() || desc.vertexCount == 0u) {
+        // (must stay the same predicate as the draw list and BLAS traversals)
+        if (!submesh.is_deformable() || desc.vertexCount == 0u) {
           continue;
         }
 
-        // calculate the mesh offset to its palette buffer.
-        if (palette_offset == kInvalidIndexU32) {
+        bool const skin_on  = use_skin  && submesh.has_skin();
+        bool const morph_on = use_morph && submesh.has_morph();
+
+        if (skin_on && palette_offset == kInvalidIndexU32) {
           palette_offset = static_cast<uint32_t>(palette_staging_.size());
           palette_staging_.insert(
-            palette_staging_.end(), skin.matrices.begin(), skin.matrices.end()
+            palette_staging_.end(), skin->matrices.begin(), skin->matrices.end()
+          );
+        }
+        if (morph_on && weights_offset == kInvalidIndexU32) {
+          weights_offset = static_cast<uint32_t>(palette_staging_.size());
+          size_t const slots = (morph->weights.size() + 15u) / 16u;  // 16 floats per mat4
+          palette_staging_.resize(palette_staging_.size() + slots, mat4{});
+          std::memcpy(
+            reinterpret_cast<float*>(palette_staging_.data() + weights_offset), //
+            morph->weights.data(),
+            morph->weights.size() * sizeof(float)
           );
         }
 
@@ -376,18 +402,30 @@ void SceneRenderer::buildSkinning(scene::Hierarchy& scene) {
         skinned_bytes_ = utils::AlignTo(skinned_bytes_, kSkinnedAlignment);
         skinning_jobs_.push_back({
           .vertex_offset  = desc.vertexOffset,
-          .skin_offset    = submesh.skin_vertex_offset,
+          .skin_offset    = skin_on  ? submesh.skin_vertex_offset : kInvalidIndexU64,
+          .morph_offset   = morph_on ? submesh.morph_offset       : kInvalidIndexU64,
           .out_offset     = skinned_bytes_,
-          .palette_offset = palette_offset,
-          .joint_count    = static_cast<uint32_t>(skin.matrices.size()),
+          .palette_offset = skin_on  ? palette_offset : 0u,
+          .weights_offset = morph_on ? weights_offset : 0u,
+          .joint_count    = skin_on  ? static_cast<uint32_t>(skin->matrices.size()) : 0u,
           .vertex_count   = desc.vertexCount,
-          .mode           = static_cast<uint32_t>(skin.palette_mode),
+          .morph_count    = morph_on
+            ? std::min(submesh.morph_count, static_cast<uint32_t>(morph->weights.size()))
+            : 0u,
+          .mode           = skin_on
+            ? static_cast<uint32_t>(skin->palette_mode)
+            : skinning_shader_interop::kSkinningModeNone,
         });
         skinned_bytes_ += static_cast<uint64_t>(desc.vertexCount)
                         * sizeof(material_shader_interop::Vertex);
       }
     }
   );
+
+  // A job may use neither palette nor weights, keep the buffer valid anyway.
+  if (!skinning_jobs_.empty() && palette_staging_.empty()) {
+    palette_staging_.push_back(mat4{lina::identity});
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -491,15 +529,18 @@ void SceneRenderer::computeSkinning(CommandEncoder const& cmd) {
   cmd.bindPipeline(skinning_pipeline_);
 
   for (auto const& job : skinning_jobs_) {
-    auto const palette_offset = static_cast<uint64_t>(job.palette_offset) * sizeof(palette_staging_[0]);
+    constexpr uint64_t kSlotBytes = sizeof(decltype(palette_staging_)::value_type);
     auto const pc = skinning_shader_interop::SkinningPushConstant{
-      .src_vertices   = vertex_base + job.vertex_offset,
-      .skin_vertices  = vertex_base + job.skin_offset,
-      .dst_vertices   = skinned_.current_address + job.out_offset,
-      .palette        = palette_.current_address + palette_offset,
-      .vertex_count   = job.vertex_count,
-      .joint_count    = job.joint_count,
-      .mode           = job.mode,
+      .src_vertices  = vertex_base + job.vertex_offset,
+      .skin_vertices = (job.skin_offset != kInvalidIndexU64) ? vertex_base + job.skin_offset : 0u,
+      .dst_vertices  = skinned_.current_address + job.out_offset,
+      .palette       = palette_.current_address + job.palette_offset * kSlotBytes,
+      .morph_deltas  = (job.morph_offset != kInvalidIndexU64) ? vertex_base + job.morph_offset : 0u,
+      .morph_weights = palette_.current_address + job.weights_offset * kSlotBytes,
+      .vertex_count  = job.vertex_count,
+      .joint_count   = job.joint_count,
+      .mode          = job.mode,
+      .morph_count   = job.morph_count,
     };
     cmd.pushConstant(pc, VK_SHADER_STAGE_COMPUTE_BIT);
     cmd.runKernel<skinning_shader_interop::kSkinningGroupSize>(job.vertex_count);
@@ -568,7 +609,7 @@ void SceneRenderer::buildDrawLists(scene::Hierarchy& scene, Camera const& camera
       for (auto const& submesh : mesh.submeshes) {
         uint64_t skinned_offset = kInvalidIndexU64;
         if ((next_job != kInvalidIndexU32)
-          && submesh.has_skin()
+          && submesh.is_deformable()
           && submesh.draw_descriptor.vertexCount > 0u) {
           skinned_offset = skinning_jobs_[next_job++].out_offset;
         }
@@ -1092,7 +1133,7 @@ void SceneRenderer::recordDynamicBLAS(CommandEncoder const& cmd, RayTracingFrame
     uint32_t job = si->first_job;
     for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
       auto const& submesh = mesh.submeshes[i];
-      if (submesh.has_skin() && submesh.draw_descriptor.vertexCount > 0u) {
+      if (submesh.is_deformable() && submesh.draw_descriptor.vertexCount > 0u) {
         LOG_CHECK(job < skinning_jobs_.size());
         addresses[i] = skinned_.current_address + skinning_jobs_[job++].out_offset;
       } else {

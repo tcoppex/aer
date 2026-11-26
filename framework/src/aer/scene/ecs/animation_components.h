@@ -31,6 +31,13 @@ struct Skin {
 
 // ----------------------------------------------------------------------------
 
+struct MorphWeights {
+  std::vector<float> weights{};
+  //std::vector<std::string> morph_names{};         // TODO?
+};
+
+// ----------------------------------------------------------------------------
+
 struct Animator {
   float speed{1.0f};
   bool finished{false};

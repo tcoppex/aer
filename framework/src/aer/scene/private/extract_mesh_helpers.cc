@@ -256,6 +256,50 @@ bool ExtractPrimitiveSkin(
   return true;
 }
 
+// ----------------------------------------------------------------------------
+
+// Reads position and normal deltas of every morph target (tangent deltas are ignored).
+bool ExtractPrimitiveMorphTargets(
+  cgltf_primitive const& prim,
+  uint32_t vertex_count,
+  std::vector<scene::MorphDelta>& deltas
+) {
+  deltas.assign(
+    static_cast<size_t>(prim.targets_count) * vertex_count, scene::MorphDelta{}
+  );
+  std::vector<cgltf_float> scratch(static_cast<size_t>(vertex_count) * 3u);
+
+  for (cgltf_size t = 0; t < prim.targets_count; ++t) {
+    cgltf_morph_target const& target = prim.targets[t];
+    scene::MorphDelta* dst = deltas.data() + t * vertex_count;
+
+    for (cgltf_size a = 0; a < target.attributes_count; ++a) {
+      cgltf_attribute const& attrib = target.attributes[a];
+      bool const is_position = (attrib.type == cgltf_attribute_type_position);
+      bool const is_normal   = (attrib.type == cgltf_attribute_type_normal);
+      if (!is_position && !is_normal) {
+        continue;
+      }
+
+      cgltf_accessor const* accessor = attrib.data;
+      if (!accessor || accessor->type != cgltf_type_vec3 || accessor->count != vertex_count) {
+        LOGW("[GLTF] A morph target has a malformed attribute, morph targets ignored.");
+        return false;
+      }
+      if (cgltf_accessor_unpack_floats(accessor, scratch.data(), scratch.size()) < scratch.size()) {
+        LOGW("[GLTF] A morph target attribute could not be read, morph targets ignored.");
+        return false;
+      }
+
+      for (uint32_t v = 0; v < vertex_count; ++v) {
+        auto& out = is_position ? dst[v].position : dst[v].normal;
+        out = vec4{scratch[3u * v + 0u], scratch[3u * v + 1u], scratch[3u * v + 2u], 0.0f};
+      }
+    }
+  }
+  return true;
+}
+
 } // namespace ""
 
 /* -------------------------------------------------------------------------- */
@@ -376,17 +420,27 @@ bool AppendPrimitiveRestructured(
   primitive.vertexCount   = static_cast<uint32_t>(vertices.size());
   primitive.bufferOffsets = VertexInternal_t::GetAttributeOffsetMap(offset); //
 
-  // [Optional] skin block right after the main one (same vertex order).
-  if (!prim.has_draco_mesh_compression
-   && ExtractPrimitiveSkin(prim, primitive.vertexCount, skin_vertices)) {
-    if (!mesh.hasAttribute(Geometry::AttributeType::Joints)) {
-      for (auto const& [type, info] : scene::SkinVertex::GetAttributeInfoMap()) {
-        mesh.addAttribute(type, info);
+  if (!prim.has_draco_mesh_compression) {
+    // [Optional] skin block right after the main one (same vertex order).
+    if (ExtractPrimitiveSkin(prim, primitive.vertexCount, skin_vertices)) {
+      if (!mesh.hasAttribute(Geometry::AttributeType::Joints)) {
+        for (auto const& [type, info] : scene::SkinVertex::GetAttributeInfoMap()) {
+          mesh.addAttribute(type, info);
+        }
+      }
+      uint64_t const skin_offset = mesh.addVerticesData(std::as_bytes(std::span(skin_vertices)));
+      primitive.bufferOffsets[Geometry::AttributeType::Joints]  = skin_offset;
+      primitive.bufferOffsets[Geometry::AttributeType::Weights] = skin_offset;
+    }
+
+    // [Optional] morph targets block, after the skin one (same vertex order).
+    if (prim.targets_count > 0u) {
+      std::vector<scene::MorphDelta> morph_deltas{};
+      if (ExtractPrimitiveMorphTargets(prim, primitive.vertexCount, morph_deltas)) {
+        primitive.morphOffset      = mesh.addVerticesData(std::as_bytes(std::span(morph_deltas)));
+        primitive.morphTargetCount = static_cast<uint32_t>(prim.targets_count);
       }
     }
-    uint64_t const skin_offset = mesh.addVerticesData(std::as_bytes(std::span(skin_vertices)));
-    primitive.bufferOffsets[Geometry::AttributeType::Joints]  = skin_offset;
-    primitive.bufferOffsets[Geometry::AttributeType::Weights] = skin_offset;
   }
 
   return true;

@@ -33,6 +33,28 @@ bool hasInfluence(SkinVertex sv) {
   return dot(sv.weights, float4(1.0f)) >= 1e-4f;
 }
 
+// Applies the weighted morph target deltas to a bind pose vertex.
+void applyMorph(inout Vertex v, uint i) {
+  let deltas  = (MorphDelta*)pc.morph_deltas;
+  let weights = (float*)pc.morph_weights;
+
+  var p = v.position;
+  var n = v.normal;
+  for (uint t = 0u; t < pc.morph_count; ++t) {
+    let w = weights[t];
+    if (abs(w) < 1e-5f) {
+      continue;
+    }
+    let d = deltas[t * pc.vertex_count + i];
+    p += w * d.position.xyz;
+    n += w * d.normal.xyz;
+  }
+
+  let len2 = dot(n, n);
+  v.position = p;
+  v.normal   = (len2 > 1e-12f) ? n * rsqrt(len2) : v.normal;
+}
+
 // ----------------------------------------------------------------------------
 // Linear blend skinning.
 
@@ -110,20 +132,25 @@ void main(uint3 tid : SV_DispatchThreadID) {
     return;
   }
 
-  let src  = (Vertex*)pc.src_vertices;
-  var dst  = (Vertex*)pc.dst_vertices;
-  let skin = (SkinVertex*)pc.skin_vertices;
-
-  let sv   = skin[i];
-  let last = max(pc.joint_count, 1u) - 1u;
+  let src = (Vertex*)pc.src_vertices;
+  var dst = (Vertex*)pc.dst_vertices;
 
   Vertex v = src[i];
-  Vertex o = v;
+  if (pc.morph_count > 0u) {
+    applyMorph(v, i);
+  }
+  Vertex o = v;  // (morph only : tangents are kept)
 
-  if (pc.mode == kSkinningModeDualQuaternion && hasInfluence(sv)) {
-    skinDualQuaternion(sv, last, v, o);
-  } else {
-    skinLinear(sv, last, v, o);
+  if (pc.mode != kSkinningModeNone) {
+    let skin = (SkinVertex*)pc.skin_vertices;
+    let sv   = skin[i];
+    let last = max(pc.joint_count, 1u) - 1u;
+
+    if (pc.mode == kSkinningModeDualQuaternion && hasInfluence(sv)) {
+      skinDualQuaternion(sv, last, v, o);
+    } else {
+      skinLinear(sv, last, v, o);
+    }
   }
 
   dst[i] = o;

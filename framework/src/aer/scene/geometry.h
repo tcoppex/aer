@@ -77,8 +77,10 @@ class Geometry {
 
     uint32_t vertexCount{};
     uint32_t indexCount{};
+    uint32_t morphTargetCount{};
 
     uint64_t indexOffset{};
+    uint64_t morphOffset{};
 
     /**
      * When all attributes share the same offset their data are interleaved,

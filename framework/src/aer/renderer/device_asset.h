@@ -29,8 +29,18 @@ struct DeviceSubmesh {
   /* byte offset in the pool vertex buffer of this primitives's SkinVertex array. */
   uint64_t skin_vertex_offset{kInvalidIndexU64};
 
+  /* byte offset in the pool vertex buffer of this primitive's morph deltas. */
+  uint64_t morph_offset{kInvalidIndexU64};
+  uint32_t morph_count{};
+
   [[nodiscard]]
   bool has_skin() const noexcept { return skin_vertex_offset != kInvalidIndexU64; }
+
+  [[nodiscard]]
+  bool has_morph() const noexcept { return morph_count > 0u && morph_offset != kInvalidIndexU64; }
+
+  [[nodiscard]]
+  bool is_deformable() const noexcept { return has_skin() || has_morph(); }
 };
 
 struct DeviceMesh {
