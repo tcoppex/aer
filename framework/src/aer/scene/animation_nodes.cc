@@ -40,8 +40,16 @@ bool StepTime(float& time, float delta, float duration, bool loop, bool reverse)
 void ClipNode::evaluate(PoseContext const& ctx, Pose& out) {
   reverse_ = ctx.reverse;
   if (ctx.playing) {
+    float const from = time_;
     finished_ = StepTime(time_, ctx.delta, clip_->duration, loop_, ctx.reverse)
              || finished_;
+
+    if (ctx.delta != 0.0f) {
+      if (ctx.events) {
+        CollectClipEvents(*clip_, from, from + ctx.delta, loop_, fresh_, *ctx.events);
+      }
+      fresh_ = false;
+    }
   }
   SampleClip(*clip_, time_, loop_, out);
 }
@@ -60,6 +68,7 @@ float ClipNode::normalizedTime() const {
 
 void ClipNode::seek(float time) {
   time_ = std::clamp(time, 0.0f, clip_->duration);
+  fresh_ = true;
 }
 
 // ----------------------------------------------------------------------------
@@ -69,6 +78,7 @@ void ClipNode::onResume(bool reverse) {
     float const duration = clip_->duration;
     if (reverse ? (time_ <= 0.0f) : (time_ >= duration)) {
       time_ = reverse ? duration : 0.0f;
+      fresh_ = true;
     }
   }
   finished_ = false;
@@ -94,10 +104,29 @@ void BlendNode1D::evaluate(PoseContext const& ctx, Pose& out) {
   );
 
   if (ctx.playing) {
-    phase_ += ctx.delta / duration;
+    float const from = phase_;
+    float const step = ctx.delta / duration;
+
+    phase_ += step;
     phase_ -= std::floor(phase_);   // wrap into [0, 1)
     if (phase_ >= 1.0f) {
       phase_ = 0.0f;
+    }
+
+    if (step != 0.0f) {
+      if (ctx.events) {
+        // Clips share the phase, only the dominant one reports its events.
+        auto const& dominant = ((w.b != w.a) && (w.t >= 0.5f)) ? clip_b : clip_a;
+        CollectClipEvents(
+          dominant,
+          from * dominant.duration,
+          (from + step) * dominant.duration,
+          true,
+          fresh_,
+          *ctx.events
+        );
+      }
+      fresh_ = false;
     }
   }
 
@@ -123,6 +152,7 @@ void BlendNode1D::seek(float time) {
   if (duration_ > lina::kTrueEpsilon) {
     phase_ = std::clamp(time / duration_, 0.0f, 1.0f);
   }
+  fresh_ = true;
 }
 
 // ----------------------------------------------------------------------------

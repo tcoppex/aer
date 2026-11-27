@@ -16,6 +16,8 @@ struct LoadOptions {
 
   // (for instanciation)
   // int scene_index = -1;
+
+  // std::vector<ClipEventDesc> clip_events{};
 };
 
 /* -------------------------------------------------------------------------- */

@@ -66,6 +66,80 @@ void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out) {
 
 // ----------------------------------------------------------------------------
 
+void CollectClipEvents(
+  AnimationClip const& clip,
+  float from,
+  float to,
+  bool loop,
+  bool include_start,
+  std::vector<ClipEventHit>& out
+) {
+  auto const& events = clip.events;
+  float const duration = clip.duration;
+  if (events.empty() || (from == to)) {
+    return;
+  }
+
+  bool const wrap = loop && (duration > lina::kTrueEpsilon);
+  if (!wrap) {
+    from = std::clamp(from, 0.0f, duration);
+    to   = std::clamp(to,   0.0f, duration);
+    if (from == to) {
+      return;
+    }
+  }
+
+  bool const reverse = (to < from);
+  float const lo = std::min(from, to);
+  float const hi = std::max(from, to);
+
+  auto const crossed = [&](float t) {
+    return reverse ? (((t < hi) || (include_start && (t == hi))) && (t >= lo))
+                   : (((t > lo) || (include_start && (t == lo))) && (t <= hi));
+  };
+  auto const emit = [&](AnimationEvent const& e, float offset) {
+    if (crossed(offset + e.time)) {
+      out.push_back({ &clip, &e });
+    }
+  };
+
+  if (!wrap) {
+    if (reverse) {
+      for (auto it = events.rbegin(); it != events.rend(); ++it) {
+        emit(*it, 0.0f);
+      }
+    } else {
+      for (auto const& e : events) {
+        emit(e, 0.0f);
+      }
+    }
+    return;
+  }
+
+  constexpr int32_t kMaxPeriods = 8;
+  auto k0 = static_cast<int32_t>(std::floor(lo / duration));
+  auto k1 = static_cast<int32_t>(std::floor(hi / duration));
+  if (k1 - k0 > kMaxPeriods) {
+    (reverse ? k1 : k0) = reverse ? (k0 + kMaxPeriods) : (k1 - kMaxPeriods);
+  }
+
+  if (reverse) {
+    for (int32_t k = k1; k >= k0; --k) {
+      for (auto it = events.rbegin(); it != events.rend(); ++it) {
+        emit(*it, static_cast<float>(k) * duration);
+      }
+    }
+  } else {
+    for (int32_t k = k0; k <= k1; ++k) {
+      for (auto const& e : events) {
+        emit(e, static_cast<float>(k) * duration);
+      }
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+
 BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value) {
   auto const& e = tree.entries;
   if (value <= e.front().threshold) {

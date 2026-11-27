@@ -20,6 +20,7 @@ struct PoseContext {
   float delta{};                        // signed seconds to advance (dt * speed)
   bool reverse{false};                  // playback direction (speed < 0)
   bool playing{false};
+  std::vector<ClipEventHit>* events{};
 };
 
 //
@@ -80,6 +81,7 @@ class ClipNode final : public PoseNode {
   bool loop_{true};
   bool reverse_{false};
   bool finished_{false};
+  bool fresh_{true};      // next step also takes the events on its start time
 };
 
 // ----------------------------------------------------------------------------
@@ -107,6 +109,7 @@ class BlendNode1D final : public PoseNode {
   float phase_{};
   bool reverse_{false};
   float duration_{};
+  bool fresh_{true};
 };
 
 // ----------------------------------------------------------------------------

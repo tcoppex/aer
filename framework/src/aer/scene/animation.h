@@ -47,11 +47,18 @@ struct Pose {
   JointBuffer<component::Transform> joints{};
 };
 
+struct AnimationEvent {
+  float time{};
+  std::string name{};
+  float value{};
+};
+
 struct AnimationClip {
   std::string name{};
   float duration{};   // seconds
   float framerate{};  // samples per second
   std::vector<Pose> poses{};
+  std::vector<AnimationEvent> events{};
 
   void setup(
     std::string_view clip_name,
@@ -70,6 +77,21 @@ struct AnimationClip {
       pose.joints.resize(jointCount);
     }
   }
+
+  void addEvent(float time, std::string_view event_name, float value = 0.0f) {
+    time = std::clamp(time, 0.0f, duration);
+    auto const it = std::ranges::upper_bound(events, time, {}, &AnimationEvent::time);
+    events.insert(it, AnimationEvent{
+      .time = time,
+      .name = std::string(event_name),
+      .value = value,
+    });
+  }
+};
+
+struct ClipEventHit {
+  AnimationClip const* clip{};
+  AnimationEvent const* event{};
 };
 
 struct Skeleton {
@@ -280,6 +302,15 @@ component::Transform BlendTransforms(
 void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
 
 void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
+
+void CollectClipEvents(
+  AnimationClip const& clip,
+  float from,
+  float to,
+  bool loop,
+  bool include_start,
+  std::vector<ClipEventHit>& out
+);
 
 BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value);
 

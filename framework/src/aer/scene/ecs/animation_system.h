@@ -48,6 +48,15 @@ class AnimationSystem {
     bool playing{false};
   };
 
+  /* An animation event crossed during the last `advance`. */
+  struct Event {
+    entt::entity instance{entt::null};
+    std::string_view name{};
+    std::string_view clip{};
+    float time{};
+    float value{};
+  };
+
   // --------------------------------
   struct TwoBoneIKDesc {
     std::string_view root{};
@@ -148,6 +157,13 @@ class AnimationSystem {
   /* Information of the current animation being played. */
   [[nodiscard]]
   State state(entt::entity instance_root) const;
+
+  /* Events fired by the last frame update in playback order.
+   * An event shared by several skeletons of an instance is reported once. */
+  [[nodiscard]]
+  std::span<Event const> events() const noexcept {
+    return events_;
+  }
 
   // -------------------------------
   // --- Animation Graph ---
@@ -327,14 +343,16 @@ class AnimationSystem {
   using GraphKey = std::pair<AnimationGraphDesc const*, Skeleton const*>;
 
   Hierarchy* scene_{};
+
   PoseCache poses_{};
   std::map<GraphKey, std::weak_ptr<AnimationGraph const>> graph_cache_{};
+  std::vector<ClipEventHit> hits_{};
+  std::vector<Event> events_{};
 
   std::optional<float> last_elapsed_time_{};
   float last_dt_{0.0f};
 
   GroundQuery ground_query_{};
-
   uint32_t next_ik_id_{0u};
   uint32_t next_chain_id_{0u};
   uint32_t next_look_id_{0u};

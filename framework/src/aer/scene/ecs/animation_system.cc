@@ -911,6 +911,41 @@ void UpdateStateMachine(
   EnterState(animator, cache, skeleton, transition.to, transition.fade);
 }
 
+void DeliverEvents(
+  entt::registry const& reg,
+  entt::entity animator_entity,
+  std::vector<ClipEventHit>& hits,
+  std::vector<AnimationSystem::Event>& out
+) {
+  if (hits.empty()) {
+    return;
+  }
+  auto const instance = FindInstanceRoot(reg, animator_entity);
+  size_t const begin = out.size();
+
+  for (auto const& hit : hits) {
+    AnimationSystem::Event const event{
+      .instance = instance,
+      .name     = hit.event->name,
+      .clip     = hit.clip->name,
+      .time     = hit.event->time,
+      .value    = hit.event->value,
+    };
+
+    // Same event already reported by another skeleton of the instance.
+    bool const duplicate = std::any_of(out.begin(), out.begin() + begin, [&](auto const& o) {
+      return (o.instance == event.instance)
+          && (o.time == event.time)
+          && (o.name == event.name)
+          && (o.clip == event.clip);
+    });
+    if (!duplicate) {
+      out.push_back(event);
+    }
+  }
+  hits.clear();
+}
+
 } // namespace
 
 /* -------------------------------------------------------------------------- */
@@ -930,9 +965,10 @@ void AnimationSystem::advance(float dt) {
   LOG_CHECK(scene_ != nullptr);
   auto& reg = scene_->registry;
   last_dt_ = dt;
+  events_.clear();
 
   reg.view<Animator, Skin>().each(
-    [&](Animator& animator, Skin const& skin) {
+    [&](entt::entity e, Animator& animator, Skin const& skin) {
       if (!skin.skeleton) {
         return;
       }
@@ -968,7 +1004,10 @@ void AnimationSystem::advance(float dt) {
         .delta      = dt * animator.speed,
         .reverse    = animator.speed < 0.0f,
         .playing    = animator.playing,
+        .events     = &hits_,
       }, animator.pose);
+
+      DeliverEvents(reg, e, hits_, events_);
 
       animator.resample = false;
       ApplyPose(reg, skin, animator.pose);
