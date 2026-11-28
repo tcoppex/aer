@@ -79,5 +79,6 @@ add_sample(12_font)
 add_sample(13_gaussian_splatting)
 add_sample(14_marching_cubes)
 add_sample(15_skinning)
+add_sample(16_physics)
 
 # -----------------------------------------------------------------------------
