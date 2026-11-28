@@ -61,6 +61,10 @@ struct Asset {
 // thread-safe: writes only its own Asset
 std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions = {});
 
+/* Wrap one host mesh into an asset: a single node instancing it, with no
+ * material (the GpuPool default material applies). `name` is the node name. */
+Asset CreateMeshAsset(Mesh mesh, std::string name = {});
+
 } // namespace "scene"
 
 /* -------------------------------------------------------------------------- */

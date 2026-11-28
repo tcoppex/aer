@@ -104,6 +104,24 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
   return A;
 }
 
+Asset CreateMeshAsset(Mesh mesh, std::string name) {
+  Asset asset{};
+  asset.meshes.push_back(std::move(mesh));
+
+  auto prefab = std::make_shared<Prefab>();
+  prefab->nodes.push_back({
+    .parent_index = kInvalidIndexU32,
+    .transform    = {},
+    .mesh_index   = 0u,
+    .name         = std::move(name),
+  });
+  prefab->scenes.push_back({ 0u });
+  prefab->default_scene = 0u;
+
+  asset.prefab = std::move(prefab);
+  return asset;
+}
+
 } // namespace "scene"
 
 /* -------------------------------------------------------------------------- */
