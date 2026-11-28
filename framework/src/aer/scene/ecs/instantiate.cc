@@ -84,6 +84,9 @@ entt::entity Instantiate(
     }
     if (node.mesh_index != kInvalidIndexU32) {
       reg.emplace<component::Renderable>(e, component::Renderable{asset_handle, node.mesh_index});
+      if (!node.morph_weights.empty()) {
+        reg.emplace<component::MorphWeights>(e, component::MorphWeights{node.morph_weights});
+      }
     }
   }
 

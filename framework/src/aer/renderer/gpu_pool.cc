@@ -279,8 +279,11 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
       auto const skin = prim.bufferOffsets.find(Geometry::AttributeType::Joints);
       uint64_t const skin_vertex_offset = (skin != prim.bufferOffsets.end())
         ? dm.buffer_range.vertex.offset + skin->second
-        : kInvalidIndexU64
-        ;
+        : kInvalidIndexU64;
+
+      uint64_t const morph_offset = (prim.morphTargetCount > 0u)
+          ? dm.buffer_range.vertex.offset + prim.morphOffset
+          : kInvalidIndexU64;
 
       dm.submeshes.push_back({
         .draw_descriptor = {
@@ -299,6 +302,8 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
         },
         .asset_material_index = material,
         .skin_vertex_offset = skin_vertex_offset,
+        .morph_offset = morph_offset,
+        .morph_count = prim.morphTargetCount,
       });
     }
   }

@@ -1,6 +1,7 @@
 #ifndef AER_SCENE_ANIMATION_H_
 #define AER_SCENE_ANIMATION_H_
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -13,11 +14,31 @@
 
 namespace scene {
 
+struct ParamTag;
+using ParamId = Handle<ParamTag>;
+
+struct StateTag;
+using StateId = Handle<StateTag>;
+
+struct IKTag;
+using IKId = Handle<IKTag>;
+
+struct ChainTag;
+using ChainIKId = Handle<ChainTag>;
+
+struct LookTag;
+using LookId = Handle<LookTag>;
+
 // struct PackedTransform {
 //   vec3 translation{};
 //   float scale{1.0f};
 //   quat rotation{lina::identity};
 // };
+
+enum class SkinningMode : uint32_t {
+  Linear         = 0u,
+  DualQuaternion = 1u,
+};
 
 template<typename T>
 using JointBuffer = std::vector<T>;
@@ -26,11 +47,18 @@ struct Pose {
   JointBuffer<component::Transform> joints{};
 };
 
+struct AnimationEvent {
+  float time{};
+  std::string name{};
+  float value{};
+};
+
 struct AnimationClip {
   std::string name{};
   float duration{};   // seconds
   float framerate{};  // samples per second
   std::vector<Pose> poses{};
+  std::vector<AnimationEvent> events{};
 
   void setup(
     std::string_view clip_name,
@@ -49,6 +77,21 @@ struct AnimationClip {
       pose.joints.resize(jointCount);
     }
   }
+
+  void addEvent(float time, std::string_view event_name, float value = 0.0f) {
+    time = std::clamp(time, 0.0f, duration);
+    auto const it = std::ranges::upper_bound(events, time, {}, &AnimationEvent::time);
+    events.insert(it, AnimationEvent{
+      .time = time,
+      .name = std::string(event_name),
+      .value = value,
+    });
+  }
+};
+
+struct ClipEventHit {
+  AnimationClip const* clip{};
+  AnimationEvent const* event{};
 };
 
 struct Skeleton {
@@ -105,6 +148,148 @@ struct Skeleton {
   }
 };
 
+struct BlendTree1D {
+  struct Entry {
+    std::string clip{};
+    float threshold{};
+    uint32_t clip_index{kInvalidIndexU32};
+  };
+
+  struct Weights {
+    uint32_t a{};
+    uint32_t b{};
+    float t{};
+  };
+
+  std::string name{};
+  std::string parameter{};
+  std::vector<Entry> entries{};
+  ParamId parameter_id{};                 // resolved by CompileAnimationGraph
+};
+
+struct AnimationStateMachine {
+  struct State {
+    std::string name{};
+    std::string motion{};                 // clip or blend tree name
+    bool loop{true};                      // clip only (tree always loop)
+  };
+
+  struct Condition {
+    enum class Op : uint8_t {
+      Greater,
+      Less,
+      Trigger
+    };
+    std::string parameter{};
+    Op op{Op::Greater};
+    float value{};
+  };
+
+  struct Transition {
+    std::string from{};
+    std::string to{};
+    std::vector<Condition> conditions{};
+    bool on_finish{false};                // when true, source must be a non looping clip ending
+    float exit_time{-1.0f};               // when >= 0.0f, reach time before transition
+    float fade{0.25f};                    // cross-fade duration (s)
+  };
+
+  std::string name{};
+  std::string initial{};
+  std::vector<State> states{};
+  std::vector<Transition> transitions{};
+
+  [[nodiscard]]
+  uint32_t findState(std::string const& state_name) const noexcept {
+    for (size_t i = 0; i < states.size(); ++i) {
+      if (states[i].name == state_name) {
+        return static_cast<uint32_t>(i);
+      }
+    }
+    return kInvalidIndexU32;
+  }
+};
+
+struct AnimationGraphDesc {
+  struct Parameter {
+    std::string name{};
+    float default_value{};
+    bool trigger{false};
+    float expiry{0.0f};    // seconds before a pending trigger lapses (0 = never)
+  };
+
+  std::string name{};
+  std::vector<Parameter> parameters{};      // optionnal
+  std::vector<BlendTree1D> trees{};
+  AnimationStateMachine machine{};          // optionnal
+};
+
+/* Compiled graph resolved against one skeleton.
+ * Immutable and shared by every animator using it.*/
+struct AnimationGraph {
+  struct State {
+    std::string name{};
+    uint32_t clip{kInvalidIndexU32};
+    uint32_t tree{kInvalidIndexU32};        // only set when the motion is a blend tree
+    bool loop{true};
+  };
+
+  struct Condition {
+    ParamId parameter{};
+    AnimationStateMachine::Condition::Op op{};
+    float value{};
+  };
+
+  struct Transition {
+    StateId from{};
+    StateId to{};
+    std::vector<Condition> conditions{};
+    bool on_finish{false};
+    float exit_time{-1.0f};
+    float fade{0.25f};
+  };
+
+  std::string name{};
+
+  std::shared_ptr<AnimationGraphDesc const> source{};
+  std::vector<AnimationGraphDesc::Parameter> parameters{};
+
+  std::vector<BlendTree1D>  trees{};
+  std::vector<State>        states{};
+  std::vector<Transition>   transitions{};
+  StateId                   initial{};      // invalid when there is no machine
+
+  [[nodiscard]]
+  ParamId findParameter(std::string_view n) const noexcept {
+    for (size_t i = 0; i < parameters.size(); ++i) {
+      if (parameters[i].name == n) {
+        return ParamId{static_cast<uint32_t>(i)};
+      }
+    }
+    return {};
+  }
+
+  [[nodiscard]]
+  StateId findState(std::string_view n) const noexcept {
+    for (size_t i = 0; i < states.size(); ++i) {
+      if (states[i].name == n) {
+        return StateId{static_cast<uint32_t>(i)};
+      }
+    }
+    return {};
+  }
+
+  [[nodiscard]]
+  uint32_t findTree(std::string_view n) const noexcept {
+    for (size_t i = 0; i < trees.size(); ++i) {
+      if (trees[i].name == n) {
+        return static_cast<uint32_t>(i);
+      }
+    }
+    return kInvalidIndexU32;
+  }
+};
+
 /* -------------------------------------------------------------------------- */
 
 [[nodiscard]]
@@ -117,6 +302,25 @@ component::Transform BlendTransforms(
 void BlendPoses(Pose const& a, Pose const& b, float t, Pose& out);
 
 void SampleClip(AnimationClip const& clip, float time, bool loop, Pose& out);
+
+void CollectClipEvents(
+  AnimationClip const& clip,
+  float from,
+  float to,
+  bool loop,
+  bool include_start,
+  std::vector<ClipEventHit>& out
+);
+
+BlendTree1D::Weights ComputeBlendTreeWeights(BlendTree1D const& tree, float value);
+
+/* Resolve a graph description against a skeleton (clip indices, parameter and state ids).
+ * Returns null when a name can't be resolved. */
+[[nodiscard]]
+std::shared_ptr<AnimationGraph const> CompileAnimationGraph(
+  std::shared_ptr<AnimationGraphDesc const> desc,
+  Skeleton const& skeleton
+);
 
 }  // namespace "scene"
 

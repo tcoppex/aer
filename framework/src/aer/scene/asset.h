@@ -26,6 +26,9 @@ struct PrefabNode {
   uint32_t skin_index{kInvalidIndexU32};            // in Prefab::skeletons
   uint32_t source_node{kInvalidIndexU32};           // glTF node index (appears once per scene using it)
   std::string name{};
+
+  // (use component::MorphTarget directly?)
+  std::vector<float> morph_weights{};               // default morph target weights (empty = none)
 };
 
 // ----------------------------------------------------------------------------

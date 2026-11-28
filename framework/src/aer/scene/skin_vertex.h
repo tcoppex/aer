@@ -16,6 +16,7 @@ namespace scene {
 
 //
 // Skinning data of a vertex (4 influences max, from JOINTS_0 / WEIGHTS_0).
+// [move to renderer/ along vertex_layout.h ?]
 //
 struct SkinVertex : skinning_shader_interop::SkinVertex {
   static constexpr uint32_t kMaxInfluences{4u};
@@ -47,7 +48,10 @@ struct SkinVertex : skinning_shader_interop::SkinVertex {
   }
 };
 
+using MorphDelta = skinning_shader_interop::MorphDelta;
+
 static_assert(sizeof(SkinVertex) == 32u, "SkinVertex must stay tightly packed.");
+static_assert(sizeof(MorphDelta) == 32u, "MorphDelta must stay tightly packed.");
 
 }  // namespace "scene"
 

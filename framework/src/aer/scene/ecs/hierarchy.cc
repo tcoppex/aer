@@ -27,6 +27,19 @@ void Hierarchy::update() {
 
 // ----------------------------------------------------------------------------
 
+void Hierarchy::updateSubtree(entt::entity e) {
+  auto group = staging_group();
+
+  auto const parent = group.get<component::Node>(e).parent;
+  mat4 const parent_matrix = (parent != entt::null)
+                           ? group.get<component::GlobalTransform>(parent).worldMatrix
+                           : mat4{lina::identity};
+
+  updateGlobalTransform(group, e, parent_matrix);
+}
+
+// ----------------------------------------------------------------------------
+
 void Hierarchy::moveEntity(entt::entity e, entt::entity newParent) {
   newParent = (newParent != entt::null) ? newParent : root;
   if (e == newParent || e == root || root == entt::null) {

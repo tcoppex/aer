@@ -54,11 +54,16 @@ class SceneRenderer {
 
   struct SkinningJob {
     uint64_t vertex_offset{};
-    uint64_t skin_offset{};
+    uint64_t skin_offset{kInvalidIndexU64};
+    uint64_t morph_offset{kInvalidIndexU64};
     uint64_t out_offset{};
-    uint32_t palette_offset{};
+
+    uint32_t palette_offset{};    // in mat4 slots of palette_staging_
+    uint32_t weights_offset{};    // same
     uint32_t joint_count{};
     uint32_t vertex_count{};
+    uint32_t morph_count{};
+    uint32_t mode{};
   };
 
   struct DrawItem {

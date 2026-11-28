@@ -183,7 +183,7 @@ void UIController::setupStyles() {
   style.FrameBorderSize              = 1.0f;
   style.GrabRounding                 = 4.0f;
   style.IndentSpacing                = 12.0f;
-  style.Colors[ImGuiCol_WindowBg]    = srgb(0.2f, 0.2f, 0.2f, 0.33f);
+  style.Colors[ImGuiCol_WindowBg]    = srgb(0.2f, 0.2f, 0.2f, 0.75f);
   style.Colors[ImGuiCol_MenuBarBg]   = srgb(0.2f, 0.2f, 0.2f, 0.75f);
   style.Colors[ImGuiCol_ScrollbarBg] = srgb(0.2f, 0.2f, 0.2f, 1.0f);
   style.Colors[ImGuiCol_PopupBg]     = srgb(0.14f, 0.14f, 0.14f, 1.0f);

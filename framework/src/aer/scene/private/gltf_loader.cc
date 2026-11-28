@@ -75,6 +75,18 @@ uint32_t AppendPrefabNode(
       // (skeletons follow the glTF skins order)
       pn.skin_index = static_cast<uint32_t>(cgltf_skin_index(data, node->skin));
     }
+    // Morph target weights
+    cgltf_mesh const& gl_mesh = *node->mesh;
+    size_t const target_count = (gl_mesh.primitives_count > 0u)
+                              ? gl_mesh.primitives[0].targets_count : 0u;
+    if (target_count > 0u && pn.mesh_index != kInvalidIndexU32) {
+      pn.morph_weights.assign(target_count, 0.0f);
+      cgltf_float const* src = node->weights_count ? node->weights : gl_mesh.weights;
+      size_t const n = node->weights_count ? node->weights_count : gl_mesh.weights_count;
+      for (size_t i = 0; i < std::min(n, target_count); ++i) {
+        pn.morph_weights[i] = src[i];
+      }
+    }
   }
   if (node->has_mesh_gpu_instancing) {
     LOGW("[GLTF] GPU instancing not supported.");
