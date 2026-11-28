@@ -104,8 +104,21 @@ std::optional<Asset> LoadGLTF(std::string_view filename, LoadOptions load_option
   return A;
 }
 
-Asset CreateMeshAsset(Mesh mesh, std::string name) {
+Asset CreateNamedMeshAsset(
+  std::string name,
+  Mesh mesh,
+  std::optional<MaterialProxy> material
+) {
   Asset asset{};
+
+  if (material) {
+    asset.materials.push_back(std::move(*material));
+    asset.material_refs.push_back({
+      .model       = MaterialModel::PBRMetallicRoughness, //
+      .proxy_index = 0u,
+    });
+    mesh.primitive_materials_index.assign(mesh.primitive_count(), 0u);
+  }
   asset.meshes.push_back(std::move(mesh));
 
   auto prefab = std::make_shared<Prefab>();
@@ -120,6 +133,10 @@ Asset CreateMeshAsset(Mesh mesh, std::string name) {
 
   asset.prefab = std::move(prefab);
   return asset;
+}
+
+Asset CreateMeshAsset(Mesh mesh, std::optional<MaterialProxy> material) {
+  return CreateNamedMeshAsset("", mesh, material);
 }
 
 } // namespace "scene"
