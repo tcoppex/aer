@@ -27,7 +27,15 @@ bool Renderer::init(
 
   LOGD(" > Scene Hierarchy");
   scene_tree_.setup();
+
+  LOGD(" > Animation");
   animation_system_.setup(scene_tree_);
+
+  LOGD(" > Physics");
+  if (!physics_system_.setup(scene_tree_)) {
+    LOGE("PhysicsSystem failed to initialize.");
+    return false;
+  }
 
   // --------------------------------------
   LOGD(" > GPU Pool");
@@ -123,6 +131,7 @@ void Renderer::release() {
   context_ptr_->deviceWaitIdle();
   if (skybox_initialized_) { skybox_.release(); }
   debug_draw_.release();
+  physics_system_.release();
   scene_renderer_.release();
   gpu_pool_.release();
   material_fx_registry_.release();
@@ -381,9 +390,12 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
   scene_renderer_.set_display(exposure, tonemapping);
   debug_draw_.update(camera);
 
+  // -------------------------------
   animation_system_.preUpdate(elapsed_time);
+  physics_system_.update(elapsed_time);
   scene_tree_.update();
   animation_system_.postUpdate();
+  // -------------------------------
 
   scene_renderer_.update(
     scene_tree_,

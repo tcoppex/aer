@@ -13,6 +13,7 @@
 
 #include "aer/scene/load_options.h"
 #include "aer/scene/ecs/animation_system.h"
+#include "aer/scene/ecs/physics_system.h"
 #include "aer/scene/ecs/hierarchy.h"
 
 #include "aer/renderer/render_context.h"
@@ -184,6 +185,9 @@ class Renderer {
   scene::AnimationSystem& animation() noexcept { return animation_system_; }
 
   [[nodiscard]]
+  scene::PhysicsSystem& physics() noexcept { return physics_system_; }
+
+  [[nodiscard]]
   DebugDraw& debug_draw() noexcept { return debug_draw_; }
 
   /* Data to trace the current frame (invalid if nothing can be traced). */
@@ -265,11 +269,17 @@ class Renderer {
   /* Scene device memory: vertex/index buffers, images + texture array, .. */
   GpuPool gpu_pool_{};
 
+  // [integrate to Hierarchy ?]
+  // -----------------
   /* Scene hierarchy */
   scene::Hierarchy scene_tree_{};
 
   /* Scene skeletal animations */
-  scene::AnimationSystem animation_system_{}; // (integrate to Hierarchy ?)
+  scene::AnimationSystem animation_system_{};
+
+  /* Scene rigid body physics */
+  scene::PhysicsSystem physics_system_{};
+  // -----------------
 
   /* Rendering subsystems */
   SceneRenderer scene_renderer_{};
@@ -278,7 +288,6 @@ class Renderer {
   DebugDraw debug_draw_{};
 
   // --- miscs ---
-
   Skybox skybox_{};
   bool skybox_initialized_{};
 };
