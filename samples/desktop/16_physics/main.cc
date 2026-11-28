@@ -4,20 +4,25 @@
 //
 //  Where crates fall on the floor.
 //
-//  Rigid bodies are simulated by the framework (Jolt) and shown through the
-//  physics debug drawing.
+//  Rigid bodies are simulated by the framework and drawn as meshes,
+//  with the physics debug overlay on top.
 //
 //  - Space : shoot a ball from the camera.
 //
 /* -------------------------------------------------------------------------- */
 
 #include <algorithm>
+#include <array>
+#include <map>
 #include <random>
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "aer/application.h"
 #include "aer/core/arcball_controller.h"
 
+#include "aer/scene/asset.h"
 #include "aer/scene/ecs/physics_components.h"
 
 /* -------------------------------------------------------------------------- */
@@ -27,6 +32,35 @@ class SampleApp final : public Application {
   static constexpr size_t kMaxBodies = 400u;
   static constexpr float  kKillHeight = -20.0f;
   static constexpr float  kFloorHalfSize = 12.0f;
+
+  static
+  scene::MaterialProxy MakeLook(float r, float g, float b, float roughness) {
+    scene::MaterialProxy m{};
+    m.pbr_mr.basecolor_factor = vec4(r, g, b, 1.0f);
+    m.pbr_mr.metallic_factor  = 0.0f;
+    m.pbr_mr.roughness_factor = roughness;
+    return m;
+  }
+
+  static
+  scene::MaterialProxy CrateLook() {
+    return MakeLook(
+      lina::to_linear_channel(0.50f),
+      lina::to_linear_channel(0.32f),
+      lina::to_linear_channel(0.13f),
+      0.7f
+    );
+  }
+
+  static
+  scene::MaterialProxy BallLook() {
+    return MakeLook(
+      lina::to_linear_channel(0.85f),
+      lina::to_linear_channel(0.16f),
+      lina::to_linear_channel(0.22f),
+      1.0f
+    );
+  }
 
  private:
   bool setup() final {
@@ -40,10 +74,10 @@ class SampleApp final : public Application {
       camera_.set_controller(&arcball_controller_);
     }
 
-    renderer_.set_clear_color({ 0.02f, 0.02f, 0.01f, 1.0f });
+    renderer_.set_clear_color({ 0.35f, 0.5f, 0.2f, 1.0f });
     renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_puresky_2k.hdr");
 
-    /* Bodies are drawn by the physics debug rendering. */
+    /* Bodies are drawn as meshes, the physics debug overlay stays on top. */
     renderer_.physics().debug().enabled = true;
 
     createStaticScene();
@@ -114,53 +148,122 @@ class SampleApp final : public Application {
   }
 
   void update(float const) final {
-    auto const& io = ImGui::GetIO();
-    if (!io.WantCaptureKeyboard && ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+    if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
       shoot();
     }
     removeFallenBodies();
   }
 
  private:
-  // [wip]
-  entt::entity createBox(float size) {
-    scene::Asset asset{};
+  /* Identifies a cached shape asset: its kind, dimensions and look. */
+  struct ShapeKey {
+    uint32_t kind{};
+    std::array<float, 3> dims{};
+    std::array<float, 6> look{};   // basecolor rgba, metallic, roughness
+    auto operator<=>(ShapeKey const&) const = default;
+  };
 
-    asset.meshes.push_back({});
-    auto &mesh = asset.meshes[0];
-    Geometry::MakeCube(mesh, size);
-
-    auto &pool = renderer_.gpu_pool();
-    auto ah = pool.uploadAsset(std::move(asset)); //
-
-    if (!ah.valid()) {
-      LOGW("createBox: invalid asset handle");
-      return entt::null;
-    }
-
-    return renderer_.createInstance(ah);
+  static
+  ShapeKey KeyOf(physics::ShapeDesc const& shape, scene::MaterialProxy const& material) {
+    auto const& pbr = material.pbr_mr;
+    std::array<float, 6> const look{
+      pbr.basecolor_factor.x, pbr.basecolor_factor.y,
+      pbr.basecolor_factor.z, pbr.basecolor_factor.w,
+      pbr.metallic_factor, pbr.roughness_factor,
+    };
+    return std::visit([&](auto const& s) -> ShapeKey {
+      using T = std::decay_t<decltype(s)>;
+      if constexpr (std::is_same_v<T, physics::BoxShape>) {
+        return { 0u, { s.half_extents.x, s.half_extents.y, s.half_extents.z }, look };
+      } else if constexpr (std::is_same_v<T, physics::SphereShape>) {
+        return { 1u, { s.radius, 0.0f, 0.0f }, look };
+      } else {
+        return { 2u, { s.half_height, s.radius, 0.0f }, look };
+      }
+    }, shape);
   }
 
-  /* Floor and a ramp, both static (a Collider alone). */
-  void createStaticScene() {
+  /* Visual mesh at the physics size of the shape. */
+  static
+  scene::Mesh BuildShapeMesh(physics::ShapeDesc const& shape) {
+    scene::Mesh mesh{};
+    std::visit([&](auto const& s) {
+      using T = std::decay_t<decltype(s)>;
+      if constexpr (std::is_same_v<T, physics::BoxShape>) {
+        Geometry::MakeBox(mesh, s.half_extents.x, s.half_extents.y, s.half_extents.z);
+      } else if constexpr (std::is_same_v<T, physics::SphereShape>) {
+        Geometry::MakeSphere(mesh, s.radius);
+      } else {
+        Geometry::MakeCapsule(mesh, s.half_height, s.radius);
+      }
+    }, shape);
+    return mesh;
+  }
+
+  /* Instance of the (cached) visual of a shape, or entt::null on failure. */
+  entt::entity instantiateShape(
+    physics::ShapeDesc const& shape,
+    scene::MaterialProxy const& material
+  ) {
+    auto const key = KeyOf(shape, material);
+
+    auto it = shape_assets_.find(key);
+    if (it == shape_assets_.end()) {
+      auto const ah = renderer_.gpu_pool().uploadAsset(
+        scene::CreateNamedMeshAsset("shape", BuildShapeMesh(shape), material)
+      );
+      if (!ah.valid()) {
+        LOGW("instantiateShape: invalid asset handle");
+        return entt::null;
+      }
+      it = shape_assets_.emplace(key, ah).first;
+    }
+    return renderer_.createInstance(it->second);
+  }
+
+  /* A static body: a Collider on an instance root, no RigidBody. */
+  void createStatic(
+    physics::ShapeDesc const& shape,
+    vec3 const& position,
+    quat const& rotation,
+    float friction,
+    scene::MaterialProxy const& material
+  ) {
     using namespace scene::component;
+
+    auto const e = instantiateShape(shape, material);
+    if (e == entt::null) {
+      return;
+    }
+
     auto& scene = renderer_.scene();
+    scene.registry.emplace<Collider>(e, Collider{
+      .shape = shape,
+      .friction = friction,
+    });
 
-    auto const floor = scene.createStagingEntity<Collider>(entt::null);
-    scene.get<Collider>(floor) = {
-      .shape = physics::BoxShape{vec3(kFloorHalfSize, 0.5f, kFloorHalfSize)},
-      .friction = 0.6f,
-    };
-    scene.get<Transform>(floor).translation = vec3(0.0f, -0.5f, 0.0f);
+    auto& transform = scene.get<Transform>(e);
+    transform.translation = position;
+    transform.rotation = rotation;
+  }
 
-    auto const ramp = scene.createStagingEntity<Collider>(entt::null);
-    scene.get<Collider>(ramp) = {
-      .shape = physics::BoxShape{vec3(2.0f, 0.1f, 1.5f)},
-      .friction = 0.4f,
-    };
-    auto& ramp_transform = scene.get<Transform>(ramp);
-    ramp_transform.translation = vec3(4.0f, 0.6f, 0.0f);
-    ramp_transform.rotation = lina::rotation_quat(vec3(0.0f, 0.0f, 1.0f), lina::radians(20.0f));
+  void createStaticScene() {
+    // Floor
+    createStatic(
+      physics::BoxShape{vec3(kFloorHalfSize, 0.5f, kFloorHalfSize)},
+      vec3(0.0f, -0.5f, 0.0f),
+      quat{lina::identity},
+      0.6f,
+      MakeLook(0.30f, 0.33f, 0.37f, 0.9f)
+    );
+    // Ramp
+    createStatic(
+      physics::BoxShape{vec3(2.0f, 0.1f, 1.5f)},
+      vec3(4.0f, 0.6f, 0.0f),
+      lina::rotation_quat(vec3(0.0f, 0.0f, 1.0f), lina::radians(20.0f)),
+      0.4f,
+      MakeLook(0.85f, 0.62f, 0.15f, 0.5f)
+    );
   }
 
   /* A brick wall of crates, in front of the camera. */
@@ -196,15 +299,18 @@ class SampleApp final : public Application {
       view.position() + 1.0f * direction,
       quat{lina::identity},
       shoot_speed_ * direction,
+      BallLook(),
       3000.0f
     );
   }
 
+  /* Dynamic bodies: a Collider and a RigidBody on the instance root. */
   void spawn(
     physics::ShapeDesc const& shape,
     vec3 const& position,
     quat const& rotation = quat{lina::identity},
     vec3 const& velocity = vec3{},
+    scene::MaterialProxy look = CrateLook(),
     float density = 1000.0f
   ) {
     using namespace scene::component;
@@ -213,35 +319,22 @@ class SampleApp final : public Application {
       return;
     }
 
+    auto const e = instantiateShape(shape, look);
+    if (e == entt::null) {
+      return;
+    }
+
     auto& scene = renderer_.scene();
-
-#if 1
-    auto const e = scene.createStagingEntity<Collider, RigidBody>(entt::null);
-
-    scene.get<Collider>(e) = {
-      .shape = shape,
-      .friction = friction_,
-      .restitution = restitution_,
-    };
-    scene.get<RigidBody>(e) = {
-      .density = density,
-      .linear_velocity = velocity,
-    };
-#else
-    auto& reg = scene.registry;
-
-    auto const e = createBox(1.0f);
-
-    reg.emplace<Collider>(e, Collider{
+    scene.registry.emplace<Collider>(e, Collider{
       .shape = shape,
       .friction = friction_,
       .restitution = restitution_,
     });
-    reg.emplace<RigidBody>(e, RigidBody{
+    scene.registry.emplace<RigidBody>(e, RigidBody{
       .density = density,
       .linear_velocity = velocity,
     });
-#endif
+
     auto& transform = scene.get<Transform>(e);
     transform.translation = position;
     transform.rotation = rotation;
@@ -250,15 +343,14 @@ class SampleApp final : public Application {
   }
 
   void clearBodies() {
-    auto& scene = renderer_.scene();
     for (auto const e : bodies_) {
-      scene.destroySubtree(e);
+      renderer_.destroyInstance(e);
     }
     bodies_.clear();
     stacks_ = 0;
   }
 
-  /* Destroying the entity destroys its body. */
+  /* Destroying the instance destroys its body. */
   void removeFallenBodies() {
     using namespace scene::component;
     auto& scene = renderer_.scene();
@@ -267,7 +359,7 @@ class SampleApp final : public Application {
       if (scene.get<Transform>(e).translation.y >= kKillHeight) {
         return false;
       }
-      scene.destroySubtree(e);
+      renderer_.destroyInstance(e);
       return true;
     });
   }
@@ -279,8 +371,10 @@ class SampleApp final : public Application {
  private:
   ArcBallController arcball_controller_{};
 
+   // Cache of mesh assets.
+  std::map<ShapeKey, AssetHandle> shape_assets_{};
+
   std::vector<entt::entity> bodies_{};
-  std::mt19937 rng_{1234u};
   int stacks_{0};
 
   float crate_size_{0.5f};
@@ -289,6 +383,8 @@ class SampleApp final : public Application {
   int stack_columns_{4};
   int stack_rows_{5};
   float shoot_speed_{18.0f};
+
+  std::mt19937 rng_{1234u};
 };
 
 // ----------------------------------------------------------------------------
