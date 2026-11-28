@@ -257,7 +257,10 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
   uint32_t const default_material = static_cast<uint32_t>(asset.materials.size());
   if (needs_default_material) {
     asset.materials.push_back(MakeDefaultMaterialProxy());
-    asset.material_refs.push_back({ .proxy_index = default_material });
+    asset.material_refs.push_back({
+      .model       = scene::MaterialModel::PBRMetallicRoughness,  // (glTF default)
+      .proxy_index = default_material,
+    });
   }
 
   // 4. Rebase material texture bindings (if none fallback to default 'sentinel')
