@@ -173,6 +173,9 @@ class Renderer {
   Tonemapping tonemapping() const noexcept { return tonemapping_; }
 
   [[nodiscard]]
+  GpuPool& gpu_pool() noexcept { return gpu_pool_; }
+
+  [[nodiscard]]
   GpuPool const& gpu_pool() const noexcept { return gpu_pool_; }
 
   [[nodiscard]]
