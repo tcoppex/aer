@@ -126,13 +126,15 @@ endif()
 # SYSTEM marks the include dirs exported by the dependency's targets as system
 # ones (no warnings), EXCLUDE_FROM_ALL builds only what we actually link.
 function(aer_declare name repo tag)
-  cmake_parse_arguments(PARSE_ARGV 3 ARG "SOURCE_ONLY" "" "")
+  cmake_parse_arguments(PARSE_ARGV 3 ARG "SOURCE_ONLY" "SUBDIR" "")
   string(TOLOWER "${name}" lc_name)
 
   if(USE_FETCH_CONTENT)
     set(extra "")
     if(ARG_SOURCE_ONLY)
       set(extra SOURCE_SUBDIR __no_cmake__)
+    elseif(ARG_SUBDIR)
+      set(extra SOURCE_SUBDIR ${ARG_SUBDIR})
     endif()
 
     set(shallow TRUE)
@@ -151,11 +153,17 @@ function(aer_declare name repo tag)
       ${extra}
     )
   else()
+    set(cpm_extra "")
+    if(ARG_SUBDIR)
+      set(cpm_extra SOURCE_SUBDIR ${ARG_SUBDIR})
+    endif()
+
     CPMAddPackage(
       NAME ${name}
       GITHUB_REPOSITORY ${repo}
       GIT_TAG ${tag}
       DOWNLOAD_ONLY ${ARG_SOURCE_ONLY}
+      ${cpm_extra}
       SYSTEM YES
     )
     # Match FetchContent lowercase variable.
