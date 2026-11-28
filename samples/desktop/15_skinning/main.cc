@@ -20,21 +20,60 @@
 
 class SampleApp final : public Application {
  private:
+  // ---------------------------------------------------------------------------
+  // Types
+  // ---------------------------------------------------------------------------
+
+  struct IKEntry {
+    scene::IKId id{};
+    std::string end{};
+    vec3  target{};
+    float weight{1.0f};
+    vec3  pole{};
+    bool  use_pole{false};
+    bool  foot{false};
+  };
+
+  struct LookEntry {
+    scene::LookId id{};
+    std::string head{};
+    vec3  target{};
+    float weight{1.0f};
+  };
+
+  struct ChainUI {
+    scene::ChainIKId id{};
+    int   end{0};
+    int   bones{3};
+    vec3  target{};
+    float weight{1.0f};
+    bool  use_pole{false};
+    vec3  pole{};
+    float root_limit{30.0f};    // degrees, the root bone (shoulder assist)
+    float joint_limit{150.0f};  // degrees, the other bones
+    bool  hinge{true};          // last joint (elbow)
+  };
+
   struct Character {
     entt::entity root{entt::null};
     int   clip{0};
     float speed{1.0f};
     bool  loop{true};
     float fade{0.25f};
+
+    float x{0.0f};
+    float z{0.0f};
+
+    std::vector<IKEntry>   ik{};
+    std::vector<LookEntry> look{};
+
+    bool  foot_ik{false};
+    float foot_ankle{-1.0f};
   };
 
-  struct LineVertex {
-    vec3 position;
-    vec3 color;
-  };
-
-  struct PushConstant {
-    mat4 view_projection;
+  struct AxisUI {
+    char const* name;
+    vec3 axis;
   };
 
   struct ParamUI {
@@ -43,10 +82,27 @@ class SampleApp final : public Application {
     float max;
   };
 
-  static constexpr uint32_t kMaxLineVertices = 1u << 15u;
+  // ---------------------------------------------------------------------------
+  // Constants
+  // ---------------------------------------------------------------------------
 
-  static constexpr vec3 kNodeColor{1.0f, 0.70f, 0.15f};
-  static constexpr vec3 kLeafColor{0.20f, 0.90f, 0.40f};
+  static constexpr vec3 kNodeColor  {1.0f, 0.70f, 0.15f};
+  static constexpr vec3 kLeafColor  {0.20f, 0.90f, 0.40f};
+  static constexpr vec3 kTargetColor{1.0f, 0.25f, 0.85f};
+  static constexpr vec3 kPoleColor  {0.20f, 0.85f, 1.0f};
+  static constexpr vec3 kGroundColor{0.22f, 0.22f, 0.26f};
+  static constexpr vec3 kLookColor  {1.0f, 0.90f, 0.20f};
+
+  static constexpr float kBoneThickness   = 2.0f;
+  static constexpr float kTargetThickness = 2.0f;
+  static constexpr float kGroundThickness = 1.0f;
+  static constexpr float kTargetSize      = 0.06f;
+
+  static constexpr AxisUI kAxes[] = {
+    { "+Z", { 0.0f, 0.0f,  1.0f} }, { "-Z", { 0.0f,  0.0f, -1.0f} },
+    { "+Y", { 0.0f, 1.0f,  0.0f} }, { "-Y", { 0.0f, -1.0f,  0.0f} },
+    { "+X", { 1.0f, 0.0f,  0.0f} }, { "-X", {-1.0f,  0.0f,  0.0f} },
+  };
 
   static constexpr ParamUI kParams[] = {
     { "go",    0.0f, 1.0f },   // A <-> B
@@ -54,187 +110,209 @@ class SampleApp final : public Application {
     { "blend", 0.0f, 1.0f },   // blend tree parameter (clip 0 .. clip 1)
   };
 
+  // Clips used by the demo graph's kick states.
+  static constexpr size_t kKick1Clip = 59u;
+  static constexpr size_t kKick2Clip = 60u;
+
  private:
+  // ---------------------------------------------------------------------------
+  // Terrain
+  // ---------------------------------------------------------------------------
+
+  static
+  float GroundHeight(float x, float z) {
+    auto smooth = [](float a, float b, float v) {
+      float const t = std::clamp((v - a) / (b - a), 0.0f, 1.0f);
+      return t * t * (3.0f - 2.0f * t);
+    };
+    return 0.25f * smooth(0.30f, 0.50f, x) + 0.30f * smooth(-1.0f, 1.0f, z);
+  }
+
+  static
+  bool QueryGround(vec3 const& origin, float max_distance, scene::GroundHit& hit) {
+    float const h = GroundHeight(origin.x, origin.z);
+    float const d = origin.y - h;
+    if ((d < 0.0f) || (d > max_distance)) {
+      return false;
+    }
+    float const e = 0.01f;
+    float const dx = (GroundHeight(origin.x + e, origin.z) - GroundHeight(origin.x - e, origin.z)) / (2.0f * e);
+    float const dz = (GroundHeight(origin.x, origin.z + e) - GroundHeight(origin.x, origin.z - e)) / (2.0f * e);
+    hit.position = vec3(origin.x, h, origin.z);
+    hit.normal = lina::normalize(vec3(-dx, 1.0f, -dz));
+    return true;
+  }
+
+  static
+  std::vector<scene::AnimationSystem::ChainLimitDesc> makeChainLimits(ChainUI const& ui) {
+    using Limit = scene::AnimationSystem::ChainLimitDesc;
+    std::vector<Limit> limits(static_cast<size_t>(ui.bones), Limit{ .max_angle = ui.joint_limit });
+    limits.front().max_angle = ui.root_limit;
+    limits.back().hinge = ui.hinge;
+    return limits;
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI helpers
+  // ---------------------------------------------------------------------------
+
+  /* Combo box over a list of names, the index is clamped. */
+  static
+  bool Combo(char const* label, std::vector<std::string> const& items, int& index) {
+    if (items.empty()) {
+      return false;
+    }
+    index = std::clamp(index, 0, static_cast<int>(items.size()) - 1);
+
+    bool changed = false;
+    if (ImGui::BeginCombo(label, items[index].c_str())) {
+      for (int i = 0; i < static_cast<int>(items.size()); ++i) {
+        bool const selected = (i == index);
+        if (ImGui::Selectable(items[i].c_str(), selected)) {
+          index = i;
+          changed = true;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    return changed;
+  }
+
+  static
+  bool AxisCombo(char const* label, int& index) {
+    bool changed = false;
+    if (ImGui::BeginCombo(label, kAxes[index].name)) {
+      for (int i = 0; i < static_cast<int>(std::size(kAxes)); ++i) {
+        bool const selected = (i == index);
+        if (ImGui::Selectable(kAxes[i].name, selected)) {
+          index = i;
+          changed = true;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    return changed;
+  }
+
+  static
+  bool Section(char const* title) {
+    return ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+  }
+
+  static
+  bool FadeButtons(float& weight, float& target_weight) {
+    bool pressed = false;
+    if (ImGui::Button("Fade out")) {
+      weight = target_weight = 0.0f;
+      pressed = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Fade in")) {
+      weight = target_weight = 1.0f;
+      pressed = true;
+    }
+    return pressed;
+  }
+
+ private:
+  // ---------------------------------------------------------------------------
+  // Application
+  // ---------------------------------------------------------------------------
+
   bool setup() final {
     wm_->set_title("15 - skinning");
 
-    /* Setup the ArcBall camera (a human sized character is expected). */
-    {
-      arcball_controller_.set_target(vec3(0.0f, 1.0f, 0.0f));
-      arcball_controller_.set_view(lina::kPi/16.0f, lina::kPi/6.0f);
-      arcball_controller_.set_dolly(4.0f);
-      camera_.set_controller(&arcball_controller_);
-    }
+    /* Setup the ArcBall camera. */
+    arcball_controller_.set_target(vec3(0.0f, 1.0f, 0.0f));
+    arcball_controller_.set_view(lina::kPi / 16.0f, lina::kPi / 6.0f);
+    arcball_controller_.set_dolly(4.0f);
+    camera_.set_controller(&arcball_controller_);
 
     renderer_.set_clear_color({ 0.02f, 0.02f, 0.01f, 1.0f });
     renderer_.setSkybox(ASSETS_DIR "textures/qwantani_dusk_2_puresky_2k.hdr");
 
+    /* Ground query used by the foot IK. */
+    renderer_.animation().setGroundQuery(
+      [](vec3 const& origin, float max_distance, scene::GroundHit& hit) {
+        return QueryGround(origin, max_distance, hit);
+      }
+    );
+
     /* Load the asset once, instances share it. */
-    asset_ = renderer_.loadAsset(ASSETS_DIR "models/genan_h_root.glb");
+    asset_ = renderer_.loadAsset(ASSETS_DIR "models/"
+      // ---------------------
+      // Hands    : joints 28 / 29
+      // Foot     : joints 3 / 6
+      // Idle     : clips 0-18
+      // Walking  : clips 19-36
+      // Running  : clips 37-49
+      // Picking  : clips 57-58
+      // Kicks    : clips 59-61
+      // ---------------------
+      "genan_fixed.glb"      // static + fixed root position
+      // "genan_m.glb"       // root motion
+      // "sintel_anim.glb"
+    );
     if (!asset_.valid()) {
       return false;
     }
 
     addCharacter();
-    if (characters_.empty()) {
-      return false;
-    }
-
-    return createSkeletonPipeline();
+    return !characters_.empty();
   }
 
-  void release() final {
-    for (auto const& buffer : line_buffers_) {
-      context_.destroyBuffer(buffer);
+  void update(float const /*dt*/) final {
+    auto& debug = renderer_.debug_draw();
+
+    if (show_ground_) {
+      drawGround(debug);
     }
-    context_.destroyResources(pipeline_, pipeline_layout_);
+    if (show_skeleton_) {
+      drawSkeleton(debug);
+    }
+    drawIKTargets(debug);
+    drawChainTargets(debug);
+    drawLookTargets(debug);
   }
 
   void buildUI() final {
-    auto& animation = renderer_.animation();
-
     ImGui::Begin("Settings");
-    {
-      ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-      ImGui::Separator();
 
-      /* Instances share the asset but animate independently. */
-      if (ImGui::Button("Add instance")) {
-        addCharacter();
-      }
-      if (characters_.size() > 1u) {
-        ImGui::SameLine();
-        ImGui::SliderInt("Instance", &current_, 0, static_cast<int>(characters_.size()) - 1);
-      }
-      current_ = std::clamp(current_, 0, static_cast<int>(characters_.size()) - 1);
-      auto& c = characters_[current_];
+    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Separator();
 
-      ImGui::Separator();
+    buildInstanceUI();
+    auto& c = characters_[current_];
 
-      if (clip_names_.empty()) {
-        ImGui::TextUnformatted("No animation clip in this asset.");
-      } else {
-        if (ImGui::BeginCombo("Clip", clip_names_[c.clip].c_str())) {
-          for (int i = 0; i < static_cast<int>(clip_names_.size()); ++i) {
-            bool const selected = (i == c.clip);
-            if (ImGui::Selectable(clip_names_[i].c_str(), selected)) {
-              c.clip = i;
-            }
-            if (selected) {
-              ImGui::SetItemDefaultFocus();
-            }
-          }
-          ImGui::EndCombo();
-        }
+    if (clip_names_.empty()) {
+      ImGui::TextUnformatted("No animation clip in this asset.");
+    } else {
+      auto const state = renderer_.animation().state(c.root);
 
-        auto const state = animation.state(c.root);
-
-        ImGui::SliderFloat("Fade (s)", &c.fade, 0.0f, 2.0f, "%.2f");
-
-        if (ImGui::Button("Play")) {
-          play(c);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(state.playing ? "Pause" : "Resume")) {
-          if (state.playing) {
-            animation.pause(c.root);
-          } else {
-            animation.resume(c.root);
-          }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Stop")) {
-          animation.stop(c.root);
-        }
-
-        if (ImGui::SliderFloat("Speed", &c.speed, -4.0f, 4.0f, "%.2f")) {
-          animation.setSpeed(c.root, c.speed);
-        }
-        if (ImGui::Checkbox("Loop", &c.loop)) {
-          animation.setLoop(c.root, c.loop);
-        }
-
-        /*
-          - With the demo graph on start, the character plays clip A.
-            Drag go past 0.5 and it should cross-fade to B in 0.3 s and back.
-
-          - Drag mix past 0.5. You should go to Blend regardless of go,
-            then drag blend to morph between the two clips.
-            Dropping mix below 0.5 returns to A.
-
-          - Click a state button. The current one is highlighted, and the
-            fade bar shows while a transition runs.
-
-          - Press Play or Stop. The panel should show "Machine inactive".
-            Clicking a state re-enters the machine.
-        */
-        buildGraphUI(c, state);
-
-        ImGui::Separator();
-
-        ImGui::Checkbox("Skeleton", &show_skeleton_);
-        if (show_skeleton_) {
-          ImGui::Checkbox("Joint markers", &show_markers_);
-          ImGui::SliderFloat("Marker size", &marker_size_, 0.005f, 0.1f, "%.3f");
-        }
-
-        if (!state.clip.empty()) {
-          const float progress = (state.duration > 0.0f) ? (state.time / state.duration) : 0.0f;
-          ImVec2 bar_min = ImGui::GetCursorScreenPos();
-
-          ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "");
-
-          ImVec2 bar_max = ImGui::GetItemRectMax();
-          char label[64];
-          std::snprintf(label, sizeof(label), "%.2f / %.2f s", state.time, state.duration);
-          ImVec2 text_size = ImGui::CalcTextSize(label);
-          const float pad_x = ImGui::GetStyle().FramePadding.x;
-          ImVec2 text_pos(
-            bar_min.x + pad_x,
-            bar_min.y + (bar_max.y - bar_min.y - text_size.y) * 0.5f
-          );
-          ImGui::GetWindowDrawList()->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), label);
-
-          if (!state.playing) {
-            float t = state.time;
-            if (ImGui::SliderFloat("Time", &t, 0.0f, state.duration, "%.2f s")) {
-              animation.setTime(c.root, t);
-            }
-          }
-        }
-      }
+      buildPlaybackUI(c, state);
+      buildGraphUI(c, state);
+      buildIKUI(c, state);
+      buildChainUI(c);
+      buildLookUI(c);
     }
+
+    buildDisplayUI();
+    buildMorphUI();
+
     ImGui::End();
   }
 
-  void drawPass(RenderPassEncoder const& pass) final {
-    if (!show_skeleton_) {
-      return;
-    }
-
-    line_vertices_.clear();
-    buildSkeleton();
-    if (line_vertices_.empty()) {
-      return;
-    }
-
-    auto const& buffer = line_buffers_[renderer_.frame_slot()];
-    context_.writeBuffer(
-      buffer, 0u,
-      line_vertices_.data(), 0u,
-      line_vertices_.size() * sizeof(LineVertex)
-    );
-
-    PushConstant const pc{
-      .view_projection = camera_.transforms()[0].view_projection
-    };
-    pass.bindPipeline(pipeline_);
-    pass.pushConstant(pc, VK_SHADER_STAGE_VERTEX_BIT);
-    pass.bindVertexBuffer(buffer);
-    pass.draw(static_cast<uint32_t>(line_vertices_.size()), 1u);
-  }
-
  private:
+  // ---------------------------------------------------------------------------
+  // Animation graph
+  // ---------------------------------------------------------------------------
+
   bool setupAnimationGraph(entt::entity root) {
     if (clip_names_.size() < 2u) {
       return false;
@@ -263,35 +341,102 @@ class SampleApp final : public Application {
             { .name = "A",     .motion = clip_names_[0] },
             { .name = "B",     .motion = clip_names_[1] },
             { .name = "Blend", .motion = "blend" },
-            { .name = "Kick1", .motion = clip_names_[59], .loop = false },
-            { .name = "Kick2", .motion = clip_names_[60], .loop = false },
           },
           .transitions = {
             { .from = "",      .to = "Blend", .conditions = {{"mix", Op::Greater, 0.5f}}, .fade = 0.3f },
             { .from = "Blend", .to = "A",     .conditions = {{"mix", Op::Less,    0.5f}}, .fade = 0.3f },
             { .from = "A",     .to = "B",     .conditions = {{"go",  Op::Greater, 0.5f}}, .fade = 0.3f },
             { .from = "B",     .to = "A",     .conditions = {{"go",  Op::Less,    0.5f}}, .fade = 0.3f },
-            { .from = "A",     .to = "Kick1", .conditions = {{"hit", Op::Trigger}}, .fade = 0.1f },
-            { .from = "Kick1", .to = "Kick2", .conditions = {{"hit", Op::Trigger}}, .exit_time = 0.6f, .fade = 0.15f },
-            { .from = "Kick1", .to = "A", .on_finish = true, .fade = 0.2f },
-            { .from = "Kick2", .to = "A", .on_finish = true, .fade = 0.2f },
           },
         },
       };
-      graph_ = std::make_shared<scene::AnimationGraphDesc>(desc);
+
+      /* Kick combo (A -> Kick1 -> Kick2 -> A), only if the asset has the clips. */
+      if (clip_names_.size() > kKick2Clip) {
+        desc.machine.states.push_back({ .name = "Kick1", .motion = clip_names_[kKick1Clip], .loop = false });
+        desc.machine.states.push_back({ .name = "Kick2", .motion = clip_names_[kKick2Clip], .loop = false });
+
+        desc.machine.transitions.push_back({ .from = "A",     .to = "Kick1", .conditions = {{"hit", Op::Trigger}}, .fade = 0.1f });
+        desc.machine.transitions.push_back({ .from = "Kick1", .to = "Kick2", .conditions = {{"hit", Op::Trigger}}, .exit_time = 0.6f, .fade = 0.15f });
+        desc.machine.transitions.push_back({ .from = "Kick1", .to = "A", .on_finish = true, .fade = 0.2f });
+        desc.machine.transitions.push_back({ .from = "Kick2", .to = "A", .on_finish = true, .fade = 0.2f });
+      }
+      graph_ = std::make_shared<scene::AnimationGraphDesc>(std::move(desc));
     }
     return renderer_.animation().setGraph(root, graph_);
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI sections
+  // ---------------------------------------------------------------------------
+
+  void buildInstanceUI() {
+    /* Instances share the asset but animate independently. */
+    if (ImGui::Button("Add instance")) {
+      addCharacter();
+    }
+    if (characters_.size() > 1u) {
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(-1.0f);
+      ImGui::SliderInt("##instance", &current_, 0, static_cast<int>(characters_.size()) - 1, "Instance %d");
+    }
+    current_ = std::clamp(current_, 0, static_cast<int>(characters_.size()) - 1);
+  }
+
+  void buildPlaybackUI(Character& c, scene::AnimationSystem::State const& state) {
+    if (!Section("Playback")) {
+      return;
+    }
+    auto& animation = renderer_.animation();
+
+    Combo("Clip", clip_names_, c.clip);
+    ImGui::SliderFloat("Fade (s)", &c.fade, 0.0f, 2.0f, "%.2f");
+
+    if (ImGui::Button("Play")) {
+      play(c);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(state.playing ? "Pause" : "Resume")) {
+      if (state.playing) {
+        animation.pause(c.root);
+      } else {
+        animation.resume(c.root);
+      }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Stop")) {
+      animation.stop(c.root);
+    }
+
+    if (ImGui::SliderFloat("Speed", &c.speed, -4.0f, 4.0f, "%.2f")) {
+      animation.setSpeed(c.root, c.speed);
+    }
+    if (ImGui::Checkbox("Loop", &c.loop)) {
+      animation.setLoop(c.root, c.loop);
+    }
+
+    if (!state.clip.empty()) {
+      float const progress = (state.duration > 0.0f) ? (state.time / state.duration) : 0.0f;
+      char label[64];
+      std::snprintf(label, sizeof(label), "%.2f / %.2f s", state.time, state.duration);
+      ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), label);
+
+      if (!state.playing) {
+        float t = state.time;
+        if (ImGui::SliderFloat("Time", &t, 0.0f, state.duration, "%.2f s")) {
+          animation.setTime(c.root, t);
+        }
+      }
+    }
   }
 
   void buildGraphUI(Character const& c, scene::AnimationSystem::State const& state) {
     auto& animation = renderer_.animation();
 
     auto const states = animation.stateNames(c.root);
-    if (states.empty()) {
+    if (states.empty() || !Section("Animation graph")) {
       return;
     }
-
-    ImGui::SeparatorText("Animation graph");
 
     for (auto const& p : kParams) {
       float value = animation.parameter(c.root, p.name);
@@ -301,8 +446,19 @@ class SampleApp final : public Application {
     }
 
     /* The current state is highlighted, a click forces a transition. */
+    ImGui::TextUnformatted("States");
+    float const avail = ImGui::GetContentRegionAvail().x;
+    float used = 0.0f;
     for (auto const& name : states) {
       bool const current = (state.machine_state == name);
+
+      float const w = ImGui::CalcTextSize(name.c_str()).x + 2.0f * ImGui::GetStyle().FramePadding.x;
+      if (used > 0.0f && used + w > avail) {
+        used = 0.0f;
+      } else if (used > 0.0f) {
+        ImGui::SameLine();
+      }
+      used += w + ImGui::GetStyle().ItemSpacing.x;
 
       ImGui::PushID(name.c_str());
       if (current) {
@@ -315,16 +471,13 @@ class SampleApp final : public Application {
         ImGui::PopStyleColor();
       }
       ImGui::PopID();
-      ImGui::SameLine();
     }
-    ImGui::NewLine();
 
     if (ImGui::Button("Hit (trigger)")) {
       animation.setTrigger(c.root, "hit");
     }
     ImGui::SameLine();
     ImGui::TextDisabled("%s", (animation.parameter(c.root, "hit") > 0.0f) ? "pending" : "-");
-
 
     if (state.machine_state.empty()) {
       ImGui::TextDisabled("Machine inactive (manual control). Click a state to re-enter.");
@@ -333,11 +486,374 @@ class SampleApp final : public Application {
     }
   }
 
+  void buildIKUI(Character& c, scene::AnimationSystem::State const& state) {
+    if (joint_names_.empty() || !Section("Two-bone IK")) {
+      return;
+    }
+    auto& animation = renderer_.animation();
+
+    /* The chain is the end joint and its two parents. */
+    Combo("joint", joint_names_, ik_joint_);
+    ImGui::SameLine();
+    if (ImGui::Button("Add##ik")) {
+      auto const& end = joint_names_[ik_joint_];
+      auto const id = animation.addTwoBoneIK(c.root, { .end = end });
+      if (id.valid()) {
+        c.ik.push_back({
+          .id = id,
+          .end = end,
+          .target = animation.ikTarget(c.root, id),
+          .pole = animation.ikPole(c.root, id),
+        });
+      }
+    }
+
+    if (!c.ik.empty()) {
+      ImGui::SliderFloat("IK fade (s)", &ik_fade_, 0.0f, 1.0f, "%.2f");
+      ImGui::Checkbox("Free during Kick", &ik_free_on_kick_);
+    }
+
+    for (size_t i = 0; i < c.ik.size(); ++i) {
+      auto& entry = c.ik[i];
+      bool remove = false;
+
+      ImGui::PushID(static_cast<int>(i));
+      if (ImGui::TreeNodeEx(entry.end.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
+        if (c.foot_ik && entry.foot) {
+          ImGui::TextDisabled("Target driven by foot IK");
+        } else if (ImGui::DragFloat3("Target", &entry.target.x, 0.01f)) {
+          animation.setIKTarget(c.root, entry.id, entry.target);
+        }
+
+        if (ImGui::Checkbox("Pole", &entry.use_pole)) {
+          if (entry.use_pole) {
+            animation.setIKPole(c.root, entry.id, entry.pole);
+          } else {
+            animation.clearIKPole(c.root, entry.id);
+          }
+        }
+        if (entry.use_pole) {
+          ImGui::SameLine();
+          if (ImGui::DragFloat3("##pole", &entry.pole.x, 0.01f)) {
+            animation.setIKPole(c.root, entry.id, entry.pole);
+          }
+        }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Foot", &entry.foot)) {
+          foot_dirty_ = true;
+        }
+
+        if (ImGui::SliderFloat("Weight", &entry.weight, 0.0f, 1.0f, "%.2f")) {
+          animation.setIKWeight(c.root, entry.id, entry.weight);
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(%.2f)", animation.ikWeight(c.root, entry.id));
+
+        float fade_weight = entry.weight;
+        if (FadeButtons(fade_weight, entry.weight)) {
+          animation.setIKWeight(c.root, entry.id, fade_weight, ik_fade_);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Remove")) {
+          remove = true;
+        }
+
+        /* Nested in the entry, so it reads as part of this bone. */
+        if (entry.foot) {
+          buildFootIKUI(c);
+        }
+        ImGui::TreePop();
+      }
+      ImGui::PopID();
+
+      if (remove) {
+        animation.removeIK(c.root, entry.id);
+        c.ik.erase(c.ik.begin() + static_cast<std::ptrdiff_t>(i));
+        foot_dirty_ = true;
+        break;
+      }
+    }
+
+    /* Gameplay style: repeated every frame, the fade only starts on a change. */
+    if (ik_free_on_kick_) {
+      bool const kicking = state.machine_state.starts_with("Kick");
+      for (auto const& entry : c.ik) {
+        animation.setIKWeight(c.root, entry.id, kicking ? 0.0f : entry.weight, ik_fade_);
+      }
+    }
+  }
+
+  void buildChainUI(Character const& c) {
+    if (!Section("Chain IK (FABRIK)")) {
+      return;
+    }
+    auto& animation = renderer_.animation();
+    auto& ui = chains_[c.root];
+
+    if (!ui.id.valid()) {
+      auto const names = animation.twoBoneIKEndJoints(c.root);
+      if (names.empty()) {
+        return;
+      }
+      Combo("Chain end", names, ui.end);
+      ImGui::SliderInt("Bones", &ui.bones, 2, 6);
+
+      if (ImGui::Button("Add chain")) {
+        ui.id = animation.addChainIK(c.root, {
+          .end = names[ui.end],
+          .length = static_cast<uint32_t>(ui.bones),
+          .limits = makeChainLimits(ui),
+        });
+        if (ui.id.valid()) {
+          ui.target = animation.chainIKTarget(c.root, ui.id);
+          ui.weight = 1.0f;
+          ui.use_pole = false;
+        }
+      }
+      return;
+    }
+
+    if (ImGui::DragFloat3("Target", &ui.target.x, 0.01f)) {
+      animation.setChainIKTarget(c.root, ui.id, ui.target);
+    }
+    if (ImGui::SliderFloat("Weight", &ui.weight, 0.0f, 1.0f, "%.2f")) {
+      animation.setChainIKWeight(c.root, ui.id, ui.weight);
+    }
+    if (ImGui::Checkbox("Pole", &ui.use_pole)) {
+      if (ui.use_pole) {
+        animation.setChainIKPole(c.root, ui.id, ui.pole);
+      } else {
+        animation.clearChainIKPole(c.root, ui.id);
+      }
+    }
+    if (ui.use_pole) {
+      ImGui::SameLine();
+      if (ImGui::DragFloat3("##chain_pole", &ui.pole.x, 0.01f)) {
+        animation.setChainIKPole(c.root, ui.id, ui.pole);
+      }
+    }
+
+    bool limits_changed = false;
+    limits_changed |= ImGui::SliderFloat("Root limit", &ui.root_limit, 0.0f, 180.0f, "%.0f deg");
+    limits_changed |= ImGui::SliderFloat("Joint limit", &ui.joint_limit, 0.0f, 180.0f, "%.0f deg");
+    limits_changed |= ImGui::Checkbox("Hinge (last joint)", &ui.hinge);
+    if (limits_changed) {
+      animation.setChainIKLimits(c.root, ui.id, makeChainLimits(ui));
+    }
+
+    if (ImGui::Button("Remove chain")) {
+      animation.removeChainIK(c.root, ui.id);
+      ui.id = {};
+    }
+  }
+
+  void buildFootIKUI(Character& c) {
+    auto& animation = renderer_.animation();
+
+    bool changed = foot_dirty_;
+    foot_dirty_ = false;
+
+    if (ImGui::TreeNodeEx("Foot IK / ground", ImGuiTreeNodeFlags_DefaultOpen)) {
+      ImGui::Checkbox("Show ground", &show_ground_);
+
+      /* The root follows the terrain, as a character controller would. */
+      bool moved = ImGui::SliderFloat("X", &c.x, -2.0f, 2.0f, "%.2f");
+      moved |= ImGui::SliderFloat("Z", &c.z, -2.0f, 2.0f, "%.2f");
+      if (moved) {
+        placeCharacter(c);
+      }
+
+      changed |= ImGui::Checkbox("Enable foot IK", &c.foot_ik);
+      if (c.foot_ik) {
+        if (c.foot_ankle >= 0.0f) {
+          changed |= ImGui::SliderFloat("Ankle height", &c.foot_ankle, 0.0f, 0.3f, "%.3f");
+        }
+        if (ImGui::Button("Measure ankle height")) {
+          c.foot_ankle = -1.0f;   // from the current pose
+          changed = true;
+        }
+        changed |= ImGui::SliderFloat("Probe range", &foot_probe_, 0.1f, 1.0f, "%.2f");
+        changed |= ImGui::SliderFloat("Blend height", &foot_blend_, 0.02f, 0.5f, "%.2f");
+        changed |= ImGui::SliderFloat("Smoothing", &foot_smooth_, 0.0f, 30.0f, "%.1f");
+        changed |= ImGui::Checkbox("Align feet to ground", &foot_align_);
+        if (foot_align_) {
+          changed |= ImGui::SliderFloat("Max foot angle", &foot_max_angle_, 0.0f, 60.0f, "%.0f deg");
+        }
+      }
+      ImGui::TreePop();
+    }
+    if (!changed) {
+      return;
+    }
+
+    std::vector<scene::IKId> feet{};
+    for (auto const& entry : c.ik) {
+      if (entry.foot) {
+        feet.push_back(entry.id);
+      }
+    }
+
+    bool active = false;
+    if (c.foot_ik && !feet.empty()) {
+      active = animation.setFootIK(c.root, {
+        .feet = feet,
+        .params = {
+          .ankle_height = c.foot_ankle,
+          .probe_height = foot_probe_,
+          .probe_depth = foot_probe_,
+          .blend_height = foot_blend_,
+          .smooth = foot_smooth_,
+          .align = foot_align_,
+          .max_angle = foot_max_angle_,
+        }
+      });
+    }
+
+    if (active) {
+      c.foot_ankle = animation.footIKAnkleHeight(c.root);
+    } else {
+      animation.clearFootIK(c.root);
+      for (auto& entry : c.ik) {
+        if (entry.foot) {
+          entry.target = animation.ikTarget(c.root, entry.id);   // where the rig left it
+        }
+      }
+      if (!feet.empty()) {
+        c.foot_ik = false;   // setFootIK failed
+      }
+    }
+  }
+
+  void buildLookUI(Character& c) {
+    if (joint_names_.empty() || !Section("Look-at")) {
+      return;
+    }
+    auto& animation = renderer_.animation();
+
+    Combo("Head joint", joint_names_, look_joint_);
+    ImGui::SliderInt("Chain length", &look_length_, 1, 4);
+    AxisCombo("Aim axis", look_axis_);
+    ImGui::SliderFloat("Max angle", &look_max_angle_, 10.0f, 120.0f, "%.0f deg");
+    ImGui::SliderFloat("Fade zone", &look_fade_angle_, 5.0f, 90.0f, "%.0f deg");
+    ImGui::SliderFloat("Smoothing", &look_smooth_, 0.0f, 30.0f, "%.1f");
+
+    if (ImGui::Button("Add look-at")) {
+      auto const& head = joint_names_[look_joint_];
+      auto const id = animation.addLookAt(c.root, {
+        .head = head,
+        .length = static_cast<uint32_t>(look_length_),
+        .params = {
+          .aim        = kAxes[look_axis_].axis,
+          .max_angle  = look_max_angle_,
+          .fade_angle = look_fade_angle_,
+          .smooth     = look_smooth_,
+        }
+      });
+      if (id.valid()) {
+        c.look.push_back({ .id = id, .head = head, .target = animation.lookTarget(c.root, id) });
+      }
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Orbit target", &look_orbit_);
+
+    for (size_t i = 0; i < c.look.size(); ++i) {
+      auto& entry = c.look[i];
+      bool remove = false;
+
+      ImGui::PushID("look");
+      ImGui::PushID(static_cast<int>(i));
+      ImGui::SeparatorText(entry.head.c_str());
+
+      if (look_orbit_) {
+        /* Around the head, it goes behind the character too (to see the limits). */
+        if (auto const aim = animation.lookAim(c.root, entry.id)) {
+          float const t = static_cast<float>(ImGui::GetTime());
+          entry.target = aim->origin + vec3(
+            1.5f * std::sin(t), 0.3f * std::sin(1.7f * t), 1.5f * std::cos(t)
+          );
+          animation.setLookTarget(c.root, entry.id, entry.target);
+        }
+      } else if (ImGui::DragFloat3("Target", &entry.target.x, 0.01f)) {
+        animation.setLookTarget(c.root, entry.id, entry.target);
+      }
+
+      if (ImGui::SliderFloat("Weight", &entry.weight, 0.0f, 1.0f, "%.2f")) {
+        animation.setLookWeight(c.root, entry.id, entry.weight);
+      }
+
+      float fade_weight = entry.weight;
+      if (FadeButtons(fade_weight, entry.weight)) {
+        animation.setLookWeight(c.root, entry.id, fade_weight, ik_fade_);
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Remove")) {
+        remove = true;
+      }
+      ImGui::PopID();
+      ImGui::PopID();
+
+      if (remove) {
+        animation.removeLookAt(c.root, entry.id);
+        c.look.erase(c.look.begin() + static_cast<std::ptrdiff_t>(i));
+        break;
+      }
+    }
+  }
+
+  void buildDisplayUI() {
+    if (!Section("Display")) {
+      return;
+    }
+
+    ImGui::Checkbox("Skeleton", &show_skeleton_);
+    if (show_skeleton_) {
+      ImGui::Indent();
+      ImGui::SliderFloat("bone thickness (px)", &bone_thickness_, 0.5f, 4.0f, "%.1f");
+      ImGui::Checkbox("Joint markers", &show_markers_);
+      if (show_markers_) {
+        ImGui::SliderFloat("Marker size", &marker_size_, 0.005f, 0.1f, "%.3f");
+        ImGui::SliderFloat("joint thickness (px)", &joint_thickness_, 0.5f, 8.0f, "%.1f");
+      }
+      ImGui::Unindent();
+    }
+
+    if (ImGui::Checkbox("Dual quaternion skinning", &use_dqs_)) {
+      using namespace scene::component;
+      auto const mode = use_dqs_ ? scene::SkinningMode::DualQuaternion : scene::SkinningMode::Linear;
+      renderer_.scene().registry.view<Skin>().each([mode](Skin& skin) {
+        skin.mode = mode;
+      });
+    }
+  }
+
+  void buildMorphUI() {
+    using namespace scene::component;
+    auto& reg = renderer_.scene().registry;
+    if (reg.view<MorphWeights>().empty() || !ImGui::CollapsingHeader("Morph targets")) {
+      return;
+    }
+
+    reg.view<MorphWeights>().each([](entt::entity e, MorphWeights& m) {
+      ImGui::PushID(static_cast<int>(entt::to_integral(e)));
+      size_t const shown = std::min<size_t>(m.weights.size(), 32u);
+      for (size_t t = 0; t < shown; ++t) {
+        auto const label = "Target " + std::to_string(t);
+        ImGui::SliderFloat(label.c_str(), &m.weights[t], 0.0f, 1.0f, "%.2f");
+      }
+      if (ImGui::Button("Reset weights")) {
+        std::ranges::fill(m.weights, 0.0f);
+      }
+      ImGui::PopID();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Characters
+  // ---------------------------------------------------------------------------
+
   void addCharacter() {
-    /* Side by side. */
-    auto const placement = lina::translation_matrix(
-      vec3(1.5f * static_cast<float>(characters_.size()), 0.0f, 0.0f)
-    );
+    auto const ground_x = 1.5f * static_cast<float>(characters_.size());
+    auto const placement = lina::translation_matrix(vec3(ground_x, 0.0f, 0.0f));
     auto const root = renderer_.createInstance(asset_, entt::null, placement);
     if (root == entt::null) {
       return;
@@ -346,84 +862,69 @@ class SampleApp final : public Application {
     if (clip_names_.empty()) {
       clip_names_ = renderer_.animation().clipNames(root);
     }
+    if (joint_names_.empty()) {
+      joint_names_ = renderer_.animation().twoBoneIKEndJoints(root);
+    }
 
-    characters_.push_back({ .root = root });
+    characters_.push_back({
+      .root = root,
+      .x = ground_x,
+    });
+    placeCharacter(characters_.back());
 
     if (!setupAnimationGraph(root) && !clip_names_.empty()) {
       play(characters_.back());
     }
   }
 
-  bool createSkeletonPipeline() {
-    pipeline_layout_ = context_.createPipelineLayout({
-      .pushConstantRanges = {
-        {
-          .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-          .size = sizeof(PushConstant),
-        }
-      },
-    });
+  void placeCharacter(Character const& c) {
+    auto& reg = renderer_.scene().registry;
+    reg.get<scene::component::Transform>(c.root).translation =
+      vec3(c.x, GroundHeight(c.x, c.z), c.z);
+  }
 
-    auto shader = context_.createShaderModule(SAMPLE_SPIRV_DIR, "skeleton.slang");
+  void play(Character const& c) {
+    renderer_.animation().play(c.root, clip_names_[c.clip], c.loop, c.fade);
+  }
 
-    pipeline_ = context_.createGraphicsPipeline(pipeline_layout_, {
-      .vertex = {
-        .module = shader.handle,
-        .entryPoint = "vertexMain",
-        .buffers = {
-          {
-            .stride = sizeof(LineVertex),
-            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-            .attributes = {
-              { 0u, 0u, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LineVertex, position) },
-              { 1u, 0u, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LineVertex, color) },
-            },
-          }
-        },
-      },
-      .fragment = {
-        .module = shader.handle,
-        .entryPoint = "fragmentMain",
-        .targets = {
-          { .writeMask = GraphicsPipelineDescriptor_t::kDefaultColorWriteMask }
-        },
-      },
-      // (no depth test: the skeleton shows through the mesh)
-      .primitive = {
-        .topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_NONE,
-        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-      },
-    });
-    context_.releaseShaderModule(shader);
+  // ---------------------------------------------------------------------------
+  // Debug draw
+  // ---------------------------------------------------------------------------
 
-    line_buffers_.resize(renderer_.frames_in_flight());
-    for (auto& buffer : line_buffers_) {
-      buffer = context_.createBuffer(
-        "Skeleton::Lines",
-        kMaxLineVertices * sizeof(LineVertex),
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-        | VMA_ALLOCATION_CREATE_MAPPED_BIT
-      );
-      if (!buffer.valid()) {
-        return false;
+  using Depth = DebugDraw::Depth;
+
+  /* World space cross, drawn over the mesh. */
+  static
+  void drawCross(DebugDraw& debug, vec3 const& p, vec3 const& color) {
+    debug.cross(p, kTargetSize, color, kTargetThickness);
+  }
+
+  void drawGround(DebugDraw& debug) {
+    constexpr int kLines = 21;
+    constexpr int kSegments = 80;
+    constexpr float kExtent = 2.0f;
+    constexpr float kStep = 2.0f * kExtent / static_cast<float>(kLines - 1);
+    constexpr float kSegment = 2.0f * kExtent / static_cast<float>(kSegments);
+
+    for (int i = 0; i < kLines; ++i) {
+      float const a = -kExtent + kStep * static_cast<float>(i);
+      for (int s = 0; s < kSegments; ++s) {
+        float const t0 = -kExtent + kSegment * static_cast<float>(s);
+        float const t1 = t0 + kSegment;
+        debug.line(
+          vec3(a, GroundHeight(a, t0), t0), vec3(a, GroundHeight(a, t1), t1),
+          kGroundColor, kGroundThickness, Depth::On
+        );
+        debug.line(
+          vec3(t0, GroundHeight(t0, a), a), vec3(t1, GroundHeight(t1, a), a),
+          kGroundColor, kGroundThickness, Depth::On
+        );
       }
     }
-    return true;
   }
 
-  void appendLine(vec3 const& a, vec3 const& color_a, vec3 const& b, vec3 const& color_b) {
-    if (line_vertices_.size() + 2u > kMaxLineVertices) {
-      return;
-    }
-    line_vertices_.push_back({ a, color_a });
-    line_vertices_.push_back({ b, color_b });
-  }
-
-  void buildSkeleton() {
+  /* Bones and joint markers, drawn over the mesh (no depth test). */
+  void drawSkeleton(DebugDraw& debug) {
     using namespace scene::component;
     auto& reg = renderer_.scene().registry;
 
@@ -463,22 +964,61 @@ class SampleApp final : public Application {
 
         vec3 q{};
         if (parents[j] < count && position(parents[j], q)) {
-          appendLine(q, color(parents[j]), p, color(j));
+          debug.line(q, p, color(j), bone_thickness_, Depth::Off);
         }
-
         if (show_markers_) {
-          auto const c = color(j);
-          float const s = marker_size_;
-          appendLine(p - vec3(s, 0.0f, 0.0f), c, p + vec3(s, 0.0f, 0.0f), c);
-          appendLine(p - vec3(0.0f, s, 0.0f), c, p + vec3(0.0f, s, 0.0f), c);
-          appendLine(p - vec3(0.0f, 0.0f, s), c, p + vec3(0.0f, 0.0f, s), c);
+          debug.cross(p, marker_size_, color(j), joint_thickness_);
         }
       }
     });
   }
 
-  void play(Character const& c) {
-    renderer_.animation().play(c.root, clip_names_[c.clip], c.loop, c.fade);
+  void drawIKTargets(DebugDraw& debug) {
+    auto& animation = renderer_.animation();
+
+    for (auto const& c : characters_) {
+      for (auto const& entry : c.ik) {
+        drawCross(
+          debug,
+          (c.foot_ik && entry.foot) ? animation.ikTarget(c.root, entry.id) : entry.target,
+          kTargetColor
+        );
+        if (entry.use_pole) {
+          drawCross(debug, entry.pole, kPoleColor);
+        }
+      }
+    }
+  }
+
+  void drawChainTargets(DebugDraw& debug) {
+    auto& animation = renderer_.animation();
+
+    for (auto const& [root, ui] : chains_) {
+      if (!ui.id.valid()) {
+        continue;
+      }
+      drawCross(debug, animation.chainIKTarget(root, ui.id), kTargetColor);
+      if (ui.use_pole) {
+        drawCross(debug, ui.pole, kPoleColor);
+      }
+    }
+  }
+
+  /* The target, and the aim axis of the head (which should point out of the face). */
+  void drawLookTargets(DebugDraw& debug) {
+    auto& animation = renderer_.animation();
+
+    for (auto const& c : characters_) {
+      for (auto const& entry : c.look) {
+        drawCross(debug, entry.target, kLookColor);
+        if (auto const aim = animation.lookAim(c.root, entry.id)) {
+          debug.line(
+            aim->origin, aim->origin + aim->direction * 0.4f,
+            kLookColor, kTargetThickness, Depth::Off
+          );
+        }
+      }
+    }
   }
 
  private:
@@ -488,16 +1028,42 @@ class SampleApp final : public Application {
   std::shared_ptr<scene::AnimationGraphDesc const> graph_{};
   std::vector<Character> characters_{};
   std::vector<std::string> clip_names_{};
-  int current_{};
+  std::vector<std::string> joint_names_{};
+  int current_{0};
 
-  bool show_skeleton_{false};
-  bool show_markers_{true};
+  // Two-bone IK
+  int   ik_joint_{0};
+  float ik_fade_{0.2f};
+  bool  ik_free_on_kick_{false};
+
+  // Chain IK (one per instance)
+  std::map<entt::entity, ChainUI> chains_{};
+
+  // Foot IK
+  bool  show_ground_{true};
+  bool  foot_dirty_{false};
+  float foot_probe_{0.5f};
+  float foot_blend_{0.15f};
+  float foot_smooth_{12.0f};
+  bool  foot_align_{true};
+  float foot_max_angle_{35.0f};
+
+  // Look-at
+  int   look_joint_{5};
+  int   look_length_{3};
+  int   look_axis_{3};
+  float look_max_angle_{70.0f};
+  float look_fade_angle_{40.0f};
+  float look_smooth_{10.0f};
+  bool  look_orbit_{false};
+
+  // Display
+  bool  show_skeleton_{false};
+  bool  show_markers_{true};
+  float bone_thickness_{2.0f};
+  float joint_thickness_{2.0f};
   float marker_size_{0.03f};
-
-  VkPipelineLayout pipeline_layout_{};
-  Pipeline pipeline_{};
-  std::vector<backend::Buffer> line_buffers_{}; // one per frame slot
-  std::vector<LineVertex> line_vertices_{};
+  bool  use_dqs_{false};
 };
 
 // ----------------------------------------------------------------------------
