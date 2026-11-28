@@ -6,6 +6,7 @@
 #include "aer/renderer/vertex_layout.h"
 #include "aer/renderer/renderer_flags.h"
 #include "aer/scene/asset.h"
+#include "aer/scene/camera.h"
 #include "aer/scene/ecs/instantiate.h"
 
 /* -------------------------------------------------------------------------- */
@@ -120,6 +121,26 @@ void Renderer::releaseViewResources() {
   }
   LOGD(" > Release Frames Resources");
   context_ptr_->releaseFrameResources(default_frame_handler_.frames);
+}
+
+// ----------------------------------------------------------------------------
+
+void Renderer::updatePhysicsDebugDraw(Camera const& camera) {
+  auto const& options = physics_system_.debug();
+  if (!options.enabled) {
+    return;
+  }
+
+  auto const depth = options.depth_test ? DebugDraw::Depth::On
+                                        : DebugDraw::Depth::Off;
+
+  physics_system_.world().submitDebugDraw(
+    camera.transform().position(),
+    options,
+    [&](vec3 const& a, vec3 const& b, vec3 const& color) {
+      debug_draw_.line(a, b, color, options.line_width, depth);
+    }
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -396,6 +417,8 @@ void Renderer::update(Camera const& camera, float elapsed_time) {
   scene_tree_.update();
   animation_system_.postUpdate();
   // -------------------------------
+
+  updatePhysicsDebugDraw(camera);
 
   scene_renderer_.update(
     scene_tree_,

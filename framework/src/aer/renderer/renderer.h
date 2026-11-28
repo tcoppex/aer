@@ -225,6 +225,8 @@ class Renderer {
 
   void releaseViewResources();
 
+  void updatePhysicsDebugDraw(Camera const& camera);
+
   /* Blit the main rt color to the swapchain */
   void blitColorToSwapchain(FrameHandler const& frame_handler);
 

@@ -54,14 +54,12 @@ struct Name {
 
 // ----------------------------------------------------------------------------
 
-// (sits on each subtree root)
 struct Instance {
   AssetHandle asset{};
 };
 
 // ----------------------------------------------------------------------------
 
-// (replace Mesh)
 struct Renderable {
   AssetHandle asset{};
   uint32_t mesh_index{};

@@ -63,6 +63,11 @@ class PhysicsSystem {
     return world_;
   }
 
+  [[nodiscard]]
+  physics::DebugOptions& debug() noexcept {
+    return debug_;
+  }
+
  private:
   void createPendingBodies();
 
@@ -81,6 +86,7 @@ class PhysicsSystem {
 
   std::optional<float> last_elapsed_time_{};
   bool paused_{false};
+  physics::DebugOptions debug_{};
 
   std::vector<entt::entity> pending_{};
 };

@@ -39,6 +39,12 @@ class PhysicsWorld {
   [[nodiscard]]
   float alpha() const;
 
+  void submitDebugDraw(
+    vec3 const& camera_position,
+    DebugOptions const& options,
+    DebugLineFn const& sink
+  );
+
   void set_gravity(vec3 const& gravity);
 
   [[nodiscard]]

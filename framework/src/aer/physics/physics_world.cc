@@ -9,6 +9,7 @@
 #include "aer/physics/private/jolt.h"
 #include "aer/physics/private/jolt_layers.h"
 #include "aer/physics/private/jolt_shapes.h"
+#include "aer/physics/private/jolt_debug_renderer.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -109,7 +110,12 @@ struct PhysicsWorld::Impl {
 
   JPH::TempAllocatorImpl            temp_allocator;
   JPH::JobSystemThreadPool          job_system;
-  JPH::PhysicsSystem                system{};
+  JPH::PhysicsSystem               system{};
+
+#ifdef JPH_DEBUG_RENDERER
+  // Created on the first drawDebug call.
+  std::unique_ptr<DebugLineRenderer> debug_renderer{};
+#endif
 };
 
 // ----------------------------------------------------------------------------
@@ -212,6 +218,49 @@ void PhysicsWorld::step(float dt, int collision_steps) {
 
 float PhysicsWorld::alpha() const {
   return impl_ ? impl_->accumulator / impl_->settings.fixed_timestep : 0.0f;
+}
+
+// ----------------------------------------------------------------------------
+
+void PhysicsWorld::submitDebugDraw(
+  vec3 const& camera_position,
+  DebugOptions const& options,
+  DebugLineFn const& sink
+) {
+#ifdef JPH_DEBUG_RENDERER
+  if (!impl_ || !sink) {
+    return;
+  }
+
+  if (!impl_->debug_renderer) {
+    impl_->debug_renderer = std::make_unique<DebugLineRenderer>();
+  }
+  auto& renderer = *impl_->debug_renderer;
+  renderer.SetCameraPos(ToJolt(camera_position));
+  renderer.begin(&sink);
+
+  JPH::BodyManager::DrawSettings settings;
+  settings.mDrawShape                 = options.shapes;
+  settings.mDrawShapeWireframe        = true;
+  settings.mDrawShapeColor            = options.sleeping_colors
+                                      ? JPH::BodyManager::EShapeColor::SleepColor
+                                      : JPH::BodyManager::EShapeColor::MotionTypeColor;
+  settings.mDrawBoundingBox           = options.bounding_boxes;
+  settings.mDrawCenterOfMassTransform = options.centers_of_mass;
+  settings.mDrawVelocity              = options.velocities;
+  impl_->system.DrawBodies(settings, &renderer);
+
+  if (options.constraints) {
+    impl_->system.DrawConstraints(&renderer);
+    impl_->system.DrawConstraintLimits(&renderer);
+  }
+
+  renderer.end();
+#else
+  static_cast<void>(camera_position);
+  static_cast<void>(options);
+  static_cast<void>(sink);
+#endif
 }
 
 // ----------------------------------------------------------------------------

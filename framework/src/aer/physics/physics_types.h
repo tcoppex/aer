@@ -1,6 +1,7 @@
 #ifndef AER_PHYSICS_PHYSICS_TYPES_H_
 #define AER_PHYSICS_PHYSICS_TYPES_H_
 
+#include <functional>
 #include <variant>
 
 #include "aer/core/common.h"
@@ -24,6 +25,23 @@ struct WorldSettings {
 
   uint32_t max_substeps{4u};
 };
+
+// ----------------------------------------------------------------------------
+
+struct DebugOptions {
+  bool enabled{false};
+  bool shapes{true};
+  bool bounding_boxes{false};
+  bool centers_of_mass{false};
+  bool velocities{false};
+  bool constraints{false};
+  bool sleeping_colors{false};
+  bool depth_test{false};
+  float line_width{1.0f};
+};
+
+/* Receives the debug segments of a world, colors are linear RGB. */
+using DebugLineFn = std::function<void(vec3 const& a, vec3 const& b, vec3 const& color)>;
 
 // ----------------------------------------------------------------------------
 
