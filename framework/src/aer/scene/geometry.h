@@ -93,11 +93,18 @@ class Geometry {
  public:
   // --- Indexed Triangle List ---
 
-  /* Create a cube with interleaved Position, Normal and UV. */
+  /* Create an axis aligned box with interleaved Position, Normal, Texcoord and Tangent. */
+  static void MakeBox(Geometry &geo, float hx, float hy, float hz);
+
+  /* Create a cube (a box of the given size). */
   static void MakeCube(Geometry &geo, float size = kDefaultSize);
 
-  /* Create a +Y plane with interleaved Position, Normal and UV. */
+  /* Create a +Y plane with interleaved Position, Normal, UV and Tangent. */
   static void MakePlane(Geometry &geo, float size = kDefaultSize, uint32_t resx = 1u, uint32_t resy = 1u);
+
+  /* Create a capsule along Y: a cylinder of half height `half_height`, capped by
+   * two hemispheres of radius `radius`.. */
+  static void MakeCapsule(Geometry &geo, float half_height, float radius, uint32_t resx = 32u, uint32_t rings = 8u);
 
   // --- Indexed Triangle Strip ---
 
