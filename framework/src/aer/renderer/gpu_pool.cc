@@ -1,5 +1,7 @@
 #include "aer/renderer/gpu_pool.h"
 
+#include <algorithm>
+
 #include "aer/scene/asset.h"
 #include "aer/renderer/render_context.h"
 #include "aer/renderer/blas_builder.h"
@@ -12,6 +14,14 @@ namespace {
 
 constexpr uint64_t kVertexAlignment = 16u; //
 constexpr uint64_t kIndexAlignment  = 4u; //
+
+scene::MaterialProxy MakeDefaultMaterialProxy() {
+  scene::MaterialProxy proxy{};
+  proxy.pbr_mr.basecolor_factor = vec4(1.0f);
+  proxy.pbr_mr.metallic_factor  = 1.0f;
+  proxy.pbr_mr.roughness_factor = 1.0f;
+  return proxy;
+}
 
 }
 
@@ -236,6 +246,20 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
     return fail("image upload failed.");
   }
 
+  // 3b. Fallback material for primitives without one. Appended once, as a
+  //     proxy and a ref together, so both arrays stay one-to-one.
+  bool const needs_default_material = std::any_of(
+    asset.meshes.begin(), asset.meshes.end(),
+    [](scene::Mesh const& m) {
+      return m.primitive_materials_index.size() < m.primitive_count();
+    }
+  );
+  uint32_t const default_material = static_cast<uint32_t>(asset.materials.size());
+  if (needs_default_material) {
+    asset.materials.push_back(MakeDefaultMaterialProxy());
+    asset.material_refs.push_back({ .proxy_index = default_material });
+  }
+
   // 4. Rebase material texture bindings (if none fallback to default 'sentinel')
   for (auto& proxy : asset.materials) {
     auto rebase = [&](uint32_t& b, uint32_t fallback) {
@@ -266,11 +290,15 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
 
     for (uint32_t p = 0; p < mesh.primitive_count(); ++p) {
       auto const& prim = mesh.primitive(p);
+
       auto const pos = prim.bufferOffsets.find(Geometry::AttributeType::Position);
-      if (pos == prim.bufferOffsets.end() || p >= mesh.primitive_materials_index.size()) {
-        return fail("malformed mesh (no position or material index).");
+      if (pos == prim.bufferOffsets.end()) {
+        return fail("malformed mesh (no position).");
       }
-      uint32_t const material = mesh.primitive_materials_index[p];
+
+      uint32_t const material = (p < mesh.primitive_materials_index.size())
+        ? mesh.primitive_materials_index[p]
+        : default_material;
       if (material >= asset.materials.size()) {
         return fail("primitive references an unknown material.");
       }
@@ -300,7 +328,7 @@ AssetHandle GpuPool::uploadAsset(scene::Asset&& asset) {
           .vertexCount   = prim.vertexCount,
           .instanceCount = 1u,
         },
-        .asset_material_index = material,
+        .asset_material_index = material, //
         .skin_vertex_offset = skin_vertex_offset,
         .morph_offset = morph_offset,
         .morph_count = prim.morphTargetCount,
